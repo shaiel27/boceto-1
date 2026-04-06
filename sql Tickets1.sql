@@ -10,7 +10,7 @@ CREATE TABLE Role (
     ID_Role INT AUTO_INCREMENT PRIMARY KEY,
     Role_Name VARCHAR(20) NOT NULL,
     Description TEXT
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 CREATE TABLE Users (
     ID_Users INT AUTO_INCREMENT PRIMARY KEY,
@@ -23,7 +23,7 @@ CREATE TABLE Users (
     Password VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Role) REFERENCES Role(ID_Role) ON DELETE SET NULL
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 CREATE TABLE Technicians (
     ID_Technicians INT AUTO_INCREMENT PRIMARY KEY,
@@ -31,7 +31,7 @@ CREATE TABLE Technicians (
     Status VARCHAR(20) DEFAULT 'Disponible',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Users) REFERENCES Users(ID_Users) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 -- ==========================================
 -- 2. TABLAS DE ESTRUCTURA INSTITUCIONAL
@@ -43,13 +43,13 @@ CREATE TABLE Office (
     Building VARCHAR(50),
     Telephone_Number VARCHAR(15),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 CREATE TABLE TI_Service (
     ID_TI_Service INT AUTO_INCREMENT PRIMARY KEY,
     Type_Service VARCHAR(30) NOT NULL,
     Details TEXT
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 CREATE TABLE Technicians_Service (
     ID_Technicians_Service INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,7 +59,7 @@ CREATE TABLE Technicians_Service (
     FOREIGN KEY (Fk_Technicians) REFERENCES Technicians(ID_Technicians) ON DELETE CASCADE,
     FOREIGN KEY (Fk_TI_Service) REFERENCES TI_Service(ID_TI_Service) ON DELETE CASCADE,
     UNIQUE KEY (Fk_Technicians, Fk_TI_Service) -- Evita duplicados de especialidad
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 -- ==========================================
 -- 3. TABLAS DE GESTIÓN DE SOLICITUDES (TICKETS)
@@ -85,7 +85,7 @@ CREATE TABLE Service_Request (
     FOREIGN KEY (FK_Office) REFERENCES Office(ID_Office),
     FOREIGN KEY (Fk_TI_Service) REFERENCES TI_Service(ID_TI_Service),
     FOREIGN KEY (Fk_Technician_Current) REFERENCES Technicians(ID_Technicians) ON DELETE SET NULL
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 CREATE TABLE Ticket_Attachments (
     ID_Attachment INT AUTO_INCREMENT PRIMARY KEY,
@@ -95,7 +95,7 @@ CREATE TABLE Ticket_Attachments (
     File_Type VARCHAR(10),
     Uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 -- ==========================================
 -- 4. TABLAS DE AUDITORÍA Y TRAZABILIDAD
@@ -111,7 +111,7 @@ CREATE TABLE Ticket_Assignments_History (
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE,
     FOREIGN KEY (Fk_Technician) REFERENCES Technicians(ID_Technicians),
     FOREIGN KEY (Fk_Assigned_By) REFERENCES Users(ID_Users)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 CREATE TABLE Ticket_Timeline (
     ID_Timeline INT AUTO_INCREMENT PRIMARY KEY,
@@ -123,7 +123,7 @@ CREATE TABLE Ticket_Timeline (
     Action_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE,
     FOREIGN KEY (Fk_User_Action) REFERENCES Users(ID_Users)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
 
 CREATE TABLE Ticket_Comments (
     ID_Comment INT AUTO_INCREMENT PRIMARY KEY,
@@ -134,4 +134,4 @@ CREATE TABLE Ticket_Comments (
     Created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE,
     FOREIGN KEY (Fk_User) REFERENCES Users(ID_Users)
-) ENGINE=InnoDB;
+) ENGINE=InnoDB AUTO_INCREMENT=1;
