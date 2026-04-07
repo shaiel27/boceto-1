@@ -14,7 +14,7 @@ SELECT
     u.First_Name,
     u.Last_Name,
     u.Email,
-    r.Role_Name,
+    r.Role,
     u.created_at
 FROM Users u
 JOIN Role r ON u.Fk_Role = r.ID_Role
@@ -134,11 +134,12 @@ ORDER BY Cantidad_Tickets DESC;
 SELECT 
     CONCAT(u.First_Name, ' ', u.Last_Name) AS Tecnico,
     t.Status,
-    GROUP_CONCAT(ts.Type_Service SEPARATOR ', ') AS Especialidades
+    GROUP_CONCAT(ts.Type_Service ORDER BY ts.Type_Service SEPARATOR ', ') AS Especialidades
 FROM Technicians t
 JOIN Users u ON t.Fk_Users = u.ID_Users
 JOIN Technicians_Service tserv ON t.ID_Technicians = tserv.Fk_Technicians
 JOIN TI_Service ts ON tserv.Fk_TI_Service = ts.ID_TI_Service
+WHERE tserv.status = 'Disponible'
 GROUP BY t.ID_Technicians, u.First_Name, u.Last_Name, t.Status
 ORDER BY u.First_Name, u.Last_Name;
 
@@ -161,9 +162,11 @@ SELECT
     ts.Type_Service,
     COUNT(t.ID_Technicians) AS Total_Tecnicos,
     COUNT(CASE WHEN t.Status = 'Disponible' THEN 1 END) AS Tecnicos_Disponibles,
-    COUNT(CASE WHEN t.Status = 'Ocupado' THEN 1 END) AS Tecnicos_Ocupados
+    COUNT(CASE WHEN t.Status = 'Ocupado' THEN 1 END) AS Tecnicos_Ocupados,
+    COUNT(CASE WHEN t.Status = 'Vacaciones' THEN 1 END) AS Tecnicos_Vacaciones,
+    COUNT(CASE WHEN t.Status = 'Desestituido' THEN 1 END) AS Tecnicos_Desestituidos
 FROM TI_Service ts
-LEFT JOIN Technicians_Service tserv ON ts.ID_TI_Service = tserv.Fk_TI_Service
+LEFT JOIN Technicians_Service tserv ON ts.ID_TI_Service = tserv.Fk_TI_Service AND tserv.status = 'Disponible'
 LEFT JOIN Technicians t ON tserv.Fk_Technicians = t.ID_Technicians
 GROUP BY ts.ID_TI_Service, ts.Type_Service
 ORDER BY ts.Type_Service;
@@ -379,15 +382,219 @@ LEFT JOIN Service_Request sr ON t.ID_Technicians = sr.Fk_Technician_Current
 GROUP BY t.ID_Technicians, u.First_Name, u.Last_Name
 ORDER BY Tickets_Resueltos DESC;
 
--- 7.3 Análisis de oficinas con más solicitudes
+-- ==========================================
+-- 8. CONSULTAS DE ÁREAS Y COORDINADORES
+-- ==========================================
+
+-- 8.1 Mostrar todas las áreas de oficina con sus jefes de área
+SELECT 
+    ao.ID_Area_Office,
+    ao.Area_Name,
+    ao.Description,
+    o.Name_Office AS Oficina,
+    CONCAT(u.First_Name, ' ', u.Last_Name) AS Jefe_Area,
+    u.Email AS Email_Jefe_Area
+FROM Area_Office ao
+JOIN Office o ON ao.Fk_Office = o.ID_Office
+LEFT JOIN Users u ON ao.Fk_Area_Boos = u.ID_Users
+ORDER BY o.Name_Office, ao.Area_Name;
+
+-- 8.2 Áreas por oficina
 SELECT 
     o.Name_Office,
+    COUNT(ao.ID_Area_Office) AS Numero_Areas,
+    GROUP_CONCAT(ao.Area_Name ORDER BY ao.Area_Name SEPARATOR ', ') AS Areas
+FROM Office o
+LEFT JOIN Area_Office ao ON o.ID_Office = ao.Fk_Office
+GROUP BY o.ID_Office, o.Name_Office
+ORDER BY o.Name_Office;
+
+-- 8.3 Tickets por área de oficina
+SELECT 
+    ao.Area_Name,
+    o.Name_Office AS Oficina,
     COUNT(sr.ID_Service_Request) AS Total_Tickets,
     COUNT(CASE WHEN sr.Status = 'Resuelto' THEN 1 END) AS Tickets_Resueltos,
-    ROUND(COUNT(CASE WHEN sr.Status = 'Resuelto' THEN 1 END) * 100.0 / COUNT(sr.ID_Service_Request), 2) AS Tasa_Resolucion,
-    AVG(CASE WHEN sr.Status = 'Resuelto' THEN DATEDIFF(sr.Resolved_at, sr.Created_at) ELSE NULL END) AS Tiempo_Promedio_Resolucion
+    COUNT(CASE WHEN sr.Status = 'En Progreso' THEN 1 END) AS Tickets_En_Progreso,
+    COUNT(CASE WHEN sr.Status = 'Pendiente' THEN 1 END) AS Tickets_Pendientes,
+    ROUND(COUNT(CASE WHEN sr.Status = 'Resuelto' THEN 1 END) * 100.0 / NULLIF(COUNT(sr.ID_Service_Request), 0), 2) AS Tasa_Resolucion
+FROM Area_Office ao
+JOIN Office o ON ao.Fk_Office = o.ID_Office
+LEFT JOIN Service_Request sr ON ao.ID_Area_Office = sr.FK_Area_Office
+GROUP BY ao.ID_Area_Office, ao.Area_Name, o.Name_Office
+HAVING Total_Tickets > 0
+ORDER BY Total_Tickets DESC;
+
+-- 8.4 Jefes de oficina y sus áreas asignadas
+SELECT 
+    CONCAT(u.First_Name, ' ', u.Last_Name) AS Jefe_Oficina,
+    u.Email AS Email_Jefe,
+    o.Name_Office AS Oficina,
+    COUNT(ao.ID_Area_Office) AS Numero_Areas_Asignadas,
+    GROUP_CONCAT(ao.Area_Name ORDER BY ao.Area_Name SEPARATOR ', ') AS Areas_A_Cargo
+FROM Office o
+LEFT JOIN Users u ON o.Fk_Office_Boss = u.ID_Users
+LEFT JOIN Area_Office ao ON o.ID_Office = ao.Fk_Office
+GROUP BY o.ID_Office, o.Name_Office, u.ID_Users, u.First_Name, u.Last_Name, u.Email
+ORDER BY o.Name_Office;
+
+-- 8.5 Jefes de área y sus oficinas
+SELECT 
+    CONCAT(u.First_Name, ' ', u.Last_Name) AS Jefe_Area,
+    u.Email AS Email_Jefe,
+    ao.Area_Name AS Area,
+    o.Name_Office AS Oficina,
+    COUNT(sr.ID_Service_Request) AS Tickets_En_Area
+FROM Area_Office ao
+JOIN Office o ON ao.Fk_Office = o.ID_Office
+LEFT JOIN Users u ON ao.Fk_Area_Boos = u.ID_Users
+LEFT JOIN Service_Request sr ON ao.ID_Area_Office = sr.FK_Area_Office
+GROUP BY ao.ID_Area_Office, ao.Area_Name, o.Name_Office, u.ID_Users, u.First_Name, u.Last_Name, u.Email
+ORDER BY o.Name_Office, ao.Area_Name;
+
+-- 9.1 Adjuntos por ticket
+SELECT 
+    sr.Ticket_Code,
+    sr.Subject,
+    COUNT(ta.ID_Attachment) AS Numero_Adjuntos,
+    GROUP_CONCAT(CONCAT(ta.File_Name, ' (', ta.File_Type, ')') ORDER BY ta.File_Name SEPARATOR ', ') AS Archivos
+FROM Service_Request sr
+LEFT JOIN Ticket_Attachments ta ON sr.ID_Service_Request = ta.Fk_Service_Request
+GROUP BY sr.ID_Service_Request, sr.Ticket_Code, sr.Subject
+HAVING Numero_Adjuntos > 0
+ORDER BY sr.Ticket_Code;
+
+-- 9.2 Tipos de archivos más comunes
+SELECT 
+    File_Type,
+    COUNT(*) AS Cantidad,
+    COUNT(DISTINCT Fk_Service_Request) AS Tickets_Con_Adjuntos
+FROM Ticket_Attachments
+GROUP BY File_Type
+ORDER BY Cantidad DESC;
+
+-- ==========================================
+-- 10. CONSULTAS AVANZADAS DE HISTORIAL
+-- ==========================================
+
+-- 10.1 Historial completo de un ticket específico
+-- Reemplazar 1 por el ID del ticket deseado
+SELECT 
+    sr.Ticket_Code,
+    sr.Subject,
+    tt.Action_Type,
+    tt.Previous_Value,
+    tt.New_Value,
+    tt.Action_Date,
+    CONCAT(u.First_Name, ' ', u.Last_Name) AS Usuario_Accion
+FROM Ticket_Timeline tt
+JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+JOIN Users u ON tt.Fk_User_Action = u.ID_Users
+WHERE sr.ID_Service_Request = 1
+ORDER BY tt.Action_Date;
+
+-- 10.2 Reasignaciones de técnicos
+SELECT 
+    sr.Ticket_Code,
+    sr.Subject,
+    tah.Assignment_Date,
+    CONCAT(u_old.First_Name, ' ', u_old.Last_Name) AS Tecnico_Anterior,
+    CONCAT(u_new.First_Name, ' ', u_new.Last_Name) AS Tecnico_Nuevo,
+    CONCAT(u_assign.First_Name, ' ', u_assign.Last_Name) AS Asignado_Por,
+    tah.Reason_Reassignment
+FROM Ticket_Assignments_History tah
+JOIN Service_Request sr ON tah.Fk_Service_Request = sr.ID_Service_Request
+JOIN Technicians t_old ON tah.Fk_Technician = t_old.ID_Technicians
+JOIN Users u_old ON t_old.Fk_Users = u_old.ID_Users
+JOIN Users u_assign ON tah.Fk_Assigned_By = u_assign.ID_Users
+LEFT JOIN (
+    SELECT 
+        tah2.Fk_Service_Request,
+        tah2.Assignment_Date,
+        t2.Fk_Users
+    FROM Ticket_Assignments_History tah2
+    JOIN Technicians t2 ON tah2.Fk_Technician = t2.ID_Technicians
+) u_new ON tah.Fk_Service_Request = u_new.Fk_Service_Request AND u_new.Assignment_Date > tah.Assignment_Date
+ORDER BY sr.Ticket_Code, tah.Assignment_Date;
+
+-- ==========================================
+-- 11. REPORTES AVANZADOS
+-- ==========================================
+
+-- 11.1 Dashboard general actualizado
+SELECT 
+    'Usuarios Totales' AS Indicador,
+    COUNT(*) AS Valor,
+    '' AS Detalle
+FROM Users
+UNION ALL
+SELECT 
+    'Técnicos Activos' AS Indicador,
+    COUNT(*) AS Valor,
+    CONCAT(COUNT(CASE WHEN Status = 'Disponible' THEN 1 END), ' disponibles') AS Detalle
+FROM Technicians
+UNION ALL
+SELECT 
+    'Oficinas Totales' AS Indicador,
+    COUNT(*) AS Valor,
+    CONCAT(COUNT(CASE WHEN Fk_Office_Boss IS NOT NULL THEN 1 END), ' con jefe asignado') AS Detalle
+FROM Office
+UNION ALL
+SELECT 
+    'Áreas Totales' AS Indicador,
+    COUNT(*) AS Valor,
+    CONCAT(COUNT(CASE WHEN Fk_Area_Boos IS NOT NULL THEN 1 END), ' con jefe de área') AS Detalle
+FROM Area_Office
+UNION ALL
+SELECT 
+    'Tickets Totales' AS Indicador,
+    COUNT(*) AS Valor,
+    CONCAT(COUNT(CASE WHEN Status = 'Resuelto' THEN 1 END), ' resueltos') AS Detalle
+FROM Service_Request
+UNION ALL
+SELECT 
+    'Tickets Pendientes' AS Indicador,
+    COUNT(*) AS Valor,
+    'Por asignar o en espera' AS Detalle
+FROM Service_Request
+WHERE Status = 'Pendiente'
+UNION ALL
+SELECT 
+    'Tiempo Promedio Resolución' AS Indicador,
+    ROUND(AVG(DATEDIFF(Resolved_at, Created_at)), 1) AS Valor,
+    'Días' AS Detalle
+FROM Service_Request
+WHERE Status = 'Resuelto' AND Resolved_at IS NOT NULL;
+
+-- 11.2 Productividad por técnico actualizada
+SELECT 
+    CONCAT(u.First_Name, ' ', u.Last_Name) AS Tecnico,
+    t.Status AS Estado_Tecnico,
+    COUNT(sr.ID_Service_Request) AS Total_Tickets,
+    COUNT(CASE WHEN sr.Status = 'Resuelto' THEN 1 END) AS Tickets_Resueltos,
+    ROUND(COUNT(CASE WHEN sr.Status = 'Resuelto' THEN 1 END) * 100.0 / NULLIF(COUNT(sr.ID_Service_Request), 0), 2) AS Tasa_Resolucion,
+    AVG(CASE WHEN sr.Status = 'Resuelto' THEN DATEDIFF(sr.Resolved_at, sr.Created_at) ELSE NULL END) AS Tiempo_Promedio_Resolucion,
+    COUNT(DISTINCT tserv.Fk_TI_Service) AS Especialidades_Asignadas
+FROM Technicians t
+JOIN Users u ON t.Fk_Users = u.ID_Users
+LEFT JOIN Service_Request sr ON t.ID_Technicians = sr.Fk_Technician_Current
+LEFT JOIN Technicians_Service tserv ON t.ID_Technicians = tserv.Fk_Technicians AND tserv.status = 'Disponible'
+GROUP BY t.ID_Technicians, u.First_Name, u.Last_Name, t.Status
+ORDER BY Tickets_Resueltos DESC;
+
+-- 11.3 Análisis de oficinas con más solicitudes actualizado
+SELECT 
+    o.Name_Office,
+    o.Building,
+    COUNT(sr.ID_Service_Request) AS Total_Tickets,
+    COUNT(CASE WHEN sr.Status = 'Resuelto' THEN 1 END) AS Tickets_Resueltos,
+    ROUND(COUNT(CASE WHEN sr.Status = 'Resuelto' THEN 1 END) * 100.0 / NULLIF(COUNT(sr.ID_Service_Request), 0), 2) AS Tasa_Resolucion,
+    AVG(CASE WHEN sr.Status = 'Resuelto' THEN DATEDIFF(sr.Resolved_at, sr.Created_at) ELSE NULL END) AS Tiempo_Promedio_Resolucion,
+    COUNT(ao.ID_Area_Office) AS Numero_Areas,
+    CASE WHEN o.Fk_Office_Boss IS NOT NULL THEN 'Sí' ELSE 'No' END AS Tiene_Jefe_Asignado
 FROM Office o
 LEFT JOIN Service_Request sr ON o.ID_Office = sr.FK_Office
-GROUP BY o.ID_Office, o.Name_Office
+LEFT JOIN Area_Office ao ON o.ID_Office = ao.Fk_Office
+GROUP BY o.ID_Office, o.Name_Office, o.Building, o.Fk_Office_Boss
 HAVING Total_Tickets > 0
 ORDER BY Total_Tickets DESC;

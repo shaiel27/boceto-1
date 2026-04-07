@@ -1,0 +1,271 @@
+/* Stepper Component Styles */
+.stepper {
+  display: flex;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.stepper--horizontal {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.stepper--vertical {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.5rem;
+}
+
+/* Step Styles */
+.stepper-step {
+  display: flex;
+  align-items: flex-start;
+  position: relative;
+  flex: 1;
+}
+
+.stepper-step--horizontal {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 0 1rem;
+}
+
+.stepper-step--vertical {
+  flex-direction: row;
+  align-items: flex-start;
+  text-align: left;
+  padding: 0.5rem 0;
+}
+
+/* Size Variants */
+.stepper-step--small {
+  min-width: 80px;
+}
+
+.stepper-step--medium {
+  min-width: 120px;
+}
+
+.stepper-step--large {
+  min-width: 160px;
+}
+
+/* Step Indicator */
+.stepper-step__indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+}
+
+.stepper-step--horizontal .stepper-step__indicator {
+  margin-bottom: 0.75rem;
+}
+
+.stepper-step--vertical .stepper-step__indicator {
+  margin-right: 1rem;
+}
+
+.stepper-step__icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.stepper-step--small .stepper-step__icon {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.75rem;
+}
+
+.stepper-step--large .stepper-step__icon {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1rem;
+}
+
+/* Status-based Icon Styles */
+.stepper-step--completed .stepper-step__icon {
+  background: linear-gradient(135deg, #66bb6a 0%, #4caf50 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.stepper-step--active .stepper-step__icon {
+  background: linear-gradient(135deg, #1e78f0 0%, #1976d2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(30, 120, 240, 0.3);
+  transform: scale(1.1);
+}
+
+.stepper-step--pending .stepper-step__icon {
+  background: #f8f9fa;
+  color: #6c757d;
+  border: 2px solid #e9ecef;
+}
+
+.stepper-step--completed .stepper-step__icon--completed {
+  animation: stepComplete 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes stepComplete {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Step Content */
+.stepper-step__content {
+  flex: 1;
+}
+
+.stepper-step--horizontal .stepper-step__content {
+  text-align: center;
+}
+
+.stepper-step--vertical .stepper-step__content {
+  text-align: left;
+}
+
+.stepper-step__title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: #2c3e50;
+  margin-bottom: 0.25rem;
+  line-height: 1.4;
+}
+
+.stepper-step--completed .stepper-step__title {
+  color: #2c3e50;
+}
+
+.stepper-step--active .stepper-step__title {
+  color: #1e78f0;
+  font-weight: 700;
+}
+
+.stepper-step--pending .stepper-step__title {
+  color: #6c757d;
+}
+
+.stepper-step__description {
+  font-size: 0.75rem;
+  color: #6c757d;
+  line-height: 1.4;
+  margin-top: 0.25rem;
+}
+
+.stepper-step--active .stepper-step__description {
+  color: #495057;
+}
+
+/* Connector Styles */
+.stepper-connector {
+  position: absolute;
+  background: #e9ecef;
+  z-index: 1;
+}
+
+.stepper-connector--horizontal {
+  height: 2px;
+  top: 1.25rem;
+  left: 50%;
+  width: calc(100% - 1rem);
+}
+
+.stepper-step--small .stepper-connector--horizontal {
+  top: 1rem;
+}
+
+.stepper-step--large .stepper-connector--horizontal {
+  top: 1.5rem;
+}
+
+.stepper-connector--vertical {
+  width: 2px;
+  left: 1.25rem;
+  top: 2.5rem;
+  height: calc(100% + 1rem);
+}
+
+.stepper-step--small .stepper-connector--vertical {
+  left: 1rem;
+  top: 2rem;
+}
+
+.stepper-step--large .stepper-connector--vertical {
+  left: 1.5rem;
+  top: 3rem;
+}
+
+.stepper-connector--completed {
+  background: linear-gradient(90deg, #66bb6a 0%, #4caf50 100%);
+}
+
+.stepper-connector--pending {
+  background: #e9ecef;
+}
+
+/* Hover Effects */
+.stepper-step:hover .stepper-step__icon {
+  transform: scale(1.05);
+}
+
+.stepper-step--completed:hover .stepper-step__icon {
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.stepper-step--active:hover .stepper-step__icon {
+  box-shadow: 0 4px 12px rgba(30, 120, 240, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .stepper--horizontal {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .stepper-step--horizontal {
+    flex: 0 0 calc(50% - 0.5rem);
+    margin-bottom: 1rem;
+  }
+  
+  .stepper-connector--horizontal {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .stepper-step--horizontal {
+    flex: 0 0 100%;
+  }
+}
+
+/* Accessibility */
+.stepper-step:focus {
+  outline: 2px solid #1e78f0;
+  outline-offset: 2px;
+  border-radius: 50%;
+}
+
+.stepper-step[aria-current="step"] .stepper-step__icon {
+  box-shadow: 0 0 0 4px rgba(30, 120, 240, 0.3);
+}

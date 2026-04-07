@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "516bd2154eb843a8240e43d5b285229129853114ad7075a5e141e1c08e408c84"
+    },
+    "react-pdf": {
+      "source": "vercel-labs/json-render",
+      "sourceType": "github",
+      "computedHash": "82c58b5177f429f759ea93d6b60264a4ffee9a8ca233a1d5186c85c3b0492516"
+    },
+    "widgets-ui": {
+      "source": "inferen-sh/skills",
+      "sourceType": "github",
+      "computedHash": "38fb10fedd53b3f0981dddbaff25b1111ffeef4f772b60eb001890498c98c5a8"
+    }
+  }
+}
