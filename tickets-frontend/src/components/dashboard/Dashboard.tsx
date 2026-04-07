@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Building, 
   FileText, 
@@ -8,11 +9,52 @@ import {
   TrendingUp,
   Clock,
   UserCheck,
-  User
+  User,
+  Plus,
+  Search,
+  Filter,
+  ChevronDown,
+  ArrowLeft
 } from 'lucide-react';
+import Stepper from '../common/Stepper';
+import TicketForm from '../tickets/TicketForm';
 import './Dashboard.css';
 
 const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTicket, setSelectedTicket] = useState<number | null>(null);
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  
+  // Ticket workflow steps
+  const ticketSteps = [
+    {
+      id: 1,
+      title: 'Solicitud',
+      description: 'Usuario crea el ticket',
+      status: 'completed' as const
+    },
+    {
+      id: 2,
+      title: 'Asignación',
+      description: 'Asignado a técnico',
+      status: 'active' as const
+    },
+    {
+      id: 3,
+      title: 'En Progreso',
+      description: 'Técnico trabajando',
+      status: 'pending' as const
+    },
+    {
+      id: 4,
+      title: 'Resuelto',
+      description: 'Ticket cerrado',
+      status: 'pending' as const
+    }
+  ];
+
   const statsData = [
     {
       title: 'Total de Tickets',
@@ -114,56 +156,98 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  const handleStepClick = (stepId: number) => {
+    console.log(`Step ${stepId} clicked`);
+  };
+
+  const filteredTickets = ticketsData.filter(ticket => {
+    const matchesFilter = activeFilter === 'all' || ticket.status === activeFilter;
+    const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           ticket.id.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <Building size={20} color="white" />
+      {showTicketForm ? (
+        <div className="ticket-form-view">
+          <div className="form-header-actions">
+            <button 
+              className="back-btn" 
+              onClick={() => setShowTicketForm(false)}
+            >
+              <ArrowLeft size={20} />
+              Volver al Dashboard
+            </button>
+          </div>
+          <TicketForm />
         </div>
-        <div className="sidebar-title">Alcaldía del Municipio San Cristóbal</div>
-        <nav>
-          <ul className="nav-menu">
-            <li className="nav-item">
-              <a href="#" className="nav-link active">
-                <BarChart3 size={18} />
-                Dashboard
-              </a>
-            </li>
-            <li className="nav-item">
-              <a href="#" className="nav-link">
-                <FileText size={18} />
-                Gestión de Tickets
-              </a>
-            </li>
-            <li className="nav-item">
-              <a href="#" className="nav-link">
-                <Users size={18} />
-                Personal Técnico
-              </a>
-            </li>
-            <li className="nav-item">
-              <a href="#" className="nav-link">
-                <TrendingUp size={18} />
-                Reportes
-              </a>
-            </li>
-            <li className="nav-item">
-              <a href="#" className="nav-link">
-                <Settings size={18} />
-                Usuarios
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </aside>
+      ) : (
+        <>
+          {/* Sidebar */}
+          <aside className="sidebar">
+            <div className="sidebar-logo">
+              <Building size={20} color="white" />
+            </div>
+            <div className="sidebar-title">Alcaldía del Municipio San Cristóbal</div>
+            <nav>
+              <ul className="nav-menu">
+                <li className="nav-item">
+                  <button className="nav-link active">
+                    <BarChart3 size={18} />
+                    Dashboard
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button 
+                    className="nav-link"
+                    onClick={() => navigate('/admin')}
+                  >
+                    <FileText size={18} />
+                    Gestión de Tickets
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button className="nav-link">
+                    <Users size={18} />
+                    Personal Técnico
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button className="nav-link">
+                    <TrendingUp size={18} />
+                    Reportes
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button className="nav-link">
+                    <Settings size={18} />
+                    Usuarios
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          </aside>
 
-      {/* Main Content */}
-      <main className="main-content-area">
-        {/* Stats Cards */}
+          {/* Main Content */}
+          <main className="main-content-area">
+        {/* Ticket Workflow Stepper */}
+       
+          {/* Action Button */}
+        <div className="dashboard-actions">
+          <button 
+            className="new-ticket-btn"
+            onClick={() => setShowTicketForm(true)}
+          >
+            <Plus size={18} />
+            Nuevo Ticket
+          </button>
+        </div>
+
+        {/* Enhanced Stats Cards */}
         <div className="stats-grid">
           {statsData.map((stat, index) => (
-            <div key={index} className="stat-card">
+            <div key={index} className="stat-card enhanced">
               <div className="stat-header">
                 <div className="stat-icon">
                   <stat.icon size={20} />
@@ -187,33 +271,43 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* Tickets Table */}
+        
+        {/* Enhanced Tickets Table */}
         <div className="content-card">
           <div className="card-header">
             <h2 className="card-title">Listado Maestro de Tickets</h2>
-            <div className="filter-group">
-              <select className="filter-select">
-                <option>Filtrar por Oficina</option>
-                <option>Catastro</option>
-                <option>Obras</option>
-                <option>Bienestar</option>
-              </select>
-              <select className="filter-select">
-                <option>Filtrar por Técnico</option>
-                <option>Amna Verez</option>
-                <option>Carlos Diaz</option>
-                <option>Usuario Municipal</option>
-              </select>
-              <select className="filter-select">
-                <option>Filtrar por Prioridad</option>
-                <option>Alta</option>
-                <option>Media</option>
-                <option>Baja</option>
-              </select>
+            <div className="table-controls">
+              <div className="search-container">
+                <Search size={18} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Buscar tickets..."
+                  className="search-input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="filter-group">
+                <button className="filter-button">
+                  <Filter size={16} />
+                  Filtros
+                  <ChevronDown size={14} />
+                </button>
+                <select 
+                  className="filter-select"
+                  value={activeFilter}
+                  onChange={(e) => setActiveFilter(e.target.value)}
+                >
+                  <option value="all">Todos los Estados</option>
+                  <option value="Pendiente">Pendientes</option>
+                  <option value="En Proceso">En Proceso</option>
+                  <option value="Cerrado">Cerrados</option>
+                </select>
+              </div>
             </div>
           </div>
           <div className="table-container">
-            <table className="data-table">
+            <table className="data-table enhanced">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -227,8 +321,12 @@ const Dashboard: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {ticketsData.map((ticket, index) => (
-                  <tr key={index}>
+                {filteredTickets.map((ticket, index) => (
+                  <tr 
+                    key={index} 
+                    className={`table-row ${selectedTicket === index ? 'selected' : ''}`}
+                    onClick={() => setSelectedTicket(index)}
+                  >
                     <td>
                       <span className="ticket-id">{ticket.id}</span>
                     </td>
@@ -249,7 +347,7 @@ const Dashboard: React.FC = () => {
                     <td>{ticket.assignedTo}</td>
                     <td>{ticket.date}</td>
                     <td>
-                      <button className="action-button">Asignar Técnico</button>
+                      <button className="action-button enhanced">Ver Detalles</button>
                     </td>
                   </tr>
                 ))}
@@ -290,7 +388,9 @@ const Dashboard: React.FC = () => {
             ))}
           </div>
         </div>
-      </main>
+          </main>
+        </>
+      )}
     </div>
   );
 };
