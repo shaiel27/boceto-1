@@ -1,12 +1,12 @@
 /* Header institucional común */
 .header-container {
-  background-color: #1e78f0;
+  background-color: var(--accent-blue);
   color: white;
   padding: 0.75rem 2rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-md);
   position: sticky;
   top: 0;
   z-index: 1000;
@@ -15,7 +15,7 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--spacing-md);
 }
 
 .header-logo {
@@ -34,14 +34,14 @@
 }
 
 .header-main-title {
-  font-size: 1.125rem;
+  font-size: var(--font-size-lg);
   font-weight: bold;
   margin: 0;
   line-height: 1.2;
 }
 
 .header-subtitle {
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   opacity: 0.9;
   margin: 0;
   line-height: 1.2;
@@ -50,16 +50,16 @@
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--spacing-md);
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-sm);
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius-lg);
   transition: background-color 0.2s;
 }
 
@@ -78,7 +78,7 @@
 }
 
 .user-name {
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   font-weight: 500;
 }
 
@@ -86,4 +86,13 @@
   width: 1rem;
   height: 1rem;
   opacity: 0.7;
+}
+
+/* Theme Toggle adjustments */
+.header-right .theme-toggle {
+  color: white;
+}
+
+.header-right .theme-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }

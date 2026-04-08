@@ -14,7 +14,12 @@ import {
   Search,
   Filter,
   ChevronDown,
-  ArrowLeft
+  ArrowLeft,
+  UserPlus,
+  Calendar,
+  AlertCircle,
+  CheckCircle,
+  XCircle
 } from 'lucide-react';
 import Stepper from '../common/Stepper';
 import TicketForm from '../tickets/TicketForm';
@@ -272,12 +277,18 @@ const Dashboard: React.FC = () => {
         </div>
 
         
-        {/* Enhanced Tickets Table */}
-        <div className="content-card">
-          <div className="card-header">
-            <h2 className="card-title">Listado Maestro de Tickets</h2>
-            <div className="table-controls">
-              <div className="search-container">
+        {/* Enhanced Tickets Section */}
+        <div className="content-card tickets-section">
+          <div className="section-header">
+            <div className="section-title-area">
+              <h2 className="section-title">
+                <FileText size={24} />
+                Gestión de Tickets
+              </h2>
+              <p className="section-subtitle">Administra y monitorea todas las solicitudes</p>
+            </div>
+            <div className="section-actions">
+              <div className="search-box">
                 <Search size={18} className="search-icon" />
                 <input
                   type="text"
@@ -287,14 +298,9 @@ const Dashboard: React.FC = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <div className="filter-group">
-                <button className="filter-button">
-                  <Filter size={16} />
-                  Filtros
-                  <ChevronDown size={14} />
-                </button>
+              <div className="filter-controls">
                 <select 
-                  className="filter-select"
+                  className="status-filter"
                   value={activeFilter}
                   onChange={(e) => setActiveFilter(e.target.value)}
                 >
@@ -306,84 +312,148 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="table-container">
-            <table className="data-table enhanced">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Asunto</th>
-                  <th>Oficina</th>
-                  <th>Prioridad</th>
-                  <th>Estado</th>
-                  <th>Asignado a</th>
-                  <th>Fecha</th>
-                  <th>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTickets.map((ticket, index) => (
-                  <tr 
-                    key={index} 
-                    className={`table-row ${selectedTicket === index ? 'selected' : ''}`}
-                    onClick={() => setSelectedTicket(index)}
-                  >
-                    <td>
-                      <span className="ticket-id">{ticket.id}</span>
-                    </td>
-                    <td>{ticket.subject}</td>
-                    <td>{ticket.office}</td>
-                    <td>
-                      <span className={`priority-badge ${getPriorityClass(ticket.priority)}`}>
-                        <div className={`status-dot ${getStatusClass(ticket.priority === 'Alta' ? 'Pendiente' : ticket.priority === 'Media' ? 'En Proceso' : 'Cerrado')}`}></div>
-                        {ticket.priority}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <div className={`status-dot ${getStatusClass(ticket.status)}`}></div>
-                        {ticket.status}
-                      </div>
-                    </td>
-                    <td>{ticket.assignedTo}</td>
-                    <td>{ticket.date}</td>
-                    <td>
-                      <button className="action-button enhanced">Ver Detalles</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+          {/* Tickets Stats Overview */}
+          <div className="tickets-overview">
+            <div className="overview-card">
+              <div className="overview-icon pending">
+                <AlertCircle size={20} />
+              </div>
+              <div className="overview-info">
+                <div className="overview-number">{filteredTickets.filter(t => t.status === 'Pendiente').length}</div>
+                <div className="overview-label">Pendientes</div>
+              </div>
+            </div>
+            <div className="overview-card">
+              <div className="overview-icon progress">
+                <Clock size={20} />
+              </div>
+              <div className="overview-info">
+                <div className="overview-number">{filteredTickets.filter(t => t.status === 'En Proceso').length}</div>
+                <div className="overview-label">En Proceso</div>
+              </div>
+            </div>
+            <div className="overview-card">
+              <div className="overview-icon resolved">
+                <CheckCircle size={20} />
+              </div>
+              <div className="overview-info">
+                <div className="overview-number">{filteredTickets.filter(t => t.status === 'Cerrado').length}</div>
+                <div className="overview-label">Resueltos</div>
+              </div>
+            </div>
+            <div className="overview-card">
+              <div className="overview-icon total">
+                <FileText size={20} />
+              </div>
+              <div className="overview-info">
+                <div className="overview-number">{filteredTickets.length}</div>
+                <div className="overview-label">Total</div>
+              </div>
+            </div>
           </div>
+
+          {/* Modern Tickets Grid */}
+          <div className="tickets-modern-grid">
+            {filteredTickets.map((ticket, index) => (
+              <div 
+                key={index} 
+                className={`ticket-modern-card ${selectedTicket === index ? 'selected' : ''} ${ticket.status.toLowerCase().replace(' ', '-')}`}
+                onClick={() => setSelectedTicket(index)}
+              >
+                <div className="ticket-header">
+                  <div className="ticket-id-section">
+                    <span className="ticket-id-modern">{ticket.id}</span>
+                    <span className={`priority-indicator ${getPriorityClass(ticket.priority)}`}>
+                      {ticket.priority}
+                    </span>
+                  </div>
+                  <div className="ticket-status">
+                    {ticket.status === 'Pendiente' && <AlertCircle size={16} className="status-icon pending" />}
+                    {ticket.status === 'En Proceso' && <Clock size={16} className="status-icon progress" />}
+                    {ticket.status === 'Cerrado' && <CheckCircle size={16} className="status-icon resolved" />}
+                  </div>
+                </div>
+
+                <div className="ticket-content">
+                  <h3 className="ticket-subject">{ticket.subject}</h3>
+                  <div className="ticket-meta">
+                    <div className="meta-item">
+                      <Building size={14} />
+                      <span>{ticket.office}</span>
+                    </div>
+                    <div className="meta-item">
+                      <User size={14} />
+                      <span>{ticket.assignedTo}</span>
+                    </div>
+                    <div className="meta-item">
+                      <Calendar size={14} />
+                      <span>{ticket.date}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ticket-footer">
+                  <div className="status-badge">
+                    <div className={`status-dot ${getStatusClass(ticket.status)}`}></div>
+                    <span>{ticket.status}</span>
+                  </div>
+                  <button className="ticket-action-btn">
+                    Ver Detalles
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {filteredTickets.length === 0 && (
+            <div className="empty-state">
+              <FileText size={48} className="empty-icon" />
+              <h3>No se encontraron tickets</h3>
+              <p>No hay tickets que coincidan con los filtros seleccionados.</p>
+            </div>
+          )}
         </div>
 
-        {/* Technical Staff */}
-        <div className="content-card">
+        {/* Enhanced Technical Staff */}
+        <div className="content-card technical-staff-card">
           <div className="card-header">
-            <h2 className="card-title">Personal Técnico</h2>
+            <h2 className="card-title">Equipo Técnico</h2>
+            <div className="staff-stats">
+              <span className="stat-badge available">
+                <div className="status-dot status-resolved"></div>
+                {techniciansData.filter(t => t.status === 'available').length} Disponibles
+              </span>
+              <span className="stat-badge busy">
+                <div className="status-dot status-pending"></div>
+                {techniciansData.filter(t => t.status === 'unavailable').length} Ocupados
+              </span>
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="technicians-grid">
             {techniciansData.map((tech, index) => (
-              <div key={index} style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '1rem',
-                padding: '0.75rem',
-                backgroundColor: '#f8f9fa',
-                borderRadius: '0.5rem'
-              }}>
-                <div style={{
-                  width: '2rem',
-                  height: '2rem',
-                  borderRadius: '50%',
-                  backgroundColor: '#e9ecef',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <User size={16} color="#6c757d" />
+              <div key={index} className="technician-card">
+                <div className="technician-avatar">
+                  <User size={20} />
+                  <div className={`status-indicator ${tech.status}`}></div>
                 </div>
-                <span style={{ flex: 1, fontSize: '0.875rem' }}>{tech.name}</span>
-                <div className={`status-dot ${tech.status === 'available' ? 'status-resolved' : 'status-pending'}`}></div>
+                <div className="technician-info">
+                  <h3 className="technician-name">{tech.name}</h3>
+                  <div className="technician-status">
+                    <div className={`status-dot ${tech.status === 'available' ? 'status-resolved' : 'status-pending'}`}></div>
+                    <span className="status-text">
+                      {tech.status === 'available' ? 'Disponible' : 'Ocupado'}
+                    </span>
+                  </div>
+                </div>
+                <div className="technician-actions">
+                  <button className="action-btn primary" title="Asignar ticket">
+                    <UserPlus size={16} />
+                  </button>
+                  <button className="action-btn secondary" title="Configuración">
+                    <Settings size={16} />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
