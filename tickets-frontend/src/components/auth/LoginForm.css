@@ -1,7 +1,7 @@
 /* Estilos para LoginForm - Basados en el dashboard */
 .login-container {
   min-height: 100vh;
-  background-color: #e0f2f1;
+  background-color: var(--bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9,12 +9,13 @@
 }
 
 .login-card {
-  background: white;
-  border-radius: 1rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 28rem;
   padding: 2rem;
+  border: 1px solid var(--border-color);
 }
 
 .login-header {
@@ -30,27 +31,27 @@
   height: 4rem;
   border-radius: 50%;
   margin-bottom: 1rem;
-  background-color: #1e78f0;
+  background-color: var(--accent-blue);
 }
 
 .login-title {
-  font-size: 1.5rem;
+  font-size: var(--font-size-2xl);
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text-main);
   margin-bottom: 0.5rem;
   margin: 0 0 0.5rem 0;
 }
 
 .login-subtitle {
-  font-size: 1.25rem;
+  font-size: var(--font-size-xl);
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-main);
   margin: 0 0 0.5rem 0;
 }
 
 .login-description {
-  font-size: 0.875rem;
-  color: #6c757d;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -67,10 +68,10 @@
 
 .form-label {
   display: block;
-  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
   font-weight: 500;
   margin-bottom: 0.5rem;
-  color: #2c3e50;
+  color: var(--text-main);
 }
 
 .input-wrapper {
@@ -84,7 +85,7 @@
   transform: translateY(-50%);
   width: 1.25rem;
   height: 1.25rem;
-  color: #6c757d;
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
@@ -92,17 +93,19 @@
   width: 100%;
   padding: 0.75rem 1rem;
   padding-left: 2.5rem;
-  border: 1px solid #e0e6ed;
-  border-radius: 0.75rem;
-  font-size: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
   transition: all 0.2s;
   outline: none;
   box-sizing: border-box;
+  background-color: var(--bg-card);
+  color: var(--text-main);
 }
 
 .form-input:focus {
-  border-color: #1e78f0;
-  box-shadow: 0 0 0 2px rgba(30, 120, 240, 0.2);
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px var(--accent-blue-light);
 }
 
 .password-toggle {
@@ -114,11 +117,11 @@
   border: none;
   padding: 0.25rem;
   cursor: pointer;
-  color: #6c757d;
+  color: var(--text-secondary);
 }
 
 .password-toggle:hover {
-  color: #2c3e50;
+  color: var(--text-main);
 }
 
 .form-options {
@@ -136,18 +139,18 @@
   width: 1rem;
   height: 1rem;
   margin-right: 0.5rem;
-  border-radius: 0.25rem;
-  border-color: #e0e6ed;
+  border-radius: var(--border-radius-sm);
+  border-color: var(--border-color);
 }
 
 .checkbox-label {
-  font-size: 0.875rem;
-  color: #2c3e50;
+  font-size: var(--font-size-sm);
+  color: var(--text-main);
 }
 
 .forgot-link {
-  font-size: 0.875rem;
-  color: #1e78f0;
+  font-size: var(--font-size-sm);
+  color: var(--accent-blue);
   text-decoration: none;
 }
 
@@ -158,11 +161,11 @@
 .submit-button {
   width: 100%;
   padding: 0.75rem 1rem;
-  background-color: #1e78f0;
+  background-color: var(--accent-blue);
   color: white;
   border: none;
-  border-radius: 0.75rem;
-  font-size: 1rem;
+  border-radius: var(--border-radius-md);
+  font-size: var(--font-size-base);
   font-weight: 500;
   cursor: pointer;
   transition: opacity 0.2s;
@@ -171,6 +174,7 @@
 
 .submit-button:hover:not(:disabled) {
   opacity: 0.9;
+  background-color: var(--accent-blue-hover);
 }
 
 .submit-button:disabled {
@@ -197,12 +201,12 @@
 }
 
 .register-link {
-  font-size: 0.875rem;
-  color: #6c757d;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
 }
 
 .register-link a {
-  color: #1e78f0;
+  color: var(--accent-blue);
   text-decoration: none;
   font-weight: 500;
 }

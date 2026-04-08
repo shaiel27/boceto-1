@@ -1,7 +1,7 @@
 /* Estilos para RegisterForm - Basados en el dashboard */
 .register-container {
   min-height: 100vh;
-  background-color: #e0f2f1;
+  background-color: var(--bg-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -9,12 +9,13 @@
 }
 
 .register-card {
-  background: white;
-  border-radius: 1rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  background: var(--bg-card);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 42rem;
   padding: 2rem;
+  border: 1px solid var(--border-color);
 }
 
 .register-header {
@@ -30,21 +31,21 @@
   height: 4rem;
   border-radius: 50%;
   margin-bottom: 1rem;
-  background-color: #1e78f0;
+  background-color: var(--accent-blue);
 }
 
 .register-title {
-  font-size: 1.5rem;
+  font-size: var(--font-size-2xl);
   font-weight: bold;
-  color: #2c3e50;
+  color: var(--text-main);
   margin-bottom: 0.5rem;
   margin: 0 0 0.5rem 0;
 }
 
 .register-subtitle {
-  font-size: 1.25rem;
+  font-size: var(--font-size-xl);
   font-weight: 600;
-  color: #2c3e50;
+  color: var(--text-main);
   margin: 0 0 0.5rem 0;
 }
 

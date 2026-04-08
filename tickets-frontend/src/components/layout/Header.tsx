@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building, User, ChevronDown } from 'lucide-react';
-import ThemeToggle from '../ThemeToggle';
+import ThemeSwitch from '../ui/ThemeSwitch';
+import '../ui/ThemeSwitch.css';
 import './Header.css';
 
 interface HeaderProps {
@@ -26,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({
       
       {showUserInfo && (
         <div className="header-right">
-          <ThemeToggle />
+          <ThemeSwitch />
           <div className="user-info">
             <div className="user-avatar">
               <User size={16} color="white" />
