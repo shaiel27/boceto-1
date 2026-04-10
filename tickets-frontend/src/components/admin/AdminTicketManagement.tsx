@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Search, 
+  Search,
   Filter, 
   Plus, 
   Eye, 
   User, 
+  UserX,
   Clock, 
   MessageSquare, 
   Paperclip, 
@@ -24,7 +25,9 @@ import {
   X,
   Send,
   History,
-  ArrowLeft
+  ArrowLeft,
+  MapPin,
+  Flag
 } from 'lucide-react';
 import './AdminTicketManagement.css';
 
@@ -33,15 +36,18 @@ interface Ticket {
   Ticket_Code: string;
   Subject: string;
   Description: string;
-  Fk_Office: string;
-  Fk_Area_Office: string;
+  Fk_Direction: string;
+  Fk_Division: string;
+  Fk_Coordination: string;
   Fk_TI_Service: string;
   Fk_Technician_Current: string | null;
   System_Priority: 'Baja' | 'Media' | 'Alta' | 'Crítica';
   Status: 'Pendiente' | 'En Proceso' | 'Cerrado';
   Created_at: string;
   Resolved_at: string | null;
-  Office_Name?: string;
+  Direction_Name?: string;
+  Division_Name?: string;
+  Coordination_Name?: string;
   Service_Name?: string;
   Technician_Name?: string;
   Attachments_Count?: number;
@@ -139,15 +145,18 @@ const AdminTicketManagement: React.FC = () => {
           Ticket_Code: 'TK-001',
           Subject: 'Problema con conexión a internet en oficina principal',
           Description: 'Los usuarios reportan pérdida de conectividad intermitente durante el día',
-          Fk_Office: '1',
-          Fk_Area_Office: '1',
+          Fk_Direction: '1',
+          Fk_Division: '1',
+          Fk_Coordination: '1',
           Fk_TI_Service: '1',
           Fk_Technician_Current: '1',
           System_Priority: 'Alta',
           Status: 'En Proceso',
           Created_at: '2024-01-15T09:30:00Z',
           Resolved_at: null,
-          Office_Name: 'Alcaldía Central',
+          Direction_Name: 'Dirección de Educación',
+          Division_Name: 'División de Docencia',
+          Coordination_Name: 'Coordinación de Semáforos',
           Service_Name: 'Redes',
           Technician_Name: 'Carlos Rodríguez',
           Attachments_Count: 2,
@@ -158,15 +167,18 @@ const AdminTicketManagement: React.FC = () => {
           Ticket_Code: 'TK-002',
           Subject: 'Actualización de software en computadoras de contabilidad',
           Description: 'Se requiere actualizar el sistema contable a la última versión',
-          Fk_Office: '2',
-          Fk_Area_Office: '2',
+          Fk_Direction: '2',
+          Fk_Division: '2',
+          Fk_Coordination: '2',
           Fk_TI_Service: '2',
           Fk_Technician_Current: null,
           System_Priority: 'Media',
           Status: 'Pendiente',
           Created_at: '2024-01-15T10:15:00Z',
           Resolved_at: null,
-          Office_Name: 'Oficina de Catastro',
+          Direction_Name: 'Dirección de Vialidad',
+          Division_Name: 'División de Ingeniería',
+          Coordination_Name: 'Coordinación de Catastro Legal',
           Service_Name: 'Soporte Técnico',
           Technician_Name: undefined,
           Attachments_Count: 1,
@@ -177,15 +189,18 @@ const AdminTicketManagement: React.FC = () => {
           Ticket_Code: 'TK-003',
           Subject: 'Impresora no funciona en área de recepción',
           Description: 'La impresora principal no responde y muestra error de papel atascado',
-          Fk_Office: '3',
-          Fk_Area_Office: '3',
+          Fk_Direction: '3',
+          Fk_Division: '3',
+          Fk_Coordination: '3',
           Fk_TI_Service: '2',
           Fk_Technician_Current: '2',
           System_Priority: 'Baja',
           Status: 'Cerrado',
           Created_at: '2024-01-14T14:20:00Z',
           Resolved_at: '2024-01-15T11:45:00Z',
-          Office_Name: 'Obras Municipales',
+          Direction_Name: 'Dirección de Salud',
+          Division_Name: 'División Administrativa',
+          Coordination_Name: 'Coordinación de Mantenimiento',
           Service_Name: 'Soporte Técnico',
           Technician_Name: 'María González',
           Attachments_Count: 0,
@@ -561,8 +576,8 @@ const AdminTicketManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Tickets Table */}
-        <div className="tickets-table-container">
+        {/* Tickets Cards */}
+        <div className="tickets-cards-container">
           {loading ? (
             <div className="loading-state">
               <RefreshCw className="spinner" size={32} />
@@ -574,108 +589,126 @@ const AdminTicketManagement: React.FC = () => {
               <p>{error}</p>
             </div>
           ) : (
-            <div className="tickets-table">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Código</th>
-                    <th>Asunto</th>
-                    <th>Oficina</th>
-                    <th>Servicio</th>
-                    <th>Técnico</th>
-                    <th>Prioridad</th>
-                    <th>Estado</th>
-                    <th>Fecha</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTickets.map((ticket) => (
-                    <tr key={ticket.ID_Service_Request}>
-                      <td>
-                        <span className="ticket-code">{ticket.Ticket_Code}</span>
-                      </td>
-                      <td>
-                        <div className="subject-cell">
-                          <p className="subject-text">{ticket.Subject}</p>
-                          <div className="subject-meta">
-                            <span className="attachment-count">
-                              <Paperclip size={14} />
-                              {ticket.Attachments_Count}
-                            </span>
-                            <span className="comment-count">
-                              <MessageSquare size={14} />
-                              {ticket.Comments_Count}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-                      <td>{ticket.Office_Name}</td>
-                      <td>{ticket.Service_Name}</td>
-                      <td>
-                        {ticket.Technician_Name ? (
-                          <span className="technician-name">{ticket.Technician_Name}</span>
-                        ) : (
-                          <span className="no-technician">Sin asignar</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`priority-badge ${getPriorityColor(ticket.System_Priority)}`}>
-                          {ticket.System_Priority}
+            <div className="tickets-grid">
+              {filteredTickets.map((ticket) => (
+                <div key={ticket.ID_Service_Request} className="ticket-card">
+                  <div className="ticket-card-header">
+                    <div className="ticket-code-info">
+                      <span className="ticket-code">{ticket.Ticket_Code}</span>
+                      <span className={`status-badge ${getStatusColor(ticket.Status)}`}>
+                        {ticket.Status}
+                      </span>
+                    </div>
+                    <span className={`priority-badge ${getPriorityColor(ticket.System_Priority)}`}>
+                      {ticket.System_Priority}
+                    </span>
+                  </div>
+                  
+                  <div className="ticket-card-body">
+                    <h4 className="ticket-subject">{ticket.Subject}</h4>
+                    
+                    <div className="ticket-location">
+                      <div className="location-icon">
+                        <MapPin size={18} strokeWidth={2} />
+                      </div>
+                      <div className="location-info">
+                        <div className="location-main">{ticket.Coordination_Name}</div>
+                        <div className="location-sub">{ticket.Direction_Name}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="ticket-service">
+                      <div className="service-icon">
+                        <Settings size={18} strokeWidth={2} />
+                      </div>
+                      <span>{ticket.Service_Name}</span>
+                    </div>
+                    
+                    <div className="ticket-description">
+                      {ticket.Description.length > 100 
+                        ? `${ticket.Description.substring(0, 100)}...`
+                        : ticket.Description
+                      }
+                    </div>
+                    
+                    <div className="ticket-meta">
+                      <div className="meta-item">
+                        <Calendar size={16} strokeWidth={2} />
+                        <span>{new Date(ticket.Created_at).toLocaleDateString()}</span>
+                      </div>
+                      <div className="meta-item">
+                        <Clock size={16} strokeWidth={2} />
+                        <span>{new Date(ticket.Created_at).toLocaleTimeString()}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="ticket-attachments">
+                      {(ticket.Attachments_Count || 0) > 0 && (
+                        <span className="attachment-badge">
+                          <Paperclip size={16} strokeWidth={2} />
+                          {ticket.Attachments_Count}
                         </span>
-                      </td>
-                      <td>
-                        <span className={`status-badge ${getStatusColor(ticket.Status)}`}>
-                          {ticket.Status}
+                      )}
+                      {(ticket.Comments_Count || 0) > 0 && (
+                        <span className="comment-badge">
+                          <MessageSquare size={16} strokeWidth={2} />
+                          {ticket.Comments_Count}
                         </span>
-                      </td>
-                      <td>
-                        <div className="date-cell">
-                          <Calendar size={14} />
-                          {new Date(ticket.Created_at).toLocaleDateString()}
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="ticket-card-footer">
+                    <div className="technician-info">
+                      {ticket.Technician_Name ? (
+                        <div className="technician-assigned">
+                          <User size={18} strokeWidth={2} />
+                          <span>{ticket.Technician_Name}</span>
                         </div>
-                      </td>
-                      <td>
-                        <div className="actions-cell">
-                          <button
-                            className="action-btn view-btn"
-                            onClick={() => {
-                              loadTicketDetails(ticket);
-                              setShowDetailModal(true);
-                            }}
-                            title="Ver detalles"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          
-                          <button
-                            className="action-btn assign-btn"
-                            onClick={() => {
-                              loadTicketDetails(ticket);
-                              setShowAssignModal(true);
-                            }}
-                            title="Asignar técnico"
-                          >
-                            <User size={16} />
-                          </button>
-                          
-                          <button
-                            className="action-btn priority-btn"
-                            onClick={() => {
-                              loadTicketDetails(ticket);
-                              setNewPriority(ticket.System_Priority);
-                              setShowPriorityModal(true);
-                            }}
-                            title="Cambiar prioridad"
-                          >
-                            <AlertCircle size={16} />
-                          </button>
+                      ) : (
+                        <div className="technician-unassigned">
+                          <UserX size={18} strokeWidth={2} />
+                          <span>Sin asignar</span>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      )}
+                    </div>
+                    
+                    <div className="ticket-actions">
+                      <button
+                        className="action-btn view-btn"
+                        onClick={() => {
+                          loadTicketDetails(ticket);
+                          setShowDetailModal(true);
+                        }}
+                        title="Ver detalles"
+                      >
+                        <Eye size={22} strokeWidth={2} />
+                      </button>
+                      <button
+                        className="action-btn assign-btn"
+                        onClick={() => {
+                          loadTicketDetails(ticket);
+                          setShowAssignModal(true);
+                        }}
+                        title="Asignar técnico"
+                      >
+                        <User size={22} strokeWidth={2} />
+                      </button>
+                      <button
+                        className="action-btn priority-btn"
+                        onClick={() => {
+                          loadTicketDetails(ticket);
+                          setNewPriority(ticket.System_Priority);
+                          setShowPriorityModal(true);
+                        }}
+                        title="Cambiar prioridad"
+                      >
+                        <Flag size={22} strokeWidth={2} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -833,8 +866,16 @@ const AdminTicketManagement: React.FC = () => {
                       <p>{selectedTicket.Description}</p>
                     </div>
                     <div className="detail-item">
-                      <label>Oficina:</label>
-                      <p>{selectedTicket.Office_Name}</p>
+                      <label>Dirección:</label>
+                      <p>{selectedTicket.Direction_Name}</p>
+                    </div>
+                    <div className="detail-item">
+                      <label>División:</label>
+                      <p>{selectedTicket.Division_Name}</p>
+                    </div>
+                    <div className="detail-item">
+                      <label>Coordinación:</label>
+                      <p>{selectedTicket.Coordination_Name}</p>
                     </div>
                     <div className="detail-item">
                       <label>Servicio:</label>

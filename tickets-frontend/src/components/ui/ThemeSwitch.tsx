@@ -25,9 +25,6 @@ const ThemeSwitch: React.FC = () => {
           </div>
         </div>
       </div>
-      <span className="theme-switch-label">
-        {theme === 'light' ? 'Claro' : 'Oscuro'}
-      </span>
     </button>
   );
 };

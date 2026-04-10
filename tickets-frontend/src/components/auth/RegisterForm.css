@@ -51,7 +51,7 @@
 
 .register-description {
   font-size: 0.875rem;
-  color: #6c757d;
+  color: var(--text-secondary);
   margin: 0;
 }
 
@@ -83,7 +83,7 @@
   font-size: 0.875rem;
   font-weight: 500;
   margin-bottom: 0.5rem;
-  color: #2c3e50;
+  color: var(--text-main);
 }
 
 .input-wrapper {
@@ -97,7 +97,7 @@
   transform: translateY(-50%);
   width: 1.25rem;
   height: 1.25rem;
-  color: #6c757d;
+  color: var(--text-secondary);
   pointer-events: none;
 }
 
@@ -105,16 +105,18 @@
   width: 100%;
   padding: 0.75rem 1rem;
   padding-left: 2.5rem;
-  border: 1px solid #e0e6ed;
+  border: 1px solid var(--border-color);
   border-radius: 0.75rem;
   font-size: 1rem;
   transition: all 0.2s;
   outline: none;
   box-sizing: border-box;
+  background-color: var(--bg-card);
+  color: var(--text-main);
 }
 
 .form-input:focus {
-  border-color: #1e78f0;
+  border-color: var(--accent-blue);
   box-shadow: 0 0 0 2px rgba(30, 120, 240, 0.2);
 }
 
@@ -122,13 +124,14 @@
   width: 100%;
   padding: 0.75rem 1rem;
   padding-left: 2.5rem;
-  border: 1px solid #e0e6ed;
+  border: 1px solid var(--border-color);
   border-radius: 0.75rem;
   font-size: 1rem;
   transition: all 0.2s;
   outline: none;
   box-sizing: border-box;
-  background-color: white;
+  background-color: var(--bg-card);
+  color: var(--text-main);
   appearance: none;
   background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
   background-position: right 0.5rem center;
@@ -138,7 +141,7 @@
 }
 
 .form-select:focus {
-  border-color: #1e78f0;
+  border-color: var(--accent-blue);
   box-shadow: 0 0 0 2px rgba(30, 120, 240, 0.2);
 }
 
@@ -151,17 +154,17 @@
   border: none;
   padding: 0.25rem;
   cursor: pointer;
-  color: #6c757d;
+  color: var(--text-secondary);
 }
 
 .password-toggle:hover {
-  color: #2c3e50;
+  color: var(--text-main);
 }
 
 .submit-button {
   width: 100%;
   padding: 0.75rem 1rem;
-  background-color: #1e78f0;
+  background-color: var(--accent-blue);
   color: white;
   border: none;
   border-radius: 0.75rem;
@@ -201,11 +204,11 @@
 
 .login-link {
   font-size: 0.875rem;
-  color: #6c757d;
+  color: var(--text-secondary);
 }
 
 .login-link a {
-  color: #1e78f0;
+  color: var(--accent-blue);
   text-decoration: none;
   font-weight: 500;
 }

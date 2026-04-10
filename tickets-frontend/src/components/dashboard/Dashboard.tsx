@@ -213,7 +213,10 @@ const Dashboard: React.FC = () => {
                   </button>
                 </li>
                 <li className="nav-item">
-                  <button className="nav-link">
+                  <button 
+                    className="nav-link"
+                    onClick={() => navigate('/admin/technicians')}
+                  >
                     <Users size={18} />
                     Personal Técnico
                   </button>
@@ -249,20 +252,20 @@ const Dashboard: React.FC = () => {
           </button>
         </div>
 
-        {/* Enhanced Stats Cards */}
+        {/* Enhanced Stats Cards - Iconos más visibles */}
         <div className="stats-grid">
           {statsData.map((stat, index) => (
             <div key={index} className="stat-card enhanced">
               <div className="stat-header">
                 <div className="stat-icon">
-                  <stat.icon size={20} />
+                  <stat.icon size={32} strokeWidth={2} />
                 </div>
                 <div className="stat-title">{stat.title}</div>
               </div>
               <div className="stat-value">{stat.value}</div>
               {stat.trend && (
                 <div className={`stat-trend ${stat.trendUp ? 'trend-up' : 'trend-down'}`}>
-                  <TrendingUp size={16} />
+                  <TrendingUp size={18} strokeWidth={2.5} />
                   {stat.trend}
                 </div>
               )}
@@ -415,44 +418,64 @@ const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* Enhanced Technical Staff */}
+        {/* Enhanced Technical Staff - Rediseñado */}
         <div className="content-card technical-staff-card">
           <div className="card-header">
-            <h2 className="card-title">Equipo Técnico</h2>
+            <div className="header-title-section">
+              <div className="header-icon">
+                <Users size={28} />
+              </div>
+              <h2 className="card-title">Equipo Técnico</h2>
+            </div>
             <div className="staff-stats">
               <span className="stat-badge available">
                 <div className="status-dot status-resolved"></div>
-                {techniciansData.filter(t => t.status === 'available').length} Disponibles
+                <span className="stat-number">{techniciansData.filter(t => t.status === 'available').length}</span>
+                <span className="stat-label">Disponibles</span>
               </span>
               <span className="stat-badge busy">
                 <div className="status-dot status-pending"></div>
-                {techniciansData.filter(t => t.status === 'unavailable').length} Ocupados
+                <span className="stat-number">{techniciansData.filter(t => t.status === 'unavailable').length}</span>
+                <span className="stat-label">Ocupados</span>
               </span>
             </div>
           </div>
-          <div className="technicians-grid">
+          
+          {/* Nueva tabla de técnicos */}
+          <div className="technicians-table-container">
+            <div className="technicians-table-header">
+              <div className="table-cell tech-cell">Técnico</div>
+              <div className="table-cell status-cell">Estado</div>
+              <div className="table-cell actions-cell">Acciones</div>
+            </div>
             {techniciansData.map((tech, index) => (
-              <div key={index} className="technician-card">
-                <div className="technician-avatar">
-                  <User size={20} />
-                  <div className={`status-indicator ${tech.status}`}></div>
-                </div>
-                <div className="technician-info">
-                  <h3 className="technician-name">{tech.name}</h3>
-                  <div className="technician-status">
-                    <div className={`status-dot ${tech.status === 'available' ? 'status-resolved' : 'status-pending'}`}></div>
-                    <span className="status-text">
-                      {tech.status === 'available' ? 'Disponible' : 'Ocupado'}
-                    </span>
+              <div key={index} className="technician-row-table">
+                <div className="table-cell tech-cell">
+                  <div className="tech-profile">
+                    <div className="tech-avatar">
+                      <User size={22} />
+                      <div className={`status-indicator ${tech.status}`}></div>
+                    </div>
+                    <div className="tech-info">
+                      <span className="tech-name">{tech.name}</span>
+                    </div>
                   </div>
                 </div>
-                <div className="technician-actions">
-                  <button className="action-btn primary" title="Asignar ticket">
-                    <UserPlus size={16} />
-                  </button>
-                  <button className="action-btn secondary" title="Configuración">
-                    <Settings size={16} />
-                  </button>
+                <div className="table-cell status-cell">
+                  <div className={`status-badge-large ${tech.status}`}>
+                    <div className={`status-dot ${tech.status === 'available' ? 'status-resolved' : 'status-pending'}`}></div>
+                    <span>{tech.status === 'available' ? 'Disponible' : 'Ocupado'}</span>
+                  </div>
+                </div>
+                <div className="table-cell actions-cell">
+                  <div className="tech-actions">
+                    <button className="tech-action-btn assign" title="Asignar ticket">
+                      <UserPlus size={20} />
+                    </button>
+                    <button className="tech-action-btn settings" title="Configuración">
+                      <Settings size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

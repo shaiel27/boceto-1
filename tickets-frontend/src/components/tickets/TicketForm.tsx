@@ -20,8 +20,9 @@ interface TicketFormData {
   propertyNumber: string;
   requestType: string;
   userPriority: string;
-  fkOffice: string;
-  fkAreaOffice: string;
+  fkDirection: string;
+  fkDivision: string;
+  fkCoordination: string;
   fkTiService: string;
   attachments: File[];
 }
@@ -37,41 +38,57 @@ const TicketForm: React.FC = () => {
     propertyNumber: '',
     requestType: 'Digital',
     userPriority: '',
-    fkOffice: '',
-    fkAreaOffice: '',
+    fkDirection: '',
+    fkDivision: '',
+    fkCoordination: '',
     fkTiService: '',
     attachments: []
   });
 
-  const [offices] = useState([
-    { id: '1', name: 'Oficina de Recursos Humanos' },
-    { id: '2', name: 'Departamento de Tecnología' },
-    { id: '3', name: 'Secretaría General' },
-    { id: '4', name: 'Tesorería Municipal' },
-    { id: '5', name: 'Oficina de Obras Públicas' }
+  const [directions] = useState([
+    { id: '1', name: 'Dirección de Educación' },
+    { id: '2', name: 'Dirección de Vialidad' },
+    { id: '3', name: 'Dirección de Salud' },
+    { id: '4', name: 'Dirección de Obras Públicas' },
+    { id: '5', name: 'Dirección de Recursos Humanos' }
   ]);
+
+  const [divisions, setDivisions] = useState<Array<{ id: string; name: string; fkDirection: string }>>([]);
+  const [coordinations, setCoordinations] = useState<Array<{ id: string; name: string; fkDivision: string }>>([]);
 
   const [tiServices] = useState([
     { id: '1', name: 'Redes', description: 'Problemas de conectividad' },
     { id: '2', name: 'Programación', description: 'Desarrollo de software' },
-    { id: '3', name: 'Servicio Técnico', description: 'Hardware y mantenimiento' }
+    { id: '3', name: 'Soporte Técnico', description: 'Hardware y mantenimiento' }
   ]);
 
-  const [areas, setAreas] = useState<Array<{ id: string; name: string }>>([]);
+  React.useEffect(() => {
+    if (formData.fkDirection) {
+      const mockDivisions = [
+        { id: '1', name: 'División de Docencia', fkDirection: formData.fkDirection },
+        { id: '2', name: 'División de Ingeniería', fkDirection: formData.fkDirection },
+        { id: '3', name: 'División Administrativa', fkDirection: formData.fkDirection }
+      ];
+      setDivisions(mockDivisions);
+      setCoordinations([]);
+    } else {
+      setDivisions([]);
+      setCoordinations([]);
+    }
+  }, [formData.fkDirection]);
 
   React.useEffect(() => {
-    if (formData.fkOffice) {
-      const mockAreas = [
-        { id: '1', name: 'Administración' },
-        { id: '2', name: 'Soporte Técnico' },
-        { id: '3', name: 'Secretaría' },
-        { id: '4', name: 'Finanzas' }
+    if (formData.fkDivision) {
+      const mockCoordinations = [
+        { id: '1', name: 'Coordinación de Semáforos', fkDivision: formData.fkDivision },
+        { id: '2', name: 'Coordinación de Catastro Legal', fkDivision: formData.fkDivision },
+        { id: '3', name: 'Coordinación de Mantenimiento', fkDivision: formData.fkDivision }
       ];
-      setAreas(mockAreas);
+      setCoordinations(mockCoordinations);
     } else {
-      setAreas([]);
+      setCoordinations([]);
     }
-  }, [formData.fkOffice]);
+  }, [formData.fkDivision]);
 
   const formSteps = [
     { id: 1, title: 'Información', icon: <FileText size={20} /> },
@@ -90,8 +107,16 @@ const TicketForm: React.FC = () => {
         newErrors.subject = 'El asunto debe tener al menos 5 caracteres';
       }
       
-      if (!formData.fkOffice) {
-        newErrors.fkOffice = 'La oficina es requerida';
+      if (!formData.fkDirection) {
+        newErrors.fkDirection = 'La dirección es requerida';
+      }
+      
+      if (!formData.fkDivision) {
+        newErrors.fkDivision = 'La división es requerida';
+      }
+      
+      if (!formData.fkCoordination) {
+        newErrors.fkCoordination = 'La coordinación es requerida';
       }
       
       if (!formData.fkTiService) {
@@ -159,8 +184,9 @@ const TicketForm: React.FC = () => {
           propertyNumber: '',
           requestType: 'Digital',
           userPriority: '',
-          fkOffice: '',
-          fkAreaOffice: '',
+          fkDirection: '',
+          fkDivision: '',
+          fkCoordination: '',
           fkTiService: '',
           attachments: []
         });
@@ -226,45 +252,66 @@ const TicketForm: React.FC = () => {
             <div className="form-section">
               <div className="form-section-title">
                 <Building size={18} />
-                Ubicación y Servicio
+                Ubicación Institucional
               </div>
               <div className="form-grid">
                 <div className="form-field">
                   <label>
-                    Oficina *
+                    Dirección *
                   </label>
                   <select
-                    className={`form-input ${errors.fkOffice ? 'error' : ''}`}
-                    value={formData.fkOffice}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fkOffice: e.target.value }))}
+                    className={`form-input ${errors.fkDirection ? 'error' : ''}`}
+                    value={formData.fkDirection}
+                    onChange={(e) => setFormData(prev => ({ ...prev, fkDirection: e.target.value, fkDivision: '', fkCoordination: '' }))}
                   >
-                    <option value="">Selecciona una oficina</option>
-                    {offices.map(office => (
-                      <option key={office.id} value={office.id}>
-                        {office.name}
+                    <option value="">Selecciona una dirección</option>
+                    {directions.map(direction => (
+                      <option key={direction.id} value={direction.id}>
+                        {direction.name}
                       </option>
                     ))}
                   </select>
-                  {errors.fkOffice && <span className="error-message">{errors.fkOffice}</span>}
+                  {errors.fkDirection && <span className="error-message">{errors.fkDirection}</span>}
                 </div>
 
                 <div className="form-field">
                   <label>
-                    Área
+                    División *
                   </label>
                   <select
-                    className="form-input"
-                    value={formData.fkAreaOffice}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fkAreaOffice: e.target.value }))}
-                    disabled={!formData.fkOffice}
+                    className={`form-input ${errors.fkDivision ? 'error' : ''}`}
+                    value={formData.fkDivision}
+                    onChange={(e) => setFormData(prev => ({ ...prev, fkDivision: e.target.value, fkCoordination: '' }))}
+                    disabled={!formData.fkDirection}
                   >
-                    <option value="">Selecciona un área</option>
-                    {areas.map(area => (
-                      <option key={area.id} value={area.id}>
-                        {area.name}
+                    <option value="">Selecciona una división</option>
+                    {divisions.map(division => (
+                      <option key={division.id} value={division.id}>
+                        {division.name}
                       </option>
                     ))}
                   </select>
+                  {errors.fkDivision && <span className="error-message">{errors.fkDivision}</span>}
+                </div>
+
+                <div className="form-field">
+                  <label>
+                    Coordinación *
+                  </label>
+                  <select
+                    className={`form-input ${errors.fkCoordination ? 'error' : ''}`}
+                    value={formData.fkCoordination}
+                    onChange={(e) => setFormData(prev => ({ ...prev, fkCoordination: e.target.value }))}
+                    disabled={!formData.fkDivision}
+                  >
+                    <option value="">Selecciona una coordinación</option>
+                    {coordinations.map(coordination => (
+                      <option key={coordination.id} value={coordination.id}>
+                        {coordination.name}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.fkCoordination && <span className="error-message">{errors.fkCoordination}</span>}
                 </div>
 
                 <div className="form-field">
@@ -442,12 +489,16 @@ const TicketForm: React.FC = () => {
                   <span>{formData.subject}</span>
                 </div>
                 <div className="confirmation-item">
-                  <span>Oficina:</span>
-                  <span>{offices.find(o => o.id === formData.fkOffice)?.name}</span>
+                  <span>Dirección:</span>
+                  <span>{directions.find(d => d.id === formData.fkDirection)?.name}</span>
                 </div>
                 <div className="confirmation-item">
-                  <span>Área:</span>
-                  <span>{areas.find(a => a.id === formData.fkAreaOffice)?.name || 'No especificada'}</span>
+                  <span>División:</span>
+                  <span>{divisions.find(d => d.id === formData.fkDivision)?.name}</span>
+                </div>
+                <div className="confirmation-item">
+                  <span>Coordinación:</span>
+                  <span>{coordinations.find(c => c.id === formData.fkCoordination)?.name}</span>
                 </div>
                 <div className="confirmation-item">
                   <span>Servicio:</span>
