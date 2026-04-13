@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { 
-  Send, 
-  AlertCircle, 
+import React, { useState, useEffect } from 'react';
+import {
+  Send,
+  AlertCircle,
   CheckCircle,
   X,
   FileText,
@@ -10,7 +10,12 @@ import {
   Settings,
   Upload,
   ArrowRight,
-  ChevronDown
+  ChevronDown,
+  MapPin,
+  Clock,
+  Shield,
+  Layers,
+  AlertTriangle
 } from 'lucide-react';
 import './TicketForm.css';
 
@@ -18,13 +23,25 @@ interface TicketFormData {
   subject: string;
   description: string;
   propertyNumber: string;
-  requestType: string;
-  userPriority: string;
   fkDirection: string;
   fkDivision: string;
   fkCoordination: string;
   fkTiService: string;
+  fkProblemCatalog: string;
   attachments: File[];
+}
+
+interface ProblemCatalog {
+  id: string;
+  name: string;
+  typicalDescription: string;
+  estimatedSeverity: string;
+}
+
+interface UserLocation {
+  fkDirection: string;
+  fkDivision: string;
+  fkCoordination: string;
 }
 
 const TicketForm: React.FC = () => {
@@ -36,21 +53,126 @@ const TicketForm: React.FC = () => {
     subject: '',
     description: '',
     propertyNumber: '',
-    requestType: 'Digital',
-    userPriority: '',
     fkDirection: '',
     fkDivision: '',
     fkCoordination: '',
     fkTiService: '',
+    fkProblemCatalog: '',
     attachments: []
   });
 
+  // Simulación de usuario logeado y su ubicación
+  const [userLocation] = useState<UserLocation>({
+    fkDirection: '1',
+    fkDivision: '1',
+    fkCoordination: '1'
+  });
+
+  // Catálogo de problemas por tipo de servicio
+  const [problemsCatalog, setProblemsCatalog] = useState<ProblemCatalog[]>([]);
+
+  // Autocompletar ubicación según usuario logeado
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      fkDirection: userLocation.fkDirection,
+      fkDivision: userLocation.fkDivision,
+      fkCoordination: userLocation.fkCoordination
+    }));
+  }, [userLocation]);
+
+  // Cargar problemas según tipo de servicio seleccionado
+  useEffect(() => {
+    if (formData.fkTiService) {
+      const mockProblems: ProblemCatalog[] = [
+        {
+          id: '1',
+          name: 'Sin conexión a internet',
+          typicalDescription: 'No puedo acceder a internet o la conexión es muy lenta',
+          estimatedSeverity: 'Alta'
+        },
+        {
+          id: '2',
+          name: 'Problemas de red interna',
+          typicalDescription: 'No puedo acceder a recursos compartidos o impresoras en red',
+          estimatedSeverity: 'Media'
+        },
+        {
+          id: '3',
+          name: 'VPN no conecta',
+          typicalDescription: 'No puedo conectarme a la VPN corporativa',
+          estimatedSeverity: 'Alta'
+        }
+      ];
+
+      if (formData.fkTiService === '2') {
+        mockProblems.length = 0;
+        mockProblems.push(
+          {
+            id: '4',
+            name: 'Sistema no responde',
+            typicalDescription: 'El sistema está lento o no responde',
+            estimatedSeverity: 'Alta'
+          },
+          {
+            id: '5',
+            name: 'Error en funcionalidad',
+            typicalDescription: 'Algún módulo del sistema presenta errores',
+            estimatedSeverity: 'Media'
+          },
+          {
+            id: '6',
+            name: 'Nueva funcionalidad requerida',
+            typicalDescription: 'Necesito una nueva función o reporte',
+            estimatedSeverity: 'Baja'
+          }
+        );
+      }
+
+      if (formData.fkTiService === '3') {
+        mockProblems.length = 0;
+        mockProblems.push(
+          {
+            id: '7',
+            name: 'Equipo no enciende',
+            typicalDescription: 'El equipo no prende o se apaga solo',
+            estimatedSeverity: 'Alta'
+          },
+          {
+            id: '8',
+            name: 'Pantalla dañada',
+            typicalDescription: 'La pantalla está rota o no muestra imagen',
+            estimatedSeverity: 'Alta'
+          },
+          {
+            id: '9',
+            name: 'Teclado/mouse no funciona',
+            typicalDescription: 'El teclado o mouse no responde',
+            estimatedSeverity: 'Media'
+          },
+          {
+            id: '10',
+            name: 'Impresora atascada',
+            typicalDescription: 'La impresora tiene papel atascado o no imprime',
+            estimatedSeverity: 'Media'
+          }
+        );
+      }
+
+      setProblemsCatalog(mockProblems);
+    } else {
+      setProblemsCatalog([]);
+    }
+  }, [formData.fkTiService]);
+
+  // Mock data para la nueva estructura jerárquica
   const [directions] = useState([
     { id: '1', name: 'Dirección de Educación' },
     { id: '2', name: 'Dirección de Vialidad' },
     { id: '3', name: 'Dirección de Salud' },
     { id: '4', name: 'Dirección de Obras Públicas' },
-    { id: '5', name: 'Dirección de Recursos Humanos' }
+    { id: '5', name: 'Dirección de Recursos Humanos' },
+    { id: '6', name: 'Dirección de Finanzas' }
   ]);
 
   const [divisions, setDivisions] = useState<Array<{ id: string; name: string; fkDirection: string }>>([]);
@@ -91,44 +213,38 @@ const TicketForm: React.FC = () => {
   }, [formData.fkDivision]);
 
   const formSteps = [
-    { id: 1, title: 'Información', icon: <FileText size={20} /> },
-    { id: 2, title: 'Detalles', icon: <Settings size={20} /> },
-    { id: 3, title: 'Archivos', icon: <Upload size={20} /> },
-    { id: 4, title: 'Confirmar', icon: <CheckCircle size={20} /> }
+    { id: 1, title: 'Información', icon: <FileText size={20} />, description: 'Datos principales' },
+    { id: 2, title: 'Problema', icon: <AlertTriangle size={20} />, description: 'Catálogo de problemas' },
+    { id: 3, title: 'Detalles', icon: <Settings size={20} />, description: 'Descripción del problema' },
+    { id: 4, title: 'Archivos', icon: <Upload size={20} />, description: 'Documentos adjuntos' },
+    { id: 5, title: 'Confirmar', icon: <CheckCircle size={20} />, description: 'Revisión final' }
   ];
 
   const validateStep = (step: number): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (step === 0) {
+      // Paso 1: Información básica del ticket
       if (!formData.subject.trim()) {
         newErrors.subject = 'El asunto es requerido';
       } else if (formData.subject.length < 5) {
         newErrors.subject = 'El asunto debe tener al menos 5 caracteres';
       }
-      
-      if (!formData.fkDirection) {
-        newErrors.fkDirection = 'La dirección es requerida';
-      }
-      
-      if (!formData.fkDivision) {
-        newErrors.fkDivision = 'La división es requerida';
-      }
-      
-      if (!formData.fkCoordination) {
-        newErrors.fkCoordination = 'La coordinación es requerida';
-      }
-      
+
       if (!formData.fkTiService) {
         newErrors.fkTiService = 'El tipo de servicio es requerido';
-      }
-      
-      if (!formData.userPriority) {
-        newErrors.userPriority = 'La prioridad es requerida';
       }
     }
 
     if (step === 1) {
+      // Paso 2: Selección de problema del catálogo
+      if (!formData.fkProblemCatalog) {
+        newErrors.fkProblemCatalog = 'Debe seleccionar un problema del catálogo';
+      }
+    }
+
+    if (step === 2) {
+      // Paso 3: Detalles del problema
       if (!formData.description.trim()) {
         newErrors.description = 'La descripción es requerida';
       } else if (formData.description.length < 20) {
@@ -163,37 +279,46 @@ const TicketForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateStep(currentStep)) return;
 
     setIsSubmitting(true);
-    
+
     try {
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
+      // Calcular prioridad del sistema basada en el problema seleccionado
+      const selectedProblem = problemsCatalog.find(p => p.id === formData.fkProblemCatalog);
+      const systemPriority = selectedProblem?.estimatedSeverity || 'Media';
+
       const ticketCode = `TKT-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-      
-      console.log('Ticket creado:', { ...formData, ticketCode });
-      
+
+      console.log('Ticket creado:', {
+        ...formData,
+        ticketCode,
+        systemPriority,
+        userLocation
+      });
+
       setSubmitStatus('success');
-      
+
       setTimeout(() => {
         setFormData({
           subject: '',
           description: '',
           propertyNumber: '',
-          requestType: 'Digital',
-          userPriority: '',
-          fkDirection: '',
-          fkDivision: '',
-          fkCoordination: '',
+          fkDirection: userLocation.fkDirection,
+          fkDivision: userLocation.fkDivision,
+          fkCoordination: userLocation.fkCoordination,
           fkTiService: '',
+          fkProblemCatalog: '',
           attachments: []
         });
         setCurrentStep(0);
         setSubmitStatus('idle');
+        setProblemsCatalog([]);
       }, 3000);
-      
+
     } catch (error) {
       console.error('Error:', error);
       setSubmitStatus('error');
@@ -211,16 +336,16 @@ const TicketForm: React.FC = () => {
               <h3>Información del Ticket</h3>
               <p>Completa los datos principales para tu solicitud</p>
             </div>
-            
+
             <div className="form-section">
               <div className="form-section-title">
                 <FileText size={18} />
                 Información Básica
               </div>
               <div className="form-grid">
-                <div className="form-field">
+                <div className="form-field full-width">
                   <label>
-                    Asunto del Ticket
+                    Asunto del Ticket *
                   </label>
                   <input
                     type="text"
@@ -237,119 +362,72 @@ const TicketForm: React.FC = () => {
                   <label>
                     Número de Bien
                   </label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formData.propertyNumber}
-                    onChange={(e) => setFormData(prev => ({ ...prev, propertyNumber: e.target.value }))}
-                    placeholder="PC-001, EQ-002..."
-                    maxLength={10}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="form-section">
-              <div className="form-section-title">
-                <Building size={18} />
-                Ubicación Institucional
-              </div>
-              <div className="form-grid">
-                <div className="form-field">
-                  <label>
-                    Dirección *
-                  </label>
-                  <select
-                    className={`form-input ${errors.fkDirection ? 'error' : ''}`}
-                    value={formData.fkDirection}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fkDirection: e.target.value, fkDivision: '', fkCoordination: '' }))}
-                  >
-                    <option value="">Selecciona una dirección</option>
-                    {directions.map(direction => (
-                      <option key={direction.id} value={direction.id}>
-                        {direction.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.fkDirection && <span className="error-message">{errors.fkDirection}</span>}
-                </div>
-
-                <div className="form-field">
-                  <label>
-                    División *
-                  </label>
-                  <select
-                    className={`form-input ${errors.fkDivision ? 'error' : ''}`}
-                    value={formData.fkDivision}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fkDivision: e.target.value, fkCoordination: '' }))}
-                    disabled={!formData.fkDirection}
-                  >
-                    <option value="">Selecciona una división</option>
-                    {divisions.map(division => (
-                      <option key={division.id} value={division.id}>
-                        {division.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.fkDivision && <span className="error-message">{errors.fkDivision}</span>}
-                </div>
-
-                <div className="form-field">
-                  <label>
-                    Coordinación *
-                  </label>
-                  <select
-                    className={`form-input ${errors.fkCoordination ? 'error' : ''}`}
-                    value={formData.fkCoordination}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fkCoordination: e.target.value }))}
-                    disabled={!formData.fkDivision}
-                  >
-                    <option value="">Selecciona una coordinación</option>
-                    {coordinations.map(coordination => (
-                      <option key={coordination.id} value={coordination.id}>
-                        {coordination.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.fkCoordination && <span className="error-message">{errors.fkCoordination}</span>}
+                  <div className="input-with-icon">
+                    <Settings size={18} />
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={formData.propertyNumber}
+                      onChange={(e) => setFormData(prev => ({ ...prev, propertyNumber: e.target.value }))}
+                      placeholder="PC-001, EQ-002..."
+                      maxLength={10}
+                    />
+                  </div>
+                  <small>Opcional - Identificación del equipo</small>
                 </div>
 
                 <div className="form-field">
                   <label>
                     Tipo de Servicio *
                   </label>
-                  <select
-                    className={`form-input ${errors.fkTiService ? 'error' : ''}`}
-                    value={formData.fkTiService}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fkTiService: e.target.value }))}
-                  >
-                    <option value="">Selecciona un servicio</option>
-                    {tiServices.map(service => (
-                      <option key={service.id} value={service.id}>
-                        {service.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="input-with-icon">
+                    <Layers size={18} />
+                    <select
+                      className={`form-input ${errors.fkTiService ? 'error' : ''}`}
+                      value={formData.fkTiService}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fkTiService: e.target.value }))}
+                    >
+                      <option value="">Selecciona un servicio</option>
+                      {tiServices.map(service => (
+                        <option key={service.id} value={service.id}>
+                          {service.name} - {service.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   {errors.fkTiService && <span className="error-message">{errors.fkTiService}</span>}
                 </div>
+              </div>
+            </div>
 
-                <div className="form-field">
-                  <label>
-                    Prioridad *
-                  </label>
-                  <select
-                    className={`form-input ${errors.userPriority ? 'error' : ''}`}
-                    value={formData.userPriority}
-                    onChange={(e) => setFormData(prev => ({ ...prev, userPriority: e.target.value }))}
-                  >
-                    <option value="">Selecciona una prioridad</option>
-                    <option value="Baja">🟢 Baja</option>
-                    <option value="Media">🟡 Media</option>
-                    <option value="Alta">🔴 Alta</option>
-                  </select>
-                  {errors.userPriority && <span className="error-message">{errors.userPriority}</span>}
+            <div className="form-section">
+              <div className="form-section-title">
+                <MapPin size={18} />
+                Ubicación (Autocompletada)
+              </div>
+              <div className="location-readonly">
+                <div className="location-item">
+                  <span className="location-label">Dirección:</span>
+                  <span className="location-value">
+                    {directions.find(d => d.id === formData.fkDirection)?.name || 'Cargando...'}
+                  </span>
+                </div>
+                <div className="location-item">
+                  <span className="location-label">División:</span>
+                  <span className="location-value">
+                    {divisions.find(d => d.id === formData.fkDivision)?.name || 'Cargando...'}
+                  </span>
+                </div>
+                <div className="location-item">
+                  <span className="location-label">Coordinación:</span>
+                  <span className="location-value">
+                    {coordinations.find(c => c.id === formData.fkCoordination)?.name || 'Cargando...'}
+                  </span>
                 </div>
               </div>
+              <small className="location-note">
+                ℹ️ Tu ubicación institucional se autocompleta según tu área asignada
+              </small>
             </div>
           </div>
         );
@@ -358,10 +436,68 @@ const TicketForm: React.FC = () => {
         return (
           <div className="form-step">
             <div className="step-header">
+              <h3>Catálogo de Problemas</h3>
+              <p>Selecciona el problema que estás experimentando según el tipo de servicio</p>
+            </div>
+
+            <div className="form-section">
+              <div className="form-section-title">
+                <AlertTriangle size={18} />
+                Selección de Problema
+              </div>
+
+              {!formData.fkTiService ? (
+                <div className="service-required-message">
+                  <AlertTriangle size={48} />
+                  <h4>Primero selecciona un tipo de servicio</h4>
+                  <p>El catálogo de problemas se cargará según el área seleccionada</p>
+                </div>
+              ) : problemsCatalog.length === 0 ? (
+                <div className="no-problems-message">
+                  <AlertTriangle size={48} />
+                  <h4>No hay problemas disponibles</h4>
+                  <p>No se encontraron problemas para este tipo de servicio</p>
+                </div>
+              ) : (
+                <div className="problems-grid">
+                  {problemsCatalog.map(problem => (
+                    <label
+                      key={problem.id}
+                      className={`problem-card ${formData.fkProblemCatalog === problem.id ? 'active' : ''}`}
+                    >
+                      <input
+                        type="radio"
+                        name="problemCatalog"
+                        value={problem.id}
+                        checked={formData.fkProblemCatalog === problem.id}
+                        onChange={(e) => setFormData(prev => ({ ...prev, fkProblemCatalog: e.target.value }))}
+                      />
+                      <div className="problem-content">
+                        <div className="problem-header">
+                          <span className="problem-name">{problem.name}</span>
+                          <span className={`severity-badge ${problem.estimatedSeverity.toLowerCase()}`}>
+                            {problem.estimatedSeverity}
+                          </span>
+                        </div>
+                        <p className="problem-description">{problem.typicalDescription}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {errors.fkProblemCatalog && <span className="error-message">{errors.fkProblemCatalog}</span>}
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
+          <div className="form-step">
+            <div className="step-header">
               <h3>Detalles del Problema</h3>
               <p>Describe la incidencia con el mayor detalle posible</p>
             </div>
-            
+
             <div className="form-section">
               <div className="form-section-title">
                 <FileText size={18} />
@@ -375,62 +511,44 @@ const TicketForm: React.FC = () => {
                   className={`form-input ${errors.description ? 'error' : ''}`}
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Describe el problema, cuándo ocurrió, qué intentaste hacer..."
+                  placeholder="Describe el problema, cuándo ocurrió, qué intentaste hacer, impacto en tu trabajo..."
                   rows={6}
                 />
+                <div className="char-count">
+                  {formData.description.length} / 500 caracteres
+                </div>
                 {errors.description && <span className="error-message">{errors.description}</span>}
-              </div>
-            </div>
-
-            <div className="form-section">
-              <div className="form-section-title">
-                <Settings size={18} />
-                Tipo de Solicitud
-              </div>
-              <div className="form-field">
-                <label>
-                  Modalidad de Atención
-                </label>
-                <select
-                  className="form-input"
-                  value={formData.requestType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, requestType: e.target.value }))}
-                >
-                  <option value="Digital">💻 Digital</option>
-                  <option value="Presencial">🏢 Presencial</option>
-                  <option value="Híbrido">🔄 Híbrido</option>
-                </select>
               </div>
             </div>
           </div>
         );
 
-      case 2:
+      case 3:
         return (
           <div className="form-step">
             <div className="step-header">
               <h3>Archivos Adjuntos</h3>
-              <p>Añade capturas de pantalla o documentos relevantes</p>
+              <p>Añade capturas de pantalla o documentos relevantes (opcional)</p>
             </div>
-            
+
             <div className="form-section">
               <div className="form-section-title">
                 <Upload size={18} />
                 Documentos de Soporte
               </div>
-              
+
               <input
                 type="file"
                 id="file-upload"
                 multiple
-                accept="image/*,.pdf,.txt"
+                accept="image/*,.pdf,.txt,.doc,.docx"
                 onChange={(e) => {
                   const files = Array.from(e.target.files || []);
                   setFormData(prev => ({ ...prev, attachments: [...prev.attachments, ...files] }));
                 }}
                 style={{ display: 'none' }}
               />
-              
+
               <label htmlFor="file-upload" className="upload-area">
                 <div className="upload-icon">
                   <Upload size={48} />
@@ -438,10 +556,10 @@ const TicketForm: React.FC = () => {
                 <div className="upload-text">
                   <h4>Arrastra archivos aquí</h4>
                   <p>o haz clic para seleccionar</p>
-                  <small>Máximo 5MB por archivo</small>
+                  <small>Máximo 5MB por archivo • Formatos: JPG, PNG, PDF, DOC</small>
                 </div>
               </label>
-              
+
               {formData.attachments.length > 0 && (
                 <div className="files-list">
                   {formData.attachments.map((file, index) => (
@@ -473,14 +591,14 @@ const TicketForm: React.FC = () => {
           </div>
         );
 
-      case 3:
+      case 4:
         return (
           <div className="form-step">
             <div className="step-header">
               <h3>Confirmación</h3>
               <p>Revisa toda la información antes de enviar</p>
             </div>
-            
+
             <div className="confirmation-section">
               <div className="confirmation-card">
                 <h4>Información del Ticket</h4>
@@ -488,6 +606,28 @@ const TicketForm: React.FC = () => {
                   <span>Asunto:</span>
                   <span>{formData.subject}</span>
                 </div>
+                <div className="confirmation-item">
+                  <span>Número de Bien:</span>
+                  <span>{formData.propertyNumber || 'No especificado'}</span>
+                </div>
+                <div className="confirmation-item">
+                  <span>Servicio:</span>
+                  <span>{tiServices.find(s => s.id === formData.fkTiService)?.name}</span>
+                </div>
+                <div className="confirmation-item">
+                  <span>Problema:</span>
+                  <span>{problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.name}</span>
+                </div>
+                <div className="confirmation-item">
+                  <span>Prioridad del Sistema:</span>
+                  <span className={`priority-badge ${problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.estimatedSeverity?.toLowerCase() || 'media'}`}>
+                    {problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.estimatedSeverity || 'Media'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="confirmation-card">
+                <h4>Estructura Jerárquica (Autocompletada)</h4>
                 <div className="confirmation-item">
                   <span>Dirección:</span>
                   <span>{directions.find(d => d.id === formData.fkDirection)?.name}</span>
@@ -500,28 +640,18 @@ const TicketForm: React.FC = () => {
                   <span>Coordinación:</span>
                   <span>{coordinations.find(c => c.id === formData.fkCoordination)?.name}</span>
                 </div>
-                <div className="confirmation-item">
-                  <span>Servicio:</span>
-                  <span>{tiServices.find(s => s.id === formData.fkTiService)?.name}</span>
-                </div>
-                <div className="confirmation-item">
-                  <span>Prioridad:</span>
-                  <span className={`priority-badge ${formData.userPriority.toLowerCase()}`}>
-                    {formData.userPriority}
-                  </span>
-                </div>
               </div>
-              
+
               <div className="confirmation-card">
-                <h4>Descripción</h4>
+                <h4>Detalles</h4>
                 <p className="description-preview">{formData.description}</p>
               </div>
-              
+
               {formData.attachments.length > 0 && (
                 <div className="confirmation-card">
                   <h4>Archivos Adjuntos</h4>
                   <div className="files-summary">
-                    {formData.attachments.length} archivo(s) • {formData.attachments.reduce((total, file) => total + file.size, 0) / 1024 / 1024} MB
+                    {formData.attachments.length} archivo(s) • {(formData.attachments.reduce((total, file) => total + file.size, 0) / 1024 / 1024).toFixed(2)} MB
                   </div>
                 </div>
               )}

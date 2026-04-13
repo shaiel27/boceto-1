@@ -1,3 +1,19 @@
+/* App usa variables del sistema de temas */
+
+:root {
+  --app-primary: var(--accent-blue);
+  --app-secondary: var(--accent-blue);
+  --app-success: var(--success-color);
+  --app-warning: var(--warning-color);
+  --app-danger: var(--danger-color);
+  --app-info: var(--info-color);
+  --app-bg: var(--bg-primary);
+  --app-card-bg: var(--bg-card);
+  --app-text: var(--text-main);
+  --app-text-secondary: var(--text-secondary);
+  --app-border: var(--border-color);
+}
+
 .App {
   text-align: center;
 }
