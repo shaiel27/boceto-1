@@ -222,15 +222,30 @@ const Dashboard: React.FC = () => {
                   </button>
                 </li>
                 <li className="nav-item">
-                  <button className="nav-link">
+                  <button 
+                    className="nav-link"
+                    onClick={() => navigate('/admin/structure')}
+                  >
+                    <Building size={18} />
+                    Estructura Institucional
+                  </button>
+                </li>
+                <li className="nav-item">
+                  <button 
+                    className="nav-link"
+                    onClick={() => navigate('/admin/reports')}
+                  >
                     <TrendingUp size={18} />
                     Reportes
                   </button>
                 </li>
                 <li className="nav-item">
-                  <button className="nav-link">
-                    <Settings size={18} />
-                    Usuarios
+                  <button 
+                    className="nav-link"
+                    onClick={() => navigate('/admin/register-user')}
+                  >
+                    <UserPlus size={18} />
+                    Registrar Solicitante
                   </button>
                 </li>
               </ul>
