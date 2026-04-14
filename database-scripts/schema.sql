@@ -23,13 +23,16 @@ CREATE TABLE Role (
 CREATE TABLE Users (
     ID_Users INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Role INT,
+    is_system_user BOOLEAN DEFAULT FALSE,
     First_Name VARCHAR(25) NOT NULL,
     Last_Name VARCHAR(25) NOT NULL,
     CI VARCHAR(12) UNIQUE NOT NULL,
     Telephone_Number VARCHAR(20),
     Email VARCHAR(50) UNIQUE NOT NULL,
     Password VARCHAR(255) NOT NULL,
+    Status VARCHAR(20) DEFAULT 'Activo',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_login_at TIMESTAMP NULL,
     FOREIGN KEY (Fk_Role) REFERENCES Role(ID_Role) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -237,6 +240,8 @@ CREATE INDEX idx_ticket_service ON Service_Request(Fk_TI_Service);
 CREATE INDEX idx_user_email ON Users(Email);
 CREATE INDEX idx_user_ci ON Users(CI);
 CREATE INDEX idx_user_role ON Users(Fk_Role);
+CREATE INDEX idx_users_system ON Users(is_system_user, Email);
+CREATE INDEX idx_users_active ON Users(is_system_user, Status);
 
 -- Índices en Technicians
 CREATE INDEX idx_technician_status ON Technicians(Status);

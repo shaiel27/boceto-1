@@ -1,0 +1,225 @@
+===========================================
+RUTAS DEL SISTEMA DE GESTIÓN DE TICKETS
+Alcaldía de San Cristóbal
+===========================================
+
+1. RUTAS FRONTEND (React)
+===========================================
+
+Públicas:
+-------------------------------------------
+/                          → DashboardPage (página principal)
+/login                     → LoginPage (inicio de sesión)
+/register                  → RegisterPage (registro de usuarios)
+
+Administración:
+-------------------------------------------
+/admin                     → AdminManagementPage (panel de administración general)
+/admin/technicians         → TechnicianManagementPage (gestión de técnicos)
+/admin/structure           → InstitutionalStructurePage (estructura institucional)
+/admin/reports             → ReportsPage (reportes y métricas)
+/admin/register-user       → UserRegistrationPage (registro de usuarios)
+
+Roles Específicos:
+-------------------------------------------
+/technician                → TechnicianDashboardPage (dashboard de técnicos)
+/requester                 → RequesterDashboardPage (dashboard de solicitantes)
+
+Gestión de Tickets:
+-------------------------------------------
+/new-ticket                → TicketForm (formulario de creación de tickets)
+
+
+2. RUTAS BACKEND API (PHP - Planeadas)
+===========================================
+
+Autenticación (AuthController):
+-------------------------------------------
+POST   /api/auth/login              → Iniciar sesión
+POST   /api/auth/logout             → Cerrar sesión
+POST   /api/auth/refresh            → Refrescar token
+GET    /api/auth/me                 → Obtener usuario actual
+
+Tickets (TicketController):
+-------------------------------------------
+GET    /api/tickets                 → Listar todos los tickets
+GET    /api/tickets/{id}            → Obtener detalle de ticket
+POST   /api/tickets                 → Crear nuevo ticket
+PUT    /api/tickets/{id}            → Actualizar ticket
+DELETE /api/tickets/{id}            → Eliminar ticket
+PATCH  /api/tickets/{id}/status    → Cambiar estado de ticket
+GET    /api/tickets/{id}/timeline  → Obtener línea de tiempo
+POST   /api/tickets/{id}/comments  → Agregar comentario
+GET    /api/tickets/{id}/comments  → Listar comentarios
+POST   /api/tickets/{id}/assign    → Asignar técnico
+GET    /api/tickets/{id}/assignments → Listar asignaciones
+
+Técnicos (TechnicianController):
+-------------------------------------------
+GET    /api/technicians             → Listar técnicos
+GET    /api/technicians/{id}        → Obtener detalle de técnico
+GET    /api/technicians/available   → Buscar técnicos disponibles
+GET    /api/technicians/{id}/tickets → Tickets asignados a técnico
+GET    /api/technicians/{id}/schedule → Horario de técnico
+PUT    /api/technicians/{id}/status → Actualizar estado de técnico
+
+Catálogo (CatalogController):
+-------------------------------------------
+GET    /api/catalog/services        → Listar tipos de servicios
+GET    /api/catalog/problems        → Listar catálogo de problemas
+GET    /api/catalog/services/{id}/problems → Problemas por servicio
+GET    /api/catalog/priorities     → Listar prioridades
+GET    /api/catalog/status          → Listar estados
+
+Estructura Organizacional:
+-------------------------------------------
+GET    /api/organization/directions → Listar direcciones
+GET    /api/organization/divisions  → Listar divisiones
+GET    /api/organization/coordinations → Listar coordinaciones
+GET    /api/organization/hierarchy → Obtener jerarquía completa
+
+Usuarios (UserController - Planeado):
+-------------------------------------------
+GET    /api/users                   → Listar usuarios
+GET    /api/users/{id}              → Obtener detalle de usuario
+POST   /api/users                   → Crear usuario
+PUT    /api/users/{id}              → Actualizar usuario
+DELETE /api/users/{id}              → Eliminar usuario
+GET    /api/users/{id}/permissions  → Permisos de usuario
+
+Reportes (ReportsController - Planeado):
+-------------------------------------------
+GET    /api/reports/summary         → Resumen general
+GET    /api/reports/by-office       → Tickets por oficina
+GET    /api/reports/response-time   → Tiempos de respuesta
+GET    /api/reports/high-priority   → Tickets de alta prioridad
+GET    /api/reports/monthly         → Evolución mensual
+GET    /api/reports/by-service      → Tickets por tipo de servicio
+POST   /api/reports/generate        → Generar reporte personalizado
+
+
+3. RUTAS WEB (PHP - Planeadas)
+===========================================
+
+DashboardController:
+-------------------------------------------
+GET    /dashboard                   → Dashboard principal
+GET    /admin/dashboard            → Dashboard admin
+
+TicketViewController:
+-------------------------------------------
+GET    /tickets                     → Lista de tickets (vista web)
+GET    /tickets/create              → Formulario crear ticket (vista web)
+GET    /tickets/{id}                → Ver ticket (vista web)
+GET    /tickets/{id}/edit           → Editar ticket (vista web)
+
+
+4. RUTAS DE ARCHIVOS ESTÁTICOS
+===========================================
+
+Frontend:
+-------------------------------------------
+/public/                    → Archivos estáticos del frontend
+/public/favicon.ico        → Icono del sitio
+/public/logo192.png        → Logo 192x192
+/public/logo512.png        → Logo 512x512
+
+Backend (Planeado):
+-------------------------------------------
+/public/assets/            → CSS, JS, imágenes estáticos
+/storage/uploads/          → Archivos adjuntos de tickets (servidos via script)
+
+
+5. ENDPOINTS DE SERVICIOS TRANSVERSALES
+===========================================
+
+Notificaciones:
+-------------------------------------------
+POST   /api/notifications/send     → Enviar notificación
+GET    /api/notifications/{id}    → Obtener notificación
+
+Archivos:
+-------------------------------------------
+POST   /api/upload                → Subir archivo
+GET    /api/files/{id}            → Descargar archivo
+DELETE /api/files/{id}            → Eliminar archivo
+
+SLA:
+-------------------------------------------
+GET    /api/sla/check/{ticket_id} → Verificar cumplimiento SLA
+GET    /api/sla/breaching          → Tickets por vencer SLA
+
+
+6. CRON JOBS (Scripts Planificados)
+===========================================
+
+scripts/cron/check_sla.php           → Verificar tickets por vencer (cada 15 min)
+scripts/cron/sync_availability.php   → Sincronizar disponibilidad técnicos (cada hora)
+
+
+7. MIDDLEWARE Y FILTROS
+===========================================
+
+AuthMiddleware          → Valida autenticación (token/session)
+RoleMiddleware          → Verifica roles (Admin, Director, Jefe, Técnico)
+OrganizationScopeMiddleware → Filtra por jerarquía organizacional
+RateLimitMiddleware     → Límite de rate limiting
+CorsMiddleware          → Configuración CORS para frontend separado
+
+
+8. VISTAS DE BASE DE DATOS
+===========================================
+
+v_tickets_completos          → Vista completa de tickets con relaciones
+v_tecnicos_disponibilidad     → Vista de técnicos con disponibilidad
+v_catalogo_problemas          → Vista de catálogo de problemas
+
+
+9. ESTRUCTURA DE ARCHIVOS DEL PROYECTO
+===========================================
+
+Frontend (React):
+tickets-frontend/
+├── src/
+│   ├── pages/              → Páginas principales
+│   ├── components/         → Componentes React
+│   │   ├── admin/         → Componentes admin
+│   │   ├── technician/     → Componentes técnicos
+│   │   ├── requester/      → Componentes solicitantes
+│   │   ├── tickets/       → Componentes tickets
+│   │   ├── layout/        → Layout y navegación
+│   │   └── ui/            → Componentes UI reutilizables
+│   └── contexts/          → Contextos React
+
+Backend (PHP):
+tickets-backend/
+├── public/                 → Punto de entrada
+├── src/
+│   ├── Core/              → Infraestructura base
+│   ├── Domain/            → Entidades de negocio
+│   ├── Infrastructure/    → Implementaciones DB
+│   ├── Application/       → Casos de uso
+│   ├── Http/              → Controladores y middleware
+│   └── Services/          → Servicios transversales
+├── config/                → Configuración
+├── routes/                → Definición de rutas
+├── storage/               → Logs, uploads, cache
+└── scripts/               → Scripts y cron jobs
+
+Base de Datos:
+database-scripts/
+├── schema.sql             → Esquema de base de datos
+└── data.sql               → Datos iniciales
+
+
+===========================================
+NOTAS:
+===========================================
+- Las rutas del backend están planeadas según la arquitectura DDD
+- El frontend usa React Router v7 para navegación
+- Las rutas API siguen RESTful conventions
+- Los middleware protegen rutas según roles y permisos
+- Los cron jobs ejecutan tareas automáticas de mantenimiento
+- Las vistas de DB optimizan consultas complejas
+
+===========================================
