@@ -15,7 +15,17 @@ import {
   Calendar,
   MapPin,
   Settings,
-  TrendingUp
+  TrendingUp,
+  Building,
+  Phone,
+  Mail,
+  Briefcase,
+  Award,
+  CalendarDays,
+  MapPinned,
+  UserCheck,
+  Send,
+  X
 } from 'lucide-react';
 import './RequesterDashboard.css';
 
@@ -43,9 +53,17 @@ interface RequesterProfile {
   id: string;
   name: string;
   email: string;
+  phone: string;
+  extension: string;
+  position: string;
+  hireDate: string;
   Direction_Name: string;
+  Direction_Code: string;
   Division_Name: string;
   Coordination_Name: string;
+  supervisor: string;
+  location: string;
+  officeFloor: string;
 }
 
 const RequesterDashboard: React.FC = () => {
@@ -54,9 +72,17 @@ const RequesterDashboard: React.FC = () => {
     id: '1',
     name: 'Carlos Rodríguez',
     email: 'carlos.rodriguez@alcaldia.gob',
+    phone: '+58 276 123 4567',
+    extension: '245',
+    position: 'Analista de Sistemas',
+    hireDate: '2019-03-15',
     Direction_Name: 'Vialidad',
+    Direction_Code: 'DIR-003',
     Division_Name: 'División de Mantenimiento',
-    Coordination_Name: 'Coordinación de Equipos'
+    Coordination_Name: 'Coordinación de Equipos',
+    supervisor: 'Ing. María González',
+    location: 'Edificio Municipal, Piso 3',
+    officeFloor: 'Piso 3, Oficina 305'
   });
 
   const [myTickets, setMyTickets] = useState<Ticket[]>([
@@ -112,6 +138,8 @@ const RequesterDashboard: React.FC = () => {
   ]);
 
   const [showNewTicketForm, setShowNewTicketForm] = useState(false);
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
+  const [showCommentSection, setShowCommentSection] = useState<Record<string, boolean>>({});
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -151,8 +179,45 @@ const RequesterDashboard: React.FC = () => {
     });
   };
 
+  const calculateYearsOfService = (hireDate: string) => {
+    const hire = new Date(hireDate);
+    const now = new Date();
+    const years = now.getFullYear() - hire.getFullYear();
+    const months = now.getMonth() - hire.getMonth();
+    if (months < 0 || (months === 0 && now.getDate() < hire.getDate())) {
+      return years - 1;
+    }
+    return years;
+  };
+
   const activeTickets = myTickets.filter(t => t.Status !== 'Resuelto');
   const resolvedTickets = myTickets.filter(t => t.Status === 'Resuelto');
+
+  const handleAddComment = (ticketId: string) => {
+    const comment = commentInputs[ticketId];
+    if (comment && comment.trim()) {
+      // Aquí se enviaría el comentario al backend
+      console.log(`Adding comment to ticket ${ticketId}:`, comment);
+      
+      // Actualizar el ticket localmente (simulación)
+      const updatedTickets = myTickets.map(ticket => {
+        if (ticket.id === ticketId) {
+          return {
+            ...ticket,
+            Comments_Count: ticket.Comments_Count + 1
+          };
+        }
+        return ticket;
+      });
+      setMyTickets(updatedTickets);
+      setCommentInputs(prev => ({ ...prev, [ticketId]: '' }));
+      setShowCommentSection(prev => ({ ...prev, [ticketId]: false }));
+    }
+  };
+
+  const toggleCommentSection = (ticketId: string) => {
+    setShowCommentSection(prev => ({ ...prev, [ticketId]: !prev[ticketId] }));
+  };
 
   return (
     <div className="requester-dashboard">
@@ -185,6 +250,35 @@ const RequesterDashboard: React.FC = () => {
       </header>
 
       <main className="req-main">
+        {/* Profile Information Card - Minimalist */}
+        <section className="profile-info-section">
+          <div className="profile-card-minimal">
+            <div className="profile-content">
+              <div className="profile-avatar">
+                <User size={32} />
+              </div>
+              <div className="profile-info">
+                <h2 className="profile-name">{requesterProfile.name}</h2>
+                <p className="profile-position">{requesterProfile.position}</p>
+                <div className="profile-details">
+                  <span className="profile-detail">
+                    <Building size={14} />
+                    {requesterProfile.Direction_Name}
+                  </span>
+                  <span className="profile-detail">
+                    <Mail size={14} />
+                    {requesterProfile.email}
+                  </span>
+                  <span className="profile-detail">
+                    <Phone size={14} />
+                    {requesterProfile.phone}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Stats Overview */}
         <div className="stats-overview">
           <div className="stat-card active">
@@ -342,6 +436,56 @@ const RequesterDashboard: React.FC = () => {
                     <ChevronRight size={16} />
                   </button>
                 </div>
+
+                {/* Sección de Comentarios - Solo para tickets en proceso */}
+                {ticket.Status === 'En Proceso' && (
+                  <div className="ticket-comments-section">
+                    <div className="comments-header">
+                      <h4 className="comments-title">
+                        <MessageSquare size={16} />
+                        Comentarios ({ticket.Comments_Count})
+                      </h4>
+                      {!showCommentSection[ticket.id] && (
+                        <button 
+                          className="add-comment-btn"
+                          onClick={() => toggleCommentSection(ticket.id)}
+                        >
+                          <MessageSquare size={14} />
+                          Agregar Comentario
+                        </button>
+                      )}
+                    </div>
+                    
+                    {showCommentSection[ticket.id] && (
+                      <div className="comment-input-container">
+                        <textarea
+                          className="comment-textarea"
+                          placeholder="Escribe tu comentario aquí..."
+                          value={commentInputs[ticket.id] || ''}
+                          onChange={(e) => setCommentInputs(prev => ({ ...prev, [ticket.id]: e.target.value }))}
+                          rows={3}
+                        />
+                        <div className="comment-actions">
+                          <button 
+                            className="cancel-comment-btn"
+                            onClick={() => toggleCommentSection(ticket.id)}
+                          >
+                            <X size={14} />
+                            Cancelar
+                          </button>
+                          <button 
+                            className="send-comment-btn"
+                            onClick={() => handleAddComment(ticket.id)}
+                            disabled={!commentInputs[ticket.id]?.trim()}
+                          >
+                            <Send size={14} />
+                            Enviar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>
