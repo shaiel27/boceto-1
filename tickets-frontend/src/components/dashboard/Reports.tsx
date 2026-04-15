@@ -20,7 +20,19 @@ import {
   Settings,
   Plus,
   Eye,
-  Edit
+  Edit,
+  Filter,
+  MoreVertical,
+  Sparkles,
+  Activity,
+  Zap,
+  Target,
+  BarChart,
+  Grid,
+  List,
+  X,
+  Star,
+  Play
 } from 'lucide-react';
 import './Dashboard.css';
 import './Reports.css';
@@ -65,6 +77,8 @@ const Reports: React.FC = () => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedOffice, setSelectedOffice] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -231,10 +245,13 @@ const Reports: React.FC = () => {
     setActiveTab('generator');
   };
 
-  const filteredReports = reports.filter(report =>
-    report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredReports = reports.filter(report => {
+    const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        report.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || report.type === selectedCategory;
+    const matchesStatus = selectedStatus === 'all' || report.status === selectedStatus;
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
 
   const getReportTypeIcon = (type: string) => {
     switch (type) {
@@ -248,7 +265,7 @@ const Reports: React.FC = () => {
     }
   };
 
-  const getReportTypeColor = (type: string) => {
+  const getReportTypeColor = (type: string): string => {
     switch (type) {
       case 'general': return 'blue';
       case 'performance': return 'green';
@@ -260,8 +277,20 @@ const Reports: React.FC = () => {
     }
   };
 
+  const getCategoryLabel = (type: string): string => {
+    switch (type) {
+      case 'general': return 'General';
+      case 'performance': return 'Desempeño';
+      case 'office': return 'Oficina';
+      case 'timeline': return 'Timeline';
+      case 'priority': return 'Prioridad';
+      case 'service': return 'Servicio';
+      default: return 'Otro';
+    }
+  };
+
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container reports-enterprise">
       {/* Sidebar */}
       <aside className="sidebar">
         <div className="sidebar-logo">
@@ -324,76 +353,104 @@ const Reports: React.FC = () => {
 
       {/* Main Content */}
       <main className="main-content-area">
-        {/* Header Actions */}
-        <div className="dashboard-actions">
-          <button 
-            className="new-ticket-btn"
-            onClick={handleCreateReport}
-          >
-            <Plus size={18} />
-            Crear Reporte
-          </button>
+        {/* Header */}
+        <div className="reports-header">
+          <div className="header-left">
+            <div className="header-icon-wrapper">
+              <TrendingUp size={32} className="header-icon" />
+            </div>
+            <div className="header-text">
+              <h1 className="header-title">Centro de Reportes</h1>
+              <p className="header-subtitle">Análisis avanzado y métricas de tickets</p>
+            </div>
+          </div>
+          <div className="header-right">
+            <button 
+              className="enterprise-btn primary"
+              onClick={handleCreateReport}
+            >
+              <Plus size={18} />
+              Crear Reporte
+            </button>
+          </div>
         </div>
 
         {/* Tabs */}
-        <div className="reports-tabs">
+        <div className="enterprise-tabs">
           <button
-            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            className={`enterprise-tab ${activeTab === 'overview' ? 'active' : ''}`}
             onClick={() => setActiveTab('overview')}
           >
-            <BarChart3 size={18} />
-            <span>Resumen</span>
+            <Activity size={18} />
+            <span>Resumen Ejecutivo</span>
           </button>
           <button
-            className={`tab-btn ${activeTab === 'reports' ? 'active' : ''}`}
+            className={`enterprise-tab ${activeTab === 'reports' ? 'active' : ''}`}
             onClick={() => setActiveTab('reports')}
           >
             <FileText size={18} />
-            <span>Reportes</span>
+            <span>Biblioteca de Reportes</span>
           </button>
           <button
-            className={`tab-btn ${activeTab === 'generator' ? 'active' : ''}`}
+            className={`enterprise-tab ${activeTab === 'generator' ? 'active' : ''}`}
             onClick={() => setActiveTab('generator')}
           >
-            <Settings size={18} />
-            <span>Generador</span>
+            <Sparkles size={18} />
+            <span>Generador Avanzado</span>
           </button>
           <button
-            className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+            className={`enterprise-tab ${activeTab === 'history' ? 'active' : ''}`}
             onClick={() => setActiveTab('history')}
           >
             <Clock size={18} />
-            <span>Historial</span>
+            <span>Historial de Ejecuciones</span>
           </button>
         </div>
 
         {/* Content */}
-        <div className="reports-content">
+        <div className="reports-content enterprise-content">
         {activeTab === 'overview' && (
           <div className="overview-view">
             {/* Statistics Cards */}
-            <div className="section-header" onClick={() => toggleSection('stats')}>
-              <h3 className="section-title">
-                {expandedSections.stats ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                Estadísticas Generales
-              </h3>
+            <div className="enterprise-section">
+              <div className="section-header-wrapper">
+                <div className="section-header-content">
+                  <div className="section-icon">
+                    <Target size={24} />
+                  </div>
+                  <div>
+                    <h3 className="section-title">KPIs Estratégicos</h3>
+                    <p className="section-description">Métricas clave de rendimiento en tiempo real</p>
+                  </div>
+                </div>
+                <button 
+                  className="collapse-btn"
+                  onClick={() => toggleSection('stats')}
+                >
+                  {expandedSections.stats ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                </button>
+              </div>
             </div>
             {expandedSections.stats && (
-              <div className="stats-grid">
+              <div className="enterprise-stats-grid">
                 {statsData.map((stat, index) => (
-                  <div key={index} className={`stat-card stat-${stat.color}`}>
-                    <div className="stat-header">
-                      <div className="stat-icon">
-                        <stat.icon size={32} />
+                  <div key={index} className={`enterprise-stat-card stat-${stat.color}`}>
+                    <div className="stat-background-icon">
+                      <stat.icon size={80} />
+                    </div>
+                    <div className="stat-content">
+                      <div className="stat-icon-wrapper">
+                        <stat.icon size={28} />
                       </div>
                       <div className="stat-info">
                         <h4 className="stat-title">{stat.title}</h4>
                         <p className="stat-value">{stat.value}</p>
                       </div>
-                    </div>
-                    <div className={`stat-trend ${stat.trendUp ? 'trend-up' : 'trend-down'}`}>
-                      <TrendingUp size={16} />
-                      <span>{stat.trend}</span>
+                      <div className={`stat-trend ${stat.trendUp ? 'trend-up' : 'trend-down'}`}>
+                        <TrendingUp size={14} />
+                        <span>{stat.trend}</span>
+                        <span className="trend-label">vs mes anterior</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -401,26 +458,45 @@ const Reports: React.FC = () => {
             )}
 
             {/* Charts Section */}
-            <div className="section-header" onClick={() => toggleSection('charts')}>
-              <h3 className="section-title">
-                {expandedSections.charts ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                Visualizaciones
-              </h3>
+            <div className="enterprise-section">
+              <div className="section-header-wrapper">
+                <div className="section-header-content">
+                  <div className="section-icon">
+                    <BarChart size={24} />
+                  </div>
+                  <div>
+                    <h3 className="section-title">Visualizaciones de Datos</h3>
+                    <p className="section-description">Análisis gráfico de tendencias y patrones</p>
+                  </div>
+                </div>
+                <button 
+                  className="collapse-btn"
+                  onClick={() => toggleSection('charts')}
+                >
+                  {expandedSections.charts ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                </button>
+              </div>
             </div>
             {expandedSections.charts && (
-              <div className="charts-grid">
+              <div className="enterprise-charts-grid">
                 {/* Priority Chart */}
-                <div className="chart-card">
+                <div className="enterprise-chart-card">
                   <div className="chart-header">
-                    <h4 className="chart-title">
-                      <PieChart size={20} />
-                      Distribución por Prioridad
-                    </h4>
+                    <div className="chart-title-wrapper">
+                      <div className="chart-icon">
+                        <AlertTriangle size={20} />
+                      </div>
+                      <h4 className="chart-title">Distribución por Prioridad</h4>
+                    </div>
+                    <div className="chart-badge">Total: 1,250</div>
                   </div>
                   <div className="chart-content">
                     {priorityData.map((item, index) => (
                       <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label">{item.label}</div>
+                        <div className="chart-bar-label-row">
+                          <span className="chart-bar-label">{item.label}</span>
+                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                        </div>
                         <div className="chart-bar-wrapper">
                           <div
                             className="chart-bar"
@@ -437,17 +513,23 @@ const Reports: React.FC = () => {
                 </div>
 
                 {/* Office Chart */}
-                <div className="chart-card">
+                <div className="enterprise-chart-card">
                   <div className="chart-header">
-                    <h4 className="chart-title">
-                      <Building size={20} />
-                      Tickets por Oficina
-                    </h4>
+                    <div className="chart-title-wrapper">
+                      <div className="chart-icon">
+                        <Building size={20} />
+                      </div>
+                      <h4 className="chart-title">Tickets por Oficina</h4>
+                    </div>
+                    <div className="chart-badge">Top 5</div>
                   </div>
                   <div className="chart-content">
                     {officeData.map((item, index) => (
                       <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label">{item.label}</div>
+                        <div className="chart-bar-label-row">
+                          <span className="chart-bar-label">{item.label}</span>
+                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                        </div>
                         <div className="chart-bar-wrapper">
                           <div
                             className="chart-bar"
@@ -464,17 +546,23 @@ const Reports: React.FC = () => {
                 </div>
 
                 {/* Status Chart */}
-                <div className="chart-card">
+                <div className="enterprise-chart-card">
                   <div className="chart-header">
-                    <h4 className="chart-title">
-                      <CheckCircle size={20} />
-                      Estado de Tickets
-                    </h4>
+                    <div className="chart-title-wrapper">
+                      <div className="chart-icon">
+                        <CheckCircle size={20} />
+                      </div>
+                      <h4 className="chart-title">Estado de Tickets</h4>
+                    </div>
+                    <div className="chart-badge">Tasa de resolución: 80%</div>
                   </div>
                   <div className="chart-content">
                     {statusData.map((item, index) => (
                       <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label">{item.label}</div>
+                        <div className="chart-bar-label-row">
+                          <span className="chart-bar-label">{item.label}</span>
+                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                        </div>
                         <div className="chart-bar-wrapper">
                           <div
                             className="chart-bar"
@@ -495,136 +583,257 @@ const Reports: React.FC = () => {
         )}
 
         {activeTab === 'reports' && (
-          <div className="reports-view">
-            {/* Filters */}
-            <div className="reports-filters">
-              <div className="search-box">
-                <Search size={18} className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="Buscar reportes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="search-input"
-                />
+          <div className="library-view">
+            {/* Hero Section */}
+            <div className="library-hero">
+              <div className="hero-content">
+                <div className="hero-icon">
+                  <FileText size={64} />
+                </div>
+                <h2 className="hero-title">Biblioteca de Reportes</h2>
+                <p className="hero-subtitle">Explora y gestiona todos tus reportes en un solo lugar</p>
               </div>
-              <div className="filter-controls">
-                <select
-                  className="filter-select"
-                  value={selectedOffice}
-                  onChange={(e) => setSelectedOffice(e.target.value)}
-                >
-                  <option value="all">Todas las Oficinas</option>
-                  <option value="catastro">Catastro</option>
-                  <option value="obras">Obras</option>
-                  <option value="bienestar">Bienestar</option>
-                </select>
-                <select
-                  className="filter-select"
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                >
-                  <option value="all">Todos los Estados</option>
-                  <option value="active">Activos</option>
-                  <option value="scheduled">Programados</option>
-                  <option value="archived">Archivados</option>
-                </select>
+              <div className="hero-stats">
+                <div className="hero-stat">
+                  <span className="stat-number">{reports.length}</span>
+                  <span className="stat-label">Total Reportes</span>
+                </div>
+                <div className="hero-stat">
+                  <span className="stat-number">{reports.filter((r: Report) => r.status === 'active').length}</span>
+                  <span className="stat-label">Activos</span>
+                </div>
+                <div className="hero-stat">
+                  <span className="stat-number">3</span>
+                  <span className="stat-label">Categorías</span>
+                </div>
               </div>
             </div>
 
-            {/* Reports Grid */}
-            <div className="reports-grid">
-              {filteredReports.map((report) => {
-                const ReportIcon = getReportTypeIcon(report.type);
-                const colorClass = getReportTypeColor(report.type);
-                return (
-                  <div key={report.id} className={`report-card report-${colorClass}`}>
-                    <div className="report-header">
-                      <div className="report-icon">
-                        <ReportIcon size={28} />
-                      </div>
-                      <div className="report-status">
-                        <span className={`status-badge status-${report.status}`}>
-                          {report.status === 'active' ? 'Activo' : report.status === 'scheduled' ? 'Programado' : 'Archivado'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="report-body">
-                      <h3 className="report-name">{report.name}</h3>
-                      <p className="report-description">{report.description}</p>
-                      <div className="report-meta">
-                        <span className="meta-item">
-                          <Calendar size={14} />
-                          Última ejecución: {new Date(report.lastRun).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="report-actions">
-                      <button
-                        className="report-action-btn run"
-                        onClick={() => handleRunReport(report.id)}
-                        title="Ejecutar reporte"
-                      >
-                        <RefreshCw size={16} />
-                      </button>
-                      <button
-                        className="report-action-btn view"
-                        onClick={() => setSelectedReport(report)}
-                        title="Ver detalles"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        className="report-action-btn edit"
-                        onClick={() => console.log('Edit report:', report.id)}
-                        title="Editar"
-                      >
-                        <Edit size={16} />
-                      </button>
-                      <div className="dropdown">
-                        <button className="report-action-btn more">
-                          <ChevronDown size={16} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="report-exports">
-                      <button
-                        className="export-btn"
-                        onClick={() => handleExportReport(report.id, 'pdf')}
-                      >
-                        <Download size={14} />
-                        PDF
-                      </button>
-                      <button
-                        className="export-btn"
-                        onClick={() => handleExportReport(report.id, 'excel')}
-                      >
-                        <Download size={14} />
-                        Excel
-                      </button>
-                      <button
-                        className="export-btn"
-                        onClick={() => handleExportReport(report.id, 'csv')}
-                      >
-                        <Download size={14} />
-                        CSV
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Category Filters */}
+            <div className="category-filters">
+              <button
+                className={`category-filter ${selectedCategory === 'all' ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('all')}
+              >
+                <Grid size={20} />
+                <span>Todos</span>
+                <span className="category-count">{reports.length}</span>
+              </button>
+              <button
+                className={`category-filter ${selectedCategory === 'general' ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('general')}
+              >
+                <BarChart3 size={20} />
+                <span>Generales</span>
+                <span className="category-count">{reports.filter((r: Report) => r.type === 'general').length}</span>
+              </button>
+              <button
+                className={`category-filter ${selectedCategory === 'performance' ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('performance')}
+              >
+                <TrendingUp size={20} />
+                <span>Desempeño</span>
+                <span className="category-count">{reports.filter((r: Report) => r.type === 'performance').length}</span>
+              </button>
+              <button
+                className={`category-filter ${selectedCategory === 'office' ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('office')}
+              >
+                <Building size={20} />
+                <span>Oficinas</span>
+                <span className="category-count">{reports.filter((r: Report) => r.type === 'office').length}</span>
+              </button>
+              <button
+                className={`category-filter ${selectedCategory === 'timeline' ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('timeline')}
+              >
+                <Clock size={20} />
+                <span>Timeline</span>
+                <span className="category-count">{reports.filter((r: Report) => r.type === 'timeline').length}</span>
+              </button>
+              <button
+                className={`category-filter ${selectedCategory === 'priority' ? 'active' : ''}`}
+                onClick={() => setSelectedCategory('priority')}
+              >
+                <AlertTriangle size={20} />
+                <span>Prioridad</span>
+                <span className="category-count">{reports.filter((r: Report) => r.type === 'priority').length}</span>
+              </button>
             </div>
+
+            {/* Advanced Search Bar */}
+            <div className="library-search-bar">
+              <div className="search-input-wrapper">
+                <Search size={24} className="search-icon" />
+                <input
+                  type="text"
+                  placeholder="Buscar reportes por nombre, descripción o categoría..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="library-search-input"
+                />
+                {searchTerm && (
+                  <button
+                    className="clear-search"
+                    onClick={() => setSearchTerm('')}
+                  >
+                    <X size={20} />
+                  </button>
+                )}
+              </div>
+              <div className="view-toggles">
+                <button
+                  className={`view-toggle ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  title="Vista de cuadrícula"
+                >
+                  <Grid size={20} />
+                </button>
+                <button
+                  className={`view-toggle ${viewMode === 'list' ? 'active' : ''}`}
+                  onClick={() => setViewMode('list')}
+                  title="Vista de lista"
+                >
+                  <List size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Reports Display */}
+            {filteredReports.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-icon">
+                  <FileText size={80} />
+                </div>
+                <h3 className="empty-title">No se encontraron reportes</h3>
+                <p className="empty-description">
+                  {searchTerm ? 'Intenta con otros términos de búsqueda' : 'No hay reportes disponibles en esta categoría'}
+                </p>
+                {searchTerm && (
+                  <button
+                    className="clear-filter-btn"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setSelectedCategory('all');
+                    }}
+                  >
+                    <RefreshCw size={18} />
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className={`reports-container ${viewMode}`}>
+                {filteredReports.map((report, index) => {
+                  const ReportIcon = getReportTypeIcon(report.type);
+                  const colorClass = getReportTypeColor(report.type);
+                  return (
+                    <div 
+                      key={report.id} 
+                      className={`library-report-card report-${colorClass}`}
+                      style={{ animationDelay: `${index * 0.1}s` }}
+                    >
+                      <div className="report-visual-header">
+                        <div className="report-visual-icon">
+                          <div className="icon-glow"></div>
+                          <ReportIcon size={48} />
+                        </div>
+                        <div className="report-quick-actions">
+                          <button
+                            className="quick-action-btn favorite"
+                            title="Agregar a favoritos"
+                          >
+                            <Star size={18} />
+                          </button>
+                          <button
+                            className="quick-action-btn more"
+                            title="Más opciones"
+                          >
+                            <MoreVertical size={18} />
+                          </button>
+                        </div>
+                      </div>
+                      
+                      <div className="report-content">
+                        <div className="report-category-badge">
+                          {getCategoryLabel(report.type)}
+                        </div>
+                        <h3 className="report-title">{report.name}</h3>
+                        <p className="report-excerpt">{report.description}</p>
+                        
+                        <div className="report-metrics">
+                          <div className="metric">
+                            <Calendar size={14} />
+                            <span>{new Date(report.createdAt).toLocaleDateString()}</span>
+                          </div>
+                          <div className="metric">
+                            <Clock size={14} />
+                            <span>{new Date(report.lastRun).toLocaleDateString()}</span>
+                          </div>
+                          <div className="metric">
+                            <Activity size={14} />
+                            <span>{report.status === 'active' ? 'Activo' : report.status === 'scheduled' ? 'Programado' : 'Archivado'}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="report-footer">
+                        <div className="report-actions">
+                          <button
+                            className="action-btn primary"
+                            onClick={() => handleRunReport(report.id)}
+                          >
+                            <Play size={16} />
+                            <span>Ejecutar</span>
+                          </button>
+                          <button
+                            className="action-btn secondary"
+                            onClick={() => setSelectedReport(report)}
+                          >
+                            <Eye size={16} />
+                            <span>Ver</span>
+                          </button>
+                        </div>
+                        <div className="export-quick">
+                          <button
+                            className="export-quick-btn"
+                            onClick={() => handleExportReport(report.id, 'pdf')}
+                            title="Exportar PDF"
+                          >
+                            <Download size={16} />
+                          </button>
+                          <button
+                            className="export-quick-btn"
+                            onClick={() => handleExportReport(report.id, 'excel')}
+                            title="Exportar Excel"
+                          >
+                            <Download size={16} />
+                          </button>
+                          <button
+                            className="export-quick-btn"
+                            onClick={() => handleExportReport(report.id, 'csv')}
+                            title="Exportar CSV"
+                          >
+                            <Download size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
         {activeTab === 'generator' && (
           <div className="generator-view">
             <div className="generator-header">
-              <h2 className="generator-title">
-                <Settings size={24} />
-                Generador de Reportes Personalizados
-              </h2>
-              <p className="generator-subtitle">Crea reportes a medida con filtros y parámetros personalizados</p>
+              <div className="generator-icon-wrapper">
+                <Sparkles size={48} />
+              </div>
+              <h2 className="generator-title">Generador de Reportes Personalizados</h2>
+              <p className="generator-subtitle">Crea reportes a medida con filtros avanzados y parámetros dinámicos</p>
             </div>
 
             <div className="generator-form">
@@ -722,12 +931,12 @@ const Reports: React.FC = () => {
               </div>
 
               <div className="generator-actions">
-                <button className="action-btn secondary" onClick={() => setActiveTab('reports')}>
+                <button className="enterprise-btn secondary" onClick={() => setActiveTab('reports')}>
                   Cancelar
                 </button>
-                <button className="action-btn primary">
-                  <Plus size={18} />
-                  Crear Reporte
+                <button className="enterprise-btn primary">
+                  <Zap size={18} />
+                  Generar Reporte
                 </button>
               </div>
             </div>
@@ -737,27 +946,37 @@ const Reports: React.FC = () => {
         {activeTab === 'history' && (
           <div className="history-view">
             <div className="history-header">
-              <h2 className="history-title">
-                <Clock size={24} />
-                Historial de Ejecuciones
-              </h2>
-              <p className="history-subtitle">Registro de todas las ejecuciones de reportes</p>
+              <div className="history-icon-wrapper">
+                <Clock size={48} />
+              </div>
+              <h2 className="history-title">Historial de Ejecuciones</h2>
+              <p className="history-subtitle">Registro completo de todas las ejecuciones de reportes con métricas de rendimiento</p>
             </div>
-            <div className="history-table">
+            <div className="enterprise-history-table">
               <div className="table-header">
                 <div className="table-cell">Reporte</div>
-                <div className="table-cell">Fecha</div>
+                <div className="table-cell">Fecha de Ejecución</div>
                 <div className="table-cell">Duración</div>
+                <div className="table-cell">Registros</div>
                 <div className="table-cell">Estado</div>
                 <div className="table-cell">Acciones</div>
               </div>
               <div className="table-body">
                 <div className="table-row">
-                  <div className="table-cell">Reporte General de Tickets</div>
+                  <div className="table-cell">
+                    <div className="report-name-cell">
+                      <FileText size={16} className="cell-icon" />
+                      <span>Reporte General de Tickets</span>
+                    </div>
+                  </div>
                   <div className="table-cell">13/04/2024 09:30</div>
                   <div className="table-cell">2.5s</div>
+                  <div className="table-cell">1,250</div>
                   <div className="table-cell">
-                    <span className="status-badge status-success">Completado</span>
+                    <span className="status-badge status-success">
+                      <CheckCircle size={14} />
+                      Completado
+                    </span>
                   </div>
                   <div className="table-cell">
                     <button className="table-action-btn">
@@ -766,11 +985,20 @@ const Reports: React.FC = () => {
                   </div>
                 </div>
                 <div className="table-row">
-                  <div className="table-cell">Reporte de Desempeño</div>
+                  <div className="table-cell">
+                    <div className="report-name-cell">
+                      <TrendingUp size={16} className="cell-icon" />
+                      <span>Reporte de Desempeño</span>
+                    </div>
+                  </div>
                   <div className="table-cell">12/04/2024 16:45</div>
                   <div className="table-cell">3.1s</div>
+                  <div className="table-cell">890</div>
                   <div className="table-cell">
-                    <span className="status-badge status-success">Completado</span>
+                    <span className="status-badge status-success">
+                      <CheckCircle size={14} />
+                      Completado
+                    </span>
                   </div>
                   <div className="table-cell">
                     <button className="table-action-btn">
@@ -779,11 +1007,20 @@ const Reports: React.FC = () => {
                   </div>
                 </div>
                 <div className="table-row">
-                  <div className="table-cell">Reporte por Oficina</div>
+                  <div className="table-cell">
+                    <div className="report-name-cell">
+                      <Building size={16} className="cell-icon" />
+                      <span>Reporte por Oficina</span>
+                    </div>
+                  </div>
                   <div className="table-cell">11/04/2024 11:20</div>
                   <div className="table-cell">1.8s</div>
+                  <div className="table-cell">540</div>
                   <div className="table-cell">
-                    <span className="status-badge status-success">Completado</span>
+                    <span className="status-badge status-success">
+                      <CheckCircle size={14} />
+                      Completado
+                    </span>
                   </div>
                   <div className="table-cell">
                     <button className="table-action-btn">
@@ -799,9 +1036,13 @@ const Reports: React.FC = () => {
       </main>
 
       {loading && (
-        <div className="loading-overlay">
-          <div className="spinner"></div>
-          <p>Generando reporte...</p>
+        <div className="enterprise-loading-overlay">
+          <div className="loading-spinner-wrapper">
+            <div className="loading-spinner"></div>
+            <div className="loading-spinner-ring"></div>
+          </div>
+          <p className="loading-text">Generando reporte...</p>
+          <p className="loading-subtext">Por favor espere mientras procesamos los datos</p>
         </div>
       )}
     </div>
