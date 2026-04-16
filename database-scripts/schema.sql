@@ -34,7 +34,6 @@ CREATE TABLE Boss (
     Name_Boss VARCHAR(100) NOT NULL,
     pronoun VARCHAR(20),
     Fk_User INT UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_User) REFERENCES Users(ID_Users) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -48,7 +47,6 @@ CREATE TABLE Office (
     Office_Type VARCHAR(20) NOT NULL COMMENT 'Direction, Coordination, Division',
     Fk_Parent_Office INT NULL COMMENT 'ID de la oficina superior',
     Fk_Boss_ID INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Parent_Office) REFERENCES Office(ID_Office) ON DELETE SET NULL,
     FOREIGN KEY (Fk_Boss_ID) REFERENCES Boss(ID_Boss) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -67,8 +65,7 @@ CREATE TABLE Lunch_Blocks (
 CREATE TABLE TI_Service (
     ID_TI_Service INT AUTO_INCREMENT PRIMARY KEY,
     Type_Service VARCHAR(30) NOT NULL COMMENT 'Redes, Soporte, Programación',
-    Details TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    Details TEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE Service_Problems_Catalog (
@@ -77,7 +74,6 @@ CREATE TABLE Service_Problems_Catalog (
     Problem_Name VARCHAR(100) NOT NULL,
     Typical_Description TEXT,
     Estimated_Severity VARCHAR(15) NOT NULL COMMENT 'Baja, Media, Alta',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_TI_Service) REFERENCES TI_Service(ID_TI_Service) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -115,7 +111,6 @@ CREATE TABLE Service_Permissions (
     Fk_TI_Service INT NOT NULL,
     Fk_Office INT NOT NULL COMMENT 'Apunta a la oficina en la tabla maestra',
     Is_Allowed BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_TI_Service) REFERENCES TI_Service(ID_TI_Service) ON DELETE CASCADE,
     FOREIGN KEY (Fk_Office) REFERENCES Office(ID_Office) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -125,7 +120,6 @@ CREATE TABLE Request_Settings (
     Fk_Office_ID INT NOT NULL,
     Can_Request_Directly BOOLEAN DEFAULT TRUE,
     Must_Be_Approved_By_Superior BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Office_ID) REFERENCES Office(ID_Office) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -133,15 +127,13 @@ CREATE TABLE Software_Systems (
     ID_System INT AUTO_INCREMENT PRIMARY KEY,
     System_Name VARCHAR(100) NOT NULL,
     Description TEXT,
-    Status VARCHAR(20) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    Status VARCHAR(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE Office_Systems (
     ID_Office_System INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Office_ID INT NOT NULL,
     Fk_System_ID INT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Office_ID) REFERENCES Office(ID_Office) ON DELETE CASCADE,
     FOREIGN KEY (Fk_System_ID) REFERENCES Software_Systems(ID_System) ON DELETE CASCADE,
     UNIQUE KEY unique_office_system (Fk_Office_ID, Fk_System_ID)
