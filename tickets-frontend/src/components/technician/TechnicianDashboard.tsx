@@ -16,9 +16,11 @@ import {
   ChevronUp,
   MoreVertical,
   Crown,
-  Users
+  Users,
+  X
 } from 'lucide-react';
 import './TechnicianDashboard.css';
+import TechnicianProfile from './TechnicianProfile';
 
 interface Ticket {
   id: string;
@@ -96,6 +98,7 @@ const TechnicianDashboard: React.FC = () => {
 
   const [lunchTimeRemaining, setLunchTimeRemaining] = useState<number>(0);
   const [workTimeRemaining, setWorkTimeRemaining] = useState<number>(0);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     // Simular cálculo de tiempo
@@ -163,6 +166,9 @@ const TechnicianDashboard: React.FC = () => {
               <button className="header-btn notification">
                 <Bell size={20} />
                 <span className="notification-badge">2</span>
+              </button>
+              <button className="header-btn profile" onClick={() => setShowProfile(true)}>
+                <User size={20} />
               </button>
               <button className="header-btn logout" onClick={() => navigate('/login')}>
                 <LogOut size={20} />
@@ -310,6 +316,42 @@ const TechnicianDashboard: React.FC = () => {
           </div>
         </section>
       </main>
+
+      {/* Modal de Perfil */}
+      {showProfile && (
+        <div className="modal-overlay">
+          <div className="modal-content large">
+            <div className="modal-header">
+              <h2>Mi Perfil</h2>
+              <button className="close-btn" onClick={() => setShowProfile(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <TechnicianProfile 
+                profile={{
+                  id: technicianProfile.id,
+                  firstName: technicianProfile.name.split(' ')[0],
+                  lastName: technicianProfile.name.split(' ').slice(1).join(' '),
+                  email: technicianProfile.email,
+                  phone: technicianProfile.phone,
+                  status: technicianProfile.status === 'available' ? 'Activo' : 'Inactivo',
+                  specialization: 'Soporte Técnico',
+                  hireDate: '2020-01-15',
+                  lunchBlock: `Bloque ${technicianProfile.lunch_block}`,
+                  workStartTime: '08:00',
+                  workEndTime: technicianProfile.end_time,
+                  services: ['Soporte Técnico', 'Hardware', 'Redes']
+                }}
+                onUpdate={(updatedProfile) => setTechnicianProfile(prev => ({
+                  ...prev,
+                  phone: updatedProfile.phone
+                }))}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

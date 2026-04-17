@@ -23,11 +23,10 @@ interface TicketFormData {
   subject: string;
   description: string;
   propertyNumber: string;
-  fkDirection: string;
-  fkDivision: string;
-  fkCoordination: string;
+  fkOffice: string;
   fkTiService: string;
   fkProblemCatalog: string;
+  fkSoftwareSystem: string;
   attachments: File[];
 }
 
@@ -38,10 +37,10 @@ interface ProblemCatalog {
   estimatedSeverity: string;
 }
 
-interface UserLocation {
-  fkDirection: string;
-  fkDivision: string;
-  fkCoordination: string;
+interface SoftwareSystem {
+  id: string;
+  name: string;
+  description: string;
 }
 
 const TicketForm: React.FC = () => {
@@ -53,33 +52,16 @@ const TicketForm: React.FC = () => {
     subject: '',
     description: '',
     propertyNumber: '',
-    fkDirection: '',
-    fkDivision: '',
-    fkCoordination: '',
+    fkOffice: '',
     fkTiService: '',
     fkProblemCatalog: '',
+    fkSoftwareSystem: '',
     attachments: []
-  });
-
-  // Simulación de usuario logeado y su ubicación
-  const [userLocation] = useState<UserLocation>({
-    fkDirection: '1',
-    fkDivision: '1',
-    fkCoordination: '1'
   });
 
   // Catálogo de problemas por tipo de servicio
   const [problemsCatalog, setProblemsCatalog] = useState<ProblemCatalog[]>([]);
-
-  // Autocompletar ubicación según usuario logeado
-  useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      fkDirection: userLocation.fkDirection,
-      fkDivision: userLocation.fkDivision,
-      fkCoordination: userLocation.fkCoordination
-    }));
-  }, [userLocation]);
+  const [softwareSystems, setSoftwareSystems] = useState<SoftwareSystem[]>([]);
 
   // Cargar problemas según tipo de servicio seleccionado
   useEffect(() => {
@@ -127,6 +109,17 @@ const TicketForm: React.FC = () => {
             estimatedSeverity: 'Baja'
           }
         );
+
+        // Cargar sistemas de software para Programación
+        const mockSoftwareSystems: SoftwareSystem[] = [
+          { id: '1', name: 'Sistema de Recursos Humanos', description: 'Módulo de nómina y personal' },
+          { id: '2', name: 'Sistema de Finanzas', description: 'Contabilidad y presupuesto' },
+          { id: '3', name: 'Sistema de Catastro', description: 'Gestión de impuestos inmobiliarios' },
+          { id: '4', name: 'Sistema de Trámites', description: 'Gestión de solicitudes ciudadanas' }
+        ];
+        setSoftwareSystems(mockSoftwareSystems);
+      } else {
+        setSoftwareSystems([]);
       }
 
       if (formData.fkTiService === '3') {
@@ -162,55 +155,31 @@ const TicketForm: React.FC = () => {
       setProblemsCatalog(mockProblems);
     } else {
       setProblemsCatalog([]);
+      setSoftwareSystems([]);
     }
   }, [formData.fkTiService]);
 
-  // Mock data para la nueva estructura jerárquica
-  const [directions] = useState([
-    { id: '1', name: 'Dirección de Educación' },
-    { id: '2', name: 'Dirección de Vialidad' },
-    { id: '3', name: 'Dirección de Salud' },
-    { id: '4', name: 'Dirección de Obras Públicas' },
-    { id: '5', name: 'Dirección de Recursos Humanos' },
-    { id: '6', name: 'Dirección de Finanzas' }
+  // Mock data para oficinas unificadas según estructura de DB
+  const [offices] = useState([
+    { id: '1', name: 'Dirección de Educación', type: 'Direction' },
+    { id: '2', name: 'Dirección de Vialidad', type: 'Direction' },
+    { id: '3', name: 'Dirección de Salud', type: 'Direction' },
+    { id: '4', name: 'Dirección de Obras Públicas', type: 'Direction' },
+    { id: '5', name: 'Dirección de Recursos Humanos', type: 'Direction' },
+    { id: '6', name: 'Dirección de Finanzas', type: 'Direction' },
+    { id: '7', name: 'División de Docencia', type: 'Division', parentOfficeId: '1' },
+    { id: '8', name: 'División de Ingeniería', type: 'Division', parentOfficeId: '2' },
+    { id: '9', name: 'División Administrativa', type: 'Division', parentOfficeId: '3' },
+    { id: '10', name: 'Coordinación de Semáforos', type: 'Coordination', parentOfficeId: '7' },
+    { id: '11', name: 'Coordinación de Catastro Legal', type: 'Coordination', parentOfficeId: '8' },
+    { id: '12', name: 'Coordinación de Mantenimiento', type: 'Coordination', parentOfficeId: '9' }
   ]);
-
-  const [divisions, setDivisions] = useState<Array<{ id: string; name: string; fkDirection: string }>>([]);
-  const [coordinations, setCoordinations] = useState<Array<{ id: string; name: string; fkDivision: string }>>([]);
 
   const [tiServices] = useState([
     { id: '1', name: 'Redes', description: 'Problemas de conectividad' },
     { id: '2', name: 'Programación', description: 'Desarrollo de software' },
     { id: '3', name: 'Soporte Técnico', description: 'Hardware y mantenimiento' }
   ]);
-
-  React.useEffect(() => {
-    if (formData.fkDirection) {
-      const mockDivisions = [
-        { id: '1', name: 'División de Docencia', fkDirection: formData.fkDirection },
-        { id: '2', name: 'División de Ingeniería', fkDirection: formData.fkDirection },
-        { id: '3', name: 'División Administrativa', fkDirection: formData.fkDirection }
-      ];
-      setDivisions(mockDivisions);
-      setCoordinations([]);
-    } else {
-      setDivisions([]);
-      setCoordinations([]);
-    }
-  }, [formData.fkDirection]);
-
-  React.useEffect(() => {
-    if (formData.fkDivision) {
-      const mockCoordinations = [
-        { id: '1', name: 'Coordinación de Semáforos', fkDivision: formData.fkDivision },
-        { id: '2', name: 'Coordinación de Catastro Legal', fkDivision: formData.fkDivision },
-        { id: '3', name: 'Coordinación de Mantenimiento', fkDivision: formData.fkDivision }
-      ];
-      setCoordinations(mockCoordinations);
-    } else {
-      setCoordinations([]);
-    }
-  }, [formData.fkDivision]);
 
   const formSteps = [
     { id: 1, title: 'Información', icon: <FileText size={20} />, description: 'Datos principales' },
@@ -231,8 +200,17 @@ const TicketForm: React.FC = () => {
         newErrors.subject = 'El asunto debe tener al menos 5 caracteres';
       }
 
+      if (!formData.fkOffice) {
+        newErrors.fkOffice = 'La oficina es requerida';
+      }
+
       if (!formData.fkTiService) {
         newErrors.fkTiService = 'El tipo de servicio es requerido';
+      }
+
+      // Validar sistema de software si es Programación
+      if (formData.fkTiService === '2' && !formData.fkSoftwareSystem) {
+        newErrors.fkSoftwareSystem = 'Debe seleccionar un sistema de software para Programación';
       }
     }
 
@@ -296,8 +274,7 @@ const TicketForm: React.FC = () => {
       console.log('Ticket creado:', {
         ...formData,
         ticketCode,
-        systemPriority,
-        userLocation
+        systemPriority
       });
 
       setSubmitStatus('success');
@@ -307,16 +284,16 @@ const TicketForm: React.FC = () => {
           subject: '',
           description: '',
           propertyNumber: '',
-          fkDirection: userLocation.fkDirection,
-          fkDivision: userLocation.fkDivision,
-          fkCoordination: userLocation.fkCoordination,
+          fkOffice: '',
           fkTiService: '',
           fkProblemCatalog: '',
+          fkSoftwareSystem: '',
           attachments: []
         });
         setCurrentStep(0);
         setSubmitStatus('idle');
         setProblemsCatalog([]);
+        setSoftwareSystems([]);
       }, 3000);
 
     } catch (error) {
@@ -402,33 +379,61 @@ const TicketForm: React.FC = () => {
 
             <div className="form-section">
               <div className="form-section-title">
-                <MapPin size={18} />
-                Ubicación (Autocompletada)
+                <Building size={18} />
+                Oficina de Origen
               </div>
-              <div className="location-readonly">
-                <div className="location-item">
-                  <span className="location-label">Dirección:</span>
-                  <span className="location-value">
-                    {directions.find(d => d.id === formData.fkDirection)?.name || 'Cargando...'}
-                  </span>
+              <div className="form-field full-width">
+                <label>
+                  Selecciona tu Oficina *
+                </label>
+                <div className="input-with-icon">
+                  <Building size={18} />
+                  <select
+                    className={`form-input ${errors.fkOffice ? 'error' : ''}`}
+                    value={formData.fkOffice}
+                    onChange={(e) => setFormData(prev => ({ ...prev, fkOffice: e.target.value }))}
+                  >
+                    <option value="">Selecciona tu oficina</option>
+                    {offices.map(office => (
+                      <option key={office.id} value={office.id}>
+                        {office.name} ({office.type})
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div className="location-item">
-                  <span className="location-label">División:</span>
-                  <span className="location-value">
-                    {divisions.find(d => d.id === formData.fkDivision)?.name || 'Cargando...'}
-                  </span>
-                </div>
-                <div className="location-item">
-                  <span className="location-label">Coordinación:</span>
-                  <span className="location-value">
-                    {coordinations.find(c => c.id === formData.fkCoordination)?.name || 'Cargando...'}
-                  </span>
-                </div>
+                {errors.fkOffice && <span className="error-message">{errors.fkOffice}</span>}
               </div>
-              <small className="location-note">
-                ℹ️ Tu ubicación institucional se autocompleta según tu área asignada
-              </small>
             </div>
+
+            {formData.fkTiService === '2' && (
+              <div className="form-section">
+                <div className="form-section-title">
+                  <Settings size={18} />
+                  Sistema de Software
+                </div>
+                <div className="form-field full-width">
+                  <label>
+                    Sistema Afectado *
+                  </label>
+                  <div className="input-with-icon">
+                    <Settings size={18} />
+                    <select
+                      className={`form-input ${errors.fkSoftwareSystem ? 'error' : ''}`}
+                      value={formData.fkSoftwareSystem}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fkSoftwareSystem: e.target.value }))}
+                    >
+                      <option value="">Selecciona el sistema</option>
+                      {softwareSystems.map(system => (
+                        <option key={system.id} value={system.id}>
+                          {system.name} - {system.description}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {errors.fkSoftwareSystem && <span className="error-message">{errors.fkSoftwareSystem}</span>}
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -627,20 +632,30 @@ const TicketForm: React.FC = () => {
               </div>
 
               <div className="confirmation-card">
-                <h4>Estructura Jerárquica (Autocompletada)</h4>
+                <h4>Oficina de Origen</h4>
                 <div className="confirmation-item">
-                  <span>Dirección:</span>
-                  <span>{directions.find(d => d.id === formData.fkDirection)?.name}</span>
+                  <span>Oficina:</span>
+                  <span>{offices.find(o => o.id === formData.fkOffice)?.name}</span>
                 </div>
                 <div className="confirmation-item">
-                  <span>División:</span>
-                  <span>{divisions.find(d => d.id === formData.fkDivision)?.name}</span>
-                </div>
-                <div className="confirmation-item">
-                  <span>Coordinación:</span>
-                  <span>{coordinations.find(c => c.id === formData.fkCoordination)?.name}</span>
+                  <span>Tipo:</span>
+                  <span>{offices.find(o => o.id === formData.fkOffice)?.type}</span>
                 </div>
               </div>
+
+              {formData.fkTiService === '2' && (
+                <div className="confirmation-card">
+                  <h4>Sistema de Software</h4>
+                  <div className="confirmation-item">
+                    <span>Sistema:</span>
+                    <span>{softwareSystems.find(s => s.id === formData.fkSoftwareSystem)?.name}</span>
+                  </div>
+                  <div className="confirmation-item">
+                    <span>Descripción:</span>
+                    <span>{softwareSystems.find(s => s.id === formData.fkSoftwareSystem)?.description}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="confirmation-card">
                 <h4>Detalles</h4>

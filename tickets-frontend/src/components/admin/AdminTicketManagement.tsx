@@ -27,9 +27,19 @@ import {
   History,
   ArrowLeft,
   MapPin,
-  Flag
+  Flag,
+  Star
 } from 'lucide-react';
 import './AdminTicketManagement.css';
+
+interface TicketTechnician {
+  ID_Ticket_Technician: string;
+  Fk_Technician: string;
+  Is_Lead: boolean;
+  Assigned_At: string;
+  Technician_Name: string;
+  Technician_Email: string;
+}
 
 interface Ticket {
   ID_Service_Request: string;
@@ -40,7 +50,6 @@ interface Ticket {
   Fk_Division: string;
   Fk_Coordination: string;
   Fk_TI_Service: string;
-  Fk_Technician_Current: string | null;
   System_Priority: 'Baja' | 'Media' | 'Alta' | 'Crítica';
   Status: 'Pendiente' | 'En Proceso' | 'Cerrado';
   Created_at: string;
@@ -49,7 +58,7 @@ interface Ticket {
   Division_Name?: string;
   Coordination_Name?: string;
   Service_Name?: string;
-  Technician_Name?: string;
+  Technicians: TicketTechnician[];
   Attachments_Count?: number;
   Comments_Count?: number;
 }
@@ -58,8 +67,9 @@ interface Technician {
   ID_Technician: string;
   Name: string;
   Email: string;
-  Status: 'Disponible' | 'Ocupado' | 'No Disponible';
+  Status: 'Disponible' | 'Ocupado';
   Specialization: string;
+  TI_Services: string[];
 }
 
 interface TimelineEvent {
@@ -116,8 +126,9 @@ const AdminTicketManagement: React.FC = () => {
 
   // Estados de asignación
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [selectedTechnician, setSelectedTechnician] = useState<string>('');
+  const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
   const [reassignmentReason, setReassignmentReason] = useState('');
+  const [technicianSearch, setTechnicianSearch] = useState('');
 
   // Estados de comentarios y timeline
   const [comments, setComments] = useState<Comment[]>([]);
@@ -149,7 +160,6 @@ const AdminTicketManagement: React.FC = () => {
           Fk_Division: '1',
           Fk_Coordination: '1',
           Fk_TI_Service: '1',
-          Fk_Technician_Current: '1',
           System_Priority: 'Alta',
           Status: 'En Proceso',
           Created_at: '2024-01-15T09:30:00Z',
@@ -158,7 +168,24 @@ const AdminTicketManagement: React.FC = () => {
           Division_Name: 'División de Docencia',
           Coordination_Name: 'Coordinación de Semáforos',
           Service_Name: 'Redes',
-          Technician_Name: 'Carlos Rodríguez',
+          Technicians: [
+            {
+              ID_Ticket_Technician: '1',
+              Fk_Technician: '1',
+              Is_Lead: true,
+              Assigned_At: '2024-01-15T09:30:00Z',
+              Technician_Name: 'Carlos Rodríguez',
+              Technician_Email: 'carlos.rodriguez@municipio.gob'
+            },
+            {
+              ID_Ticket_Technician: '2',
+              Fk_Technician: '2',
+              Is_Lead: false,
+              Assigned_At: '2024-01-15T10:00:00Z',
+              Technician_Name: 'María González',
+              Technician_Email: 'maria.gonzalez@municipio.gob'
+            }
+          ],
           Attachments_Count: 2,
           Comments_Count: 5
         },
@@ -171,7 +198,6 @@ const AdminTicketManagement: React.FC = () => {
           Fk_Division: '2',
           Fk_Coordination: '2',
           Fk_TI_Service: '2',
-          Fk_Technician_Current: null,
           System_Priority: 'Media',
           Status: 'Pendiente',
           Created_at: '2024-01-15T10:15:00Z',
@@ -180,7 +206,7 @@ const AdminTicketManagement: React.FC = () => {
           Division_Name: 'División de Ingeniería',
           Coordination_Name: 'Coordinación de Catastro Legal',
           Service_Name: 'Soporte Técnico',
-          Technician_Name: undefined,
+          Technicians: [],
           Attachments_Count: 1,
           Comments_Count: 2
         },
@@ -193,7 +219,6 @@ const AdminTicketManagement: React.FC = () => {
           Fk_Division: '3',
           Fk_Coordination: '3',
           Fk_TI_Service: '2',
-          Fk_Technician_Current: '2',
           System_Priority: 'Baja',
           Status: 'Cerrado',
           Created_at: '2024-01-14T14:20:00Z',
@@ -202,7 +227,16 @@ const AdminTicketManagement: React.FC = () => {
           Division_Name: 'División Administrativa',
           Coordination_Name: 'Coordinación de Mantenimiento',
           Service_Name: 'Soporte Técnico',
-          Technician_Name: 'María González',
+          Technicians: [
+            {
+              ID_Ticket_Technician: '3',
+              Fk_Technician: '2',
+              Is_Lead: true,
+              Assigned_At: '2024-01-14T14:20:00Z',
+              Technician_Name: 'María González',
+              Technician_Email: 'maria.gonzalez@municipio.gob'
+            }
+          ],
           Attachments_Count: 0,
           Comments_Count: 3
         }
@@ -214,21 +248,24 @@ const AdminTicketManagement: React.FC = () => {
           Name: 'Carlos Rodríguez',
           Email: 'carlos.rodriguez@municipio.gob',
           Status: 'Disponible',
-          Specialization: 'Redes y Conectividad'
+          Specialization: 'Redes y Conectividad',
+          TI_Services: ['1']
         },
         {
           ID_Technician: '2',
           Name: 'María González',
           Email: 'maria.gonzalez@municipio.gob',
           Status: 'Ocupado',
-          Specialization: 'Soporte Técnico'
+          Specialization: 'Soporte Técnico',
+          TI_Services: ['2']
         },
         {
           ID_Technician: '3',
           Name: 'Juan Pérez',
           Email: 'juan.perez@municipio.gob',
           Status: 'Disponible',
-          Specialization: 'Hardware y Mantenimiento'
+          Specialization: 'Hardware y Mantenimiento',
+          TI_Services: ['3']
         }
       ];
 
@@ -330,23 +367,50 @@ const AdminTicketManagement: React.FC = () => {
     setAttachments(mockAttachments);
   };
 
-  // Manejar asignación de técnico
+  // Manejar asignación de técnicos
   const handleAssignTechnician = () => {
-    if (!selectedTicket || !selectedTechnician) return;
+    if (!selectedTicket || selectedTechnicians.length === 0) return;
 
     setLoading(true);
     
     // Simular asignación
     setTimeout(() => {
-      const updatedTickets = tickets.map(ticket =>
-        ticket.ID_Service_Request === selectedTicket.ID_Service_Request
-          ? { ...ticket, Fk_Technician_Current: selectedTechnician, Status: 'En Proceso' as const }
-          : ticket
-      );
+      const updatedTickets = tickets.map(ticket => {
+        if (ticket.ID_Service_Request === selectedTicket.ID_Service_Request) {
+          // Determinar si hay técnicos asignados
+          const hasExistingTechnicians = ticket.Technicians.length > 0;
+          
+          // Crear nuevos objetos TicketTechnician para los técnicos seleccionados
+          const newTechnicians = selectedTechnicians.map((techId, index) => {
+            const tech = technicians.find(t => t.ID_Technician === techId);
+            return {
+              ID_Ticket_Technician: Date.now().toString() + index,
+              Fk_Technician: techId,
+              Is_Lead: !hasExistingTechnicians && index === 0, // El primero es lead si no hay técnicos existentes
+              Assigned_At: new Date().toISOString(),
+              Technician_Name: tech?.Name || '',
+              Technician_Email: tech?.Email || ''
+            };
+          });
+          
+          // Combinar técnicos existentes con nuevos (evitar duplicados)
+          const existingTechIds = ticket.Technicians.map(t => t.Fk_Technician);
+          const uniqueNewTechnicians = newTechnicians.filter(
+            nt => !existingTechIds.includes(nt.Fk_Technician)
+          );
+          
+          return {
+            ...ticket,
+            Technicians: [...ticket.Technicians, ...uniqueNewTechnicians],
+            Status: 'En Proceso' as const
+          };
+        }
+        return ticket;
+      });
       
       setTickets(updatedTickets as Ticket[]);
       setShowAssignModal(false);
-      setSelectedTechnician('');
+      setSelectedTechnicians([]);
       setReassignmentReason('');
       setLoading(false);
       
@@ -354,15 +418,17 @@ const AdminTicketManagement: React.FC = () => {
       const newEvent: TimelineEvent = {
         ID_Timeline: Date.now().toString(),
         Fk_Service_Request: selectedTicket.ID_Service_Request,
-        Event_Type: selectedTicket.Fk_Technician_Current ? 'reassigned' : 'assigned',
-        Description: selectedTicket.Fk_Technician_Current 
-          ? `Reasignado a técnico ${selectedTechnician}` 
-          : `Asignado a técnico ${selectedTechnician}`,
+        Event_Type: selectedTicket.Technicians.length > 0 ? 'assigned' : 'reassigned',
+        Description: `Asignado${selectedTechnicians.length > 1 ? 's' : ''} técnico${selectedTechnicians.length > 1 ? 's' : ''}: ${selectedTechnicians.map(id => {
+          const tech = technicians.find(t => t.ID_Technician === id);
+          return tech?.Name || id;
+        }).join(', ')}`,
         Created_By: 'admin',
         Created_at: new Date().toISOString()
       };
       
-      setTimeline([...timeline, newEvent]);
+      setTimeline(prev => [...prev, newEvent]);
+      alert(`Técnico${selectedTechnicians.length > 1 ? 's' : ''} asignado${selectedTechnicians.length > 1 ? 's' : ''} exitosamente`);
     }, 1000);
   };
 
@@ -660,10 +726,18 @@ const AdminTicketManagement: React.FC = () => {
                   
                   <div className="ticket-card-footer">
                     <div className="technician-info">
-                      {ticket.Technician_Name ? (
-                        <div className="technician-assigned">
-                          <User size={18} strokeWidth={2} />
-                          <span>{ticket.Technician_Name}</span>
+                      {ticket.Technicians.length > 0 ? (
+                        <div className="technicians-assigned">
+                          <Users size={18} strokeWidth={2} />
+                          <span>{ticket.Technicians.length} técnico{ticket.Technicians.length > 1 ? 's' : ''}</span>
+                          <div className="technicians-list">
+                            {ticket.Technicians.map(tech => (
+                              <span key={tech.ID_Ticket_Technician} className="technician-tag">
+                                {tech.Is_Lead && <Star size={12} />}
+                                {tech.Technician_Name}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <div className="technician-unassigned">
@@ -719,7 +793,7 @@ const AdminTicketManagement: React.FC = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Asignar Técnico</h2>
+              <h2>Asignar Técnicos</h2>
               <button
                 className="close-btn"
                 onClick={() => setShowAssignModal(false)}
@@ -732,52 +806,81 @@ const AdminTicketManagement: React.FC = () => {
               <div className="ticket-info">
                 <p><strong>Ticket:</strong> {selectedTicket.Ticket_Code}</p>
                 <p><strong>Asunto:</strong> {selectedTicket.Subject}</p>
-                <p><strong>Técnico Actual:</strong> {selectedTicket.Technician_Name || 'Sin asignar'}</p>
+                <p><strong>Técnicos Asignados:</strong> {selectedTicket.Technicians.length > 0 ? selectedTicket.Technicians.map(t => t.Technician_Name).join(', ') : 'Sin asignar'}</p>
               </div>
               
               <div className="form-group">
-                <label>Seleccionar Técnico Disponible:</label>
-                <select
-                  value={selectedTechnician}
-                  onChange={(e) => setSelectedTechnician(e.target.value)}
-                  className="form-select"
-                >
-                  <option value="">Seleccione un técnico...</option>
-                  {technicians.map((tech) => (
-                    <option key={tech.ID_Technician} value={tech.ID_Technician}>
-                      {tech.Name} - {tech.Specialization}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              {selectedTicket.Fk_Technician_Current && (
-                <div className="form-group">
-                  <label>Motivo de Reasignación:</label>
-                  <textarea
-                    value={reassignmentReason}
-                    onChange={(e) => setReassignmentReason(e.target.value)}
-                    placeholder="Explique el motivo de la reasignación..."
-                    className="form-textarea"
-                    rows={3}
+                <label>Seleccionar Técnicos Disponibles:</label>
+                <div className="technician-search-container">
+                  <Search size={18} className="search-icon" />
+                  <input
+                    type="text"
+                    placeholder="Buscar por nombre, email o especialización..."
+                    value={technicianSearch}
+                    onChange={(e) => setTechnicianSearch(e.target.value)}
+                    className="technician-search-input"
                   />
                 </div>
-              )}
+                <div className="technicians-count">
+                  {technicians.filter(t => 
+                    technicianSearch === '' || 
+                    t.Name.toLowerCase().includes(technicianSearch.toLowerCase()) ||
+                    t.Email.toLowerCase().includes(technicianSearch.toLowerCase()) ||
+                    t.Specialization.toLowerCase().includes(technicianSearch.toLowerCase())
+                  ).length} técnicos encontrados
+                </div>
+                <div className="technicians-checkbox-list">
+                  {technicians
+                    .filter(t => 
+                      technicianSearch === '' || 
+                      t.Name.toLowerCase().includes(technicianSearch.toLowerCase()) ||
+                      t.Email.toLowerCase().includes(technicianSearch.toLowerCase()) ||
+                      t.Specialization.toLowerCase().includes(technicianSearch.toLowerCase())
+                    )
+                    .map((tech) => (
+                    <label key={tech.ID_Technician} className="technician-checkbox-item">
+                      <input
+                        type="checkbox"
+                        checked={selectedTechnicians.includes(tech.ID_Technician)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedTechnicians([...selectedTechnicians, tech.ID_Technician]);
+                          } else {
+                            setSelectedTechnicians(selectedTechnicians.filter(id => id !== tech.ID_Technician));
+                          }
+                        }}
+                      />
+                      <div className="technician-checkbox-info">
+                        <span className="technician-name">{tech.Name}</span>
+                        <span className="technician-email">{tech.Email}</span>
+                        <span className="technician-specialization">{tech.Specialization}</span>
+                        <span className={`technician-status ${tech.Status === 'Disponible' ? 'status-available' : 'status-busy'}`}>
+                          {tech.Status}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
             
             <div className="modal-footer">
               <button
                 className="btn btn-secondary"
-                onClick={() => setShowAssignModal(false)}
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setSelectedTechnicians([]);
+                }}
               >
                 Cancelar
               </button>
               <button
                 className="btn btn-primary"
                 onClick={handleAssignTechnician}
-                disabled={!selectedTechnician || (selectedTicket.Fk_Technician_Current !== null && selectedTicket.Fk_Technician_Current !== '' && reassignmentReason.trim().length === 0)}
+                disabled={selectedTechnicians.length === 0}
               >
-                {selectedTicket.Fk_Technician_Current ? 'Reasignar' : 'Asignar'}
+                <Users size={16} />
+                Agregar {selectedTechnicians.length} técnico{selectedTechnicians.length !== 1 ? 's' : ''}
               </button>
             </div>
           </div>
@@ -892,6 +995,30 @@ const AdminTicketManagement: React.FC = () => {
                       <span className={`status-badge ${getStatusColor(selectedTicket.Status)}`}>
                         {selectedTicket.Status}
                       </span>
+                    </div>
+                    <div className="detail-item">
+                      <label>Técnicos Asignados:</label>
+                      <div className="technicians-detail-list">
+                        {selectedTicket.Technicians.length > 0 ? (
+                          selectedTicket.Technicians.map(tech => (
+                            <div key={tech.ID_Ticket_Technician} className="technician-detail-item">
+                              <div className="technician-detail-header">
+                                <span className="technician-detail-name">
+                                  {tech.Is_Lead && <Star size={14} className="lead-star" />}
+                                  {tech.Technician_Name}
+                                </span>
+                                {tech.Is_Lead && <span className="lead-badge">Principal</span>}
+                              </div>
+                              <div className="technician-detail-email">{tech.Technician_Email}</div>
+                              <div className="technician-detail-date">
+                                Asignado: {new Date(tech.Assigned_At).toLocaleString()}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="no-technicians">Sin técnicos asignados</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

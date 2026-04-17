@@ -64,12 +64,6 @@ INSERT INTO Office (Name_Office, Office_Type, Fk_Parent_Office, Fk_Boss_ID) VALU
 -- 3. TÉCNICOS Y SERVICIOS TI
 -- ==========================================
 
--- Insertar Bloques de Almuerzo
-INSERT INTO Lunch_Blocks (Block_Name, Start_Time, End_Time) VALUES
-('Bloque 1 (11:00-12:00)', '11:00:00', '12:00:00'),
-('Bloque 2 (12:00-13:00)', '12:00:00', '13:00:00'),
-('Bloque 3 (13:00-14:00)', '13:00:00', '14:00:00');
-
 -- Insertar Servicios TI
 INSERT INTO TI_Service (Type_Service, Details) VALUES
 ('Redes', 'Configuración y mantenimiento de redes, conectividad, WiFi'),
@@ -94,11 +88,18 @@ INSERT INTO Service_Problems_Catalog (Fk_TI_Service, Problem_Name, Typical_Descr
 (3, 'Integración con sistema externo', 'Se necesita integrar con otro sistema', 'Alta'),
 (3, 'Reporte no genera correctamente', 'Los reportes no se generan como esperado', 'Media');
 
+-- Insertar Bloques de Almuerzo
+INSERT INTO Lunch_Blocks (Block_Name, Start_Time, End_Time) VALUES
+('Mañana', '11:00:00', '11:30:00'),
+('Mediodía', '12:00:00', '12:30:00'),
+('Tarde', '13:00:00', '13:30:00'),
+('Tardío', '14:00:00', '14:30:00');
+
 -- Insertar Técnicos
-INSERT INTO Technicians (Fk_Users, First_Name, Last_Name, CI, Telephone_Number, Fk_Lunch_Block, Status) VALUES
-(2, 'Juan', 'Pérez', '12345678', '+58 276 111 1111', 1, 'Activo'),
-(3, 'María', 'González', '87654321', '+58 276 222 2222', 2, 'Activo'),
-(4, 'Carlos', 'Rodríguez', '11223344', '+58 276 333 3333', 3, 'Activo');
+INSERT INTO Technicians (Fk_Users, First_Name, Last_Name, Fk_Lunch_Block, Status) VALUES
+(2, 'Juan', 'Pérez', 1, 'Activo'),
+(3, 'María', 'González', 2, 'Activo'),
+(4, 'Carlos', 'Rodríguez', 3, 'Activo');
 
 -- Insertar Servicios asignados a Técnicos
 INSERT INTO Technicians_Service (Fk_TI_Service, Fk_Technicians, status) VALUES
@@ -111,6 +112,27 @@ INSERT INTO Technicians_Service (Fk_TI_Service, Fk_Technicians, status) VALUES
 -- Carlos Rodríguez (especializado en Programación y Redes)
 (1, 3, 'Activo'),
 (3, 3, 'Activo');
+
+-- Insertar Horarios de Técnicos
+INSERT INTO Technician_Schedules (Fk_Technician, Day_Of_Week, Work_Start_Time, Work_End_Time) VALUES
+-- Juan Pérez (Lunes a Viernes, 8:00 - 17:00)
+(1, 'Lunes', '08:00:00', '17:00:00'),
+(1, 'Martes', '08:00:00', '17:00:00'),
+(1, 'Miércoles', '08:00:00', '17:00:00'),
+(1, 'Jueves', '08:00:00', '17:00:00'),
+(1, 'Viernes', '08:00:00', '17:00:00'),
+-- María González (Lunes a Viernes, 8:00 - 17:00)
+(2, 'Lunes', '08:00:00', '17:00:00'),
+(2, 'Martes', '08:00:00', '17:00:00'),
+(2, 'Miércoles', '08:00:00', '17:00:00'),
+(2, 'Jueves', '08:00:00', '17:00:00'),
+(2, 'Viernes', '08:00:00', '17:00:00'),
+-- Carlos Rodríguez (Lunes a Viernes, 8:00 - 17:00)
+(3, 'Lunes', '08:00:00', '17:00:00'),
+(3, 'Martes', '08:00:00', '17:00:00'),
+(3, 'Miércoles', '08:00:00', '17:00:00'),
+(3, 'Jueves', '08:00:00', '17:00:00'),
+(3, 'Viernes', '08:00:00', '17:00:00');
 
 -- ==========================================
 -- 4. CONFIGURACIÓN DE PERMISOS Y SISTEMAS
@@ -174,44 +196,44 @@ INSERT INTO Office_Systems (Fk_Office_ID, Fk_System_ID) VALUES
 -- Insertar Tickets de Ejemplo
 INSERT INTO Service_Request (
     Fk_Office, Fk_User_Requester, Fk_TI_Service, Fk_Problem_Catalog, 
-    Fk_Software_System, Subject, Property_number, Description, 
+    Fk_Boss_Requester, Fk_Software_System, Subject, Property_number, Description, 
     System_Priority, Status
 ) VALUES
--- Ticket 1: Problema de Redes - Alta prioridad
-(11, 5, 1, 1, NULL, 'Sin conexión a internet en Coordinación de Equipos', 'EQ-001', 
+-- Ticket 1: Problema de Redes - Alta prioridad (Pedro Martínez - Boss ID 1)
+(11, 5, 1, 1, 1, NULL, 'Sin conexión a internet en Coordinación de Equipos', 'EQ-001', 
  'Desde esta mañana no tenemos acceso a internet en toda la coordinación', 'Alta', 'En Proceso'),
--- Ticket 2: Problema de Soporte - Media prioridad
-(11, 5, 2, 6, NULL, 'Impresora HP no funciona', 'EQ-002', 
+-- Ticket 2: Problema de Soporte - Media prioridad (Pedro Martínez - Boss ID 1)
+(11, 5, 2, 6, 1, NULL, 'Impresora HP no funciona', 'EQ-002', 
  'La impresora principal no imprime y muestra error de papel atascado', 'Media', 'Pendiente'),
--- Ticket 3: Problema de Programación - Alta prioridad
-(2, 6, 3, 10, 1, 'Error en sistema contable', 'SA-001', 
+-- Ticket 3: Problema de Programación - Alta prioridad (Ana López - Boss ID 2)
+(2, 6, 3, 10, 2, 1, 'Error en sistema contable', 'SA-001', 
  'El sistema contable muestra error al generar reportes mensuales', 'Alta', 'Pendiente'),
--- Ticket 4: Problema de Soporte - Baja prioridad
-(12, 5, 2, 8, NULL, 'Teclado dañado', 'EQ-003', 
+-- Ticket 4: Problema de Soporte - Baja prioridad (Pedro Martínez - Boss ID 1)
+(12, 5, 2, 8, 1, NULL, 'Teclado dañado', 'EQ-003', 
  'El teclado del equipo de recepción tiene varias teclas que no funcionan', 'Baja', 'Resuelto'),
--- Ticket 5: Problema de Redes - Media prioridad
-(13, 7, 1, 2, NULL, 'WiFi lento en Clínicas Rurales', 'CR-001', 
+-- Ticket 5: Problema de Redes - Media prioridad (Luis Sánchez - Boss ID 3)
+(13, 7, 1, 2, 3, NULL, 'WiFi lento en Clínicas Rurales', 'CR-001', 
  'La conexión WiFi es muy lenta en las clínicas rurales', 'Media', 'En Proceso'),
--- Ticket 6: Problema de Programación - Media prioridad
-(9, 7, 3, 11, 5, 'Necesito nuevo módulo en Portal Educativo', 'ED-001', 
+-- Ticket 6: Problema de Programación - Media prioridad (Luis Sánchez - Boss ID 3)
+(9, 7, 3, 11, 3, 5, 'Necesito nuevo módulo en Portal Educativo', 'ED-001', 
  'Se requiere un módulo para gestión de calificaciones', 'Media', 'Pendiente');
 
 -- Actualizar ticket resuelto con fecha de resolución
 UPDATE Service_Request SET Resolved_at = NOW() - INTERVAL 2 DAY WHERE ID_Service_Request = 4;
 
 -- Insertar Asignaciones de Técnicos a Tickets
-INSERT INTO Ticket_Technicians (Fk_Service_Request, Fk_Technician, Is_Lead, Fk_Assigned_By) VALUES
+INSERT INTO Ticket_Technicians (Fk_Service_Request, Fk_Technician, Is_Lead, Assignment_Role, Fk_Assigned_By, Status) VALUES
 -- Ticket 1: Juan Pérez (Lead) y María González
-(1, 1, TRUE, 1),
-(1, 2, FALSE, 1),
+(1, 1, TRUE, 'Responsable Principal', 1, 'Activo'),
+(1, 2, FALSE, 'Apoyo', 1, 'Activo'),
 -- Ticket 3: María González (Lead) y Carlos Rodríguez
-(3, 2, TRUE, 1),
-(3, 3, FALSE, 1),
+(3, 2, TRUE, 'Responsable Principal', 1, 'Activo'),
+(3, 3, FALSE, 'Especialista', 1, 'Activo'),
 -- Ticket 4: Juan Pérez (solo)
-(4, 1, TRUE, 1),
+(4, 1, TRUE, 'Responsable Principal', 1, 'Finalizado'),
 -- Ticket 5: Carlos Rodríguez (Lead) y Juan Pérez
-(5, 3, TRUE, 1),
-(5, 1, FALSE, 1);
+(5, 3, TRUE, 'Responsable Principal', 1, 'Activo'),
+(5, 1, FALSE, 'Apoyo', 1, 'Activo');
 
 -- Insertar Comentarios en Tickets
 INSERT INTO Ticket_Comments (Fk_Service_Request, Fk_User, Comment) VALUES
@@ -231,6 +253,27 @@ INSERT INTO Ticket_Attachments (Fk_Service_Request, File_Name, File_Path) VALUES
 (1, 'error_router.jpg', '/uploads/tickets/error_router.jpg'),
 (3, 'screenshot_error.png', '/uploads/tickets/screenshot_error.png'),
 (5, 'diagrama_red.pdf', '/uploads/tickets/diagrama_red.pdf');
+
+-- Insertar Timeline de Tickets
+INSERT INTO Ticket_Timeline (Fk_Service_Request, Fk_User_Actor, Action_Description, Old_Status, New_Status) VALUES
+-- Ticket 1: Cambios de estado
+(1, 5, 'Ticket creado por solicitante', NULL, 'Pendiente'),
+(1, 1, 'Admin asignó a Juan Pérez como técnico principal', NULL, 'Pendiente'),
+(1, 1, 'Admin asignó a María González como apoyo', NULL, 'Pendiente'),
+(1, 1, 'Admin cambió estado a En Proceso', 'Pendiente', 'En Proceso'),
+-- Ticket 3: Cambios de estado
+(3, 6, 'Ticket creado por solicitante', NULL, 'Pendiente'),
+(3, 1, 'Admin asignó a María González como técnico principal', NULL, 'Pendiente'),
+(3, 1, 'Admin asignó a Carlos Rodríguez como especialista', NULL, 'Pendiente'),
+-- Ticket 4: Cambios de estado
+(4, 5, 'Ticket creado por solicitante', NULL, 'Pendiente'),
+(4, 1, 'Admin asignó a Juan Pérez como técnico principal', NULL, 'Pendiente'),
+(4, 1, 'Admin cambió estado a Resuelto', 'Pendiente', 'Resuelto'),
+-- Ticket 5: Cambios de estado
+(5, 7, 'Ticket creado por solicitante', NULL, 'Pendiente'),
+(5, 1, 'Admin asignó a Carlos Rodríguez como técnico principal', NULL, 'Pendiente'),
+(5, 1, 'Admin asignó a Juan Pérez como apoyo', NULL, 'Pendiente'),
+(5, 1, 'Admin cambió estado a En Proceso', 'Pendiente', 'En Proceso');
 
 -- ==========================================
 -- VERIFICACIÓN DE DATOS

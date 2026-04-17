@@ -47,6 +47,7 @@ CREATE TABLE Office (
     Office_Type VARCHAR(20) NOT NULL COMMENT 'Direction, Coordination, Division',
     Fk_Parent_Office INT NULL COMMENT 'ID de la oficina superior',
     Fk_Boss_ID INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Parent_Office) REFERENCES Office(ID_Office) ON DELETE SET NULL,
     FOREIGN KEY (Fk_Boss_ID) REFERENCES Boss(ID_Boss) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -54,13 +55,6 @@ CREATE TABLE Office (
 -- ==========================================
 -- 3. TÉCNICOS Y SERVICIOS TI
 -- ==========================================
-
-CREATE TABLE Lunch_Blocks (
-    ID_Lunch_Block INT AUTO_INCREMENT PRIMARY KEY,
-    Block_Name VARCHAR(20) NOT NULL,
-    Start_Time TIME NOT NULL,
-    End_Time TIME NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE TI_Service (
     ID_TI_Service INT AUTO_INCREMENT PRIMARY KEY,
@@ -82,8 +76,6 @@ CREATE TABLE Technicians (
     Fk_Users INT UNIQUE NOT NULL,
     First_Name VARCHAR(25) NOT NULL,
     Last_Name VARCHAR(25) NOT NULL,
-    CI VARCHAR(12) UNIQUE NOT NULL,
-    Telephone_Number VARCHAR(20),
     Fk_Lunch_Block INT NULL,
     Status VARCHAR(20) NOT NULL DEFAULT 'Activo' COMMENT 'Activo, Inactivo',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -100,6 +92,23 @@ CREATE TABLE Technicians_Service (
     FOREIGN KEY (Fk_TI_Service) REFERENCES TI_Service(ID_TI_Service) ON DELETE CASCADE,
     FOREIGN KEY (Fk_Technicians) REFERENCES Technicians(ID_Technicians) ON DELETE CASCADE,
     UNIQUE KEY unique_technician_service (Fk_Technicians, Fk_TI_Service)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE Lunch_Blocks (
+    ID_Lunch_Block INT AUTO_INCREMENT PRIMARY KEY,
+    Block_Name VARCHAR(20) NOT NULL,
+    Start_Time TIME NOT NULL,
+    End_Time TIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE Technician_Schedules (
+    ID_Schedule INT AUTO_INCREMENT PRIMARY KEY,
+    Fk_Technician INT NOT NULL,
+    Day_Of_Week VARCHAR(10) NOT NULL,
+    Work_Start_Time TIME DEFAULT '08:00:00',
+    Work_End_Time TIME NOT NULL,
+    FOREIGN KEY (Fk_Technician) REFERENCES Technicians(ID_Technicians) ON DELETE CASCADE,
+    UNIQUE KEY unique_technician_schedule (Fk_Technician, Day_Of_Week)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
@@ -150,6 +159,7 @@ CREATE TABLE Service_Request (
     Fk_User_Requester INT NOT NULL COMMENT 'ID del Jefe que solicita',
     Fk_TI_Service INT NOT NULL,
     Fk_Problem_Catalog INT NOT NULL,
+    Fk_Boss_Requester INT NOT NULL COMMENT 'El jefe específico que hizo la solicitud',
     Fk_Software_System INT NULL COMMENT 'Obligatorio si es Programación',
     Subject VARCHAR(100) NOT NULL,
     Property_number VARCHAR(10),
@@ -163,6 +173,7 @@ CREATE TABLE Service_Request (
     FOREIGN KEY (Fk_User_Requester) REFERENCES Users(ID_Users) ON DELETE RESTRICT,
     FOREIGN KEY (Fk_TI_Service) REFERENCES TI_Service(ID_TI_Service) ON DELETE RESTRICT,
     FOREIGN KEY (Fk_Problem_Catalog) REFERENCES Service_Problems_Catalog(ID_Problem_Catalog) ON DELETE RESTRICT,
+    FOREIGN KEY (Fk_Boss_Requester) REFERENCES Boss(ID_Boss) ON DELETE RESTRICT,
     FOREIGN KEY (Fk_Software_System) REFERENCES Software_Systems(ID_System) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -170,9 +181,11 @@ CREATE TABLE Ticket_Technicians (
     ID_Ticket_Technician INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Service_Request INT NOT NULL,
     Fk_Technician INT NOT NULL,
-    Is_Lead BOOLEAN DEFAULT FALSE,
+    Is_Lead BOOLEAN DEFAULT FALSE COMMENT 'Técnico responsable principal',
+    Assignment_Role VARCHAR(30) COMMENT 'Ej: Apoyo, Especialista, Supervisor',
     Assigned_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    Fk_Assigned_By INT,
+    Fk_Assigned_By INT COMMENT 'ID del Admin que realizó la asignación',
+    Status VARCHAR(20) DEFAULT 'Activo' COMMENT 'Activo, Finalizado',
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE,
     FOREIGN KEY (Fk_Technician) REFERENCES Technicians(ID_Technicians) ON DELETE CASCADE,
     FOREIGN KEY (Fk_Assigned_By) REFERENCES Users(ID_Users) ON DELETE SET NULL
@@ -195,6 +208,18 @@ CREATE TABLE Ticket_Attachments (
     File_Path VARCHAR(255) NOT NULL,
     Uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE Ticket_Timeline (
+    ID_Timeline INT AUTO_INCREMENT PRIMARY KEY,
+    Fk_Service_Request INT NOT NULL,
+    Fk_User_Actor INT NOT NULL COMMENT 'Quién hizo el cambio',
+    Action_Description TEXT COMMENT 'Ej: Admin agregó al técnico Carlos como apoyo',
+    Old_Status VARCHAR(20),
+    New_Status VARCHAR(20),
+    Event_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE,
+    FOREIGN KEY (Fk_User_Actor) REFERENCES Users(ID_Users) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================
@@ -222,7 +247,11 @@ CREATE INDEX idx_ticket_service ON Service_Request(Fk_TI_Service);
 -- Índices en Technicians
 CREATE INDEX idx_technician_status ON Technicians(Status);
 CREATE INDEX idx_technician_user ON Technicians(Fk_Users);
-CREATE INDEX idx_technician_ci ON Technicians(CI);
+
+-- Índices en Ticket_Timeline
+CREATE INDEX idx_timeline_ticket ON Ticket_Timeline(Fk_Service_Request);
+CREATE INDEX idx_timeline_user ON Ticket_Timeline(Fk_User_Actor);
+CREATE INDEX idx_timeline_date ON Ticket_Timeline(Event_Date);
 
 -- Índices en Ticket_Technicians
 CREATE INDEX idx_ticket_tech_ticket ON Ticket_Technicians(Fk_Service_Request);
@@ -235,6 +264,18 @@ CREATE INDEX idx_problem_severity ON Service_Problems_Catalog(Estimated_Severity
 -- Índices en Ticket_Comments
 CREATE INDEX idx_comment_ticket ON Ticket_Comments(Fk_Service_Request);
 CREATE INDEX idx_comment_user ON Ticket_Comments(Fk_User);
+
+-- Índices en Lunch_Blocks
+CREATE INDEX idx_lunch_block_name ON Lunch_Blocks(Block_Name);
+CREATE INDEX idx_lunch_block_time ON Lunch_Blocks(Start_Time, End_Time);
+
+-- Índices en Technician_Schedules
+CREATE INDEX idx_schedule_technician ON Technician_Schedules(Fk_Technician);
+CREATE INDEX idx_schedule_day ON Technician_Schedules(Day_Of_Week);
+CREATE INDEX idx_schedule_time ON Technician_Schedules(Work_Start_Time, Work_End_Time);
+
+-- Índices adicionales para Service_Request
+CREATE INDEX idx_ticket_boss_requester ON Service_Request(Fk_Boss_Requester);
 
 -- ==========================================
 -- VISTAS ÚTILES
@@ -254,6 +295,7 @@ SELECT
     sr.Resolution_Notes,
     b.Name_Boss AS Solicitante,
     u.Email AS Solicitante_Email,
+    boss_requester.Name_Boss AS Jefe_Solicitante,
     o.Name_Office AS Oficina_Origen,
     o.Office_Type AS Tipo_Oficina,
     parent_o.Name_Office AS Oficina_Padre,
@@ -266,6 +308,7 @@ SELECT
 FROM Service_Request sr
 JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
 JOIN Boss b ON u.ID_Users = b.Fk_User
+JOIN Boss boss_requester ON sr.Fk_Boss_Requester = boss_requester.ID_Boss
 JOIN Office o ON sr.Fk_Office = o.ID_Office
 LEFT JOIN Office parent_o ON o.Fk_Parent_Office = parent_o.ID_Office
 JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
@@ -281,18 +324,12 @@ SELECT
     t.ID_Technicians,
     CONCAT(t.First_Name, ' ', t.Last_Name) AS Tecnico_Nombre,
     u.Email,
-    t.Telephone_Number,
-    t.CI,
     t.Status AS Tecnico_Status,
-    GROUP_CONCAT(DISTINCT ts.Type_Service SEPARATOR ', ') AS Servicios_Asignados,
-    lb.Block_Name AS Bloque_Almuerzo,
-    lb.Start_Time AS Almuerzo_Inicio,
-    lb.End_Time AS Almuerzo_Fin
+    GROUP_CONCAT(DISTINCT ts.Type_Service SEPARATOR ', ') AS Servicios_Asignados
 FROM Technicians t
 JOIN Users u ON t.Fk_Users = u.ID_Users
 LEFT JOIN Technicians_Service tech_svc ON t.ID_Technicians = tech_svc.Fk_Technicians
 LEFT JOIN TI_Service ts ON tech_svc.Fk_TI_Service = ts.ID_TI_Service
-LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
 WHERE t.Status = 'Activo'
 GROUP BY t.ID_Technicians;
 
@@ -329,6 +366,49 @@ ORDER BY
         WHEN 'Coordination' THEN 3
     END,
     o.Name_Office;
+
+-- Vista de horarios de técnicos
+CREATE VIEW v_horarios_tecnicos AS
+SELECT 
+    t.ID_Technicians,
+    CONCAT(t.First_Name, ' ', t.Last_Name) AS Tecnico_Nombre,
+    u.Email,
+    ts.Day_Of_Week,
+    ts.Work_Start_Time,
+    ts.Work_End_Time,
+    lb.Block_Name AS Bloque_Almuerzo,
+    lb.Start_Time AS Almuerzo_Inicio,
+    lb.End_Time AS Almuerzo_Fin,
+    t.Status AS Tecnico_Status
+FROM Technicians t
+JOIN Users u ON t.Fk_Users = u.ID_Users
+LEFT JOIN Technician_Schedules ts ON t.ID_Technicians = ts.Fk_Technician
+LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
+WHERE t.Status = 'Activo'
+ORDER BY t.First_Name, t.Last_Name, 
+    CASE ts.Day_Of_Week
+        WHEN 'Lunes' THEN 1
+        WHEN 'Martes' THEN 2
+        WHEN 'Miércoles' THEN 3
+        WHEN 'Jueves' THEN 4
+        WHEN 'Viernes' THEN 5
+        WHEN 'Sábado' THEN 6
+        WHEN 'Domingo' THEN 7
+    END;
+
+-- Vista de bloques de almuerzo disponibles
+CREATE VIEW v_bloques_almuerzo AS
+SELECT 
+    lb.ID_Lunch_Block,
+    lb.Block_Name,
+    lb.Start_Time,
+    lb.End_Time,
+    TIMESTAMPDIFF(MINUTE, lb.Start_Time, lb.End_Time) AS Duracion_Minutos,
+    COUNT(t.ID_Technicians) AS Numero_Tecnicos_Asignados
+FROM Lunch_Blocks lb
+LEFT JOIN Technicians t ON lb.ID_Lunch_Block = t.Fk_Lunch_Block
+GROUP BY lb.ID_Lunch_Block
+ORDER BY lb.Start_Time;
 
 -- ==========================================
 -- TRIGGERS

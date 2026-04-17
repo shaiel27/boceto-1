@@ -1,111 +1,77 @@
 import React, { useState } from 'react';
-import { User, Building, Briefcase, Save, ArrowLeft, Plus, Check, X } from 'lucide-react';
+import { User, Building, Save, ArrowLeft, Plus, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import './UserRegistration.css';
 
 interface FormData {
-  firstName: string;
-  lastName: string;
-  ci: string;
-  telephone: string;
   email: string;
-  direction: string;
-  division: string;
-  coordination: string;
+  password: string;
+  confirmPassword: string;
+  fk_role: string;
+  name_boss: string;
+  pronoun: string;
+  fk_office: string;
 }
 
 interface FormErrors {
-  firstName?: string;
-  lastName?: string;
-  ci?: string;
   email?: string;
-  direction?: string;
+  password?: string;
+  confirmPassword?: string;
+  fk_role?: string;
+  name_boss?: string;
+  fk_office?: string;
 }
 
-interface Direction {
-  id: number;
-  name: string;
+interface Role {
+  ID_Role: number;
+  Role: string;
+  Description: string;
 }
 
-interface Division {
-  id: number;
-  directionId: number;
-  name: string;
-}
-
-interface Coordination {
-  id: number;
-  divisionId: number;
-  name: string;
+interface Office {
+  ID_Office: number;
+  Name_Office: string;
+  Office_Type: string;
 }
 
 const UserRegistration = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState<FormData>({
-    firstName: '',
-    lastName: '',
-    ci: '',
-    telephone: '',
     email: '',
-    direction: '',
-    division: '',
-    coordination: ''
+    password: '',
+    confirmPassword: '',
+    fk_role: '4',
+    name_boss: '',
+    pronoun: 'Sr.',
+    fk_office: ''
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Datos mock de la estructura institucional
-  const directions = [
-    { id: 1, name: 'Dirección de Tecnología e Información' },
-    { id: 2, name: 'Dirección de Administración y Finanzas' }
+  // Datos mock de roles
+  const roles: Role[] = [
+    { ID_Role: 4, Role: 'Solicitante', Description: 'Usuario solicitante de servicios técnicos' }
   ];
 
-  const divisions = [
-    { id: 1, directionId: 1, name: 'División de Infraestructura de Redes' },
-    { id: 2, directionId: 1, name: 'División de Soporte Técnico' },
-    { id: 3, directionId: 1, name: 'División de Desarrollo de Software' },
-    { id: 4, directionId: 2, name: 'División de Recursos Humanos' }
+  // Datos mock de oficinas
+  const offices: Office[] = [
+    { ID_Office: 1, Name_Office: 'Dirección de Educación', Office_Type: 'Direction' },
+    { ID_Office: 2, Name_Office: 'Dirección de Vialidad', Office_Type: 'Direction' },
+    { ID_Office: 3, Name_Office: 'Dirección de Salud', Office_Type: 'Direction' },
+    { ID_Office: 4, Name_Office: 'Dirección de Obras Públicas', Office_Type: 'Direction' },
+    { ID_Office: 5, Name_Office: 'División de Docencia', Office_Type: 'Division' },
+    { ID_Office: 6, Name_Office: 'División de Administración', Office_Type: 'Division' },
+    { ID_Office: 7, Name_Office: 'División de Ingeniería', Office_Type: 'Division' },
+    { ID_Office: 8, Name_Office: 'Coordinación de Servicios Tecnológicos', Office_Type: 'Coordination' },
+    { ID_Office: 9, Name_Office: 'Coordinación de Recursos Educativos', Office_Type: 'Coordination' }
   ];
 
-  const coordinations = [
-    { id: 1, divisionId: 1, name: 'Coordinación de Redes LAN/WAN' },
-    { id: 2, divisionId: 1, name: 'Coordinación de Conectividad Internet' },
-    { id: 3, divisionId: 2, name: 'Coordinación de Mesa de Ayuda' },
-    { id: 4, divisionId: 2, name: 'Coordinación de Mantenimiento de Equipos' },
-    { id: 5, divisionId: 3, name: 'Coordinación de Desarrollo Web' },
-    { id: 6, divisionId: 3, name: 'Coordinación de Desarrollo Móvil' },
-    { id: 7, divisionId: 4, name: 'Coordinación de Nómina' },
-    { id: 8, divisionId: 4, name: 'Coordinación de Beneficios' }
-  ];
-
-  // Filtrar divisiones basadas en la dirección seleccionada
-  const filteredDivisions = formData.direction 
-    ? divisions.filter(d => d.directionId === parseInt(formData.direction))
-    : divisions;
-
-  // Filtrar coordinaciones basadas en la división seleccionada
-  const filteredCoordinations = formData.division
-    ? coordinations.filter(c => c.divisionId === parseInt(formData.division))
-    : coordinations;
+  const pronouns = ['Sr.', 'Sra.', 'Lic.', 'Ing.', 'Dr.', 'Dra.'];
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
-
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = 'El nombre es requerido';
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = 'El apellido es requerido';
-    }
-
-    if (!formData.ci.trim()) {
-      newErrors.ci = 'La cédula es requerida';
-    } else if (!/^\d{7,8}$/.test(formData.ci.trim())) {
-      newErrors.ci = 'La cédula debe tener 7 u 8 dígitos';
-    }
 
     if (!formData.email.trim()) {
       newErrors.email = 'El correo es requerido';
@@ -113,8 +79,25 @@ const UserRegistration = () => {
       newErrors.email = 'El correo no es válido';
     }
 
-    if (!formData.direction) {
-      newErrors.direction = 'Debe seleccionar una dirección';
+    if (!formData.password) {
+      newErrors.password = 'La contraseña es requerida';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+    }
+
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Debe confirmar la contraseña';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
+    }
+
+
+    if (!formData.name_boss.trim()) {
+      newErrors.name_boss = 'El nombre es requerido';
+    }
+
+    if (!formData.fk_office) {
+      newErrors.fk_office = 'Debe seleccionar una oficina';
     }
 
     setErrors(newErrors);
@@ -134,14 +117,13 @@ const UserRegistration = () => {
       setTimeout(() => {
         setShowSuccess(false);
         setFormData({
-          firstName: '',
-          lastName: '',
-          ci: '',
-          telephone: '',
           email: '',
-          direction: '',
-          division: '',
-          coordination: ''
+          password: '',
+          confirmPassword: '',
+          fk_role: '',
+          name_boss: '',
+          pronoun: 'Sr.',
+          fk_office: ''
         });
         setErrors({});
       }, 3000);
@@ -164,25 +146,6 @@ const UserRegistration = () => {
     }
   };
 
-  const handleDirectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setFormData(prev => ({
-      ...prev,
-      direction: value,
-      division: '',
-      coordination: ''
-    }));
-  };
-
-  const handleDivisionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    setFormData(prev => ({
-      ...prev,
-      division: value,
-      coordination: ''
-    }));
-  };
-
   return (
     <div className="user-registration-container">
       <div className="registration-header">
@@ -191,97 +154,39 @@ const UserRegistration = () => {
           Volver al Dashboard
         </button>
         <div className="header-title">
-          <User size={32} />
-          <h1>Registro de Solicitantes</h1>
-        </div>
-        <div className="header-subtitle">
-          Agregar nuevos usuarios solicitantes al sistema
+          <div className="header-icon-wrapper">
+            <User size={32} />
+          </div>
+          <div>
+            <h1>Registro de Solicitantes</h1>
+            <p className="header-subtitle">Registrar nuevos solicitantes de servicios técnicos</p>
+          </div>
         </div>
       </div>
 
       <div className="registration-content">
         <div className="form-card">
           <div className="form-header">
-            <div className="form-icon">
+            <div className="form-icon-wrapper">
               <Plus size={24} />
             </div>
-            <h2>Datos del Solicitante</h2>
+            <div>
+              <h2>Registro de Nuevo Solicitante</h2>
+              <p className="form-subtitle">Bienvenido al sistema. Complete la información para registrar un nuevo solicitante de servicios técnicos.</p>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-section">
-              <h3>Información Personal</h3>
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="firstName">
-                    <User size={16} />
-                    Nombre *
-                  </label>
-                  <input
-                    type="text"
-                    id="firstName"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className={errors.firstName ? 'error' : ''}
-                    placeholder="Ingrese el nombre"
-                  />
-                  {errors.firstName && <span className="error-message">{errors.firstName}</span>}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="lastName">
-                    <User size={16} />
-                    Apellido *
-                  </label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    className={errors.lastName ? 'error' : ''}
-                    placeholder="Ingrese el apellido"
-                  />
-                  {errors.lastName && <span className="error-message">{errors.lastName}</span>}
-                </div>
+              <div className="section-badge">
+                <User size={16} />
+                <h3>Información de Cuenta</h3>
               </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="ci">
-                    Cédula de Identidad *
-                  </label>
-                  <input
-                    type="text"
-                    id="ci"
-                    name="ci"
-                    value={formData.ci}
-                    onChange={handleInputChange}
-                    className={errors.ci ? 'error' : ''}
-                    placeholder="Ej: 12345678"
-                    maxLength={8}
-                  />
-                  {errors.ci && <span className="error-message">{errors.ci}</span>}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="telephone">
-                    Teléfono
-                  </label>
-                  <input
-                    type="text"
-                    id="telephone"
-                    name="telephone"
-                    value={formData.telephone}
-                    onChange={handleInputChange}
-                    placeholder="Ej: +58-414-1234567"
-                  />
-                </div>
-              </div>
-
               <div className="form-group">
                 <label htmlFor="email">
+                  <span className="label-icon">
+                    <User size={16} />
+                  </span>
                   Correo Electrónico *
                 </label>
                 <input
@@ -295,72 +200,123 @@ const UserRegistration = () => {
                 />
                 {errors.email && <span className="error-message">{errors.email}</span>}
               </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="password">
+                    Contraseña *
+                  </label>
+                  <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className={errors.password ? 'error' : ''}
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                  {errors.password && <span className="error-message">{errors.password}</span>}
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="confirmPassword">
+                    Confirmar Contraseña *
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className={errors.confirmPassword ? 'error' : ''}
+                    placeholder="Repita la contraseña"
+                  />
+                  {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
+                </div>
+              </div>
+            </div>
+
+
+            <div className="form-section">
+              <div className="section-badge personal">
+                <User size={16} />
+                <h3>Información Personal</h3>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="pronoun">
+                    <span className="label-icon">
+                      <User size={16} />
+                    </span>
+                    Tratamiento
+                  </label>
+                  <select
+                    id="pronoun"
+                    name="pronoun"
+                    value={formData.pronoun}
+                    onChange={handleInputChange}
+                  >
+                    {pronouns.map(p => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="name_boss">
+                    Nombre Completo *
+                  </label>
+                  <input
+                    type="text"
+                    id="name_boss"
+                    name="name_boss"
+                    value={formData.name_boss}
+                    onChange={handleInputChange}
+                    className={errors.name_boss ? 'error' : ''}
+                    placeholder="Ej: Carlos Rodríguez"
+                  />
+                  {errors.name_boss && <span className="error-message">{errors.name_boss}</span>}
+                </div>
+              </div>
             </div>
 
             <div className="form-section">
-              <h3>Asignación Institucional</h3>
-              <div className="form-group">
-                <label htmlFor="direction">
-                  <Building size={16} />
-                  Dirección *
-                </label>
-                <select
-                  id="direction"
-                  name="direction"
-                  value={formData.direction}
-                  onChange={handleDirectionChange}
-                  className={errors.direction ? 'error' : ''}
-                >
-                  <option value="">Seleccione una dirección</option>
-                  {directions.map(dir => (
-                    <option key={dir.id} value={dir.id}>{dir.name}</option>
-                  ))}
-                </select>
-                {errors.direction && <span className="error-message">{errors.direction}</span>}
+              <div className="section-badge institutional">
+                <Building size={16} />
+                <h3>Asignación Institucional</h3>
               </div>
-
               <div className="form-group">
-                <label htmlFor="division">
-                  <Briefcase size={16} />
-                  División
+                <label htmlFor="fk_office">
+                  <span className="label-icon">
+                    <Building size={16} />
+                  </span>
+                  Oficina de Asignación *
                 </label>
                 <select
-                  id="division"
-                  name="division"
-                  value={formData.division}
-                  onChange={handleDivisionChange}
-                  disabled={!formData.direction}
-                >
-                  <option value="">Seleccione una división</option>
-                  {filteredDivisions.map(div => (
-                    <option key={div.id} value={div.id}>{div.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="coordination">
-                  Coordinación
-                </label>
-                <select
-                  id="coordination"
-                  name="coordination"
-                  value={formData.coordination}
+                  id="fk_office"
+                  name="fk_office"
+                  value={formData.fk_office}
                   onChange={handleInputChange}
-                  disabled={!formData.division}
+                  className={errors.fk_office ? 'error' : ''}
                 >
-                  <option value="">Seleccione una coordinación</option>
-                  {filteredCoordinations.map(coord => (
-                    <option key={coord.id} value={coord.id}>{coord.name}</option>
+                  <option value="">Seleccione una oficina</option>
+                  {offices.map(office => (
+                    <option key={office.ID_Office} value={office.ID_Office}>
+                      {office.Office_Type === 'Direction' && '📍 '}
+                      {office.Office_Type === 'Division' && '📁 '}
+                      {office.Office_Type === 'Coordination' && '📍 '}
+                      {office.Name_Office} ({office.Office_Type})
+                    </option>
                   ))}
                 </select>
+                {errors.fk_office && <span className="error-message">{errors.fk_office}</span>}
               </div>
             </div>
 
             <div className="form-actions">
               <button type="submit" className="submit-button">
                 <Save size={18} />
-                Registrar Solicitante
+                <span>Registrar Usuario</span>
               </button>
             </div>
           </form>
@@ -368,10 +324,12 @@ const UserRegistration = () => {
 
         {showSuccess && (
           <div className="success-message">
-            <Check size={24} />
-            <div>
-              <h4>¡Registro Exitoso!</h4>
-              <p>El solicitante ha sido registrado correctamente.</p>
+            <div className="success-icon">
+              <Check size={24} />
+            </div>
+            <div className="success-content">
+              <h4>¡Excelente! Registro Completado</h4>
+              <p>El nuevo solicitante ha sido registrado exitosamente. Ya puede comenzar a usar el sistema.</p>
             </div>
           </div>
         )}

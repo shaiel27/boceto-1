@@ -28,6 +28,7 @@ import {
   X
 } from 'lucide-react';
 import './RequesterDashboard.css';
+import RequesterProfile from './RequesterProfile';
 
 interface Ticket {
   id: string;
@@ -140,6 +141,7 @@ const RequesterDashboard: React.FC = () => {
   const [showNewTicketForm, setShowNewTicketForm] = useState(false);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [showCommentSection, setShowCommentSection] = useState<Record<string, boolean>>({});
+  const [showProfile, setShowProfile] = useState(false);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -240,6 +242,9 @@ const RequesterDashboard: React.FC = () => {
               <button className="header-btn notification">
                 <Bell size={20} />
                 <span className="notification-badge">1</span>
+              </button>
+              <button className="header-btn profile" onClick={() => setShowProfile(true)}>
+                <User size={20} />
               </button>
               <button className="header-btn logout" onClick={() => navigate('/login')}>
                 <LogOut size={20} />
@@ -532,6 +537,26 @@ const RequesterDashboard: React.FC = () => {
           </div>
         </section>
       </main>
+
+      {/* Modal de Perfil */}
+      {showProfile && (
+        <div className="modal-overlay">
+          <div className="modal-content large">
+            <div className="modal-header">
+              <h2>Mi Perfil</h2>
+              <button className="close-btn" onClick={() => setShowProfile(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <RequesterProfile 
+                profile={requesterProfile}
+                onUpdate={(updatedProfile) => setRequesterProfile(updatedProfile)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
