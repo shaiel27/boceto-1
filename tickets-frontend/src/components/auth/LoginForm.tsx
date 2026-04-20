@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, Building } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Lock, Mail, Building, AlertCircle } from 'lucide-react';
 import Layout from '../layout/Layout';
+import { useAuth } from '../../contexts/AuthContext';
 import './LoginForm.css';
 
 interface LoginFormData {
@@ -9,12 +11,21 @@ interface LoginFormData {
 }
 
 const LoginForm: React.FC = () => {
+  const navigate = useNavigate();
+  const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
+  
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -22,18 +33,23 @@ const LoginForm: React.FC = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear error when user starts typing
+    if (error) {
+      clearError();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     
-    // Simulación de autenticación
-    setTimeout(() => {
-      console.log('Login attempt:', formData);
-      setIsLoading(false);
-      // Aquí iría la lógica real de autenticación
-    }, 2000);
+    try {
+      await login(formData.email, formData.password);
+      // Navigation will be handled by the useEffect above
+    } catch (error) {
+      // Error is handled by the auth context
+      console.error('Login error:', error);
+    }
   };
 
   return (
@@ -49,6 +65,14 @@ const LoginForm: React.FC = () => {
             <h2 className="login-subtitle">San Cristóbal</h2>
             <p className="login-description">Sistema de Gestión de Tickets</p>
           </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="error-message">
+              <AlertCircle size={20} />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Formulario */}
           <form onSubmit={handleSubmit} className="login-form">
@@ -68,6 +92,7 @@ const LoginForm: React.FC = () => {
                   onChange={handleChange}
                   className="form-input"
                   placeholder="correo@alcaldia.gob.ve"
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -87,12 +112,14 @@ const LoginForm: React.FC = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="form-input"
-                  placeholder="••••••••"
+                  placeholder="contraseña"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="password-toggle"
+                  tabIndex={-1}
                 >
                   {showPassword ? (
                     <EyeOff size={20} />

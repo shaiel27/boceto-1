@@ -1,0 +1,322 @@
+/* Human-Centered Design System - Alcaldía de San Cristóbal Institutional Colors */
+
+:root {
+  /* Institutional Colors - Based on alcaldiasancristobal.gob.ve */
+  --institutional-primary: #1e5aa8; /* Azul Institucional - Logo y Nav */
+  --institutional-primary-light: #4a8ad6;
+  --institutional-primary-dark: #0d3d73;
+  
+  --institutional-emphasis: #ff6b6b; /* Rojo Coral - Alertas y Escudo */
+  --institutional-emphasis-light: #ff9999;
+  --institutional-emphasis-dark: #cc4444;
+  
+  --institutional-accent: #2d7d46; /* Verde institucional para éxito */
+  --institutional-accent-light: #5cb888;
+  --institutional-accent-dark: #1a502b;
+  
+  /* Backgrounds - Menta/Beige muy suave */
+  --bg-institutional-primary: #f5f7f6; /* Menta/Beige muy suave */
+  --bg-institutional-secondary: #f0f2f1;
+  --bg-institutional-card: #ffffff;
+  --bg-institutional-elevated: #ffffff;
+  
+  /* Text Colors */
+  --text-institutional-primary: #1a1a2e;
+  --text-institutional-secondary: #4a4a68;
+  --text-institutional-muted: #7a7a8a;
+  
+  /* Border Colors */
+  --border-institutional: #e0e4e8;
+  --border-institutional-light: #f0f4f8;
+  
+  /* Institutional Gradients */
+  --gradient-institutional-primary: linear-gradient(135deg, #1e5aa8 0%, #2d7d46 100%);
+  --gradient-institutional-emphasis: linear-gradient(135deg, #ff6b6b 0%, #ff9999 100%);
+  --gradient-institutional-accent: linear-gradient(135deg, #2d7d46 0%, #1e5aa8 100%);
+  --gradient-institutional-subtle: linear-gradient(180deg, #f5f7f6 0%, #f0f2f1 100%);
+  
+  /* Institutional Shadows */
+  --shadow-institutional-sm: 0 1px 3px 0 rgba(30, 90, 168, 0.08);
+  --shadow-institutional-md: 0 4px 12px 0 rgba(30, 90, 168, 0.12);
+  --shadow-institutional-lg: 0 12px 28px 0 rgba(30, 90, 168, 0.15);
+  --shadow-institutional-xl: 0 20px 40px 0 rgba(30, 90, 168, 0.18);
+  
+  /* Status Colors - Institutional */
+  --status-institutional-success: #2d7d46;
+  --status-institutional-success-light: #d4f0dc;
+  --status-institutional-warning: #f5a623;
+  --status-institutional-warning-light: #fef3c7;
+  --status-institutional-error: #ff6b6b;
+  --status-institutional-error-light: #ffe0e0;
+  --status-institutional-info: #1e5aa8;
+  --status-institutional-info-light: #d4e8f9;
+  
+  /* Human-Friendly Spacing */
+  --spacing-comfortable: 1.25rem;
+  --spacing-generous: 2rem;
+  --spacing-airy: 3rem;
+  
+  /* Friendly Border Radius - rounded-xl style */
+  --radius-friendly: 12px; /* rounded-xl */
+  --radius-pill: 50px;
+  --radius-circle: 50%;
+  
+  /* Institutional Typography */
+  --font-family-institutional: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  --font-weight-friendly: 500;
+  --font-weight-institutional: 600;
+}
+
+/* Human-Friendly Animations */
+@keyframes fadeInWarm {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleInWarm {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideInWarm {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulseWarm {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+/* Human-Friendly Mixins */
+.human-card {
+  background: var(--bg-warm-card);
+  border-radius: var(--radius-friendly);
+  box-shadow: var(--shadow-warm-md);
+  border: 1px solid var(--border-warm);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.human-card:hover {
+  box-shadow: var(--shadow-warm-lg);
+  transform: translateY(-2px);
+}
+
+.human-button {
+  background: var(--gradient-warm-primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 0.875rem 2rem;
+  font-weight: var(--font-weight-warm);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-warm-sm);
+}
+
+.human-button:hover {
+  box-shadow: var(--shadow-warm-md);
+  transform: translateY(-2px);
+}
+
+.human-button:active {
+  transform: translateY(0);
+}
+
+.human-input {
+  background: var(--bg-warm-secondary);
+  border: 2px solid var(--border-warm);
+  border-radius: var(--radius-friendly);
+  padding: 1rem 1.25rem;
+  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.human-input:focus {
+  outline: none;
+  border-color: var(--institutional-primary);
+  box-shadow: 0 0 0 4px rgba(74, 144, 217, 0.1);
+}
+
+.human-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-pill);
+  font-weight: var(--font-weight-friendly);
+  font-size: 0.875rem;
+}
+
+.human-badge-primary {
+  background: var(--gradient-warm-primary);
+  color: white;
+}
+
+.human-badge-secondary {
+  background: var(--gradient-warm-secondary);
+  color: white;
+}
+
+.human-badge-accent {
+  background: var(--gradient-warm-accent);
+  color: white;
+}
+
+/* Friendly Icon Containers */
+.human-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-circle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-warm-primary);
+  color: white;
+  box-shadow: var(--shadow-warm-sm);
+}
+
+.human-icon-wrapper-secondary {
+  background: var(--gradient-warm-secondary);
+}
+
+.human-icon-wrapper-accent {
+  background: var(--gradient-warm-accent);
+}
+
+/* Warm Section Headers */
+.human-section-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-warm-light);
+}
+
+.human-section-header h2 {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-warm);
+  color: var(--text-warm-primary);
+  margin: 0;
+}
+
+/* Friendly Success Message */
+.human-success-message {
+  background: var(--status-friendly-success-light);
+  border-left: 4px solid var(--status-friendly-success);
+  border-radius: var(--radius-friendly);
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  animation: slideInWarm 0.4s ease-out;
+}
+
+.human-success-message svg {
+  color: var(--status-friendly-success);
+  flex-shrink: 0;
+}
+
+/* Friendly Error Message */
+.human-error-message {
+  background: var(--status-friendly-error-light);
+  border-left: 4px solid var(--status-friendly-error);
+  border-radius: var(--radius-friendly);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--status-friendly-error);
+  animation: fadeInWarm 0.3s ease-out;
+}
+
+/* Warm Container */
+.human-container {
+  background: var(--gradient-warm-subtle);
+  min-height: 100vh;
+  padding: var(--spacing-generous);
+}
+
+/* Friendly Avatar */
+.human-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-circle);
+  background: var(--gradient-warm-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: var(--shadow-warm-md);
+  position: relative;
+}
+
+.human-avatar::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--status-friendly-success);
+  border: 2px solid white;
+  border-radius: var(--radius-circle);
+}
+
+/* Warm Progress Indicator */
+.human-progress {
+  height: 8px;
+  background: var(--border-warm-light);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.human-progress-bar {
+  height: 100%;
+  background: var(--gradient-warm-primary);
+  border-radius: var(--radius-pill);
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Friendly Tooltip */
+.human-tooltip {
+  background: var(--text-warm-primary);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-friendly);
+  font-size: 0.875rem;
+  box-shadow: var(--shadow-warm-lg);
+  position: relative;
+}
+
+.human-tooltip::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid var(--text-warm-primary);
+}

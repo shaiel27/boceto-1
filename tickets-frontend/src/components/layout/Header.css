@@ -1,31 +1,43 @@
-/* Header institucional común */
+/* Header institucional común - Alcaldía de San Cristóbal */
 .header-container {
-  background-color: #1e78f0;
+  background: linear-gradient(135deg, #1a365d 0%, #1e3a8a 100%);
   color: white;
-  padding: 0.75rem 2rem;
+  padding: var(--spacing-lg) var(--spacing-2xl);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow-lg);
   position: sticky;
   top: 0;
   z-index: 1000;
+  border-bottom: 3px solid var(--alcaldia-emphasis);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 1rem;
+}
+
+.header-left-logo {
+  height: 60px;
+  width: auto;
+  object-fit: contain;
 }
 
 .header-logo {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3rem;
+  height: 3rem;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.1) 100%);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease;
+}
+
+.header-logo:hover {
+  transform: scale(1.05);
 }
 
 .header-title {
@@ -34,56 +46,94 @@
 }
 
 .header-main-title {
-  font-size: 1.125rem;
-  font-weight: bold;
+  font-size: 1.25rem;
+  font-weight: 700;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1.3;
+  letter-spacing: -0.025em;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
 }
 
 .header-subtitle {
-  font-size: 0.875rem;
-  opacity: 0.9;
+  font-size: 0.75rem;
+  opacity: 1;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1.3;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: var(--spacing-md);
+}
+
+.header-right-logo {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
 }
 
 .user-info {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--spacing-sm);
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 0.5rem;
-  transition: background-color 0.2s;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .user-info:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .user-avatar {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, var(--alcaldia-emphasis) 0%, var(--alcaldia-emphasis-dark) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .user-name {
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
+  letter-spacing: 0.015em;
 }
 
 .dropdown-arrow {
   width: 1rem;
   height: 1rem;
-  opacity: 0.7;
+  opacity: 0.9;
+  transition: transform 0.3s ease;
+}
+
+.user-info:hover .dropdown-arrow {
+  transform: rotate(180deg);
+}
+
+/* Theme Switch adjustments */
+.header-right .theme-switch {
+  color: white;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header-right .theme-switch:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
