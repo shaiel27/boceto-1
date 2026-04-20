@@ -34,6 +34,8 @@ import {
   Star,
   Play
 } from 'lucide-react';
+import ModernSidebar from '../layout/ModernSidebar';
+import '../layout/ModernSidebar.css';
 import './Dashboard.css';
 import './Reports.css';
 
@@ -291,65 +293,8 @@ const Reports: React.FC = () => {
 
   return (
     <div className="dashboard-container reports-enterprise">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <Building size={20} color="white" />
-        </div>
-        <div className="sidebar-title">Alcaldía del Municipio San Cristóbal</div>
-        <nav>
-          <ul className="nav-menu">
-            <li className="nav-item">
-              <button 
-                className="nav-link"
-                onClick={() => navigate('/')}
-              >
-                <BarChart3 size={18} />
-                Dashboard
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className="nav-link"
-                onClick={() => navigate('/admin')}
-              >
-                <FileText size={18} />
-                Gestión de Tickets
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className="nav-link"
-                onClick={() => navigate('/admin/technicians')}
-              >
-                <Users size={18} />
-                Personal Técnico
-              </button>
-            </li>
-            <li className="nav-item">
-              <button className="nav-link active">
-                <TrendingUp size={18} />
-                Reportes
-              </button>
-            </li>
-            <li className="nav-item">
-              <button 
-                className="nav-link"
-                onClick={() => navigate('/admin/structure')}
-              >
-                <Building size={18} />
-                Estructura Institucional
-              </button>
-            </li>
-            <li className="nav-item">
-              <button className="nav-link">
-                <Settings size={18} />
-                Usuarios
-              </button>
-            </li>
-          </ul>
-        </nav>
-      </aside>
+      {/* Modern Sidebar */}
+      <ModernSidebar />
 
       {/* Main Content */}
       <main className="main-content-area">

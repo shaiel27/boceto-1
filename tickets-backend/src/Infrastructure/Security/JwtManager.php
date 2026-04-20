@@ -7,7 +7,7 @@ use RuntimeException;
 class JwtManager
 {
     private string $secret;
-    private int $algorithm;
+    private string $algorithm;
 
     public function __construct(string $secret = null)
     {

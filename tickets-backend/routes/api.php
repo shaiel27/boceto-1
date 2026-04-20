@@ -14,6 +14,7 @@ use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\ReportController;
 use App\Application\Auth\AuthenticateUserHandler;
+use App\Application\Auth\RegisterUserHandler;
 use App\Application\Ticket\CreateTicketHandler;
 use App\Application\Ticket\AssignTechnicianHandler;
 use App\Application\Ticket\UpdateStatusHandler;
@@ -46,6 +47,7 @@ return function (Router $router) {
     
     // Handlers
     $authHandler = new AuthenticateUserHandler($userRepository, $passwordHasher, $jwtManager);
+    $registerHandler = new RegisterUserHandler($userRepository, $passwordHasher);
     $createTicketHandler = new CreateTicketHandler($ticketRepository);
     $assignHandler = new AssignTechnicianHandler($ticketRepository, $technicianRepository);
     $updateHandler = new UpdateStatusHandler($ticketRepository);
@@ -54,7 +56,7 @@ return function (Router $router) {
     $syncHandler = new SyncAvailabilityHandler($technicianRepository);
     
     // Controllers
-    $authController = new AuthController($authHandler, $jwtManager);
+    $authController = new AuthController($authHandler, $registerHandler, $jwtManager);
     $ticketController = new TicketController($createTicketHandler, $assignHandler, $updateHandler, $listHandler);
     $technicianController = new TechnicianController($findHandler, $syncHandler);
     $officeController = new OfficeController($officeRepository);
@@ -62,7 +64,7 @@ return function (Router $router) {
     $reportController = new ReportController();
     
     // Middleware
-    $corsMiddleware = new CorsMiddleware();
+    $corsMiddleware = new CorsMiddleware(['http://localhost:3000', 'http://127.0.0.1:3000']);
     $rateLimitMiddleware = new RateLimitMiddleware(60, 60);
     $authMiddleware = new AuthMiddleware($jwtManager);
     $adminMiddleware = new RoleMiddleware([1, 'Admin']);
@@ -77,6 +79,7 @@ return function (Router $router) {
     ) {
         // Public routes
         $router->post('/api/auth/login', [$authController, 'login']);
+        $router->post('/api/auth/register', [$authController, 'register']);
         
         // Authenticated routes
         $router->group([$authMiddleware], function (Router $router) use (

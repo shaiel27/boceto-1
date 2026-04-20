@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Database;
+use PDO;
 use RuntimeException;
 
 class ReportController

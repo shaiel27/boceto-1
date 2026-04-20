@@ -5,17 +5,23 @@ namespace App\Http\Controllers;
 use App\Core\Request;
 use App\Core\Response;
 use App\Application\Auth\AuthenticateUserHandler;
+use App\Application\Auth\RegisterUserHandler;
 use App\Infrastructure\Security\JwtManager;
 use RuntimeException;
 
 class AuthController
 {
     private AuthenticateUserHandler $authHandler;
+    private RegisterUserHandler $registerHandler;
     private JwtManager $jwtManager;
 
-    public function __construct(AuthenticateUserHandler $authHandler, JwtManager $jwtManager)
-    {
+    public function __construct(
+        AuthenticateUserHandler $authHandler, 
+        RegisterUserHandler $registerHandler,
+        JwtManager $jwtManager
+    ) {
         $this->authHandler = $authHandler;
+        $this->registerHandler = $registerHandler;
         $this->jwtManager = $jwtManager;
     }
 
@@ -51,6 +57,31 @@ class AuthController
         }
 
         return Response::success($user, 'Usuario autenticado');
+    }
+
+    public function register(Request $request): Response
+    {
+        $errors = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|min:6',
+            'role_id' => 'required|integer|in:1,2,3',
+        ]);
+
+        if (!empty($errors)) {
+            return Response::validationError($errors);
+        }
+
+        try {
+            $result = $this->registerHandler->handle(
+                $request->get('email'),
+                $request->get('password'),
+                (int) $request->get('role_id')
+            );
+
+            return Response::success($result, 'Usuario registrado exitosamente');
+        } catch (RuntimeException $e) {
+            return Response::error($e->getMessage(), 400);
+        }
     }
 
     public function logout(Request $request): Response

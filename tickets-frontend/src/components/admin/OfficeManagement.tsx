@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Building,
   Building2,
@@ -42,6 +42,7 @@ interface Boss {
 
 const OfficeManagement: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [offices, setOffices] = useState<Office[]>([]);
   const [bosses, setBosses] = useState<Boss[]>([]);
@@ -63,8 +64,12 @@ const OfficeManagement: React.FC = () => {
   });
 
   useEffect(() => {
+    const typeParam = searchParams.get('type');
+    if (typeParam && ['Direction', 'Division', 'Coordination'].includes(typeParam)) {
+      setTypeFilter(typeParam as 'Direction' | 'Division' | 'Coordination');
+    }
     loadMockData();
-  }, []);
+  }, [searchParams]);
 
   const loadMockData = () => {
     setLoading(true);
@@ -211,6 +216,32 @@ const OfficeManagement: React.FC = () => {
     });
 
     return rootOffices;
+  };
+
+  const getPageTitle = () => {
+    switch (typeFilter) {
+      case 'Direction':
+        return 'Direcciones Municipales';
+      case 'Division':
+        return 'Divisiones Institucionales';
+      case 'Coordination':
+        return 'Coordinaciones Operativas';
+      default:
+        return 'Estructura Institucional';
+    }
+  };
+
+  const getPageDescription = () => {
+    switch (typeFilter) {
+      case 'Direction':
+        return 'Administra las direcciones principales del municipio';
+      case 'Division':
+        return 'Gestiona las divisiones dependientes de las direcciones';
+      case 'Coordination':
+        return 'Coordina las unidades operativas especializadas';
+      default:
+        return 'Administra toda la estructura organizacional: direcciones, divisiones y coordinaciones';
+    }
   };
 
   const getOfficeIcon = (type: string) => {
@@ -531,9 +562,9 @@ const OfficeManagement: React.FC = () => {
             <div className="title-section">
               <h1 className="page-title">
                 <Building size={28} />
-                Gestión de Oficinas
+                {getPageTitle()}
               </h1>
-              <p className="page-description">Administra direcciones, divisiones y coordinaciones</p>
+              <p className="page-description">{getPageDescription()}</p>
             </div>
             
             <div className="header-stats">
