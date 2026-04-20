@@ -1,17 +1,15 @@
 /* Dashboard mejorado con estilos modernos */
 .dashboard-container {
   display: flex;
-  grid-template-columns: 280px 1fr;
-  gap: 2.5rem;
   height: 100%;
   background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
   min-height: 100vh;
-  padding: var(--spacing-xl);
+  padding: 0;
 }
 
 /* Enhanced Sidebar */
 .sidebar {
-  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-hover) 100%);
+  background: linear-gradient(135deg, #1a365d 0%, #1e3a8a 100%);
   border-radius: 20px;
   padding: 2.5rem;
   color: white;
@@ -31,7 +29,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(90deg, var(--accent-blue) 0%, var(--accent-blue-hover) 50%, var(--info-color) 100%);
+  background: linear-gradient(90deg, #1a365d 0%, #1e3a8a 50%, #2563eb 100%);
 }
 
 .sidebar::after {
@@ -140,7 +138,9 @@
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
-  padding: 1rem;
+  padding: 2rem;
+  flex: 1;
+  overflow-y: auto;
 }
 
 /* Enhanced Stats Cards con identidad municipal */

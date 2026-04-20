@@ -1,73 +1,97 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff, Lock, Mail, Building, Phone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Lock, Mail, Building, AlertCircle, User } from 'lucide-react';
+import Layout from '../layout/Layout';
+import ApiService, { RegisterResponse } from '../../services/api';
 import './RegisterForm.css';
 
 interface RegisterFormData {
-  firstName: string;
-  lastName: string;
   email: string;
-  phone: string;
-  office: string;
   password: string;
   confirmPassword: string;
+  roleId: number;
 }
 
 const RegisterForm: React.FC = () => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState<RegisterFormData>({
-    firstName: '',
-    lastName: '',
     email: '',
-    phone: '',
-    office: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    roleId: 3 // Default to Jefe role
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const offices = [
-    'Oficina de Recursos Humanos',
-    'Departamento de Tecnología',
-    'Secretaría General',
-    'Tesorería Municipal',
-    'Oficina de Obras Públicas',
-    'Departamento de Salud',
-    'Oficina de Educación',
-    'Secretaría de Transporte',
-    'Departamento de Ambiente',
-    'Oficina de Cultura'
+  const roles = [
+    { id: 1, name: 'Administrador', description: 'Acceso completo al sistema' },
+    { id: 2, name: 'Técnico', description: 'Gestión de tickets asignados' },
+    { id: 3, name: 'Jefe', description: 'Creación y seguimiento de tickets' }
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: name === 'roleId' ? parseInt(value) : value
     }));
+    
+    // Clear error when user starts typing
+    if (error) {
+      setError(null);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (formData.password !== formData.confirmPassword) {
-      alert('Las contraseñas no coinciden');
+      setError('Las contraseñas no coinciden');
+      return;
+    }
+    
+    if (formData.password.length < 6) {
+      setError('La contraseña debe tener al menos 6 caracteres');
       return;
     }
     
     setIsLoading(true);
+    setError(null);
     
-    // Simulación de registro
-    setTimeout(() => {
-      console.log('Register attempt:', formData);
+    try {
+      const response = await ApiService.register(
+        formData.email,
+        formData.password,
+        formData.roleId
+      );
+      
+      if (response.success) {
+        // Registration successful, redirect to login
+        navigate('/login', { 
+          state: { 
+            message: 'Usuario registrado exitosamente. Por favor inicia sesión.' 
+          } 
+        });
+      } else {
+        const errorMessage = response.errors 
+          ? Object.values(response.errors).flat().join(', ')
+          : response.message || 'Error al registrar usuario';
+        setError(errorMessage);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error de conexión';
+      setError(errorMessage);
+    } finally {
       setIsLoading(false);
-      // Aquí iría la lógica real de registro
-    }, 2000);
+    }
   };
 
   return (
-    <div className="register-container">
-      <div className="register-card">
+    <Layout showHeader={true} isLogin={true}>
+      <div className="register-container">
+        <div className="register-card">
         {/* Logo y Header */}
         <div className="register-header">
           <div className="register-logo">
@@ -78,49 +102,17 @@ const RegisterForm: React.FC = () => {
           <p className="register-description">Sistema de Gestión de Tickets</p>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="error-message">
+            <AlertCircle size={20} />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="register-form">
           <div className="form-grid">
-            {/* Campo Nombre */}
-            <div className="form-group">
-              <label htmlFor="firstName" className="form-label">
-                Nombre
-              </label>
-              <div className="input-wrapper">
-                <Mail className="input-icon" size={20} />
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  required
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="Juan"
-                />
-              </div>
-            </div>
-
-            {/* Campo Apellido */}
-            <div className="form-group">
-              <label htmlFor="lastName" className="form-label">
-                Apellido
-              </label>
-              <div className="input-wrapper">
-                <Mail className="input-icon" size={20} />
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  required
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="Pérez"
-                />
-              </div>
-            </div>
-
             {/* Campo Email */}
             <div className="form-group">
               <label htmlFor="email" className="form-label">
@@ -137,49 +129,29 @@ const RegisterForm: React.FC = () => {
                   onChange={handleChange}
                   className="form-input"
                   placeholder="correo@alcaldia.gob.ve"
+                  autoComplete="email"
                 />
               </div>
             </div>
 
-            {/* Campo Teléfono */}
+            {/* Campo Rol */}
             <div className="form-group">
-              <label htmlFor="phone" className="form-label">
-                Teléfono
+              <label htmlFor="roleId" className="form-label">
+                Rol
               </label>
               <div className="input-wrapper">
-                <Phone className="input-icon" size={20} />
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  required
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="form-input"
-                  placeholder="0251-1234567"
-                />
-              </div>
-            </div>
-
-            {/* Campo Oficina */}
-            <div className="form-group">
-              <label htmlFor="office" className="form-label">
-                Oficina
-              </label>
-              <div className="input-wrapper">
-                <Building className="input-icon" size={20} />
+                <User className="input-icon" size={20} />
                 <select
-                  id="office"
-                  name="office"
+                  id="roleId"
+                  name="roleId"
                   required
-                  value={formData.office}
+                  value={formData.roleId}
                   onChange={handleChange}
                   className="form-select"
                 >
-                  <option value="">Selecciona tu oficina</option>
-                  {offices.map((office) => (
-                    <option key={office} value={office}>
-                      {office}
+                  {roles.map((role) => (
+                    <option key={role.id} value={role.id}>
+                      {role.name} - {role.description}
                     </option>
                   ))}
                 </select>
@@ -273,11 +245,12 @@ const RegisterForm: React.FC = () => {
         <div className="register-footer">
           <p className="login-link">
             ¿Ya tienes cuenta?{' '}
-            <a href="#">Inicia sesión aquí</a>
+            <a href="/login">Inicia sesión aquí</a>
           </p>
         </div>
       </div>
-    </div>
+      </div>
+    </Layout>
   );
 };
 
