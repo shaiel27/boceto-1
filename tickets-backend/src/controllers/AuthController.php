@@ -46,11 +46,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 
             case 'register':
                 if (isset($data->username) && isset($data->email) && isset($data->password)) {
-                    $user->username = $data->username;
-                    $user->email = $data->email;
-                    $user->password = password_hash($data->password, PASSWORD_DEFAULT);
-                    $user->full_name = $data->full_name ?? $data->username;
-                    $user->role = $data->role ?? 'user';
+                    $user->Username = $data->username;
+                    $user->Email = $data->email;
+                    $user->Password = password_hash($data->password, PASSWORD_DEFAULT);
+                    $user->Full_Name = $data->full_name ?? $data->username;
+                    $user->Fk_Role = $data->role_id ?? 3; // Default to Jefe role
                     
                     if ($user->create()) {
                         http_response_code(201);

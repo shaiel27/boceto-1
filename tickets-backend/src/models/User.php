@@ -3,13 +3,12 @@ class User {
     private $conn;
     private $table_name = "Users";
 
-    public $id;
-    public $username;
-    public $email;
-    public $password;
-    public $full_name;
-    public $role;
-    public $is_active;
+    public $ID_Users;
+    public $Fk_Role;
+    public $Email;
+    public $Password;
+    public $Username;
+    public $Full_Name;
     public $created_at;
 
     public function __construct($db) {
@@ -17,8 +16,10 @@ class User {
     }
 
     public function login($email, $password) {
-        $query = "SELECT id, username, email, full_name, role, is_active FROM " . $this->table_name . " 
-                  WHERE email = :email AND is_active = 1 LIMIT 1";
+        $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, r.Role, r.ID_Role 
+                  FROM " . $this->table_name . " u
+                  JOIN Role r ON u.Fk_Role = r.ID_Role
+                  WHERE u.Email = :email LIMIT 1";
         
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":email", $email);
@@ -43,16 +44,16 @@ class User {
 
     public function create() {
         $query = "INSERT INTO " . $this->table_name . " 
-                  SET username = :username, email = :email, password = :password, 
-                      full_name = :full_name, role = :role, is_active = 1, created_at = NOW()";
+                  SET Fk_Role = :Fk_Role, Email = :Email, Password = :Password, 
+                      Username = :Username, Full_Name = :Full_Name, created_at = NOW()";
         
         $stmt = $this->conn->prepare($query);
         
-        $stmt->bindParam(":username", $this->username);
-        $stmt->bindParam(":email", $this->email);
-        $stmt->bindParam(":password", $this->password);
-        $stmt->bindParam(":full_name", $this->full_name);
-        $stmt->bindParam(":role", $this->role);
+        $stmt->bindParam(":Fk_Role", $this->Fk_Role);
+        $stmt->bindParam(":Email", $this->Email);
+        $stmt->bindParam(":Password", $this->Password);
+        $stmt->bindParam(":Username", $this->Username);
+        $stmt->bindParam(":Full_Name", $this->Full_Name);
         
         try {
             if ($stmt->execute()) {
@@ -66,8 +67,23 @@ class User {
     }
 
     public function getAll() {
-        $query = "SELECT id, username, email, full_name, role, is_active, created_at 
-                  FROM " . $this->table_name . " ORDER BY created_at DESC";
+        $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, r.Role, u.created_at 
+                  FROM " . $this->table_name . " u
+                  JOIN Role r ON u.Fk_Role = r.ID_Role
+                  ORDER BY u.created_at DESC";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function getTechnicians() {
+        $query = "SELECT u.ID_Users, u.Full_Name, u.Email, t.ID_Technicians
+                  FROM " . $this->table_name . " u
+                  JOIN Technicians t ON u.ID_Users = t.Fk_Users
+                  JOIN Role r ON u.Fk_Role = r.ID_Role
+                  WHERE r.Role = 'Tecnico' AND t.Status = 'Activo'";
         
         $stmt = $this->conn->prepare($query);
         $stmt->execute();

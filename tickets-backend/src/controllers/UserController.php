@@ -13,25 +13,34 @@ $db = $database->getConnection();
 $user = new User($db);
 
 $method = $_SERVER['REQUEST_METHOD'];
+$action = $_GET['action'] ?? '';
 
 switch ($method) {
     case 'GET':
-        $users = $user->getAll();
-        echo json_encode([
-            'success' => true,
-            'data' => $users
-        ]);
+        if ($action === 'technicians') {
+            $technicians = $user->getTechnicians();
+            echo json_encode([
+                'success' => true,
+                'data' => $technicians
+            ]);
+        } else {
+            $users = $user->getAll();
+            echo json_encode([
+                'success' => true,
+                'data' => $users
+            ]);
+        }
         break;
         
     case 'POST':
         $data = json_decode(file_get_contents("php://input"));
         
-        if (isset($data->username) && isset($data->email) && isset($data->password)) {
-            $user->username = $data->username;
-            $user->email = $data->email;
-            $user->password = password_hash($data->password, PASSWORD_DEFAULT);
-            $user->full_name = $data->full_name ?? $data->username;
-            $user->role = $data->role ?? 'user';
+        if (isset($data->Username) && isset($data->Email) && isset($data->Password)) {
+            $user->Username = $data->Username;
+            $user->Email = $data->Email;
+            $user->Password = password_hash($data->Password, PASSWORD_DEFAULT);
+            $user->Full_Name = $data->Full_Name ?? $data->Username;
+            $user->Fk_Role = $data->Fk_Role ?? 3;
             
             if ($user->create()) {
                 http_response_code(201);

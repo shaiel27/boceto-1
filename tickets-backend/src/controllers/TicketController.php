@@ -57,20 +57,24 @@ switch ($method) {
     case 'POST':
         $data = json_decode(file_get_contents("php://input"));
         
-        if (isset($data->user_id) && isset($data->office_id) && isset($data->service_type_id)) {
-            $ticket->user_id = $data->user_id;
-            $ticket->office_id = $data->office_id;
-            $ticket->service_type_id = $data->service_type_id;
-            $ticket->subject = $data->subject ?? '';
-            $ticket->description = $data->description ?? '';
-            $ticket->priority = $data->priority ?? 'Media';
+        if (isset($data->Fk_Office) && isset($data->Fk_User_Requester) && isset($data->Fk_TI_Service)) {
+            $ticket->Fk_Office = $data->Fk_Office;
+            $ticket->Fk_User_Requester = $data->Fk_User_Requester;
+            $ticket->Fk_TI_Service = $data->Fk_TI_Service;
+            $ticket->Fk_Problem_Catalog = $data->Fk_Problem_Catalog ?? null;
+            $ticket->Fk_Boss_Requester = $data->Fk_Boss_Requester ?? null;
+            $ticket->Fk_Software_System = $data->Fk_Software_System ?? null;
+            $ticket->Subject = $data->Subject ?? '';
+            $ticket->Property_Number = $data->Property_Number ?? '';
+            $ticket->Description = $data->Description ?? '';
+            $ticket->System_Priority = $data->System_Priority ?? 'Media';
             
             if ($ticket->create()) {
                 http_response_code(201);
                 echo json_encode([
                     'success' => true,
                     'message' => 'Ticket creado exitosamente',
-                    'ticket_id' => $ticket->id
+                    'ticket_id' => $ticket->ID_Service_Request
                 ]);
             } else {
                 http_response_code(500);
@@ -91,12 +95,11 @@ switch ($method) {
     case 'PUT':
         $data = json_decode(file_get_contents("php://input"));
         
-        if (isset($_GET['id']) && isset($data->status)) {
+        if (isset($_GET['id']) && isset($data->Status)) {
             $ticket_id = $_GET['id'];
-            $status = $data->status;
-            $assigned_to = $data->assigned_to ?? null;
+            $status = $data->Status;
             
-            if ($ticket->updateStatus($ticket_id, $status, $assigned_to)) {
+            if ($ticket->updateStatus($ticket_id, $status)) {
                 echo json_encode([
                     'success' => true,
                     'message' => 'Ticket actualizado exitosamente'
