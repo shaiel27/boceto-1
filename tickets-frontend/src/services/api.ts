@@ -1,5 +1,5 @@
 // API Configuration - Real backend
-const API_BASE_URL = 'http://localhost/tickets-backend/public';
+const API_BASE_URL = 'http://localhost:8012/tickets-backend/public';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -124,6 +124,8 @@ export class ApiService {
   static async getTickets(params?: {
     page?: number;
     per_page?: number;
+    limit?: number;
+    offset?: number;
     status?: string;
     office?: number;
     priority?: string;
