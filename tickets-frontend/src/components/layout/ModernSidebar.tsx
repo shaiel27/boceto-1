@@ -35,7 +35,7 @@ const ModernSidebar: React.FC = () => {
       id: 'dashboard',
       label: 'Dashboard',
       icon: <BarChart3 size={20} />,
-      path: '/admin'
+      path: '/'
     },
     {
       id: 'tickets',
@@ -110,25 +110,15 @@ const ModernSidebar: React.FC = () => {
   return (
     <aside className={`modern-sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       {/* Sidebar Header */}
-      <div className="sidebar-header">
-        <div className="logo-section">
-          <div className="logo-container">
-            <Building size={24} color="white" />
-          </div>
-          {!isCollapsed && (
-            <div className="logo-text">
-              <h3>Alcaldía San Cristóbal</h3>
-              <span>Sistema Municipal</span>
-            </div>
-          )}
+      
+        <div className="sidebar-header">
+          <button 
+            className="toggle-btn"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+          >
+            {isCollapsed ? <Menu size={20} /> : <X size={20} />}
+          </button>
         </div>
-        <button 
-          className="toggle-btn"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-        >
-          {isCollapsed ? <Menu size={20} /> : <X size={20} />}
-        </button>
-      </div>
 
       {/* Navigation Menu */}
       <nav className="sidebar-nav">

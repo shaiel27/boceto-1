@@ -223,38 +223,26 @@ const RequesterDashboard: React.FC = () => {
 
   return (
     <div className="requester-dashboard">
-      {/* Header */}
-      <header className="req-header">
-        <div className="header-content">
-          <div className="header-left">
-            <div className="req-avatar">
-              <User size={32} />
-            </div>
-            <div className="req-info">
-              <h1 className="req-name">{requesterProfile.name}</h1>
-              <p className="req-role">Funcionario Municipal</p>
-              <p className="req-dept">{requesterProfile.Direction_Name} - {requesterProfile.Coordination_Name}</p>
-            </div>
+      <main className="req-main">
+        {/* Profile Actions */}
+        <div className="profile-actions-bar">
+          <div className="profile-info-display">
+            <User size={20} />
+            <span>{requesterProfile.name}</span>
+            <span className="dept-badge">{requesterProfile.Direction_Name}</span>
           </div>
-          
-          <div className="header-right">
-            <div className="header-actions">
-              <button className="header-btn notification">
-                <Bell size={20} />
-                <span className="notification-badge">1</span>
-              </button>
-              <button className="header-btn profile" onClick={() => setShowProfile(true)}>
-                <User size={20} />
-              </button>
-              <button className="header-btn logout" onClick={() => navigate('/login')}>
-                <LogOut size={20} />
-              </button>
-            </div>
+          <div className="action-buttons">
+            <button className="action-btn profile" onClick={() => setShowProfile(true)}>
+              <User size={18} />
+              Mi Perfil
+            </button>
+            <button className="action-btn logout" onClick={() => navigate('/login')}>
+              <LogOut size={18} />
+              Cerrar Sesión
+            </button>
           </div>
         </div>
-      </header>
 
-      <main className="req-main">
         {/* Profile Information Card - Minimalist */}
         <section className="profile-info-section">
           <div className="profile-card-minimal">

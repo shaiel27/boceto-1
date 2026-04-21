@@ -73,6 +73,74 @@
   font-family: var(--font-institutional);
 }
 
+/* Profile Actions Bar */
+.profile-actions-bar {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin-bottom: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.profile-info-display {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.profile-info-display span {
+  font-weight: 500;
+  color: var(--alcaldia-text-primary);
+}
+
+.dept-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--alcaldia-primary-light);
+  color: white;
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.action-btn.profile {
+  background: var(--alcaldia-primary);
+  color: white;
+}
+
+.action-btn.profile:hover {
+  background: var(--alcaldia-primary-dark);
+}
+
+.action-btn.logout {
+  background: var(--alcaldia-background-alt);
+  color: var(--alcaldia-text-primary);
+}
+
+.action-btn.logout:hover {
+  background: var(--alcaldia-border);
+}
+
 /* Header */
 .req-header {
   background: linear-gradient(135deg, var(--alcaldia-primary) 0%, var(--alcaldia-primary-dark) 100%);

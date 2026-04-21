@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { User, Building, Save, ArrowLeft, Plus, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import ModernSidebar from '../layout/ModernSidebar';
+import '../layout/ModernSidebar.css';
 import './UserRegistration.css';
 
 interface FormData {
@@ -148,22 +150,7 @@ const UserRegistration = () => {
 
   return (
     <div className="user-registration-container">
-      <div className="registration-header">
-        <button className="back-button" onClick={() => navigate('/admin/dashboard')}>
-          <ArrowLeft size={20} />
-          Volver al Dashboard
-        </button>
-        <div className="header-title">
-          <div className="header-icon-wrapper">
-            <User size={32} />
-          </div>
-          <div>
-            <h1>Registro de Solicitantes</h1>
-            <p className="header-subtitle">Registrar nuevos solicitantes de servicios técnicos</p>
-          </div>
-        </div>
-      </div>
-
+      <ModernSidebar />
       <div className="registration-content">
         <div className="form-card">
           <div className="form-header">
@@ -320,7 +307,6 @@ const UserRegistration = () => {
               </button>
             </div>
           </form>
-        </div>
 
         {showSuccess && (
           <div className="success-message">
@@ -333,6 +319,7 @@ const UserRegistration = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

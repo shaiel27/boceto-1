@@ -147,38 +147,28 @@ const TechnicianDashboard: React.FC = () => {
 
   return (
     <div className="technician-dashboard">
-      {/* Header */}
-      <header className="tech-header">
-        <div className="header-content">
-          <div className="header-left">
-            <div className="tech-avatar">
-              <User size={32} />
-              <div className={`status-indicator ${technicianProfile.status}`}></div>
-            </div>
-            <div className="tech-info">
-              <h1 className="tech-name">{technicianProfile.name}</h1>
-              <p className="tech-role">Técnico de Soporte</p>
-            </div>
+      <main className="tech-main">
+        {/* Profile Actions */}
+        <div className="profile-actions-bar">
+          <div className="profile-info-display">
+            <User size={20} />
+            <span>{technicianProfile.name}</span>
+            <span className={`status-badge ${technicianProfile.status}`}>
+              {technicianProfile.status === 'available' ? 'Disponible' : technicianProfile.status === 'busy' ? 'Ocupado' : 'Almuerzo'}
+            </span>
           </div>
-          
-          <div className="header-right">
-            <div className="header-actions">
-              <button className="header-btn notification">
-                <Bell size={20} />
-                <span className="notification-badge">2</span>
-              </button>
-              <button className="header-btn profile" onClick={() => setShowProfile(true)}>
-                <User size={20} />
-              </button>
-              <button className="header-btn logout" onClick={() => navigate('/login')}>
-                <LogOut size={20} />
-              </button>
-            </div>
+          <div className="action-buttons">
+            <button className="action-btn profile" onClick={() => setShowProfile(true)}>
+              <User size={18} />
+              Mi Perfil
+            </button>
+            <button className="action-btn logout" onClick={() => navigate('/login')}>
+              <LogOut size={18} />
+              Cerrar Sesión
+            </button>
           </div>
         </div>
-      </header>
 
-      <main className="tech-main">
         {/* Control de Tiempo y Jornada */}
         <div className="time-control-section">
           <div className="time-card lunch">

@@ -204,17 +204,29 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent-blue-light), rgba(59, 130, 246, 0.1));
-  color: var(--accent-blue);
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af !important;
   transition: all 0.3s ease;
   font-size: 28px;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  border: 2px solid #3b82f6;
+}
+
+.stat-icon svg {
+  color: #1e40af !important;
+  stroke: #1e40af !important;
 }
 
 .stat-card:hover .stat-icon {
-  background: var(--accent-blue);
-  color: white;
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+  color: white !important;
+  transform: scale(1.1);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+}
+
+.stat-card:hover .stat-icon svg {
+  color: white !important;
+  stroke: white !important;
 }
 
 .stat-title {

@@ -229,7 +229,7 @@ const DirectionsManagement: React.FC = () => {
           </div>
           
           <div className="header-actions">
-            <button className="action-btn secondary" onClick={() => navigate('/admin/dashboard')}>
+            <button className="action-btn secondary" onClick={() => navigate('/')}>
               <ArrowLeft size={18} />
               Volver al Panel
             </button>

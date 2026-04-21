@@ -154,10 +154,15 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
   return (
     <div className="requester-profile">
       <div className="profile-header">
-        <h2 className="profile-title">
-          <User size={24} />
-          Mi Perfil
-        </h2>
+        <div className="profile-avatar-section">
+          <div className="avatar-circle">
+            <User size={32} />
+          </div>
+          <div className="profile-identity">
+            <h2 className="profile-title">{profile.name}</h2>
+            <p className="profile-subtitle">{profile.position}</p>
+          </div>
+        </div>
         <button 
           className="edit-profile-btn"
           onClick={() => setShowEditModal(true)}
@@ -169,11 +174,13 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
 
       <div className="profile-content">
         {/* Información Personal */}
-        <div className="profile-section">
-          <h3 className="section-title">
-            <Shield size={18} />
-            Información Personal
-          </h3>
+        <div className="profile-card">
+          <div className="card-header">
+            <div className="card-icon personal">
+              <Shield size={20} />
+            </div>
+            <h3 className="card-title">Información Personal</h3>
+          </div>
           <div className="info-grid">
             <div className="info-item">
               <label className="info-label">
@@ -207,11 +214,13 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
         </div>
 
         {/* Información Laboral */}
-        <div className="profile-section">
-          <h3 className="section-title">
-            <Building size={18} />
-            Información Laboral
-          </h3>
+        <div className="profile-card">
+          <div className="card-header">
+            <div className="card-icon work">
+              <Building size={20} />
+            </div>
+            <h3 className="card-title">Información Laboral</h3>
+          </div>
           <div className="info-grid">
             <div className="info-item">
               <label className="info-label">
@@ -279,11 +288,13 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
         </div>
 
         {/* Seguridad */}
-        <div className="profile-section security-section">
-          <h3 className="section-title">
-            <Lock size={18} />
-            Seguridad
-          </h3>
+        <div className="profile-card security-card">
+          <div className="card-header">
+            <div className="card-icon security">
+              <Lock size={20} />
+            </div>
+            <h3 className="card-title">Seguridad</h3>
+          </div>
           <button 
             className="change-password-btn"
             onClick={() => setShowPasswordModal(true)}

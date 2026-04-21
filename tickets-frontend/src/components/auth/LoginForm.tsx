@@ -53,17 +53,44 @@ const LoginForm: React.FC = () => {
   };
 
   return (
-    <Layout showHeader={true} isLogin={true}>
-      <div className="login-container">
+    <div className="login-page">
+      {/* Left Side - Branding */}
+      <div className="login-branding">
+        <div className="branding-content">
+          <div className="branding-logo">
+            <Building size={48} color="white" />
+          </div>
+          <h1 className="branding-title">Alcaldía del Municipio</h1>
+          <h2 className="branding-subtitle">San Cristóbal</h2>
+          <p className="branding-description">Sistema de Gestión de Tickets</p>
+          <div className="branding-features">
+            <div className="feature-item">
+              <div className="feature-icon">📋</div>
+              <span>Gestión Eficiente</span>
+            </div>
+            <div className="feature-item">
+              <div className="feature-icon">⚡</div>
+              <span>Respuesta Rápida</span>
+            </div>
+            <div className="feature-item">
+              <div className="feature-icon">🔒</div>
+              <span>Seguridad Garantizada</span>
+            </div>
+          </div>
+        </div>
+        <div className="branding-overlay"></div>
+      </div>
+
+      {/* Right Side - Login Form */}
+      <div className="login-form-container">
         <div className="login-card">
-          {/* Logo y Header */}
+          {/* Logo and Header */}
           <div className="login-header">
             <div className="login-logo">
               <Building size={32} color="white" />
             </div>
-            <h1 className="login-title">Alcaldía del Municipio</h1>
-            <h2 className="login-subtitle">San Cristóbal</h2>
-            <p className="login-description">Sistema de Gestión de Tickets</p>
+            <h1 className="login-title">Bienvenido de nuevo</h1>
+            <p className="login-subtitle">Ingresa tus credenciales para acceder</p>
           </div>
 
           {/* Error Display */}
@@ -74,9 +101,9 @@ const LoginForm: React.FC = () => {
             </div>
           )}
 
-          {/* Formulario */}
+          {/* Form */}
           <form onSubmit={handleSubmit} className="login-form">
-            {/* Campo Email */}
+            {/* Email Field */}
             <div className="form-group">
               <label htmlFor="email" className="form-label">
                 Correo Electrónico
@@ -97,7 +124,7 @@ const LoginForm: React.FC = () => {
               </div>
             </div>
 
-            {/* Campo Password */}
+            {/* Password Field */}
             <div className="form-group">
               <label htmlFor="password" className="form-label">
                 Contraseña
@@ -112,7 +139,7 @@ const LoginForm: React.FC = () => {
                   value={formData.password}
                   onChange={handleChange}
                   className="form-input"
-                  placeholder="contraseña"
+                  placeholder="••••••••"
                   autoComplete="current-password"
                 />
                 <button
@@ -130,7 +157,7 @@ const LoginForm: React.FC = () => {
               </div>
             </div>
 
-            {/* Opciones adicionales */}
+            {/* Options */}
             <div className="form-options">
               <div className="checkbox-wrapper">
                 <input
@@ -148,14 +175,14 @@ const LoginForm: React.FC = () => {
               </a>
             </div>
 
-            {/* Botón de envío */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={isLoading}
               className="submit-button"
             >
               {isLoading ? (
-                <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="button-content">
                   <svg className="loading-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -163,7 +190,7 @@ const LoginForm: React.FC = () => {
                   Iniciando sesión...
                 </span>
               ) : (
-                'Iniciar Sesión'
+                <span className="button-content">Iniciar Sesión</span>
               )}
             </button>
           </form>
@@ -176,8 +203,13 @@ const LoginForm: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* Footer Info */}
+        <div className="login-page-footer">
+          <p>© 2024 Alcaldía de San Cristóbal. Todos los derechos reservados.</p>
+        </div>
       </div>
-    </Layout>
+    </div>
   );
 };
 

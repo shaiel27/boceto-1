@@ -148,10 +148,15 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
   return (
     <div className="technician-profile">
       <div className="profile-header">
-        <h2 className="profile-title">
-          <User size={24} />
-          Mi Perfil
-        </h2>
+        <div className="profile-avatar-section">
+          <div className="avatar-circle">
+            <User size={32} />
+          </div>
+          <div className="profile-identity">
+            <h2 className="profile-title">{profile.firstName} {profile.lastName}</h2>
+            <p className="profile-subtitle">{profile.specialization}</p>
+          </div>
+        </div>
         <button 
           className="edit-profile-btn"
           onClick={() => setShowEditModal(true)}
@@ -163,11 +168,13 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
 
       <div className="profile-content">
         {/* Información Personal */}
-        <div className="profile-section">
-          <h3 className="section-title">
-            <Shield size={18} />
-            Información Personal
-          </h3>
+        <div className="profile-card">
+          <div className="card-header">
+            <div className="card-icon personal">
+              <Shield size={20} />
+            </div>
+            <h3 className="card-title">Información Personal</h3>
+          </div>
           <div className="info-grid">
             <div className="info-item">
               <label className="info-label">
@@ -201,11 +208,13 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
         </div>
 
         {/* Información Laboral */}
-        <div className="profile-section">
-          <h3 className="section-title">
-            <Briefcase size={18} />
-            Información Laboral
-          </h3>
+        <div className="profile-card">
+          <div className="card-header">
+            <div className="card-icon work">
+              <Briefcase size={20} />
+            </div>
+            <h3 className="card-title">Información Laboral</h3>
+          </div>
           <div className="info-grid">
             <div className="info-item">
               <label className="info-label">
@@ -269,11 +278,13 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
         </div>
 
         {/* Seguridad */}
-        <div className="profile-section security-section">
-          <h3 className="section-title">
-            <Lock size={18} />
-            Seguridad
-          </h3>
+        <div className="profile-card security-card">
+          <div className="card-header">
+            <div className="card-icon security">
+              <Lock size={20} />
+            </div>
+            <h3 className="card-title">Seguridad</h3>
+          </div>
           <button 
             className="change-password-btn"
             onClick={() => setShowPasswordModal(true)}

@@ -16,6 +16,8 @@ import {
   ChevronRight,
   ChevronDown
 } from 'lucide-react';
+import ModernSidebar from '../layout/ModernSidebar';
+import '../layout/ModernSidebar.css';
 import './InstitutionalStructure.css';
 
 interface Direction {
@@ -473,6 +475,7 @@ const InstitutionalStructure: React.FC = () => {
 
   return (
     <div className="institutional-structure">
+      <ModernSidebar />
       <div className="page-container">
         {/* Header */}
         <header className="page-header">
@@ -502,7 +505,7 @@ const InstitutionalStructure: React.FC = () => {
           </div>
           
           <div className="header-actions">
-            <button className="action-btn secondary" onClick={() => navigate('/admin/dashboard')}>
+            <button className="action-btn secondary" onClick={() => navigate('/')}>
               <ArrowLeft size={20} />
               <span>Volver al Panel</span>
               <div className="btn-tooltip">Regresar al Dashboard Administrativo</div>

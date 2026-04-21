@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Building, 
-  FileText, 
-  Users, 
-  BarChart3, 
+import {
+  Building,
+  FileText,
+  Users,
+  BarChart3,
   Settings,
   TrendingUp,
   Clock,
@@ -19,7 +19,15 @@ import {
   Calendar,
   AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Ticket,
+  Activity,
+  Zap,
+  Target,
+  Shield,
+  Database,
+  Layers,
+  LayoutGrid
 } from 'lucide-react';
 import Stepper from '../common/Stepper';
 import TicketForm from '../tickets/TicketForm';
@@ -68,25 +76,25 @@ const Dashboard: React.FC = () => {
       value: '1250',
       trend: '+30%',
       trendUp: true,
-      icon: FileText
+      icon: Ticket
     },
     {
-      title: 'Técnicos Disponibles',
+      title: 'Técnicos Activos',
       value: '9/15',
       status: 'Disponible',
-      icon: UserCheck
+      icon: Activity
     },
     {
-      title: 'Oficinas con Más Incidencias',
+      title: 'Oficinas Top',
       value: 'Catastro, Obras, Bienestar',
-      icon: Building
+      icon: Layers
     },
     {
-      title: 'Tiempo Promedio de Cierre',
+      title: 'Eficiencia',
       value: '4.5 horas',
       trend: '+15%',
       trendUp: true,
-      icon: Clock
+      icon: Zap
     }
   ];
 
@@ -242,7 +250,7 @@ const Dashboard: React.FC = () => {
           <div className="section-header">
             <div className="section-title-area">
               <h2 className="section-title">
-                <FileText size={24} />
+                <LayoutGrid size={24} />
                 Gestión de Tickets
               </h2>
               <p className="section-subtitle">Administra y monitorea todas las solicitudes</p>
@@ -277,7 +285,7 @@ const Dashboard: React.FC = () => {
           <div className="tickets-overview">
             <div className="overview-card">
               <div className="overview-icon pending">
-                <AlertCircle size={20} />
+                <Target size={20} />
               </div>
               <div className="overview-info">
                 <div className="overview-number">{filteredTickets.filter(t => t.status === 'Pendiente').length}</div>
@@ -286,7 +294,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="overview-card">
               <div className="overview-icon progress">
-                <Clock size={20} />
+                <Activity size={20} />
               </div>
               <div className="overview-info">
                 <div className="overview-number">{filteredTickets.filter(t => t.status === 'En Proceso').length}</div>
@@ -295,7 +303,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="overview-card">
               <div className="overview-icon resolved">
-                <CheckCircle size={20} />
+                <Shield size={20} />
               </div>
               <div className="overview-info">
                 <div className="overview-number">{filteredTickets.filter(t => t.status === 'Cerrado').length}</div>
@@ -304,7 +312,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="overview-card">
               <div className="overview-icon total">
-                <FileText size={20} />
+                <Database size={20} />
               </div>
               <div className="overview-info">
                 <div className="overview-number">{filteredTickets.length}</div>
@@ -329,9 +337,9 @@ const Dashboard: React.FC = () => {
                     </span>
                   </div>
                   <div className="ticket-status">
-                    {ticket.status === 'Pendiente' && <AlertCircle size={16} className="status-icon pending" />}
-                    {ticket.status === 'En Proceso' && <Clock size={16} className="status-icon progress" />}
-                    {ticket.status === 'Cerrado' && <CheckCircle size={16} className="status-icon resolved" />}
+                    {ticket.status === 'Pendiente' && <Target size={16} className="status-icon pending" />}
+                    {ticket.status === 'En Proceso' && <Activity size={16} className="status-icon progress" />}
+                    {ticket.status === 'Cerrado' && <Shield size={16} className="status-icon resolved" />}
                   </div>
                 </div>
 

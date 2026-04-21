@@ -1,0 +1,11 @@
+.page-layout {
+  display: flex;
+  width: 100%;
+  min-height: calc(100vh - 80px);
+}
+
+.page-content {
+  flex: 1;
+  margin-left: 280px;
+  width: calc(100% - 280px);
+}

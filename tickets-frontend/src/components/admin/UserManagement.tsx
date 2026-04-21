@@ -18,6 +18,8 @@ import {
   XCircle,
   Clock
 } from 'lucide-react';
+import ModernSidebar from '../layout/ModernSidebar';
+import '../layout/ModernSidebar.css';
 import './UserManagement.css';
 
 interface User {
@@ -314,7 +316,8 @@ const UserManagement: React.FC = () => {
   };
 
   return (
-    <div className="user-management">
+    <>
+      <ModernSidebar />
       <div className="page-container">
         <header className="page-header">
           <div className="header-content">
@@ -325,7 +328,7 @@ const UserManagement: React.FC = () => {
               </h1>
               <p className="page-description">Administra usuarios, roles y asignaciones institucionales</p>
             </div>
-            
+
             <div className="header-stats">
               <div className="stat-item">
                 <span className="stat-number">{stats.total}</span>
@@ -345,9 +348,9 @@ const UserManagement: React.FC = () => {
               </div>
             </div>
           </div>
-          
+
           <div className="header-actions">
-            <button className="action-btn secondary" onClick={() => navigate('/admin/dashboard')}>
+            <button className="action-btn secondary" onClick={() => navigate('/')}>
               <ArrowLeft size={18} />
               Volver al Panel
             </button>
@@ -844,14 +847,14 @@ const UserManagement: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="delete-confirmation">
               <Trash2 size={48} className="warning-icon" />
               <p>¿Estás seguro de eliminar este usuario?</p>
               <p className="warning-text">{selectedUser.Email}</p>
               <p className="warning-subtext">Esta acción no se puede deshacer.</p>
             </div>
-            
+
             <div className="modal-actions">
               <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
                 Cancelar
@@ -864,7 +867,7 @@ const UserManagement: React.FC = () => {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
