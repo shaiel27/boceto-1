@@ -1,5 +1,5 @@
-// API Configuration - Mock authentication (no backend)
-const API_BASE_URL = '';
+// API Configuration - Real backend
+const API_BASE_URL = 'http://localhost/tickets-backend/public';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -29,32 +29,52 @@ export interface RegisterResponse {
 }
 
 export class ApiService {
-  // Mock authentication - no backend connection
+  // Real authentication - backend connection
   static async login(email: string, password: string): Promise<ApiResponse<LoginResponse>> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'login',
+          email,
+          password
+        })
+      });
 
-    // Mock validation
-    if (email === 'admin@alcaldia.gob' && password === 'password123') {
-      return {
-        success: true,
-        message: 'Login exitoso',
-        data: {
-          token: 'mock-jwt-token-' + Date.now(),
-          user: {
-            id: 1,
-            email: 'admin@alcaldia.gob',
-            role: 1,
-            role_name: 'Admin'
+      const data = await response.json();
+
+      if (data.success) {
+        // Store token in localStorage
+        localStorage.setItem('auth_token', data.token);
+        
+        return {
+          success: true,
+          message: data.message,
+          data: {
+            token: data.token,
+            user: {
+              id: data.user.id,
+              email: data.user.email,
+              role: data.user.role === 'admin' ? 1 : data.user.role === 'technician' ? 2 : 3,
+              role_name: data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)
+            }
           }
-        }
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Credenciales inválidas'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
       };
     }
-
-    return {
-      success: false,
-      message: 'Credenciales inválidas'
-    };
   }
 
   static async register(email: string, password: string, roleId: number): Promise<ApiResponse<RegisterResponse>> {
@@ -100,7 +120,7 @@ export class ApiService {
     };
   }
 
-  // Ticket endpoints - Mock data
+  // Ticket endpoints - Real backend
   static async getTickets(params?: {
     page?: number;
     per_page?: number;
@@ -108,61 +128,144 @@ export class ApiService {
     office?: number;
     priority?: string;
   }): Promise<ApiResponse> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return {
-      success: true,
-      message: 'Tickets obtenidos exitosamente',
-      data: {
-        tickets: [
-          {
-            id: 1,
-            subject: 'Sin conexión a internet',
-            status: 'En Proceso',
-            priority: 'Alta',
-            created_at: '2024-04-20T10:00:00',
-            office: 'Coordinación de Equipos'
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+      const response = await fetch(`${API_BASE_URL}/api/tickets?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: {
+            tickets: data.data,
+            total: data.data.length,
+            page: params?.page || 1,
+            per_page: params?.per_page || 10
           }
-        ],
-        total: 1,
-        page: params?.page || 1,
-        per_page: params?.per_page || 10
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener tickets'
+        };
       }
-    };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
   static async getTicket(id: number): Promise<ApiResponse> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return {
-      success: true,
-      message: 'Ticket obtenido exitosamente',
-      data: {
-        id: id,
-        subject: 'Ticket de prueba',
-        status: 'Pendiente',
-        priority: 'Media',
-        description: 'Descripción del ticket'
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=single&id=${id}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener ticket'
+        };
       }
-    };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
   static async createTicket(ticketData: any): Promise<ApiResponse> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return {
-      success: true,
-      message: 'Ticket creado exitosamente',
-      data: {
-        id: Math.floor(Math.random() * 1000),
-        ...ticketData
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(ticketData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al crear ticket'
+        };
       }
-    };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
   static async updateTicketStatus(id: number, status: string, resolutionNotes?: string): Promise<ApiResponse> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return {
-      success: true,
-      message: 'Estado actualizado exitosamente'
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?id=${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status,
+          assigned_to: resolutionNotes ? parseInt(resolutionNotes) : null
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al actualizar ticket'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
   static async assignTicket(id: number, technicianIds: number[], roles?: Record<number, string>): Promise<ApiResponse> {
@@ -190,17 +293,44 @@ export class ApiService {
     };
   }
 
-  // Technician endpoints - Mock data
+  // Technician endpoints - Real backend
   static async getTechnicians(): Promise<ApiResponse> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return {
-      success: true,
-      message: 'Técnicos obtenidos exitosamente',
-      data: [
-        { id: 1, name: 'Juan Pérez', email: 'juan@example.com' },
-        { id: 2, name: 'María González', email: 'maria@example.com' }
-      ]
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Filter technicians only
+        const technicians = data.data.filter((user: any) => user.role === 'technician');
+        
+        return {
+          success: true,
+          message: data.message,
+          data: technicians.map((tech: any) => ({
+            id: tech.id,
+            name: tech.full_name,
+            email: tech.email
+          }))
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener técnicos'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
   static async getAvailableTechnicians(serviceId: number, officeId: number): Promise<ApiResponse> {
