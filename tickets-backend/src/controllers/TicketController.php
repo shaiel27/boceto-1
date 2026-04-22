@@ -1,6 +1,6 @@
 <?php
-require_once '../config/database.php';
-require_once '../models/ServiceRequest.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/ServiceRequest.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -33,6 +33,25 @@ switch ($method) {
                     echo json_encode([
                         'success' => false,
                         'message' => 'ID no proporcionado'
+                    ]);
+                }
+                break;
+
+            case 'my-tickets':
+                if (isset($_GET['user_id'])) {
+                    $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+                    $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
+                    
+                    $tickets = $ticket->getByUser($_GET['user_id'], $limit, $offset);
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $tickets
+                    ]);
+                } else {
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'User ID no proporcionado'
                     ]);
                 }
                 break;

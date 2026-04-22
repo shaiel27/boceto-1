@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   User,
   Mail,
@@ -23,9 +23,7 @@ interface TechnicianProfileData {
   firstName: string;
   lastName: string;
   email: string;
-  phone: string;
   status: 'Activo' | 'Inactivo';
-  specialization: string;
   hireDate: string;
   lunchBlock: string;
   workStartTime: string;
@@ -40,7 +38,6 @@ interface TechnicianProfileProps {
 
 const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -49,11 +46,6 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
-  });
-
-  const [editForm, setEditForm] = useState({
-    phone: profile.phone,
-    specialization: profile.specialization
   });
 
   const [passwordError, setPasswordError] = useState('');
@@ -66,13 +58,6 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
     });
     setPasswordError('');
     setPasswordSuccess('');
-  };
-
-  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm({
-      ...editForm,
-      [e.target.name]: e.target.value
-    });
   };
 
   const validatePassword = (password: string): boolean => {
@@ -118,31 +103,15 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
     }, 2000);
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const updatedProfile = {
-      ...profile,
-      phone: editForm.phone,
-      specialization: editForm.specialization
-    };
-
-    if (onUpdate) {
-      onUpdate(updatedProfile);
-    }
-
-    setShowEditModal(false);
-  };
-
-  const calculateYearsOfService = (hireDate: string) => {
+  const calculateTenure = (hireDate: string): string => {
     const hire = new Date(hireDate);
     const now = new Date();
     const years = now.getFullYear() - hire.getFullYear();
     const months = now.getMonth() - hire.getMonth();
     if (months < 0 || (months === 0 && now.getDate() < hire.getDate())) {
-      return years - 1;
+      return `${years - 1} año${years - 1 !== 1 ? 's' : ''}`;
     }
-    return years;
+    return `${years} año${years !== 1 ? 's' : ''}`;
   };
 
   return (
@@ -154,16 +123,9 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
           </div>
           <div className="profile-identity">
             <h2 className="profile-title">{profile.firstName} {profile.lastName}</h2>
-            <p className="profile-subtitle">{profile.specialization}</p>
+            <p className="profile-subtitle">Técnico de Soporte</p>
           </div>
         </div>
-        <button 
-          className="edit-profile-btn"
-          onClick={() => setShowEditModal(true)}
-        >
-          <Edit2 size={16} />
-          Editar Datos
-        </button>
       </div>
 
       <div className="profile-content">
@@ -189,20 +151,6 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                 Correo Electrónico
               </label>
               <p className="info-value">{profile.email}</p>
-            </div>
-            <div className="info-item">
-              <label className="info-label">
-                <Phone size={14} />
-                Teléfono
-              </label>
-              <p className="info-value">{profile.phone}</p>
-            </div>
-            <div className="info-item">
-              <label className="info-label">
-                <Award size={14} />
-                Especialización
-              </label>
-              <p className="info-value">{profile.specialization}</p>
             </div>
           </div>
         </div>
@@ -245,7 +193,7 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                 <Calendar size={14} />
                 Antigüedad
               </label>
-              <p className="info-value">{calculateYearsOfService(profile.hireDate)} años</p>
+              <p className="info-value">{calculateTenure(profile.hireDate)}</p>
             </div>
             <div className="info-item">
               <label className="info-label">
@@ -406,63 +354,6 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                 <button type="submit" className="btn btn-primary">
                   <Save size={16} />
                   Cambiar Contraseña
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Edición de Datos */}
-      {showEditModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>Editar Datos de Contacto</h3>
-              <button 
-                className="close-btn"
-                onClick={() => setShowEditModal(false)}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleEditSubmit} className="edit-form">
-              <div className="form-group">
-                <label>Teléfono</label>
-                <input
-                  type="tel"
-                  name="phone"
-                  value={editForm.phone}
-                  onChange={handleEditChange}
-                  placeholder="+58 412 123 4567"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Especialización</label>
-                <input
-                  type="text"
-                  name="specialization"
-                  value={editForm.specialization}
-                  onChange={handleEditChange}
-                  placeholder="Ej: Redes y Conectividad"
-                  required
-                />
-              </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowEditModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <Save size={16} />
-                  Guardar Cambios
                 </button>
               </div>
             </form>

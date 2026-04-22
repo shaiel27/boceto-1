@@ -37,7 +37,7 @@ const Header: React.FC<HeaderProps> = ({
           </>
         )}
         <img 
-          src="/SC-Ciudad-Ecológica-Derecha.png" 
+          src="/Logo SC Ciudad Ecologica.jpeg" 
           alt="Ciudad Ecológica" 
           className="header-right-logo"
         />

@@ -21,6 +21,8 @@ import {
 } from 'lucide-react';
 import './TechnicianDashboard.css';
 import TechnicianProfile from './TechnicianProfile';
+import ApiService from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Ticket {
   id: string;
@@ -43,23 +45,19 @@ interface TechnicianProfile {
   id: string;
   name: string;
   email: string;
-  phone: string;
   status: 'available' | 'busy' | 'lunch';
   lunch_block: 1 | 2 | 3 | 4;
   end_time: '14:00' | '17:00';
+  services: string[];
+  hireDate: string;
 }
 
 const TechnicianDashboard: React.FC = () => {
+  console.log('TechnicianDashboard montado');
   const navigate = useNavigate();
-  const [technicianProfile, setTechnicianProfile] = useState<TechnicianProfile>({
-    id: '1',
-    name: 'Juan Pérez',
-    email: 'juan.perez@alcaldia.gob',
-    phone: '+58 412 123 4567',
-    status: 'available',
-    lunch_block: 2,
-    end_time: '17:00'
-  });
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [technicianProfile, setTechnicianProfile] = useState<TechnicianProfile | null>(null);
 
   const [myTickets, setMyTickets] = useState<Ticket[]>([
     {
@@ -100,6 +98,52 @@ const TechnicianDashboard: React.FC = () => {
   const [workTimeRemaining, setWorkTimeRemaining] = useState<number>(0);
   const [showProfile, setShowProfile] = useState(false);
 
+  // Cargar datos del backend
+  useEffect(() => {
+    const loadData = async () => {
+      console.log('Cargando datos del técnico desde backend...');
+      if (!user) {
+        console.log('No hay usuario autenticado');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Obtener técnicos del backend
+        const techResponse = await ApiService.getTechnicians();
+        console.log('Respuesta del backend:', techResponse);
+
+        if (techResponse.success && techResponse.data) {
+          // Buscar el técnico correspondiente al usuario actual
+          const currentTech = techResponse.data.find((t: any) => t.Fk_Users == user.id);
+          console.log('Técnico encontrado:', currentTech);
+
+          if (currentTech) {
+            // Extraer servicios del técnico
+            const services = currentTech.Services ? currentTech.Services.split(',').map((s: string) => s.trim()) : [];
+
+            setTechnicianProfile({
+              id: currentTech.ID_Technicians,
+              name: `${currentTech.First_Name} ${currentTech.Last_Name}`,
+              email: currentTech.Email,
+              status: 'available',
+              lunch_block: currentTech.Fk_Lunch_Block || 2,
+              end_time: '17:00',
+              services: services,
+              hireDate: currentTech.created_at
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error cargando datos del técnico:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, [user]);
+
   useEffect(() => {
     // Simular cálculo de tiempo
     const now = new Date();
@@ -117,10 +161,13 @@ const TechnicianDashboard: React.FC = () => {
   }, []);
 
   const toggleStatus = () => {
-    setTechnicianProfile(prev => ({
-      ...prev,
-      status: prev.status === 'available' ? 'busy' : 'available'
-    }));
+    setTechnicianProfile(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        status: prev.status === 'available' ? 'busy' : 'available'
+      };
+    });
   };
 
   const getPriorityColor = (priority: string) => {
@@ -145,6 +192,45 @@ const TechnicianDashboard: React.FC = () => {
     return `${mins}m`;
   };
 
+  const calculateTenure = (hireDate: string): string => {
+    const hire = new Date(hireDate);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - hire.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffMonths = Math.floor(diffDays / 30);
+    const diffYears = Math.floor(diffDays / 365);
+
+    if (diffYears > 0) {
+      const remainingMonths = diffMonths - (diffYears * 12);
+      return `${diffYears} año${diffYears > 1 ? 's' : ''}${remainingMonths > 0 ? ` ${remainingMonths} mes${remainingMonths > 1 ? 'es' : ''}` : ''}`;
+    } else if (diffMonths > 0) {
+      return `${diffMonths} mes${diffMonths > 1 ? 'es' : ''}`;
+    } else {
+      return `${diffDays} día${diffDays > 1 ? 's' : ''}`;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="technician-dashboard">
+        <div className="loading-state">
+          <div className="spinner"></div>
+          <p>Cargando datos del técnico...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!technicianProfile) {
+    return (
+      <div className="technician-dashboard">
+        <div className="error-state">
+          <p>No se encontraron datos del técnico</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="technician-dashboard">
       <main className="tech-main">
@@ -152,9 +238,9 @@ const TechnicianDashboard: React.FC = () => {
         <div className="profile-actions-bar">
           <div className="profile-info-display">
             <User size={20} />
-            <span>{technicianProfile.name}</span>
-            <span className={`status-badge ${technicianProfile.status}`}>
-              {technicianProfile.status === 'available' ? 'Disponible' : technicianProfile.status === 'busy' ? 'Ocupado' : 'Almuerzo'}
+            <span>{technicianProfile!.name}</span>
+            <span className={`status-badge ${technicianProfile!.status}`}>
+              {technicianProfile!.status === 'available' ? 'Disponible' : technicianProfile!.status === 'busy' ? 'Ocupado' : 'Almuerzo'}
             </span>
           </div>
           <div className="action-buttons">
@@ -177,11 +263,11 @@ const TechnicianDashboard: React.FC = () => {
             </div>
             <div className="time-info">
               <h3 className="time-title">Bloque de Almuerzo</h3>
-              <p className="time-subtitle">Bloque {technicianProfile.lunch_block}</p>
+              <p className="time-subtitle">Bloque {technicianProfile!.lunch_block}</p>
               <div className="time-value">
-                {technicianProfile.status === 'lunch' 
-                  ? `Quedan ${formatTime(lunchTimeRemaining)}`
-                  : `Comienza en ${formatTime(30)}`
+                {technicianProfile!.status === 'lunch' 
+                  ? `Quedan ${formatTime(lunchTimeRemaining)}` 
+                  : `Comienza en ${formatTime(30)}` 
                 }
               </div>
             </div>
@@ -195,7 +281,7 @@ const TechnicianDashboard: React.FC = () => {
               <h3 className="time-title">Hora de Salida</h3>
               <p className="time-subtitle">Jornada Completa</p>
               <div className="time-value">
-                {technicianProfile.end_time} ({formatTime(workTimeRemaining)})
+                {technicianProfile!.end_time} ({formatTime(workTimeRemaining)})
               </div>
             </div>
           </div>
@@ -203,12 +289,12 @@ const TechnicianDashboard: React.FC = () => {
           <div className="status-card">
             <h3 className="status-title">Estado Actual</h3>
             <button
-              className={`status-toggle ${technicianProfile.status}`}
+              className={`status-toggle ${technicianProfile!.status}`}
               onClick={toggleStatus}
             >
               <div className="status-indicator"></div>
-              {technicianProfile.status === 'available' ? 'Disponible' : 
-               technicianProfile.status === 'busy' ? 'Ocupado' : 'Almuerzo'}
+              {technicianProfile!.status === 'available' ? 'Disponible' : 
+               technicianProfile!.status === 'busy' ? 'Ocupado' : 'Almuerzo'}
             </button>
           </div>
         </div>
@@ -318,25 +404,19 @@ const TechnicianDashboard: React.FC = () => {
               </button>
             </div>
             <div className="modal-body">
-              <TechnicianProfile 
+              <TechnicianProfile
                 profile={{
-                  id: technicianProfile.id,
-                  firstName: technicianProfile.name.split(' ')[0],
-                  lastName: technicianProfile.name.split(' ').slice(1).join(' '),
-                  email: technicianProfile.email,
-                  phone: technicianProfile.phone,
-                  status: technicianProfile.status === 'available' ? 'Activo' : 'Inactivo',
-                  specialization: 'Soporte Técnico',
-                  hireDate: '2020-01-15',
-                  lunchBlock: `Bloque ${technicianProfile.lunch_block}`,
+                  id: technicianProfile!.id,
+                  firstName: technicianProfile!.name.split(' ')[0],
+                  lastName: technicianProfile!.name.split(' ').slice(1).join(' '),
+                  email: technicianProfile!.email,
+                  status: technicianProfile!.status === 'available' ? 'Activo' : 'Inactivo',
+                  hireDate: technicianProfile!.hireDate,
+                  lunchBlock: `Bloque ${technicianProfile!.lunch_block}`,
                   workStartTime: '08:00',
-                  workEndTime: technicianProfile.end_time,
-                  services: ['Soporte Técnico', 'Hardware', 'Redes']
+                  workEndTime: technicianProfile!.end_time,
+                  services: technicianProfile!.services
                 }}
-                onUpdate={(updatedProfile) => setTechnicianProfile(prev => ({
-                  ...prev,
-                  phone: updatedProfile.phone
-                }))}
               />
             </div>
           </div>

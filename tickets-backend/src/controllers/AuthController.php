@@ -1,6 +1,6 @@
 <?php
-require_once '../config/database.php';
-require_once '../models/User.php';
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../models/User.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -9,7 +9,63 @@ $user = new User($db);
 
 $data = json_decode(file_get_contents("php://input"));
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    // For development, return user from token (in production, validate JWT)
+    // For now, we'll extract user ID from the mock token or return a default user
+    $headers = getallheaders();
+    $authHeader = $headers['Authorization'] ?? '';
+    
+    if (preg_match('/Bearer mock_token_(\d+)/', $authHeader, $matches)) {
+        $userId = $matches[1];
+        $userData = $user->getById($userId);
+        if ($userData) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Usuario obtenido exitosamente',
+                'user' => [
+                    'id' => $userData['ID_Users'],
+                    'email' => $userData['Email'],
+                    'role' => strtolower($userData['role_name']),
+                    'full_name' => $userData['Full_Name']
+                ]
+            ]);
+        } else {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Usuario no encontrado'
+            ]);
+        }
+    } else {
+        // Fallback: return first jefe user for testing
+        $query = "SELECT u.ID_Users, u.Email, u.Full_Name, r.Role 
+                  FROM Users u 
+                  JOIN Role r ON u.Fk_Role = r.ID_Role 
+                  WHERE r.Role = 'Jefe' LIMIT 1";
+        $stmt = $db->prepare($query);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($result) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Usuario obtenido exitosamente',
+                'user' => [
+                    'id' => $result['ID_Users'],
+                    'email' => $result['Email'],
+                    'role' => strtolower($result['Role']),
+                    'full_name' => $result['Full_Name']
+                ]
+            ]);
+        } else {
+            http_response_code(404);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Usuario no encontrado'
+            ]);
+        }
+    }
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($data->action)) {
         switch ($data->action) {
             case 'login':
@@ -21,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         echo json_encode([
                             'success' => true,
                             'user' => $result,
-                            'token' => 'mock_token_' . time() // Mock token for development
+                            'token' => 'mock_token_' . $result['ID_Users'] // Use user ID in token
                         ]);
                     } else {
                         http_response_code(401);

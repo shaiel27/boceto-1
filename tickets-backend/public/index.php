@@ -35,6 +35,21 @@ switch ($path) {
         require_once '../src/controllers/UserController.php';
         break;
         
+    case '/api/technicians':
+    case '/api/technicians/':
+        require_once '../src/controllers/TechnicianController.php';
+        break;
+        
+    case '/api/lunch-blocks':
+    case '/api/lunch-blocks/':
+        require_once '../src/controllers/LunchBlockController.php';
+        break;
+        
+    case '/api/technician-schedules':
+    case '/api/technician-schedules/':
+        require_once '../src/controllers/TechnicianScheduleController.php';
+        break;
+        
     default:
         http_response_code(404);
         echo json_encode([

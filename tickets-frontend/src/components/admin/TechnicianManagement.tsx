@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ApiService from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 import { 
   Users, 
   UserPlus, 
@@ -40,10 +42,10 @@ interface Technician {
   Fk_Users: number;
   First_Name: string;
   Last_Name: string;
-  Telephone_Number?: string;
   Email: string;
   Status: 'Activo' | 'Inactivo';
-  Fk_Lunch_Block?: string;
+  Fk_Lunch_Block?: number;
+  Lunch_Block_Hours?: string;
   TI_Services: TI_Service[];
   Schedules?: Technician_Schedule[];
   created_at: string;
@@ -75,13 +77,17 @@ interface Coordination {
 }
 
 const TechnicianManagement: React.FC = () => {
+  console.log('TechnicianManagement montado');
   const navigate = useNavigate();
-  
+  const { user, isAdmin, isTechnician } = useAuth();
+
   // Estados principales
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [currentUserTechnician, setCurrentUserTechnician] = useState<Technician | null>(null);
   const [tiServices, setTiServices] = useState<TI_Service[]>([]);
   const [selectedTechnician, setSelectedTechnician] = useState<Technician | null>(null);
   const [technicianSchedules, setTechnicianSchedules] = useState<Technician_Schedule[]>([]);
+  const [lunchBlocks, setLunchBlocks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -100,7 +106,6 @@ const TechnicianManagement: React.FC = () => {
   const [formData, setFormData] = useState({
     first_name: '',
     last_name: '',
-    telephone_number: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -108,11 +113,11 @@ const TechnicianManagement: React.FC = () => {
     fk_lunch_block: '',
     ti_services: [] as number[],
     schedules: {
-      Lunes: { start: '08:00', end: '17:00' },
-      Martes: { start: '08:00', end: '17:00' },
-      Miercoles: { start: '08:00', end: '17:00' },
-      Jueves: { start: '08:00', end: '17:00' },
-      Viernes: { start: '08:00', end: '17:00' },
+      Lunes: { start: '08:00', end: '14:00' },
+      Martes: { start: '08:00', end: '14:00' },
+      Miercoles: { start: '08:00', end: '14:00' },
+      Jueves: { start: '08:00', end: '14:00' },
+      Viernes: { start: '08:00', end: '14:00' },
       Sabado: { start: '', end: '' },
       Domingo: { start: '', end: '' }
     }
@@ -121,115 +126,123 @@ const TechnicianManagement: React.FC = () => {
   // Vista actual
   const [currentView, setCurrentView] = useState<'grid' | 'list' | 'analytics'>('grid');
 
-  // Cargar datos mock
+  // Cargar datos del API
   useEffect(() => {
-    loadMockData();
+    loadData();
   }, []);
 
-  const loadMockData = () => {
+  const loadData = async () => {
     setLoading(true);
-    
-    setTimeout(() => {
-      const mockTIServices: TI_Service[] = [
+    try {
+      // Load technicians
+      console.log('Cargando técnicos desde backend...');
+      const techResponse = await ApiService.getTechnicians();
+      console.log('Respuesta del backend:', techResponse);
+      
+      if (techResponse.success && techResponse.data) {
+        console.log('Datos de técnicos recibidos:', techResponse.data);
+        // Map backend data to frontend format
+        const mappedTechnicians = techResponse.data.map((tech: any) => {
+          // Parse Services string into TI_Services array
+          // Map service names to IDs based on TI_Service table
+          const serviceMap: { [key: string]: number } = {
+            'Redes': 1,
+            'Soporte': 2,
+            'Programación': 3
+          };
+
+          const servicesArray = tech.Services ? tech.Services.split(',').map((s: string) => {
+            const serviceName = s.trim();
+            return {
+              ID_TI_Service: serviceMap[serviceName] || 0,
+              Type_Service: serviceName,
+              Details: serviceName
+            };
+          }) : [];
+
+          // Format lunch block hours from backend data
+          const lunchBlockHours = tech.Start_Time && tech.End_Time
+            ? `${tech.Start_Time.substring(0, 5)} - ${tech.End_Time.substring(0, 5)}`
+            : undefined;
+
+          // Map schedules from backend
+          const schedulesArray = tech.Schedules && Array.isArray(tech.Schedules)
+            ? tech.Schedules.map((s: any) => ({
+                ID_Schedule: s.ID_Schedule,
+                Fk_Technician: s.Fk_Technician,
+                Day_Of_Week: s.Day_Of_Week,
+                Work_Start_Time: s.Work_Start_Time.substring(0, 5),
+                Work_End_Time: s.Work_End_Time.substring(0, 5)
+              }))
+            : [];
+
+          return {
+            ID_Technicians: parseInt(tech.ID_Technicians),
+            Fk_Users: parseInt(tech.Fk_Users),
+            First_Name: tech.First_Name,
+            Last_Name: tech.Last_Name,
+            Email: tech.Email,
+            Status: tech.Status,
+            Fk_Lunch_Block: tech.Fk_Lunch_Block ? parseInt(tech.Fk_Lunch_Block) : undefined,
+            Lunch_Block_Hours: lunchBlockHours,
+            TI_Services: servicesArray,
+            Schedules: schedulesArray,
+            created_at: tech.created_at,
+            Avatar: `${tech.First_Name[0]}${tech.Last_Name[0]}`.toUpperCase(),
+            Tickets_Assigned: 0,
+            Tickets_Resolved: 0
+          };
+        });
+
+        // Filter technicians based on user role
+        if (isTechnician() && user) {
+          // If user is technician, find their own profile by matching user ID
+          console.log('Usuario logueado ID:', user.id);
+          console.log('Técnicos mapeados:', mappedTechnicians.map((t: Technician) => ({ id: t.ID_Technicians, fk_users: t.Fk_Users, name: t.First_Name + ' ' + t.Last_Name })));
+          
+          const ownProfile = mappedTechnicians.find((t: Technician) => t.Fk_Users === user.id);
+          console.log('Perfil encontrado:', ownProfile);
+          
+          if (ownProfile) {
+            setCurrentUserTechnician(ownProfile);
+            setTechnicians([ownProfile]);
+          } else {
+            setError('No se encontró tu perfil de técnico');
+            setTechnicians([]);
+          }
+        } else {
+          // Admin sees all technicians
+          setTechnicians(mappedTechnicians);
+        }
+      } else {
+        setError(techResponse.message || 'Error al cargar técnicos');
+      }
+
+      // Load lunch blocks from backend
+      const lunchBlocksResponse = await ApiService.getLunchBlocks();
+      if (lunchBlocksResponse.success && lunchBlocksResponse.data) {
+        setLunchBlocks(lunchBlocksResponse.data);
+      } else {
+        // Use default lunch blocks if backend fails
+        setLunchBlocks([
+          { ID_Lunch_Block: 1, Block_Name: 'Bloque 1', Start_Time: '11:30', End_Time: '12:10' },
+          { ID_Lunch_Block: 2, Block_Name: 'Bloque 2', Start_Time: '12:10', End_Time: '12:50' },
+          { ID_Lunch_Block: 3, Block_Name: 'Bloque 3', Start_Time: '12:50', End_Time: '13:30' },
+          { ID_Lunch_Block: 4, Block_Name: 'Bloque 4', Start_Time: '13:20', End_Time: '14:00' }
+        ]);
+      }
+
+      // Mock TI Services for now - should come from backend
+      setTiServices([
         { ID_TI_Service: 1, Type_Service: 'Redes', Details: 'Configuración y mantenimiento de redes' },
         { ID_TI_Service: 2, Type_Service: 'Soporte', Details: 'Soporte técnico general' },
         { ID_TI_Service: 3, Type_Service: 'Programación', Details: 'Desarrollo de software y aplicaciones' }
-      ];
-
-      const mockTechnicians: Technician[] = [
-        {
-          ID_Technicians: 1,
-          Fk_Users: 101,
-          First_Name: 'Carlos',
-          Last_Name: 'Rodríguez',
-          Telephone_Number: '555-1234',
-          Email: 'carlos.rodriguez@municipio.gob',
-          Status: 'Activo',
-          Fk_Lunch_Block: '12:10 - 12:50',
-          TI_Services: [mockTIServices[0]],
-          Schedules: [
-            { ID_Schedule: 1, Fk_Technician: 1, Day_Of_Week: 'Lunes', Work_Start_Time: '08:00', Work_End_Time: '17:00' },
-            { ID_Schedule: 2, Fk_Technician: 1, Day_Of_Week: 'Martes', Work_Start_Time: '08:00', Work_End_Time: '17:00' },
-            { ID_Schedule: 3, Fk_Technician: 1, Day_Of_Week: 'Miercoles', Work_Start_Time: '08:00', Work_End_Time: '17:00' },
-            { ID_Schedule: 4, Fk_Technician: 1, Day_Of_Week: 'Jueves', Work_Start_Time: '08:00', Work_End_Time: '17:00' },
-            { ID_Schedule: 5, Fk_Technician: 1, Day_Of_Week: 'Viernes', Work_Start_Time: '08:00', Work_End_Time: '17:00' }
-          ],
-          created_at: '2024-01-15',
-          Avatar: 'CR',
-          Tickets_Assigned: 45,
-          Tickets_Resolved: 42
-        },
-        {
-          ID_Technicians: 2,
-          Fk_Users: 102,
-          First_Name: 'María',
-          Last_Name: 'González',
-          Telephone_Number: '555-5678',
-          Email: 'maria.gonzalez@municipio.gob',
-          Status: 'Activo',
-          Fk_Lunch_Block: '11:30 - 12:10',
-          TI_Services: [mockTIServices[1]],
-          Schedules: [
-            { ID_Schedule: 6, Fk_Technician: 2, Day_Of_Week: 'Lunes', Work_Start_Time: '07:00', Work_End_Time: '16:00' },
-            { ID_Schedule: 7, Fk_Technician: 2, Day_Of_Week: 'Martes', Work_Start_Time: '07:00', Work_End_Time: '16:00' },
-            { ID_Schedule: 8, Fk_Technician: 2, Day_Of_Week: 'Miercoles', Work_Start_Time: '07:00', Work_End_Time: '16:00' },
-            { ID_Schedule: 9, Fk_Technician: 2, Day_Of_Week: 'Jueves', Work_Start_Time: '07:00', Work_End_Time: '16:00' },
-            { ID_Schedule: 10, Fk_Technician: 2, Day_Of_Week: 'Viernes', Work_Start_Time: '07:00', Work_End_Time: '16:00' }
-          ],
-          created_at: '2024-02-20',
-          Avatar: 'MG',
-          Tickets_Assigned: 38,
-          Tickets_Resolved: 35
-        },
-        {
-          ID_Technicians: 3,
-          Fk_Users: 103,
-          First_Name: 'Juan',
-          Last_Name: 'Pérez',
-          Telephone_Number: '555-9012',
-          Email: 'juan.perez@municipio.gob',
-          Status: 'Activo',
-          Fk_Lunch_Block: '12:50 - 1:30',
-          TI_Services: [mockTIServices[0], mockTIServices[1]],
-          Schedules: [
-            { ID_Schedule: 11, Fk_Technician: 3, Day_Of_Week: 'Lunes', Work_Start_Time: '09:00', Work_End_Time: '18:00' },
-            { ID_Schedule: 12, Fk_Technician: 3, Day_Of_Week: 'Martes', Work_Start_Time: '09:00', Work_End_Time: '18:00' },
-            { ID_Schedule: 13, Fk_Technician: 3, Day_Of_Week: 'Miercoles', Work_Start_Time: '09:00', Work_End_Time: '18:00' },
-            { ID_Schedule: 14, Fk_Technician: 3, Day_Of_Week: 'Jueves', Work_Start_Time: '09:00', Work_End_Time: '18:00' },
-            { ID_Schedule: 15, Fk_Technician: 3, Day_Of_Week: 'Viernes', Work_Start_Time: '09:00', Work_End_Time: '18:00' }
-          ],
-          created_at: '2024-03-10',
-          Avatar: 'JP',
-          Tickets_Assigned: 52,
-          Tickets_Resolved: 50
-        },
-        {
-          ID_Technicians: 4,
-          Fk_Users: 104,
-          First_Name: 'Ana',
-          Last_Name: 'Martínez',
-          Telephone_Number: '555-3456',
-          Email: 'ana.martinez@municipio.gob',
-          Status: 'Inactivo',
-          TI_Services: [mockTIServices[2]],
-          Schedules: [
-            { ID_Schedule: 16, Fk_Technician: 4, Day_Of_Week: 'Lunes', Work_Start_Time: '08:00', Work_End_Time: '17:00' },
-            { ID_Schedule: 17, Fk_Technician: 4, Day_Of_Week: 'Martes', Work_Start_Time: '08:00', Work_End_Time: '17:00' },
-            { ID_Schedule: 18, Fk_Technician: 4, Day_Of_Week: 'Miercoles', Work_Start_Time: '08:00', Work_End_Time: '17:00' },
-            { ID_Schedule: 19, Fk_Technician: 4, Day_Of_Week: 'Jueves', Work_Start_Time: '08:00', Work_End_Time: '17:00' },
-            { ID_Schedule: 20, Fk_Technician: 4, Day_Of_Week: 'Viernes', Work_Start_Time: '08:00', Work_End_Time: '17:00' }
-          ],
-          created_at: '2024-04-12',
-          Avatar: 'AM',
-          Tickets_Assigned: 28,
-          Tickets_Resolved: 27
-        }
-      ];
-
-      setTechnicians(mockTechnicians);
-      setTiServices(mockTIServices);
+      ]);
+    } catch (err) {
+      setError('Error de conexión al cargar técnicos');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   // Filtrar técnicos
@@ -290,7 +303,7 @@ const TechnicianManagement: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validar contraseña
@@ -304,57 +317,46 @@ const TechnicianManagement: React.FC = () => {
     }
     
     const selectedServices = tiServices.filter(s => formData.ti_services.includes(s.ID_TI_Service));
-    const newTechnician: Technician = {
-      ID_Technicians: Date.now(),
-      Fk_Users: Date.now(),
-      First_Name: formData.first_name,
-      Last_Name: formData.last_name,
-      Telephone_Number: formData.telephone_number,
-      Email: formData.email,
-      Status: formData.status as 'Activo' | 'Inactivo',
-      TI_Services: selectedServices,
-      created_at: new Date().toISOString().split('T')[0],
-      Avatar: `${formData.first_name[0]}${formData.last_name[0]}`.toUpperCase(),
-      Tickets_Assigned: 0,
-      Tickets_Resolved: 0
-    };
 
-    // Crear horarios del técnico
-    const newSchedules: Technician_Schedule[] = [];
-    Object.entries(formData.schedules).forEach(([day, times]) => {
-      if (times.start && times.end) {
-        newSchedules.push({
-          ID_Schedule: Date.now() + newSchedules.length,
-          Fk_Technician: newTechnician.ID_Technicians,
-          Day_Of_Week: day,
-          Work_Start_Time: times.start,
-          Work_End_Time: times.end
-        });
-      }
+    console.log('Creating technician with data:', {
+      username: formData.first_name.toLowerCase() + '.' + formData.last_name.toLowerCase(),
+      email: formData.email,
+      first_name: formData.first_name,
+      last_name: formData.last_name,
+      lunch_block: formData.fk_lunch_block || null,
+      services: formData.ti_services,
+      schedules: formData.schedules
     });
 
-    // Aquí se crearía también el usuario con rol de técnico
-    console.log('Creando técnico y usuario:', {
-      technician: newTechnician,
-      schedules: newSchedules,
-      user: {
+    try {
+      const response = await ApiService.createTechnician({
+        username: formData.first_name.toLowerCase() + '.' + formData.last_name.toLowerCase(),
         email: formData.email,
         password: formData.password,
-        role: 'Tecnico'
-      }
-    });
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        lunch_block: formData.fk_lunch_block || null,
+        services: formData.ti_services,
+        schedules: formData.schedules
+      });
 
-    setTechnicians(prev => [...prev, newTechnician]);
-    setTechnicianSchedules(prev => [...prev, ...newSchedules]);
-    setShowAddModal(false);
-    resetForm();
+      if (response.success) {
+        alert('Técnico creado exitosamente');
+        loadData();
+        setShowAddModal(false);
+        resetForm();
+      } else {
+        alert(response.message || 'Error al crear técnico');
+      }
+    } catch (error) {
+      alert('Error de conexión al crear técnico');
+    }
   };
 
   const resetForm = () => {
     setFormData({
       first_name: '',
       last_name: '',
-      telephone_number: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -362,29 +364,39 @@ const TechnicianManagement: React.FC = () => {
       fk_lunch_block: '',
       ti_services: [] as number[],
       schedules: {
-        Lunes: { start: '08:00', end: '17:00' },
-        Martes: { start: '08:00', end: '17:00' },
-        Miercoles: { start: '08:00', end: '17:00' },
-        Jueves: { start: '08:00', end: '17:00' },
-        Viernes: { start: '08:00', end: '17:00' },
+        Lunes: { start: '08:00', end: '14:00' },
+        Martes: { start: '08:00', end: '14:00' },
+        Miercoles: { start: '08:00', end: '14:00' },
+        Jueves: { start: '08:00', end: '14:00' },
+        Viernes: { start: '08:00', end: '14:00' },
         Sabado: { start: '', end: '' },
         Domingo: { start: '', end: '' }
       }
     });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedTechnician) {
-      setTechnicians(prev => prev.filter(t => t.ID_Technicians !== selectedTechnician.ID_Technicians));
-      setShowDeleteModal(false);
-      setSelectedTechnician(null);
+      try {
+        const response = await ApiService.deleteTechnician(selectedTechnician.ID_Technicians);
+        if (response.success) {
+          alert('Técnico eliminado exitosamente');
+          loadData();
+          setShowDeleteModal(false);
+          setSelectedTechnician(null);
+        } else {
+          alert(response.message || 'Error al eliminar técnico');
+        }
+      } catch (error) {
+        alert('Error de conexión al eliminar técnico');
+      }
     }
   };
 
-  const handleEdit = (technician: Technician) => {
+  const handleEdit = async (technician: Technician) => {
     setSelectedTechnician(technician);
-    
-    // Cargar horarios del técnico si existen
+
+    // Cargar horarios del técnico desde el objeto technician (ya vienen del backend)
     const schedules = {
       Lunes: { start: '', end: '' },
       Martes: { start: '', end: '' },
@@ -394,32 +406,31 @@ const TechnicianManagement: React.FC = () => {
       Sabado: { start: '', end: '' },
       Domingo: { start: '', end: '' }
     };
-    
-    if (technician.Schedules) {
-      technician.Schedules.forEach(schedule => {
+
+    if (technician.Schedules && Array.isArray(technician.Schedules)) {
+      technician.Schedules.forEach((schedule: any) => {
         schedules[schedule.Day_Of_Week as keyof typeof schedules] = {
           start: schedule.Work_Start_Time,
           end: schedule.Work_End_Time
         };
       });
     }
-    
+
     setFormData({
       first_name: technician.First_Name,
       last_name: technician.Last_Name,
-      telephone_number: technician.Telephone_Number || '',
       email: technician.Email,
       password: '',
       confirmPassword: '',
       status: technician.Status,
-      fk_lunch_block: technician.Fk_Lunch_Block || '',
+      fk_lunch_block: technician.Fk_Lunch_Block ? technician.Fk_Lunch_Block.toString() : '',
       ti_services: technician.TI_Services.map(s => s.ID_TI_Service),
       schedules
     });
     setShowEditModal(true);
   };
 
-  const handleUpdate = (e: React.FormEvent) => {
+  const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!selectedTechnician) return;
@@ -434,51 +445,28 @@ const TechnicianManagement: React.FC = () => {
       return;
     }
     
-    const selectedServices = tiServices.filter(s => formData.ti_services.includes(s.ID_TI_Service));
-    
-    const updatedTechnician: Technician = {
-      ...selectedTechnician,
-      First_Name: formData.first_name,
-      Last_Name: formData.last_name,
-      Telephone_Number: formData.telephone_number,
-      Email: formData.email,
-      Status: formData.status as 'Activo' | 'Inactivo',
-      Fk_Lunch_Block: formData.fk_lunch_block || undefined,
-      TI_Services: selectedServices
-    };
+    try {
+      const response = await ApiService.updateTechnician(selectedTechnician.ID_Technicians, {
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        status: formData.status,
+        lunch_block: formData.fk_lunch_block || null,
+        services: formData.ti_services,
+        schedules: formData.schedules
+      });
 
-    // Actualizar horarios del técnico
-    const updatedSchedules: Technician_Schedule[] = [];
-    Object.entries(formData.schedules).forEach(([day, times]) => {
-      if (times.start && times.end) {
-        updatedSchedules.push({
-          ID_Schedule: Date.now() + updatedSchedules.length,
-          Fk_Technician: selectedTechnician.ID_Technicians,
-          Day_Of_Week: day,
-          Work_Start_Time: times.start,
-          Work_End_Time: times.end
-        });
+      if (response.success) {
+        alert('Técnico actualizado exitosamente');
+        loadData();
+        setShowEditModal(false);
+        setSelectedTechnician(null);
+        resetForm();
+      } else {
+        alert(response.message || 'Error al actualizar técnico');
       }
-    });
-
-    updatedTechnician.Schedules = updatedSchedules;
-
-    console.log('Actualizando técnico:', {
-      technician: updatedTechnician,
-      schedules: updatedSchedules,
-      password: formData.password || 'Sin cambio de contraseña'
-    });
-
-    setTechnicians(prev => prev.map(t => 
-      t.ID_Technicians === selectedTechnician.ID_Technicians ? updatedTechnician : t
-    ));
-    setTechnicianSchedules(prev => [
-      ...prev.filter(s => s.Fk_Technician !== selectedTechnician.ID_Technicians),
-      ...updatedSchedules
-    ]);
-    setShowEditModal(false);
-    setSelectedTechnician(null);
-    resetForm();
+    } catch (error) {
+      alert('Error de conexión al actualizar técnico');
+    }
   };
 
   const generatePDFReport = () => {
@@ -501,6 +489,34 @@ const TechnicianManagement: React.FC = () => {
     return 'poor';
   };
 
+  // Función para normalizar texto (eliminar acentos)
+  const normalizeText = (text: string): string => {
+    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  };
+
+  // Obtener el nombre del día actual en español (sin acentos para coincidir con BD)
+  const getCurrentDayName = (): string => {
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
+    return days[new Date().getDay()];
+  };
+
+  // Obtener el horario del día actual para un técnico
+  const getTodaySchedule = (schedules: Technician_Schedule[] | undefined) => {
+    if (!schedules || schedules.length === 0) {
+      return null;
+    }
+    const currentDay = getCurrentDayName();
+    const normalizedCurrentDay = normalizeText(currentDay);
+    
+    // Buscar el horario comparando con y sin normalizar
+    const todaySchedule = schedules.find(s => 
+      s.Day_Of_Week === currentDay || 
+      normalizeText(s.Day_Of_Week) === normalizedCurrentDay
+    );
+    
+    return todaySchedule;
+  };
+
   return (
     <div className="technician-management">
       <div className="page-container">
@@ -510,24 +526,45 @@ const TechnicianManagement: React.FC = () => {
             <div className="title-section">
               <h1 className="page-title">
                 <Users size={28} />
-                Equipo Técnico Municipal
+                {isTechnician() ? 'Mi Perfil Técnico' : 'Equipo Técnico Municipal'}
               </h1>
-              <p className="page-description">Conoce y gestiona a los profesionales que mantienen nuestra ciudad funcionando</p>
+              <p className="page-description">
+                {isTechnician() ? 'Gestiona tu información personal y horarios' : 'Conoce y gestiona a los profesionales que mantienen nuestra ciudad funcionando'}
+              </p>
             </div>
             
             <div className="header-stats">
-              <div className="stat-item">
-                <span className="stat-number">{stats.total}</span>
-                <span className="stat-label">Profesionales</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">{stats.active}</span>
-                <span className="stat-label">Activos</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">{stats.totalResolved}</span>
-                <span className="stat-label">Tickets Resueltos</span>
-              </div>
+              {isTechnician() && currentUserTechnician ? (
+                <>
+                  <div className="stat-item">
+                    <span className="stat-number">{currentUserTechnician.Tickets_Assigned || 0}</span>
+                    <span className="stat-label">Tickets Asignados</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">{currentUserTechnician.Tickets_Resolved || 0}</span>
+                    <span className="stat-label">Tickets Resueltos</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">{currentUserTechnician.Schedules?.length || 0}</span>
+                    <span className="stat-label">Días Laborales</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="stat-item">
+                    <span className="stat-number">{stats.total}</span>
+                    <span className="stat-label">Profesionales</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">{stats.active}</span>
+                    <span className="stat-label">Activos</span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="stat-number">{stats.totalResolved}</span>
+                    <span className="stat-label">Tickets Resueltos</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           
@@ -536,10 +573,12 @@ const TechnicianManagement: React.FC = () => {
               <ArrowLeft size={18} />
               Volver al Panel
             </button>
-            <button className="action-btn primary" onClick={() => setShowAddModal(true)}>
-              <UserPlus size={18} />
-              Nuevo Profesional
-            </button>
+            {!isTechnician() && (
+              <button className="action-btn primary" onClick={() => setShowAddModal(true)}>
+                <UserPlus size={18} />
+                Nuevo Profesional
+              </button>
+            )}
           </div>
         </header>
 
@@ -736,20 +775,33 @@ const TechnicianManagement: React.FC = () => {
                               </div>
                             </td>
                             <td className="schedule-cell">
-                              {technician.Fk_Lunch_Block ? (
-                                <span className="lunch-block-tag">{technician.Fk_Lunch_Block}</span>
+                              {technician.Lunch_Block_Hours ? (
+                                <span className="lunch-block-tag">{technician.Lunch_Block_Hours}</span>
                               ) : (
                                 <span className="no-lunch-block">Sin bloque</span>
                               )}
                             </td>
                             <td className="schedule-cell">
-                              {technician.Schedules && technician.Schedules.length > 0 ? (
-                                <span className="schedule-summary">
-                                  {technician.Schedules[0].Work_Start_Time} - {technician.Schedules[0].Work_End_Time}
-                                </span>
-                              ) : (
-                                <span className="no-schedule">Sin horario</span>
-                              )}
+                              {(() => {
+                                const todaySchedule = getTodaySchedule(technician.Schedules);
+                                if (todaySchedule) {
+                                  return (
+                                    <span className="schedule-summary">
+                                      {todaySchedule.Work_Start_Time} - {todaySchedule.Work_End_Time}
+                                    </span>
+                                  );
+                                } else if (technician.Schedules && technician.Schedules.length > 0) {
+                                  return (
+                                    <span className="no-schedule-today">
+                                      No trabaja hoy
+                                    </span>
+                                  );
+                                } else {
+                                  return (
+                                    <span className="no-schedule">Sin horario</span>
+                                  );
+                                }
+                              })()}
                             </td>
                             <td className="status-cell">
                               <span className={`status-badge ${getStatusColor(technician.Status)}`}>
@@ -774,23 +826,27 @@ const TechnicianManagement: React.FC = () => {
                                 >
                                   <Eye size={14} />
                                 </button>
-                                <button
-                                  className="action-btn-small"
-                                  onClick={() => handleEdit(technician)}
-                                  title="Editar"
-                                >
-                                  <Edit size={14} />
-                                </button>
-                                <button
-                                  className="action-btn-small danger"
-                                  onClick={() => {
-                                    setSelectedTechnician(technician);
-                                    setShowDeleteModal(true);
-                                  }}
-                                  title="Eliminar"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                                {!isTechnician() || technician.Fk_Users === user?.id ? (
+                                  <button
+                                    className="action-btn-small"
+                                    onClick={() => handleEdit(technician)}
+                                    title="Editar"
+                                  >
+                                    <Edit size={14} />
+                                  </button>
+                                ) : null}
+                                {!isTechnician() && (
+                                  <button
+                                    className="action-btn-small danger"
+                                    onClick={() => {
+                                      setSelectedTechnician(technician);
+                                      setShowDeleteModal(true);
+                                    }}
+                                    title="Eliminar"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -855,18 +911,6 @@ const TechnicianManagement: React.FC = () => {
                   </div>
                   
                   <div className="form-group">
-                    <label>Teléfono (Opcional)</label>
-                    <input
-                      type="tel"
-                      name="telephone_number"
-                      value={formData.telephone_number}
-                      onChange={handleInputChange}
-                      maxLength={20}
-                      placeholder="555-1234"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
                     <label>Email</label>
                     <input
                       type="email"
@@ -927,10 +971,11 @@ const TechnicianManagement: React.FC = () => {
                       onChange={handleInputChange}
                     >
                       <option value="">Sin bloque de almuerzo</option>
-                      <option value="11:30 - 12:10">11:30 - 12:10</option>
-                      <option value="12:10 - 12:50">12:10 - 12:50</option>
-                      <option value="12:50 - 1:30">12:50 - 1:30</option>
-                      <option value="1:20 - 2:00">1:20 - 2:00</option>
+                      {lunchBlocks.map(block => (
+                        <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
+                          {block.Block_Name} ({block.Start_Time} - {block.End_Time})
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1042,17 +1087,6 @@ const TechnicianManagement: React.FC = () => {
                   </div>
                   
                   <div className="form-group">
-                    <label>Teléfono (Opcional)</label>
-                    <input
-                      type="tel"
-                      name="telephone_number"
-                      value={formData.telephone_number}
-                      onChange={handleInputChange}
-                      maxLength={20}
-                    />
-                  </div>
-                  
-                  <div className="form-group">
                     <label>Email</label>
                     <input
                       type="email"
@@ -1111,10 +1145,11 @@ const TechnicianManagement: React.FC = () => {
                       onChange={handleInputChange}
                     >
                       <option value="">Sin bloque de almuerzo</option>
-                      <option value="11:30 - 12:10">11:30 - 12:10</option>
-                      <option value="12:10 - 12:50">12:10 - 12:50</option>
-                      <option value="12:50 - 1:30">12:50 - 1:30</option>
-                      <option value="1:20 - 2:00">1:20 - 2:00</option>
+                      {lunchBlocks.map(block => (
+                        <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
+                          {block.Block_Name} ({block.Start_Time} - {block.End_Time})
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -1219,20 +1254,14 @@ const TechnicianManagement: React.FC = () => {
                       <Mail size={16} />
                       <span>{selectedTechnician.Email}</span>
                     </div>
-                    {selectedTechnician.Telephone_Number && (
-                      <div className="detail-item">
-                        <Phone size={16} />
-                        <span>Teléfono: {selectedTechnician.Telephone_Number}</span>
-                      </div>
-                    )}
                     <div className="detail-item">
                       <Calendar size={16} />
                       <span>Creado: {new Date(selectedTechnician.created_at).toLocaleDateString()}</span>
                     </div>
-                    {selectedTechnician.Fk_Lunch_Block && (
+                    {selectedTechnician.Lunch_Block_Hours && (
                       <div className="detail-item">
                         <Coffee size={16} />
-                        <span>Bloque de Almuerzo: {selectedTechnician.Fk_Lunch_Block}</span>
+                        <span>Bloque de Almuerzo: {selectedTechnician.Lunch_Block_Hours}</span>
                       </div>
                     )}
                   </div>

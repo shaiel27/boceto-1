@@ -7,6 +7,7 @@ export interface User {
   email: string;
   role: number;
   role_name: string;
+  full_name?: string;
   boss_id?: number;
   boss_name?: string;
 }

@@ -128,5 +128,30 @@ class ServiceRequest {
         
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
+
+    public function getByUser($userId, $limit = 50, $offset = 0) {
+        $query = "SELECT sr.*, 
+                         u.Full_Name as user_name, 
+                         o.Name_Office as office_name,
+                         o.Office_Type as office_type,
+                         ts.Type_Service as service_type_name, 
+                         b.Name_Boss as boss_name
+                  FROM " . $this->table_name . " sr
+                  LEFT JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
+                  LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
+                  LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
+                  LEFT JOIN Boss b ON sr.Fk_Boss_Requester = b.ID_Boss
+                  WHERE sr.Fk_User_Requester = :userId
+                  ORDER BY sr.Created_at DESC 
+                  LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":userId", $userId);
+        $stmt->bindParam(":limit", $limit, PDO::PARAM_INT);
+        $stmt->bindParam(":offset", $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 ?>

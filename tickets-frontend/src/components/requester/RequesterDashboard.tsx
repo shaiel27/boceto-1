@@ -29,6 +29,8 @@ import {
 } from 'lucide-react';
 import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
+import ApiService from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Ticket {
   id: string;
@@ -69,6 +71,8 @@ interface RequesterProfile {
 
 const RequesterDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [loading, setLoading] = useState(true);
   const [requesterProfile, setRequesterProfile] = useState<RequesterProfile>({
     id: '1',
     name: 'Carlos Rodríguez',
@@ -86,62 +90,102 @@ const RequesterDashboard: React.FC = () => {
     officeFloor: 'Piso 3, Oficina 305'
   });
 
-  const [myTickets, setMyTickets] = useState<Ticket[]>([
-    {
-      id: '1',
-      Code: 'TICK-2024-001',
-      Subject: 'Falla en servidor de red',
-      Description: 'El servidor principal no responde',
-      Direction_Name: 'Vialidad',
-      Division_Name: 'División de Mantenimiento',
-      Coordination_Name: 'Coordinación de Equipos',
-      System_Priority: 'Alta',
-      Status: 'En Proceso',
-      Created_at: '2024-04-10T09:30:00',
-      Technicians: [
-        { Name: 'Juan Pérez', Is_Lead: true },
-        { Name: 'María González', Is_Lead: false }
-      ],
-      Comments_Count: 3
-    },
-    {
-      id: '2',
-      Code: 'TICK-2024-002',
-      Subject: 'Problema con impresoras',
-      Description: 'Las impresoras no funcionan correctamente',
-      Direction_Name: 'Vialidad',
-      Division_Name: 'División de Mantenimiento',
-      Coordination_Name: 'Coordinación de Equipos',
-      System_Priority: 'Media',
-      Status: 'Pendiente',
-      Created_at: '2024-04-10T10:15:00',
-      Technicians: [],
-      Comments_Count: 1
-    },
-    {
-      id: '3',
-      Code: 'TICK-2024-003',
-      Subject: 'Actualización de software',
-      Description: 'Necesito actualizar el sistema operativo',
-      Direction_Name: 'Vialidad',
-      Division_Name: 'División de Mantenimiento',
-      Coordination_Name: 'Coordinación de Equipos',
-      System_Priority: 'Baja',
-      Status: 'Resuelto',
-      Created_at: '2024-04-09T14:00:00',
-      Resolved_at: '2024-04-09T16:30:00',
-      Solution: 'Se actualizó el sistema operativo a la versión más reciente y se configuraron las actualizaciones automáticas.',
-      Technicians: [
-        { Name: 'Juan Pérez', Is_Lead: true }
-      ],
-      Comments_Count: 0
-    }
-  ]);
+  const [myTickets, setMyTickets] = useState<Ticket[]>([]);
 
   const [showNewTicketForm, setShowNewTicketForm] = useState(false);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [showCommentSection, setShowCommentSection] = useState<Record<string, boolean>>({});
   const [showProfile, setShowProfile] = useState(false);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      console.log('Loading dashboard data...');
+      const userResponse = await ApiService.getMe();
+      console.log('getMe response:', userResponse);
+      
+      if (userResponse.success && userResponse.data) {
+        const userId = userResponse.data.id;
+        console.log('User ID:', userId);
+        
+        try {
+          const profileResponse = await ApiService.getUserProfile(userId);
+          console.log('getUserProfile response:', profileResponse);
+          
+          if (profileResponse.success && profileResponse.data) {
+            const profileData = profileResponse.data;
+            console.log('Profile data:', profileData);
+            
+            setRequesterProfile({
+              id: userId.toString(),
+              name: profileData.Full_Name || 'Usuario',
+              email: profileData.Email || '',
+              phone: '+58 276 123 4567',
+              extension: '245',
+              position: profileData.role_name || 'Solicitante',
+              hireDate: profileData.created_at || '2020-01-01',
+              Direction_Name: profileData.office_type === 'Direction' ? profileData.office_name : 'No asignado',
+              Direction_Code: '',
+              Division_Name: profileData.office_type === 'Division' ? profileData.office_name : 'No asignado',
+              Coordination_Name: profileData.office_type === 'Coordination' ? profileData.office_name : 'No asignado',
+              supervisor: 'No asignado',
+              location: profileData.office_name || 'No asignado',
+              officeFloor: 'No asignado'
+            });
+          } else {
+            console.error('Profile response not successful:', profileResponse);
+          }
+        } catch (error) {
+          console.error('Error loading profile, using mock data:', error);
+        }
+
+        try {
+          const ticketsResponse = await ApiService.getMyTickets(userId);
+          if (ticketsResponse.success && ticketsResponse.data && ticketsResponse.data.length > 0) {
+            const formattedTickets = ticketsResponse.data.map((ticket: any) => ({
+              id: ticket.ID_Service_Request.toString(),
+              Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
+              Subject: ticket.Subject || 'Sin asunto',
+              Description: ticket.Description || 'Sin descripción',
+              Direction_Name: ticket.office_type === 'Direction' ? ticket.office_name : 'No asignado',
+              Division_Name: ticket.office_type === 'Division' ? ticket.office_name : 'No asignado',
+              Coordination_Name: ticket.office_type === 'Coordination' ? ticket.office_name : 'No asignado',
+              System_Priority: ticket.System_Priority || 'Media',
+              Status: ticket.Status || 'Pendiente',
+              Created_at: ticket.Created_at || new Date().toISOString(),
+              Resolved_at: ticket.Resolved_at,
+              Solution: ticket.Resolution_Notes,
+              Technicians: [],
+              Comments_Count: 0
+            }));
+            setMyTickets(formattedTickets);
+          } else {
+            setMyTickets([]);
+          }
+        } catch (error) {
+          console.error('Error loading tickets, using empty array:', error);
+          setMyTickets([]);
+        }
+      } else {
+        setMyTickets([]);
+      }
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      setMyTickets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -195,25 +239,28 @@ const RequesterDashboard: React.FC = () => {
   const activeTickets = myTickets.filter(t => t.Status !== 'Resuelto');
   const resolvedTickets = myTickets.filter(t => t.Status === 'Resuelto');
 
-  const handleAddComment = (ticketId: string) => {
+  const handleAddComment = async (ticketId: string) => {
     const comment = commentInputs[ticketId];
     if (comment && comment.trim()) {
-      // Aquí se enviaría el comentario al backend
-      console.log(`Adding comment to ticket ${ticketId}:`, comment);
-      
-      // Actualizar el ticket localmente (simulación)
-      const updatedTickets = myTickets.map(ticket => {
-        if (ticket.id === ticketId) {
-          return {
-            ...ticket,
-            Comments_Count: ticket.Comments_Count + 1
-          };
+      try {
+        const response = await ApiService.addTicketComment(parseInt(ticketId), comment);
+        if (response.success) {
+          const updatedTickets = myTickets.map(ticket => {
+            if (ticket.id === ticketId) {
+              return {
+                ...ticket,
+                Comments_Count: ticket.Comments_Count + 1
+              };
+            }
+            return ticket;
+          });
+          setMyTickets(updatedTickets);
+          setCommentInputs(prev => ({ ...prev, [ticketId]: '' }));
+          setShowCommentSection(prev => ({ ...prev, [ticketId]: false }));
         }
-        return ticket;
-      });
-      setMyTickets(updatedTickets);
-      setCommentInputs(prev => ({ ...prev, [ticketId]: '' }));
-      setShowCommentSection(prev => ({ ...prev, [ticketId]: false }));
+      } catch (error) {
+        console.error('Error adding comment:', error);
+      }
     }
   };
 
@@ -223,6 +270,12 @@ const RequesterDashboard: React.FC = () => {
 
   return (
     <div className="requester-dashboard">
+      {loading ? (
+        <div className="loading-container">
+          <div className="loading-spinner"></div>
+          <p>Cargando datos...</p>
+        </div>
+      ) : (
       <main className="req-main">
         {/* Profile Actions */}
         <div className="profile-actions-bar">
@@ -236,7 +289,7 @@ const RequesterDashboard: React.FC = () => {
               <User size={18} />
               Mi Perfil
             </button>
-            <button className="action-btn logout" onClick={() => navigate('/login')}>
+            <button className="action-btn logout" onClick={() => logout()}>
               <LogOut size={18} />
               Cerrar Sesión
             </button>
@@ -525,6 +578,7 @@ const RequesterDashboard: React.FC = () => {
           </div>
         </section>
       </main>
+      )}
 
       {/* Modal de Perfil */}
       {showProfile && (

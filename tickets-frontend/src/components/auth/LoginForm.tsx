@@ -12,20 +12,28 @@ interface LoginFormData {
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
-  
+  const { login, isLoading, error, clearError, isAuthenticated, isAdmin, isTechnician, isBoss } = useAuth();
+
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
     password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated based on role
   React.useEffect(() => {
     if (isAuthenticated) {
-      navigate('/');
+      if (isAdmin()) {
+        navigate('/');
+      } else if (isTechnician()) {
+        navigate('/technician');
+      } else if (isBoss()) {
+        navigate('/requester');
+      } else {
+        navigate('/');
+      }
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isAdmin, isTechnician, isBoss, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
