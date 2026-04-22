@@ -1,5 +1,5 @@
 // API Configuration - Real backend
-const API_BASE_URL = 'http://localhost:8012/tickets-backend/public';
+const API_BASE_URL = 'http://localhost:8000';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -15,6 +15,7 @@ export interface LoginResponse {
     email: string;
     role: number;
     role_name: string;
+    full_name?: string;
     boss_id?: number;
     boss_name?: string;
   };
@@ -50,16 +51,26 @@ export class ApiService {
         // Store token in localStorage
         localStorage.setItem('auth_token', data.token);
         
+        // Map backend response to frontend format
+        const roleString = data.user.Role || data.user.role || 'admin';
+        let roleNumber = 1;
+        if (roleString.toLowerCase() === 'tecnico' || roleString.toLowerCase() === 'technician') {
+          roleNumber = 2;
+        } else if (roleString.toLowerCase() === 'jefe' || roleString.toLowerCase() === 'requester') {
+          roleNumber = 3;
+        }
+
         return {
           success: true,
-          message: data.message,
+          message: data.message || 'Login exitoso',
           data: {
             token: data.token,
             user: {
-              id: data.user.id,
-              email: data.user.email,
-              role: data.user.role === 'admin' ? 1 : data.user.role === 'technician' ? 2 : 3,
-              role_name: data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)
+              id: parseInt(data.user.ID_Users || data.user.id),
+              email: data.user.Email || data.user.email,
+              full_name: data.user.Full_Name || data.user.full_name,
+              role: roleNumber,
+              role_name: roleString.charAt(0).toUpperCase() + roleString.slice(1)
             }
           }
         };
@@ -95,29 +106,104 @@ export class ApiService {
   }
 
   static async logout(): Promise<ApiResponse> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    return {
-      success: true,
-      message: 'Sesión cerrada exitosamente'
-    };
+    try {
+      localStorage.removeItem('auth_token');
+      return {
+        success: true,
+        message: 'Sesión cerrada exitosamente'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al cerrar sesión'
+      };
+    }
   }
 
   static async getMe(): Promise<ApiResponse<LoginResponse['user']>> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    return {
-      success: true,
-      message: 'Usuario autenticado',
-      data: {
-        id: 1,
-        email: 'admin@alcaldia.gob',
-        role: 1,
-        role_name: 'Admin'
+    try {
+      const token = localStorage.getItem('auth_token');
+      
+      if (!token) {
+        return {
+          success: false,
+          message: 'No hay token de autenticación'
+        };
       }
-    };
+
+      const response = await fetch(`${API_BASE_URL}/api/auth`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        return {
+          success: false,
+          message: 'Error de conexión con el servidor'
+        };
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.user) {
+        return {
+          success: true,
+          message: data.message,
+          data: {
+            id: data.user.id,
+            email: data.user.email,
+            role: data.user.role === 'admin' ? 1 : data.user.role === 'technician' ? 2 : 3,
+            role_name: data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)
+          }
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Sesión inválida'
+        };
+      }
+    } catch (error) {
+      // Return failure but don't block the login page
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  static async getUserProfile(userId: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users?action=profile&id=${userId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener perfil del usuario'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
   // Ticket endpoints - Real backend
@@ -160,6 +246,47 @@ export class ApiService {
         return {
           success: false,
           message: data.message || 'Error al obtener tickets'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  static async getMyTickets(userId: number, params?: {
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse> {
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('action', 'my-tickets');
+      queryParams.append('user_id', userId.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+      const response = await fetch(`${API_BASE_URL}/api/tickets?${queryParams.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener tickets del usuario'
         };
       }
     } catch (error) {
@@ -298,7 +425,7 @@ export class ApiService {
   // Technician endpoints - Real backend
   static async getTechnicians(): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/users`, {
+      const response = await fetch(`${API_BASE_URL}/api/technicians`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -309,22 +436,117 @@ export class ApiService {
       const data = await response.json();
 
       if (data.success) {
-        // Filter technicians only
-        const technicians = data.data.filter((user: any) => user.role === 'technician');
-        
         return {
           success: true,
           message: data.message,
-          data: technicians.map((tech: any) => ({
-            id: tech.id,
-            name: tech.full_name,
-            email: tech.email
-          }))
+          data: data.data
         };
       } else {
         return {
           success: false,
           message: data.message || 'Error al obtener técnicos'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  static async createTechnician(technicianData: any): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technicians`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create',
+          ...technicianData
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al crear técnico'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  static async updateTechnician(id: number, technicianData: any): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technicians?id=${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'update',
+          ...technicianData
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al actualizar técnico'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  static async deleteTechnician(id: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technicians?id=${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al eliminar técnico'
         };
       }
     } catch (error) {
@@ -344,6 +566,138 @@ export class ApiService {
     };
   }
 
+  static async getLunchBlocks(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/lunch-blocks`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener bloques de almuerzo'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  static async getTechnicianSchedules(technicianId: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technician-schedules?technician_id=${technicianId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener horarios'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  static async createTechnicianSchedule(technicianId: number, dayOfWeek: string, startTime: string, endTime: string): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technician-schedules`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          technician_id: technicianId,
+          day_of_week: dayOfWeek,
+          work_start_time: startTime,
+          work_end_time: endTime
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al crear horario'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  static async deleteTechnicianSchedules(technicianId: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technician-schedules?technician_id=${technicianId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al eliminar horarios'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
   static async getTechnician(id: number): Promise<ApiResponse> {
     await new Promise(resolve => setTimeout(resolve, 300));
     return {
@@ -353,17 +707,37 @@ export class ApiService {
     };
   }
 
-  // Office endpoints - Mock data
+  // Office endpoints - Real backend
   static async getOffices(): Promise<ApiResponse> {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    return {
-      success: true,
-      message: 'Oficinas obtenidas exitosamente',
-      data: [
-        { id: 1, name: 'Dirección de Vialidad', type: 'Direction' },
-        { id: 2, name: 'Dirección de Salud', type: 'Direction' }
-      ]
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users?action=offices`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener oficinas'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
   static async getOffice(id: number): Promise<ApiResponse> {
@@ -460,7 +834,92 @@ export class ApiService {
       data: {}
     };
   }
+
+  // User management endpoints - Real backend
+  static async getUsersWithOffice(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users?action=users-with-office`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener usuarios'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
+
+  static async createUserWithOffice(userData: {
+    email: string;
+    password: string;
+    username: string;
+    full_name: string;
+    role: number;
+    name_boss: string;
+    pronoun: string;
+    office_id?: number;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create-with-office',
+          email: userData.email,
+          password: userData.password,
+          username: userData.username,
+          full_name: userData.full_name,
+          role: userData.role,
+          name_boss: userData.name_boss,
+          pronoun: userData.pronoun,
+          office_id: userData.office_id
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al crear usuario'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+}
 
 
 export default ApiService;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { 
   BarChart3, 
   FileText, 
@@ -27,6 +28,7 @@ interface NavItem {
 const ModernSidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout, user } = useAuth();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -101,6 +103,11 @@ const ModernSidebar: React.FC = () => {
 
   const handleNavigation = (path: string) => {
     navigate(path);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
   const isActive = (path?: string) => {
@@ -179,11 +186,11 @@ const ModernSidebar: React.FC = () => {
                 <Users size={20} color="white" />
               </div>
               <div className="user-details">
-                <div className="user-name">Administrador</div>
-                <div className="user-role">Sistema Municipal</div>
+                <div className="user-name">{user?.full_name || user?.email || 'Usuario'}</div>
+                <div className="user-role">{user?.role_name || 'Sistema Municipal'}</div>
               </div>
             </div>
-            <button className="logout-btn">
+            <button className="logout-btn" onClick={handleLogout}>
               <LogOut size={18} />
               <span>Cerrar Sesión</span>
             </button>

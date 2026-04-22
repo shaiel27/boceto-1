@@ -4,7 +4,7 @@ class Database {
     private $port = '3306';
     private $db_name = 'tickets_system';
     private $username = 'root';
-    private $password = '12345678';
+    private $password = 'NuevaClave123';
     private $conn;
 
     public function getConnection() {

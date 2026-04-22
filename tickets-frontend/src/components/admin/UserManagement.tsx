@@ -21,6 +21,7 @@ import {
 import ModernSidebar from '../layout/ModernSidebar';
 import '../layout/ModernSidebar.css';
 import './UserManagement.css';
+import ApiService from '../../services/api';
 
 interface User {
   ID_Users: number;
@@ -75,100 +76,55 @@ const UserManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    loadMockData();
+    loadData();
   }, []);
 
-  const loadMockData = () => {
+  const loadData = async () => {
     setLoading(true);
     
-    setTimeout(() => {
+    try {
+      // Load roles (mock for now)
       const mockRoles: Role[] = [
         { ID_Role: 1, Role: 'Admin', Description: 'Administrador del sistema' },
         { ID_Role: 2, Role: 'Tecnico', Description: 'Técnico de soporte IT' },
         { ID_Role: 3, Role: 'Jefe', Description: 'Jefe de oficina' }
       ];
-
-      const mockOffices: Office[] = [
-        { ID_Office: 1, Name_Office: 'Dirección de Educación', Office_Type: 'Direction' },
-        { ID_Office: 2, Name_Office: 'Dirección de Vialidad', Office_Type: 'Direction' },
-        { ID_Office: 3, Name_Office: 'Dirección de Salud', Office_Type: 'Direction' },
-        { ID_Office: 5, Name_Office: 'División de Docencia', Office_Type: 'Division' },
-        { ID_Office: 8, Name_Office: 'Coordinación de Servicios Tecnológicos', Office_Type: 'Coordination' }
-      ];
-
-      const mockUsers: User[] = [
-        {
-          ID_Users: 1,
-          Fk_Role: 1,
-          Email: 'carlos.rodriguez@municipio.gob',
-          Password: '********',
-          created_at: '2024-01-15T10:00:00',
-          Role_Name: 'Admin',
-          Role_Description: 'Administrador del sistema',
-          Boss_Name: 'Carlos Rodríguez',
-          Boss_Pronoun: 'Sr.',
-          Office_Name: 'Dirección de Educación',
-          Office_Type: 'Direction'
-        },
-        {
-          ID_Users: 2,
-          Fk_Role: 3,
-          Email: 'maria.gonzalez@municipio.gob',
-          Password: '********',
-          created_at: '2024-02-20T14:30:00',
-          Role_Name: 'Jefe',
-          Role_Description: 'Jefe de oficina',
-          Boss_Name: 'María González',
-          Boss_Pronoun: 'Sra.',
-          Office_Name: 'Dirección de Vialidad',
-          Office_Type: 'Direction'
-        },
-        {
-          ID_Users: 3,
-          Fk_Role: 2,
-          Email: 'juan.perez@municipio.gob',
-          Password: '********',
-          created_at: '2024-03-10T09:15:00',
-          Role_Name: 'Tecnico',
-          Role_Description: 'Técnico de soporte IT',
-          Boss_Name: 'Juan Pérez',
-          Boss_Pronoun: 'Sr.',
-          Office_Name: 'Dirección de Salud',
-          Office_Type: 'Direction'
-        },
-        {
-          ID_Users: 4,
-          Fk_Role: 3,
-          Email: 'ana.martinez@municipio.gob',
-          Password: '********',
-          created_at: '2024-04-05T16:45:00',
-          Role_Name: 'Jefe',
-          Role_Description: 'Jefe de oficina',
-          Boss_Name: 'Ana Martínez',
-          Boss_Pronoun: 'Sra.',
-          Office_Name: 'División de Docencia',
-          Office_Type: 'Division'
-        },
-        {
-          ID_Users: 5,
-          Fk_Role: 2,
-          Email: 'pedro.lopez@municipio.gob',
-          Password: '********',
-          created_at: '2024-05-12T11:00:00',
-          Role_Name: 'Tecnico',
-          Role_Description: 'Técnico de soporte IT',
-          Boss_Name: 'Pedro López',
-          Boss_Pronoun: 'Sr.',
-          Office_Name: 'Coordinación de Servicios Tecnológicos',
-          Office_Type: 'Coordination'
-        }
-      ];
-
       setRoles(mockRoles);
-      setOffices(mockOffices);
-      setUsers(mockUsers);
+
+      // Load offices from backend
+      const officesResponse = await ApiService.getOffices();
+      if (officesResponse.success && officesResponse.data) {
+        const formattedOffices: Office[] = officesResponse.data.map((office: any) => ({
+          ID_Office: office.ID_Office,
+          Name_Office: office.Name_Office,
+          Office_Type: office.Office_Type
+        }));
+        setOffices(formattedOffices);
+      }
+
+      // Load users from backend
+      const usersResponse = await ApiService.getUsersWithOffice();
+      if (usersResponse.success && usersResponse.data) {
+        const formattedUsers: User[] = usersResponse.data.map((user: any) => ({
+          ID_Users: user.ID_Users,
+          Fk_Role: user.Fk_Role,
+          Email: user.Email,
+          Password: '********',
+          created_at: user.created_at,
+          Role_Name: user.role_name,
+          Role_Description: user.role_description,
+          Boss_Name: user.boss_name,
+          Boss_Pronoun: user.boss_pronoun,
+          Office_Name: user.office_name,
+          Office_Type: user.office_type
+        }));
+        setUsers(formattedUsers);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const filteredUsers = users.filter(user => {
@@ -225,29 +181,32 @@ const UserManagement: React.FC = () => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const role = roles.find(r => r.ID_Role === parseInt(formData.fk_role));
-    const office = offices.find(o => o.ID_Office === parseInt(formData.fk_office));
-    
-    const newUser: User = {
-      ID_Users: Date.now(),
-      Fk_Role: parseInt(formData.fk_role),
-      Email: formData.email,
-      Password: formData.password,
-      created_at: new Date().toISOString(),
-      Role_Name: role?.Role,
-      Role_Description: role?.Description,
-      Boss_Name: formData.name_boss,
-      Boss_Pronoun: formData.pronoun,
-      Office_Name: office?.Name_Office,
-      Office_Type: office?.Office_Type
-    };
+    try {
+      const response = await ApiService.createUserWithOffice({
+        email: formData.email,
+        password: formData.password,
+        username: formData.email.split('@')[0],
+        full_name: formData.name_boss,
+        role: parseInt(formData.fk_role),
+        name_boss: formData.name_boss,
+        pronoun: formData.pronoun,
+        office_id: formData.fk_office ? parseInt(formData.fk_office) : undefined
+      });
 
-    setUsers(prev => [...prev, newUser]);
-    setShowAddModal(false);
-    resetForm();
+      if (response.success) {
+        await loadData();
+        setShowAddModal(false);
+        resetForm();
+      } else {
+        alert('Error al crear usuario: ' + response.message);
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Error de conexión con el servidor');
+    }
   };
 
   const handleEdit = (e: React.FormEvent) => {
