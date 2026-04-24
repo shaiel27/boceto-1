@@ -1,6 +1,14 @@
 RewriteEngine On
 RewriteBase /tickets-backend/
 
+# Allow direct access to services.php (public endpoints)
+RewriteCond %{REQUEST_URI} ^/tickets-backend/public/services\.php
+RewriteRule ^.*$ - [L]
+
+# Allow direct access to API services endpoints without going through index.php
+RewriteCond %{REQUEST_URI} ^/tickets-backend/api/services
+RewriteRule ^(.*)$ public/services.php [QSA,L]
+
 # Handle API requests
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

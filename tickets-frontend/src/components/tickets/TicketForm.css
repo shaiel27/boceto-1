@@ -257,6 +257,14 @@
   margin-top: 0.25rem;
 }
 
+.info-message.success {
+  color: var(--success-color);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .input-with-icon {
   position: relative;
   display: flex;
@@ -295,6 +303,17 @@
 
 .form-input.error {
   border-color: var(--danger-color);
+}
+
+.form-input.auto-filled {
+  border-color: var(--success-color);
+  background: var(--success-light);
+  color: var(--text-main);
+}
+
+.form-input.auto-filled:disabled {
+  background: var(--success-light);
+  opacity: 0.8;
 }
 
 .form-input:disabled {
@@ -984,6 +1003,31 @@ textarea.form-input {
 .success-message p {
   color: var(--text-secondary);
   margin: 0;
+}
+
+.ticket-summary {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 1rem;
+  width: 100%;
+  max-width: 500px;
+  text-align: left;
+}
+
+.summary-item {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9375rem;
+}
+
+.summary-item:last-child {
+  border-bottom: none;
+}
+
+.summary-item strong {
+  color: var(--text-main);
+  margin-right: 0.5rem;
 }
 
 .error-message {

@@ -17,7 +17,6 @@ import {
   Settings,
   TrendingUp,
   Building,
-  Phone,
   Mail,
   Briefcase,
   Award,
@@ -27,6 +26,8 @@ import {
   Send,
   X
 } from 'lucide-react';
+import ModernSidebar from '../layout/ModernSidebar';
+import '../layout/ModernSidebar.css';
 import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
 import ApiService from '../../services/api';
@@ -37,9 +38,8 @@ interface Ticket {
   Code: string;
   Subject: string;
   Description: string;
-  Direction_Name: string;
-  Division_Name: string;
-  Coordination_Name: string;
+  office_name: string;
+  office_type: string;
   System_Priority: string;
   Status: string;
   Created_at: string;
@@ -56,17 +56,11 @@ interface RequesterProfile {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  extension: string;
   position: string;
   hireDate: string;
-  Direction_Name: string;
-  Direction_Code: string;
-  Division_Name: string;
-  Coordination_Name: string;
+  office_name: string;
+  office_type: string;
   supervisor: string;
-  location: string;
-  officeFloor: string;
 }
 
 const RequesterDashboard: React.FC = () => {
@@ -77,17 +71,11 @@ const RequesterDashboard: React.FC = () => {
     id: '1',
     name: 'Carlos Rodríguez',
     email: 'carlos.rodriguez@alcaldia.gob',
-    phone: '+58 276 123 4567',
-    extension: '245',
     position: 'Analista de Sistemas',
     hireDate: '2019-03-15',
-    Direction_Name: 'Vialidad',
-    Direction_Code: 'DIR-003',
-    Division_Name: 'División de Mantenimiento',
-    Coordination_Name: 'Coordinación de Equipos',
-    supervisor: 'Ing. María González',
-    location: 'Edificio Municipal, Piso 3',
-    officeFloor: 'Piso 3, Oficina 305'
+    office_name: '',
+    office_type: '',
+    supervisor: 'Ing. María González'
   });
 
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
@@ -130,17 +118,11 @@ const RequesterDashboard: React.FC = () => {
               id: userId.toString(),
               name: profileData.Full_Name || 'Usuario',
               email: profileData.Email || '',
-              phone: '+58 276 123 4567',
-              extension: '245',
               position: profileData.role_name || 'Solicitante',
               hireDate: profileData.created_at || '2020-01-01',
-              Direction_Name: profileData.office_type === 'Direction' ? profileData.office_name : 'No asignado',
-              Direction_Code: '',
-              Division_Name: profileData.office_type === 'Division' ? profileData.office_name : 'No asignado',
-              Coordination_Name: profileData.office_type === 'Coordination' ? profileData.office_name : 'No asignado',
-              supervisor: 'No asignado',
-              location: profileData.office_name || 'No asignado',
-              officeFloor: 'No asignado'
+              office_name: profileData.office_name || '',
+              office_type: profileData.office_type || '',
+              supervisor: 'No asignado'
             });
           } else {
             console.error('Profile response not successful:', profileResponse);
@@ -157,15 +139,17 @@ const RequesterDashboard: React.FC = () => {
               Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
               Subject: ticket.Subject || 'Sin asunto',
               Description: ticket.Description || 'Sin descripción',
-              Direction_Name: ticket.office_type === 'Direction' ? ticket.office_name : 'No asignado',
-              Division_Name: ticket.office_type === 'Division' ? ticket.office_name : 'No asignado',
-              Coordination_Name: ticket.office_type === 'Coordination' ? ticket.office_name : 'No asignado',
+              office_name: ticket.office_name || 'No asignado',
+              office_type: ticket.office_type || 'No asignado',
               System_Priority: ticket.System_Priority || 'Media',
               Status: ticket.Status || 'Pendiente',
               Created_at: ticket.Created_at || new Date().toISOString(),
               Resolved_at: ticket.Resolved_at,
               Solution: ticket.Resolution_Notes,
-              Technicians: [],
+              Technicians: ticket.technicians?.map((tech: any) => ({
+                Name: tech.name,
+                Is_Lead: tech.is_lead
+              })) || [],
               Comments_Count: 0
             }));
             setMyTickets(formattedTickets);
@@ -282,14 +266,17 @@ const RequesterDashboard: React.FC = () => {
           <div className="profile-info-display">
             <User size={20} />
             <span>{requesterProfile.name}</span>
-            <span className="dept-badge">{requesterProfile.Direction_Name}</span>
+            {requesterProfile.office_type && <span className="dept-badge">{requesterProfile.office_type}</span>}
           </div>
           <div className="action-buttons">
             <button className="action-btn profile" onClick={() => setShowProfile(true)}>
               <User size={18} />
               Mi Perfil
             </button>
-            <button className="action-btn logout" onClick={() => logout()}>
+            <button className="action-btn logout" onClick={async () => {
+              await logout();
+              navigate('/login');
+            }}>
               <LogOut size={18} />
               Cerrar Sesión
             </button>
@@ -307,17 +294,15 @@ const RequesterDashboard: React.FC = () => {
                 <h2 className="profile-name">{requesterProfile.name}</h2>
                 <p className="profile-position">{requesterProfile.position}</p>
                 <div className="profile-details">
-                  <span className="profile-detail">
-                    <Building size={14} />
-                    {requesterProfile.Direction_Name}
-                  </span>
+                  {requesterProfile.office_name && (
+                    <span className="profile-detail">
+                      <Building size={14} />
+                      {requesterProfile.office_type} - {requesterProfile.office_name}
+                    </span>
+                  )}
                   <span className="profile-detail">
                     <Mail size={14} />
                     {requesterProfile.email}
-                  </span>
-                  <span className="profile-detail">
-                    <Phone size={14} />
-                    {requesterProfile.phone}
                   </span>
                 </div>
               </div>
@@ -433,16 +418,14 @@ const RequesterDashboard: React.FC = () => {
                   <h3 className="ticket-subject">{ticket.Subject}</h3>
                   <p className="ticket-description">{ticket.Description}</p>
                   
-                  <div className="ticket-location">
-                    <MapPin size={16} />
-                    <div className="location-hierarchy">
-                      <span className="location-item">{ticket.Direction_Name}</span>
-                      <span className="location-separator">→</span>
-                      <span className="location-item">{ticket.Division_Name}</span>
-                      <span className="location-separator">→</span>
-                      <span className="location-item">{ticket.Coordination_Name}</span>
+                  {ticket.office_name && (
+                    <div className="ticket-location">
+                      <MapPin size={16} />
+                      <div className="location-hierarchy">
+                        <span className="location-item">{ticket.office_type} - {ticket.office_name}</span>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="ticket-meta">
                     <div className="meta-item">

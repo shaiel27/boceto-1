@@ -1,6 +1,11 @@
 {
   "version": 1,
   "skills": {
+    "PHP Security Patterns": {
+      "source": "thebushidocollective/han",
+      "sourceType": "github",
+      "computedHash": "720760c1ed4d153cd91e473a8a4699851b631a7c598d465076a1f0f8ead26f13"
+    },
     "php-pro": {
       "source": "jeffallan/claude-skills",
       "sourceType": "github",

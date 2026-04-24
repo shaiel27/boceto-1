@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { User, Building, Save, ArrowLeft, Plus, Check, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { User, Building, Save, ArrowLeft, Plus, Check, X, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ModernSidebar from '../layout/ModernSidebar';
 import '../layout/ModernSidebar.css';
 import './UserRegistration.css';
+import ApiService from '../../services/api';
 
 interface FormData {
   email: string;
@@ -43,7 +44,7 @@ const UserRegistration = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    fk_role: '4',
+    fk_role: '3',
     name_boss: '',
     pronoun: 'Sr.',
     fk_office: ''
@@ -51,25 +52,52 @@ const UserRegistration = () => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [showSuccess, setShowSuccess] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Datos mock de roles
-  const roles: Role[] = [
-    { ID_Role: 4, Role: 'Solicitante', Description: 'Usuario solicitante de servicios técnicos' }
-  ];
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [offices, setOffices] = useState<Office[]>([]);
+  const [officeSearch, setOfficeSearch] = useState('');
+  const [filteredOffices, setFilteredOffices] = useState<Office[]>([]);
+  const [showOfficeDropdown, setShowOfficeDropdown] = useState(false);
 
-  // Datos mock de oficinas
-  const offices: Office[] = [
-    { ID_Office: 1, Name_Office: 'Dirección de Educación', Office_Type: 'Direction' },
-    { ID_Office: 2, Name_Office: 'Dirección de Vialidad', Office_Type: 'Direction' },
-    { ID_Office: 3, Name_Office: 'Dirección de Salud', Office_Type: 'Direction' },
-    { ID_Office: 4, Name_Office: 'Dirección de Obras Públicas', Office_Type: 'Direction' },
-    { ID_Office: 5, Name_Office: 'División de Docencia', Office_Type: 'Division' },
-    { ID_Office: 6, Name_Office: 'División de Administración', Office_Type: 'Division' },
-    { ID_Office: 7, Name_Office: 'División de Ingeniería', Office_Type: 'Division' },
-    { ID_Office: 8, Name_Office: 'Coordinación de Servicios Tecnológicos', Office_Type: 'Coordination' },
-    { ID_Office: 9, Name_Office: 'Coordinación de Recursos Educativos', Office_Type: 'Coordination' }
-  ];
+  // Cargar roles y oficinas desde el backend
+  useEffect(() => {
+    loadOffices();
+  }, []);
 
+  const loadOffices = async () => {
+    try {
+      const response = await ApiService.getOffices();
+      if (response.success && response.data) {
+        setOffices(response.data);
+        setFilteredOffices(response.data);
+      }
+    } catch (error) {
+      console.error('Error al cargar oficinas:', error);
+    }
+  };
+
+  // Filtrar oficinas basado en búsqueda
+  useEffect(() => {
+    if (officeSearch.trim() === '') {
+      setFilteredOffices(offices);
+    } else {
+      const searchLower = officeSearch.toLowerCase();
+      const filtered = offices.filter(office =>
+        office.Name_Office.toLowerCase().includes(searchLower) ||
+        office.Office_Type.toLowerCase().includes(searchLower)
+      );
+      setFilteredOffices(filtered);
+    }
+  }, [officeSearch, offices]);
+
+  const handleOfficeSelect = (office: Office) => {
+    setFormData({ ...formData, fk_office: office.ID_Office.toString() });
+    setOfficeSearch(office.Name_Office);
+    setShowOfficeDropdown(false);
+  };
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const pronouns = ['Sr.', 'Sra.', 'Lic.', 'Ing.', 'Dr.', 'Dra.'];
 
   const validateForm = (): boolean => {
@@ -93,7 +121,6 @@ const UserRegistration = () => {
       newErrors.confirmPassword = 'Las contraseñas no coinciden';
     }
 
-
     if (!formData.name_boss.trim()) {
       newErrors.name_boss = 'El nombre es requerido';
     }
@@ -106,29 +133,48 @@ const UserRegistration = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (validateForm()) {
-      // Aquí iría la llamada a la API para guardar el usuario
-      console.log('Datos del formulario:', formData);
-
-      setShowSuccess(true);
-
-      // Resetear el formulario después de 3 segundos
-      setTimeout(() => {
-        setShowSuccess(false);
-        setFormData({
-          email: '',
-          password: '',
-          confirmPassword: '',
-          fk_role: '',
-          name_boss: '',
-          pronoun: 'Sr.',
-          fk_office: ''
+      setLoading(true);
+      try {
+        const response = await ApiService.createUserWithOffice({
+          email: formData.email,
+          password: formData.password,
+          username: formData.email.split('@')[0],
+          full_name: `${formData.pronoun} ${formData.name_boss}`,
+          role: parseInt(formData.fk_role),
+          name_boss: formData.name_boss,
+          pronoun: formData.pronoun,
+          office_id: formData.fk_office ? parseInt(formData.fk_office) : undefined
         });
-        setErrors({});
-      }, 3000);
+
+        if (response.success) {
+          setShowSuccess(true);
+
+          setTimeout(() => {
+            setShowSuccess(false);
+            setFormData({
+              email: '',
+              password: '',
+              confirmPassword: '',
+              fk_role: '3',
+              name_boss: '',
+              pronoun: 'Sr.',
+              fk_office: ''
+            });
+            setErrors({});
+          }, 3000);
+        } else {
+          alert('Error al crear usuario: ' + (response.message || 'Error desconocido'));
+        }
+      } catch (error) {
+        console.error('Error al crear usuario:', error);
+        alert('Error de conexión con el servidor');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -279,31 +325,88 @@ const UserRegistration = () => {
                   </span>
                   Oficina de Asignación *
                 </label>
-                <select
-                  id="fk_office"
-                  name="fk_office"
-                  value={formData.fk_office}
-                  onChange={handleInputChange}
-                  className={errors.fk_office ? 'error' : ''}
-                >
-                  <option value="">Seleccione una oficina</option>
-                  {offices.map(office => (
-                    <option key={office.ID_Office} value={office.ID_Office}>
-                      {office.Office_Type === 'Direction' && '📍 '}
-                      {office.Office_Type === 'Division' && '📁 '}
-                      {office.Office_Type === 'Coordination' && '📍 '}
-                      {office.Name_Office} ({office.Office_Type})
-                    </option>
-                  ))}
-                </select>
+                <div className="office-search-container">
+                  <div className="search-input-wrapper">
+                    <Search size={16} className="search-icon" />
+                    <input
+                      type="text"
+                      id="office-search"
+                      value={officeSearch}
+                      onChange={(e) => {
+                        setOfficeSearch(e.target.value);
+                        setShowOfficeDropdown(true);
+                      }}
+                      onFocus={() => setShowOfficeDropdown(true)}
+                      placeholder="Buscar oficina..."
+                      className={errors.fk_office ? 'error' : ''}
+                    />
+                    {officeSearch && (
+                      <X
+                        size={16}
+                        className="clear-icon"
+                        onClick={() => {
+                          setOfficeSearch('');
+                          setFormData({ ...formData, fk_office: '' });
+                        }}
+                      />
+                    )}
+                  </div>
+                  {showOfficeDropdown && (
+                    <div className="office-dropdown">
+                      {filteredOffices.length === 0 ? (
+                        <div className="no-results">No se encontraron oficinas</div>
+                      ) : (
+                        filteredOffices.slice(0, 20).map(office => (
+                          <div
+                            key={office.ID_Office}
+                            className="office-option"
+                            onClick={() => handleOfficeSelect(office)}
+                          >
+                            <span className="office-icon">
+                              {office.Office_Type === 'Direction' && '📍'}
+                              {office.Office_Type === 'Division' && '📁'}
+                              {office.Office_Type === 'Coordination' && '🎯'}
+                            </span>
+                            <span className="office-name">{office.Name_Office}</span>
+                            <span className="office-type">{office.Office_Type}</span>
+                          </div>
+                        ))
+                      )}
+                      {filteredOffices.length > 20 && (
+                        <div className="show-more">
+                          Mostrando 20 de {filteredOffices.length} resultados
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <input
+                    type="hidden"
+                    id="fk_office"
+                    name="fk_office"
+                    value={formData.fk_office}
+                  />
+                </div>
                 {errors.fk_office && <span className="error-message">{errors.fk_office}</span>}
               </div>
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="submit-button">
-                <Save size={18} />
-                <span>Registrar Usuario</span>
+              <button type="button" onClick={() => navigate('/admin')} className="btn-secondary">
+                <ArrowLeft size={16} />
+                Volver
+              </button>
+              <button type="submit" className="btn-primary" disabled={loading}>
+                {loading ? (
+                  <>
+                    <span className="loading-spinner"></span>
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <Save size={16} />
+                    Registrar Solicitante
+                  </>
+                )}
               </button>
             </div>
           </form>

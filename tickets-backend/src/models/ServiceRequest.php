@@ -48,6 +48,27 @@ class ServiceRequest {
         try {
             if ($stmt->execute()) {
                 $this->ID_Service_Request = $this->conn->lastInsertId();
+                
+                // Asignar automáticamente técnico disponible (sin errores)
+                try {
+                    require_once __DIR__ . '/Technician.php';
+                    $technician = new Technician($this->conn);
+                    $availableTechnicians = $technician->getAvailableTechniciansByService($this->Fk_TI_Service);
+                    
+                    if (!empty($availableTechnicians)) {
+                        $selectedTechnician = $availableTechnicians[0];
+                        $technician->assignToTicket($this->ID_Service_Request, $selectedTechnician['ID_Technicians'], null, true);
+                        
+                        $updateQuery = "UPDATE " . $this->table_name . " SET Status = 'Técnicos Asignados' WHERE ID_Service_Request = :id";
+                        $updateStmt = $this->conn->prepare($updateQuery);
+                        $updateStmt->bindParam(":id", $this->ID_Service_Request);
+                        $updateStmt->execute();
+                    }
+                } catch (Exception $e) {
+                    // Si falla la asignación, el ticket se queda en Pendiente
+                    error_log("Error assigning technician: " . $e->getMessage());
+                }
+                
                 return true;
             }
         } catch(PDOException $exception) {
@@ -90,7 +111,13 @@ class ServiceRequest {
         $stmt->bindParam(":id", $id);
         $stmt->execute();
         
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($result) {
+            $result['technicians'] = $this->getTicketTechnicians($id);
+        }
+        
+        return $result;
     }
 
     public function updateStatus($id, $status, $assigned_to = null) {
@@ -108,11 +135,46 @@ class ServiceRequest {
         $stmt->bindParam(":Status", $status);
         
         try {
-            return $stmt->execute();
+            if ($stmt->execute()) {
+                // Si se cierra el ticket, actualizar status de técnicos asignados
+                if ($status === 'Cerrado') {
+                    require_once __DIR__ . '/Technician.php';
+                    $technician = new Technician($this->conn);
+                    
+                    // Obtener técnicos asignados a este ticket
+                    $assignedTechs = $this->getTicketTechnicians($id);
+                    
+                    foreach ($assignedTechs as $tech) {
+                        // Verificar si el técnico tiene otros tickets activos (no cerrados)
+                        $checkQuery = "SELECT COUNT(*) as active_count
+                                     FROM Ticket_Technicians tt
+                                     INNER JOIN service_request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                                     WHERE tt.Fk_Technician = :techId 
+                                       AND tt.Status = 'Activo'
+                                       AND sr.Status != 'Cerrado'";
+                        $checkStmt = $this->conn->prepare($checkQuery);
+                        $checkStmt->bindParam(":techId", $tech['ID_Technicians']);
+                        $checkStmt->execute();
+                        $result = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                        
+                        // Si no tiene más tickets activos, cambiar a Disponible
+                        if ($result['active_count'] == 0) {
+                            $updateTechQuery = "UPDATE Technicians SET Status = 'Disponible' WHERE ID_Technicians = :techId";
+                            $updateTechStmt = $this->conn->prepare($updateTechQuery);
+                            $updateTechStmt->bindParam(":techId", $tech['ID_Technicians']);
+                            $updateTechStmt->execute();
+                        }
+                    }
+                }
+                
+                return true;
+            }
         } catch(PDOException $exception) {
             echo "Update error: " . $exception->getMessage();
             return false;
         }
+        
+        return false;
     }
 
     public function getStats() {
@@ -151,7 +213,85 @@ class ServiceRequest {
         $stmt->bindParam(":offset", $offset, PDO::PARAM_INT);
         $stmt->execute();
         
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Add technicians array to each ticket
+        foreach ($results as &$result) {
+            $result['technicians'] = $this->getTicketTechnicians($result['ID_Service_Request']);
+        }
+        
+        return $results;
+    }
+
+    public function getTicketTechnicians($ticketId) {
+        $query = "SELECT t.ID_Technicians, 
+                         CONCAT(t.First_Name, ' ', t.Last_Name) as name,
+                         tt.Is_Lead as is_lead,
+                         tt.Assignment_Role as role,
+                         tt.Assigned_At as assigned_at
+                  FROM Ticket_Technicians tt
+                  INNER JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
+                  WHERE tt.Fk_Service_Request = :ticketId AND tt.Status = 'Activo'";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":ticketId", $ticketId);
+        $stmt->execute();
+        
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function updatePriority($id, $priority) {
+        $allowedPriorities = ['Baja', 'Media', 'Alta'];
+        if (!in_array($priority, $allowedPriorities, true)) {
+            return false;
+        }
+        
+        $query = "UPDATE " . $this->table_name . " SET System_Priority = :priority WHERE ID_Service_Request = :id";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":priority", $priority);
+        $stmt->bindParam(":id", $id);
+        
+        try {
+            return $stmt->execute();
+        } catch(PDOException $exception) {
+            echo "Update priority error: " . $exception->getMessage();
+            return false;
+        }
+    }
+
+    public function getByTechnician($technicianId, $limit = 50, $offset = 0) {
+        $query = "SELECT sr.*, 
+                         u.Full_Name as user_name, 
+                         o.Name_Office as office_name,
+                         o.Office_Type as office_type,
+                         ts.Type_Service as service_type_name, 
+                         b.Name_Boss as boss_name,
+                         tt.Is_Lead as is_lead
+                  FROM " . $this->table_name . " sr
+                  LEFT JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
+                  LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
+                  LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
+                  LEFT JOIN Boss b ON sr.Fk_Boss_Requester = b.ID_Boss
+                  INNER JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request AND tt.Status = 'Activo'
+                  WHERE tt.Fk_Technician = :technicianId
+                  ORDER BY sr.Created_at DESC 
+                  LIMIT :limit OFFSET :offset";
+        
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":technicianId", $technicianId);
+        $stmt->bindParam(":limit", $limit, PDO::PARAM_INT);
+        $stmt->bindParam(":offset", $offset, PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Add technicians array to each ticket
+        foreach ($results as &$result) {
+            $result['technicians'] = $this->getTicketTechnicians($result['ID_Service_Request']);
+        }
+        
+        return $results;
     }
 }
 ?>

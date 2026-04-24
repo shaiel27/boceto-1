@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/TechnicianSchedule.php';
 
@@ -6,6 +8,10 @@ $database = new Database();
 $db = $database->getConnection();
 
 $technician = new Technician($db);
+
+// Get authenticated user from middleware context
+$currentUserId = $_SERVER['AUTH_USER_ID'] ?? null;
+$currentUserRole = $_SERVER['AUTH_USER_ROLE'] ?? null;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $technicianId = $_GET['technician_id'] ?? '';

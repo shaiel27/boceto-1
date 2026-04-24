@@ -31,6 +31,7 @@ import {
   Star
 } from 'lucide-react';
 import './AdminTicketManagement.css';
+import ApiService from '../../services/api';
 
 interface TicketTechnician {
   ID_Ticket_Technician: string;
@@ -142,138 +143,51 @@ const AdminTicketManagement: React.FC = () => {
 
   // Datos mock para demostración
   useEffect(() => {
-    loadMockData();
+    loadTickets();
   }, []);
 
-  const loadMockData = () => {
+  const loadTickets = async () => {
     setLoading(true);
     
-    // Simular carga de datos
-    setTimeout(() => {
-      const mockTickets: Ticket[] = [
-        {
-          ID_Service_Request: '1',
-          Ticket_Code: 'TK-001',
-          Subject: 'Problema con conexión a internet en oficina principal',
-          Description: 'Los usuarios reportan pérdida de conectividad intermitente durante el día',
-          Fk_Direction: '1',
-          Fk_Division: '1',
-          Fk_Coordination: '1',
-          Fk_TI_Service: '1',
-          System_Priority: 'Alta',
-          Status: 'En Proceso',
-          Created_at: '2024-01-15T09:30:00Z',
-          Resolved_at: null,
-          Direction_Name: 'Dirección de Educación',
-          Division_Name: 'División de Docencia',
-          Coordination_Name: 'Coordinación de Semáforos',
-          Service_Name: 'Redes',
-          Technicians: [
-            {
-              ID_Ticket_Technician: '1',
-              Fk_Technician: '1',
-              Is_Lead: true,
-              Assigned_At: '2024-01-15T09:30:00Z',
-              Technician_Name: 'Carlos Rodríguez',
-              Technician_Email: 'carlos.rodriguez@municipio.gob'
-            },
-            {
-              ID_Ticket_Technician: '2',
-              Fk_Technician: '2',
-              Is_Lead: false,
-              Assigned_At: '2024-01-15T10:00:00Z',
-              Technician_Name: 'María González',
-              Technician_Email: 'maria.gonzalez@municipio.gob'
-            }
-          ],
-          Attachments_Count: 2,
-          Comments_Count: 5
-        },
-        {
-          ID_Service_Request: '2',
-          Ticket_Code: 'TK-002',
-          Subject: 'Actualización de software en computadoras de contabilidad',
-          Description: 'Se requiere actualizar el sistema contable a la última versión',
-          Fk_Direction: '2',
-          Fk_Division: '2',
-          Fk_Coordination: '2',
-          Fk_TI_Service: '2',
-          System_Priority: 'Media',
-          Status: 'Pendiente',
-          Created_at: '2024-01-15T10:15:00Z',
-          Resolved_at: null,
-          Direction_Name: 'Dirección de Vialidad',
-          Division_Name: 'División de Ingeniería',
-          Coordination_Name: 'Coordinación de Catastro Legal',
-          Service_Name: 'Soporte Técnico',
-          Technicians: [],
-          Attachments_Count: 1,
-          Comments_Count: 2
-        },
-        {
-          ID_Service_Request: '3',
-          Ticket_Code: 'TK-003',
-          Subject: 'Impresora no funciona en área de recepción',
-          Description: 'La impresora principal no responde y muestra error de papel atascado',
-          Fk_Direction: '3',
-          Fk_Division: '3',
-          Fk_Coordination: '3',
-          Fk_TI_Service: '2',
-          System_Priority: 'Baja',
-          Status: 'Cerrado',
-          Created_at: '2024-01-14T14:20:00Z',
-          Resolved_at: '2024-01-15T11:45:00Z',
-          Direction_Name: 'Dirección de Salud',
-          Division_Name: 'División Administrativa',
-          Coordination_Name: 'Coordinación de Mantenimiento',
-          Service_Name: 'Soporte Técnico',
-          Technicians: [
-            {
-              ID_Ticket_Technician: '3',
-              Fk_Technician: '2',
-              Is_Lead: true,
-              Assigned_At: '2024-01-14T14:20:00Z',
-              Technician_Name: 'María González',
-              Technician_Email: 'maria.gonzalez@municipio.gob'
-            }
-          ],
+    try {
+      const response = await ApiService.getTickets();
+      if (response.success && response.data) {
+        const formattedTickets = response.data.map((ticket: any) => ({
+          ID_Service_Request: ticket.ID_Service_Request.toString(),
+          Ticket_Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
+          Subject: ticket.Subject || 'Sin asunto',
+          Description: ticket.Description || 'Sin descripción',
+          Fk_Direction: ticket.Fk_Office || '',
+          Fk_Division: '',
+          Fk_Coordination: '',
+          Fk_TI_Service: ticket.Fk_TI_Service?.toString() || '',
+          System_Priority: ticket.System_Priority || 'Media',
+          Status: ticket.Status || 'Pendiente',
+          Created_at: ticket.Created_at || new Date().toISOString(),
+          Resolved_at: ticket.Resolved_at || null,
+          Direction_Name: ticket.office_name || 'No asignado',
+          Division_Name: ticket.office_type || 'No asignado',
+          Coordination_Name: ticket.service_type_name || 'No asignado',
+          Service_Name: ticket.service_type_name || 'No asignado',
+          Technicians: ticket.technicians?.map((t: any) => ({
+            ID_Ticket_Technician: t.id?.toString() || '',
+            Fk_Technician: t.id?.toString() || '',
+            Is_Lead: t.is_lead || false,
+            Assigned_At: t.assigned_at || '',
+            Technician_Name: t.name || 'No asignado',
+            Technician_Email: ''
+          })) || [],
           Attachments_Count: 0,
-          Comments_Count: 3
-        }
-      ];
-
-      const mockTechnicians: Technician[] = [
-        {
-          ID_Technician: '1',
-          Name: 'Carlos Rodríguez',
-          Email: 'carlos.rodriguez@municipio.gob',
-          Status: 'Disponible',
-          Specialization: 'Redes y Conectividad',
-          TI_Services: ['1']
-        },
-        {
-          ID_Technician: '2',
-          Name: 'María González',
-          Email: 'maria.gonzalez@municipio.gob',
-          Status: 'Ocupado',
-          Specialization: 'Soporte Técnico',
-          TI_Services: ['2']
-        },
-        {
-          ID_Technician: '3',
-          Name: 'Juan Pérez',
-          Email: 'juan.perez@municipio.gob',
-          Status: 'Disponible',
-          Specialization: 'Hardware y Mantenimiento',
-          TI_Services: ['3']
-        }
-      ];
-
-      setTickets(mockTickets);
-      setFilteredTickets(mockTickets);
-      setTechnicians(mockTechnicians.filter(t => t.Status === 'Disponible'));
+          Comments_Count: 0
+        }));
+        setTickets(formattedTickets);
+      }
+    } catch (error) {
+      console.error('Error loading tickets:', error);
+      setError('Error al cargar tickets');
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   // Filtrar tickets

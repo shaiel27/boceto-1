@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import {
   User,
   Mail,
-  Phone,
   Building,
   Briefcase,
   Calendar,
-  MapPin,
   Lock,
   Eye,
   EyeOff,
@@ -21,17 +19,11 @@ interface RequesterProfileData {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  extension: string;
   position: string;
   hireDate: string;
-  Direction_Name: string;
-  Direction_Code: string;
-  Division_Name: string;
-  Coordination_Name: string;
+  office_name: string;
+  office_type: string;
   supervisor: string;
-  location: string;
-  officeFloor: string;
 }
 
 interface RequesterProfileProps {
@@ -53,8 +45,8 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
   });
 
   const [editForm, setEditForm] = useState({
-    phone: profile.phone,
-    extension: profile.extension
+    name: profile.name,
+    email: profile.email
   });
 
   const [passwordError, setPasswordError] = useState('');
@@ -129,8 +121,8 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
     
     const updatedProfile = {
       ...profile,
-      phone: editForm.phone,
-      extension: editForm.extension
+      name: editForm.name,
+      email: editForm.email
     };
 
     if (onUpdate) {
@@ -198,13 +190,6 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
             </div>
             <div className="info-item">
               <label className="info-label">
-                <Phone size={14} />
-                Teléfono
-              </label>
-              <p className="info-value">{profile.phone} (Ext: {profile.extension})</p>
-            </div>
-            <div className="info-item">
-              <label className="info-label">
                 <Briefcase size={14} />
                 Cargo
               </label>
@@ -222,27 +207,15 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
             <h3 className="card-title">Información Laboral</h3>
           </div>
           <div className="info-grid">
-            <div className="info-item">
-              <label className="info-label">
-                <Building size={14} />
-                Dirección
-              </label>
-              <p className="info-value">{profile.Direction_Name} ({profile.Direction_Code})</p>
-            </div>
-            <div className="info-item">
-              <label className="info-label">
-                <Building size={14} />
-                División
-              </label>
-              <p className="info-value">{profile.Division_Name}</p>
-            </div>
-            <div className="info-item">
-              <label className="info-label">
-                <Building size={14} />
-                Coordinación
-              </label>
-              <p className="info-value">{profile.Coordination_Name}</p>
-            </div>
+            {profile.office_name && (
+              <div className="info-item">
+                <label className="info-label">
+                  <Building size={14} />
+                  Oficina
+                </label>
+                <p className="info-value">{profile.office_type} - {profile.office_name}</p>
+              </div>
+            )}
             <div className="info-item">
               <label className="info-label">
                 <User size={14} />
@@ -269,20 +242,6 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
                 Antigüedad
               </label>
               <p className="info-value">{calculateYearsOfService(profile.hireDate)} años</p>
-            </div>
-            <div className="info-item">
-              <label className="info-label">
-                <MapPin size={14} />
-                Ubicación
-              </label>
-              <p className="info-value">{profile.location}</p>
-            </div>
-            <div className="info-item">
-              <label className="info-label">
-                <MapPin size={14} />
-                Oficina
-              </label>
-              <p className="info-value">{profile.officeFloor}</p>
             </div>
           </div>
         </div>
@@ -439,25 +398,25 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
             
             <form onSubmit={handleEditSubmit} className="edit-form">
               <div className="form-group">
-                <label>Teléfono</label>
+                <label>Nombre Completo</label>
                 <input
-                  type="tel"
-                  name="phone"
-                  value={editForm.phone}
+                  type="text"
+                  name="name"
+                  value={editForm.name}
                   onChange={handleEditChange}
-                  placeholder="+58 276 123 4567"
+                  placeholder="Nombre completo"
                   required
                 />
               </div>
 
               <div className="form-group">
-                <label>Extensión</label>
+                <label>Correo Electrónico</label>
                 <input
-                  type="text"
-                  name="extension"
-                  value={editForm.extension}
+                  type="email"
+                  name="email"
+                  value={editForm.email}
                   onChange={handleEditChange}
-                  placeholder="245"
+                  placeholder="correo@alcaldia.gob"
                   required
                 />
               </div>

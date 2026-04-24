@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Office.php';
@@ -8,6 +10,10 @@ $db = $database->getConnection();
 
 $user = new User($db);
 $office = new Office($db);
+
+// Get authenticated user from middleware context
+$currentUserId = $_SERVER['AUTH_USER_ID'] ?? null;
+$currentUserRole = $_SERVER['AUTH_USER_ROLE'] ?? null;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';

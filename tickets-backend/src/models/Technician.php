@@ -19,7 +19,13 @@ class Technician {
         $query = "SELECT t.ID_Technicians, t.Fk_Users, t.First_Name, t.Last_Name, 
                           t.Fk_Lunch_Block, t.Status, t.created_at,
                           u.Email, u.Username,
-                          lb.Block_Name, lb.Start_Time, lb.End_Time
+                          lb.Block_Name, lb.Start_Time, lb.End_Time,
+                          (SELECT COUNT(*) FROM Ticket_Technicians tt 
+                           JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status != 'Resuelto') as Tickets_Assigned,
+                          (SELECT COUNT(*) FROM Ticket_Technicians tt 
+                           JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status = 'Resuelto') as Tickets_Resolved
                   FROM " . $this->table_name . " t
                   LEFT JOIN Users u ON t.Fk_Users = u.ID_Users
                   LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
@@ -35,7 +41,13 @@ class Technician {
         $query = "SELECT t.ID_Technicians, t.Fk_Users, t.First_Name, t.Last_Name, 
                           t.Fk_Lunch_Block, t.Status, t.created_at,
                           u.Email, u.Username,
-                          lb.Block_Name, lb.Start_Time, lb.End_Time
+                          lb.Block_Name, lb.Start_Time, lb.End_Time,
+                          (SELECT COUNT(*) FROM Ticket_Technicians tt 
+                           JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status != 'Resuelto') as Tickets_Assigned,
+                          (SELECT COUNT(*) FROM Ticket_Technicians tt 
+                           JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status = 'Resuelto') as Tickets_Resolved
                   FROM " . $this->table_name . " t
                   LEFT JOIN Users u ON t.Fk_Users = u.ID_Users
                   LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
@@ -120,19 +132,40 @@ class Technician {
     }
 
     public function update($id, $data) {
-        $query = "UPDATE " . $this->table_name . " 
-                  SET First_Name = :First_Name, Last_Name = :Last_Name, 
-                      Fk_Lunch_Block = :Fk_Lunch_Block, Status = :Status
-                  WHERE ID_Technicians = :id";
-        
+        // Construir query dinámicamente basado en los campos proporcionados
+        $fields = [];
+        $params = [];
+
+        if (isset($data->First_Name)) {
+            $fields[] = "First_Name = :First_Name";
+            $params[':First_Name'] = $data->First_Name;
+        }
+        if (isset($data->Last_Name)) {
+            $fields[] = "Last_Name = :Last_Name";
+            $params[':Last_Name'] = $data->Last_Name;
+        }
+        if (isset($data->Fk_Lunch_Block)) {
+            $fields[] = "Fk_Lunch_Block = :Fk_Lunch_Block";
+            $params[':Fk_Lunch_Block'] = $data->Fk_Lunch_Block;
+        }
+        if (isset($data->Status)) {
+            $fields[] = "Status = :Status";
+            $params[':Status'] = $data->Status;
+        }
+
+        if (empty($fields)) {
+            return false; // No hay campos para actualizar
+        }
+
+        $query = "UPDATE " . $this->table_name . " SET " . implode(', ', $fields) . " WHERE ID_Technicians = :id";
+        $params[':id'] = $id;
+
         $stmt = $this->conn->prepare($query);
-        
-        $stmt->bindParam(":First_Name", $data->First_Name);
-        $stmt->bindParam(":Last_Name", $data->Last_Name);
-        $stmt->bindParam(":Fk_Lunch_Block", $data->Fk_Lunch_Block);
-        $stmt->bindParam(":Status", $data->Status);
-        $stmt->bindParam(":id", $id);
-        
+
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value);
+        }
+
         try {
             if ($stmt->execute()) {
                 return true;
@@ -140,7 +173,7 @@ class Technician {
         } catch(PDOException $exception) {
             echo "Update error: " . $exception->getMessage();
         }
-        
+
         return false;
     }
 

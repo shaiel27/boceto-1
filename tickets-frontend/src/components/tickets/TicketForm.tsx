@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import {
   Send,
   AlertCircle,
@@ -18,6 +18,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import './TicketForm.css';
+import ApiService from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TicketFormData {
   subject: string;
@@ -44,9 +46,11 @@ interface SoftwareSystem {
 }
 
 const TicketForm: React.FC = () => {
+  const { user, isAdmin } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [createdTicket, setCreatedTicket] = useState<any>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formData, setFormData] = useState<TicketFormData>({
     subject: '',
@@ -59,121 +63,101 @@ const TicketForm: React.FC = () => {
     attachments: []
   });
 
+  // Load offices from backend
+  const [offices, setOffices] = useState<any[]>([]);
+  const [loadingOffices, setLoadingOffices] = useState(false);
+
+  // Fetch offices on component mount
+  useEffect(() => {
+    const fetchOffices = async () => {
+      setLoadingOffices(true);
+      try {
+        const response = await ApiService.getOffices();
+        if (response.success && response.data) {
+          const formattedOffices = response.data.map((office: any) => ({
+            id: office.ID_Office?.toString() || office.id?.toString(),
+            name: office.Name_Office || office.Office_Name || office.name,
+            type: office.Office_Type || office.Office_Type || office.type || 'Direction'
+          }));
+          setOffices(formattedOffices);
+          console.log('Offices loaded:', formattedOffices);
+        }
+      } catch (error) {
+        console.error('Error loading offices:', error);
+      } finally {
+        setLoadingOffices(false);
+      }
+    };
+
+    fetchOffices();
+  }, []);
+
+  // Auto-fill office based on user role - execute after offices are loaded
+  useEffect(() => {
+    console.log('Auto-fill office check:', { user, officeId: user?.office_id, role: user?.role, officesLoaded: offices.length > 0 });
+    if (user && user.role !== 1 && user.office_id && offices.length > 0) {
+      const officeIdStr = user.office_id.toString();
+      console.log('Setting office ID:', officeIdStr, 'Available offices:', offices.map(o => o.id));
+      setFormData(prev => ({ ...prev, fkOffice: officeIdStr }));
+    }
+  }, [user, offices]);
+
   // Catálogo de problemas por tipo de servicio
   const [problemsCatalog, setProblemsCatalog] = useState<ProblemCatalog[]>([]);
   const [softwareSystems, setSoftwareSystems] = useState<SoftwareSystem[]>([]);
 
   // Cargar problemas según tipo de servicio seleccionado
   useEffect(() => {
-    if (formData.fkTiService) {
-      const mockProblems: ProblemCatalog[] = [
-        {
-          id: '1',
-          name: 'Sin conexión a internet',
-          typicalDescription: 'No puedo acceder a internet o la conexión es muy lenta',
-          estimatedSeverity: 'Alta'
-        },
-        {
-          id: '2',
-          name: 'Problemas de red interna',
-          typicalDescription: 'No puedo acceder a recursos compartidos o impresoras en red',
-          estimatedSeverity: 'Media'
-        },
-        {
-          id: '3',
-          name: 'VPN no conecta',
-          typicalDescription: 'No puedo conectarme a la VPN corporativa',
-          estimatedSeverity: 'Alta'
-        }
-      ];
-
-      if (formData.fkTiService === '2') {
-        mockProblems.length = 0;
-        mockProblems.push(
-          {
-            id: '4',
-            name: 'Sistema no responde',
-            typicalDescription: 'El sistema está lento o no responde',
-            estimatedSeverity: 'Alta'
-          },
-          {
-            id: '5',
-            name: 'Error en funcionalidad',
-            typicalDescription: 'Algún módulo del sistema presenta errores',
-            estimatedSeverity: 'Media'
-          },
-          {
-            id: '6',
-            name: 'Nueva funcionalidad requerida',
-            typicalDescription: 'Necesito una nueva función o reporte',
-            estimatedSeverity: 'Baja'
+    const loadProblemsAndSystems = async () => {
+      if (formData.fkTiService) {
+        try {
+          // Cargar problemas desde la API
+          const problemsResponse = await ApiService.getProblems(parseInt(formData.fkTiService));
+          if (problemsResponse.success && problemsResponse.data) {
+            const problems: ProblemCatalog[] = problemsResponse.data.map((p: any) => ({
+              id: p.ID_Problem_Catalog?.toString() || p.id?.toString(),
+              name: p.Problem_Name || p.name,
+              typicalDescription: p.Typical_Description || p.typicalDescription,
+              estimatedSeverity: p.Estimated_Severity || p.estimatedSeverity || 'Media'
+            }));
+            setProblemsCatalog(problems);
           }
-        );
 
-        // Cargar sistemas de software para Programación
-        const mockSoftwareSystems: SoftwareSystem[] = [
-          { id: '1', name: 'Sistema de Recursos Humanos', description: 'Módulo de nómina y personal' },
-          { id: '2', name: 'Sistema de Finanzas', description: 'Contabilidad y presupuesto' },
-          { id: '3', name: 'Sistema de Catastro', description: 'Gestión de impuestos inmobiliarios' },
-          { id: '4', name: 'Sistema de Trámites', description: 'Gestión de solicitudes ciudadanas' }
-        ];
-        setSoftwareSystems(mockSoftwareSystems);
+          // Cargar sistemas de software si el tipo de servicio es Programación (ID 2)
+          if (formData.fkTiService === '2') {
+            const systemsResponse = await ApiService.getSystems();
+            if (systemsResponse.success && systemsResponse.data) {
+              const systems: SoftwareSystem[] = systemsResponse.data.map((s: any) => ({
+                id: s.ID_System?.toString() || s.id?.toString(),
+                name: s.System_Name || s.name,
+                description: s.Description || s.description
+              }));
+              setSoftwareSystems(systems);
+            }
+          } else {
+            setSoftwareSystems([]);
+          }
+        } catch (error) {
+          console.error('Error al cargar datos:', error);
+          // Fallback a datos mock si falla la API
+          const mockProblems: ProblemCatalog[] = [
+            {
+              id: '1',
+              name: 'Sin conexión a internet',
+              typicalDescription: 'No puedo acceder a internet o la conexión es muy lenta',
+              estimatedSeverity: 'Alta'
+            }
+          ];
+          setProblemsCatalog(mockProblems);
+        }
       } else {
+        setProblemsCatalog([]);
         setSoftwareSystems([]);
       }
+    };
 
-      if (formData.fkTiService === '3') {
-        mockProblems.length = 0;
-        mockProblems.push(
-          {
-            id: '7',
-            name: 'Equipo no enciende',
-            typicalDescription: 'El equipo no prende o se apaga solo',
-            estimatedSeverity: 'Alta'
-          },
-          {
-            id: '8',
-            name: 'Pantalla dañada',
-            typicalDescription: 'La pantalla está rota o no muestra imagen',
-            estimatedSeverity: 'Alta'
-          },
-          {
-            id: '9',
-            name: 'Teclado/mouse no funciona',
-            typicalDescription: 'El teclado o mouse no responde',
-            estimatedSeverity: 'Media'
-          },
-          {
-            id: '10',
-            name: 'Impresora atascada',
-            typicalDescription: 'La impresora tiene papel atascado o no imprime',
-            estimatedSeverity: 'Media'
-          }
-        );
-      }
-
-      setProblemsCatalog(mockProblems);
-    } else {
-      setProblemsCatalog([]);
-      setSoftwareSystems([]);
-    }
+    loadProblemsAndSystems();
   }, [formData.fkTiService]);
-
-  // Mock data para oficinas unificadas según estructura de DB
-  const [offices] = useState([
-    { id: '1', name: 'Dirección de Educación', type: 'Direction' },
-    { id: '2', name: 'Dirección de Vialidad', type: 'Direction' },
-    { id: '3', name: 'Dirección de Salud', type: 'Direction' },
-    { id: '4', name: 'Dirección de Obras Públicas', type: 'Direction' },
-    { id: '5', name: 'Dirección de Recursos Humanos', type: 'Direction' },
-    { id: '6', name: 'Dirección de Finanzas', type: 'Direction' },
-    { id: '7', name: 'División de Docencia', type: 'Division', parentOfficeId: '1' },
-    { id: '8', name: 'División de Ingeniería', type: 'Division', parentOfficeId: '2' },
-    { id: '9', name: 'División Administrativa', type: 'Division', parentOfficeId: '3' },
-    { id: '10', name: 'Coordinación de Semáforos', type: 'Coordination', parentOfficeId: '7' },
-    { id: '11', name: 'Coordinación de Catastro Legal', type: 'Coordination', parentOfficeId: '8' },
-    { id: '12', name: 'Coordinación de Mantenimiento', type: 'Coordination', parentOfficeId: '9' }
-  ]);
 
   const [tiServices] = useState([
     { id: '1', name: 'Redes', description: 'Problemas de conectividad' },
@@ -263,42 +247,68 @@ const TicketForm: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Calcular prioridad del sistema basada en el problema seleccionado
       const selectedProblem = problemsCatalog.find(p => p.id === formData.fkProblemCatalog);
       const systemPriority = selectedProblem?.estimatedSeverity || 'Media';
 
-      const ticketCode = `TKT-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      // Preparar datos del ticket para enviar al backend
+      const ticketData = {
+        Subject: formData.subject,
+        Description: formData.description,
+        Property_Number: formData.propertyNumber,
+        Fk_Office: parseInt(formData.fkOffice),
+        Fk_TI_Service: parseInt(formData.fkTiService),
+        Fk_Problem_Catalog: parseInt(formData.fkProblemCatalog),
+        Fk_Software_System: formData.fkSoftwareSystem ? parseInt(formData.fkSoftwareSystem) : null,
+        System_Priority: systemPriority
+      };
 
-      console.log('Ticket creado:', {
-        ...formData,
-        ticketCode,
-        systemPriority
-      });
+      // Enviar ticket al backend
+      const response = await ApiService.createTicket(ticketData);
 
-      setSubmitStatus('success');
-
-      setTimeout(() => {
-        setFormData({
-          subject: '',
-          description: '',
-          propertyNumber: '',
-          fkOffice: '',
-          fkTiService: '',
-          fkProblemCatalog: '',
-          fkSoftwareSystem: '',
-          attachments: []
+      if (response.success) {
+        setSubmitStatus('success');
+        
+        // Guardar datos del ticket creado para mostrar en el resumen
+        const officeName = offices.find(o => o.id === formData.fkOffice)?.name || 'No asignado';
+        const serviceName = tiServices.find(s => s.id === formData.fkTiService)?.name || 'No asignado';
+        const problemName = problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.name || 'No asignado';
+        
+        setCreatedTicket({
+          subject: formData.subject,
+          description: formData.description,
+          propertyNumber: formData.propertyNumber,
+          officeName: officeName,
+          serviceName: serviceName,
+          problemName: problemName,
+          priority: systemPriority
         });
-        setCurrentStep(0);
-        setSubmitStatus('idle');
-        setProblemsCatalog([]);
-        setSoftwareSystems([]);
-      }, 3000);
+
+        setTimeout(() => {
+          setFormData({
+            subject: '',
+            description: '',
+            propertyNumber: '',
+            fkOffice: '',
+            fkTiService: '',
+            fkProblemCatalog: '',
+            fkSoftwareSystem: '',
+            attachments: []
+          });
+          setCurrentStep(0);
+          setSubmitStatus('idle');
+          setCreatedTicket(null);
+          setProblemsCatalog([]);
+          setSoftwareSystems([]);
+        }, 5000);
+      } else {
+        setSubmitStatus('error');
+        console.error('Error al crear ticket:', response.message);
+      }
 
     } catch (error) {
-      console.error('Error:', error);
       setSubmitStatus('error');
+      console.error('Error al enviar ticket:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -388,19 +398,32 @@ const TicketForm: React.FC = () => {
                 </label>
                 <div className="input-with-icon">
                   <Building size={18} />
-                  <select
-                    className={`form-input ${errors.fkOffice ? 'error' : ''}`}
-                    value={formData.fkOffice}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fkOffice: e.target.value }))}
-                  >
-                    <option value="">Selecciona tu oficina</option>
-                    {offices.map(office => (
-                      <option key={office.id} value={office.id}>
-                        {office.name} ({office.type})
-                      </option>
-                    ))}
-                  </select>
+                  {loadingOffices ? (
+                    <select className="form-input" disabled>
+                      <option>Cargando oficinas...</option>
+                    </select>
+                  ) : (
+                    <select
+                      className={`form-input ${errors.fkOffice ? 'error' : ''} ${formData.fkOffice ? 'auto-filled' : ''}`}
+                      value={formData.fkOffice}
+                      onChange={(e) => setFormData(prev => ({ ...prev, fkOffice: e.target.value }))}
+                      disabled={!!(user && user.role !== 1)}
+                    >
+                      <option value="">Selecciona tu oficina</option>
+                      {offices.map(office => (
+                        <option key={office.id} value={office.id}>
+                          {office.name} ({office.type})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
+                {formData.fkOffice && user && user.role !== 1 && (
+                  <small className="info-message success">✓ Oficina asignada automáticamente: {offices.find(o => o.id === formData.fkOffice)?.name}</small>
+                )}
+                {user && user.role !== 1 && !formData.fkOffice && (
+                  <small className="info-message">Oficina asignada automáticamente según tu rol</small>
+                )}
                 {errors.fkOffice && <span className="error-message">{errors.fkOffice}</span>}
               </div>
             </div>
@@ -752,11 +775,31 @@ const TicketForm: React.FC = () => {
           )}
         </div>
 
-        {submitStatus === 'success' && (
+        {submitStatus === 'success' && createdTicket && (
           <div className="success-message">
             <CheckCircle size={48} />
             <h3>¡Ticket Creado Exitosamente!</h3>
             <p>Tu solicitud ha sido registrada y será procesada pronto.</p>
+            <div className="ticket-summary">
+              <div className="summary-item">
+                <strong>Asunto:</strong> {createdTicket.subject}
+              </div>
+              <div className="summary-item">
+                <strong>Oficina:</strong> {createdTicket.officeName}
+              </div>
+              <div className="summary-item">
+                <strong>Servicio:</strong> {createdTicket.serviceName}
+              </div>
+              <div className="summary-item">
+                <strong>Problema:</strong> {createdTicket.problemName}
+              </div>
+              <div className="summary-item">
+                <strong>Prioridad:</strong> {createdTicket.priority}
+              </div>
+              <div className="summary-item">
+                <strong>Número de Bien:</strong> {createdTicket.propertyNumber || 'No especificado'}
+              </div>
+            </div>
           </div>
         )}
 

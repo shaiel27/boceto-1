@@ -6,10 +6,11 @@ export interface User {
   id: number;
   email: string;
   role: number;
-  role_name: string;
+  role_name?: string;
   full_name?: string;
   boss_id?: number;
   boss_name?: string;
+  office_id?: number;
 }
 
 export interface AuthState {
@@ -31,7 +32,7 @@ type AuthAction =
 // Initial state
 const initialState: AuthState = {
   user: null,
-  token: localStorage.getItem('auth_token'),
+  token: sessionStorage.getItem('auth_token'),
   isLoading: false,
   isAuthenticated: false,
   error: null,
@@ -137,12 +138,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             });
           } else {
             dispatch({ type: 'LOGOUT' });
-            localStorage.removeItem('auth_token');
+            sessionStorage.removeItem('auth_token');
           }
         } catch (error) {
           console.error('Auth check failed:', error);
           dispatch({ type: 'LOGOUT' });
-          localStorage.removeItem('auth_token');
+          sessionStorage.removeItem('auth_token');
         } finally {
           dispatch({ type: 'SET_LOADING', payload: false });
         }
@@ -152,12 +153,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkAuth();
   }, []);
 
-  // Update localStorage when token changes
+  // Update sessionStorage when token changes
   useEffect(() => {
     if (state.token) {
-      localStorage.setItem('auth_token', state.token);
+      sessionStorage.setItem('auth_token', state.token);
     } else {
-      localStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_token');
     }
   }, [state.token]);
 
@@ -197,7 +198,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Logout error:', error);
     } finally {
       dispatch({ type: 'LOGOUT' });
-      localStorage.removeItem('auth_token');
+      sessionStorage.removeItem('auth_token');
     }
   };
 

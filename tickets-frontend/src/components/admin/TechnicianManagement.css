@@ -1,4 +1,38 @@
 /* Technician Management - Human & Professional Design */
+:root {
+  --bg-primary: #f0f4f8;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --text-main: #1a202c;
+  --text-secondary: #4a5568;
+  --border-color: #e2e8f0;
+  /* Colores Institucionales */
+  --accent-blue: #1e3a8a; /* Azul institucional oscuro */
+  --accent-blue-light: #3b82f6; /* Azul institucional claro */
+  --accent-blue-dark: #1e40af;
+  --success-color: #059669;
+  --success-light: #d1fae5;
+  --warning-color: #d97706;
+  --warning-light: #fef3c7;
+  --danger-color: #dc2626;
+  --danger-light: #fee2e2;
+  --info-color: #0891b2;
+  --info-light: #cffafe;
+  --purple-color: #7c3aed;
+  --purple-light: #ede9fe;
+  --network-color: #2563eb; /* Azul para Redes */
+  --support-color: #059669; /* Verde para Soporte */
+  --programming-color: #7c3aed; /* Púrpura para Programación */
+  --gradient-primary: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+  --gradient-success: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  --gradient-warning: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  --gradient-danger: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
 .technician-management {
   min-height: 100vh;
   background: var(--bg-primary);
@@ -9,10 +43,11 @@
   max-width: 1400px;
   margin: 0 auto;
   background: var(--bg-card);
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  padding: 2rem;
+  border-radius: 20px;
+  box-shadow: var(--shadow-xl);
+  padding: 2.5rem;
   min-height: calc(100vh - 4rem);
+  border: 1px solid var(--border-color);
 }
 
 /* Header - Human Centered */
@@ -37,9 +72,12 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  font-size: 1.75rem;
-  font-weight: 600;
-  color: var(--text-main);
+  font-size: 2rem;
+  font-weight: 700;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin: 0 0 0.5rem 0;
 }
 
@@ -654,6 +692,89 @@
 }
 
 /* Tabla de Técnicos - Diseño Eficiente */
+.technicians-grouped-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.service-group {
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.service-group:hover {
+  border-color: var(--accent-blue);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.service-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.75rem 2rem;
+  background: linear-gradient(135deg, var(--accent-blue-light) 0%, var(--bg-card) 100%);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.service-group-info {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.service-group-icon {
+  color: var(--accent-blue);
+  background: var(--accent-blue);
+  padding: 0.75rem;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+
+.service-group-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.service-group-count {
+  background: var(--gradient-primary);
+  color: white;
+  padding: 0.375rem 1rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+}
+
+.service-group-stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.group-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.group-stat svg {
+  color: var(--accent-blue);
+}
+
 .technicians-table-container {
   overflow-x: auto;
   background: var(--bg-primary);
@@ -666,32 +787,33 @@
 }
 
 .technicians-table thead {
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, var(--accent-blue-dark) 0%, var(--accent-blue) 100%);
+  border-bottom: 2px solid var(--accent-blue);
 }
 
 .technicians-table th {
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
   text-align: left;
-  font-weight: 600;
-  color: var(--text-main);
-  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  font-size: 0.8rem;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.05em;
   white-space: nowrap;
 }
 
 .technicians-table tbody tr {
   border-bottom: 1px solid var(--border-color);
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .technicians-table tbody tr:hover {
-  background: var(--bg-secondary);
+  background: var(--accent-blue-light);
+  transform: scale(1.005);
 }
 
 .technicians-table td {
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.25rem;
   vertical-align: middle;
 }
 
@@ -707,17 +829,19 @@
 }
 
 .technician-avatar-small {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: var(--accent-blue);
+  background: var(--gradient-primary);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 0.75rem;
+  font-weight: 700;
+  font-size: 0.875rem;
   flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+  border: 2px solid white;
 }
 
 .technician-name-info {
@@ -743,13 +867,15 @@
 
 .specialization-tag {
   display: inline-block;
-  padding: 0.25rem 0.625rem;
-  background: var(--accent-blue-light);
-  color: var(--accent-blue);
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  padding: 0.5rem 1rem;
+  background: var(--gradient-primary);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
+  letter-spacing: 0.025em;
 }
 
 .contact-cell {
@@ -778,12 +904,55 @@
   color: var(--accent-blue);
 }
 
+.schedule-cell {
+  min-width: 120px;
+}
+
+.schedule-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.schedule-icon {
+  color: var(--accent-blue);
+  flex-shrink: 0;
+}
+
+.lunch-block-cell {
+  min-width: 140px;
+}
+
+.lunch-block-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.lunch-icon {
+  color: var(--warning-color);
+  margin-bottom: 0.25rem;
+}
+
+.lunch-block-name {
+  font-weight: 600;
+  color: var(--text-main);
+  font-size: 0.8rem;
+}
+
+.lunch-block-hours {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
 .status-cell {
   min-width: 80px;
 }
 
 .tickets-cell {
-  min-width: 80px;
+  min-width: 100px;
 }
 
 .tickets-info {
@@ -952,33 +1121,74 @@
   text-overflow: ellipsis;
 }
 
+.status-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.625rem;
-  border-radius: 12px;
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-sm);
+}
+
+.status-reason {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-badge.success {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.status-badge.warning {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.status-badge.danger {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.status-badge.secondary {
   background: var(--bg-secondary);
   color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.status-reason-ticket {
+  background: var(--warning-light);
+  color: var(--warning-color);
+}
+
+.status-reason-lunch {
+  background: var(--info-light);
+  color: var(--info-color);
+}
+
+.status-reason-schedule {
+  background: var(--danger-light);
+  color: var(--danger-color);
+}
+
+.status-badge.status-disponible {
+  background: var(--success-light);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
+}
+
+.status-badge.status-ocupado {
+  background: var(--warning-light);
+  color: var(--warning-color);
+  border: 1px solid var(--warning-color);
+}
+
+.status-badge.status-inactivo {
+  background: var(--danger-light);
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+}
+
+.status-badge.status-activo {
+  background: var(--success-light);
+  color: var(--success-color);
+  border: 1px solid var(--success-color);
 }
 
 .technician-actions {
@@ -1142,64 +1352,121 @@
 
 .modal-content {
   background: var(--bg-card);
-  border-radius: 20px;
-  max-width: 90vw;
+  border-radius: 24px;
+  max-width: 900px;
+  width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--border-color);
   animation: slideUp 0.3s ease;
-  border: 2px solid var(--border-color);
-}
-
-.modal-content.small {
-  width: 400px;
-}
-
-.modal-content.large {
-  width: 800px;
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 2rem;
-  border-bottom: 1px solid var(--border-color);
+  align-items: flex-start;
+  padding: 2rem 2.5rem;
+  border-bottom: 2px solid var(--border-color);
+  background: linear-gradient(135deg, var(--accent-blue-light) 0%, var(--bg-card) 100%);
 }
 
-.modal-header h2 {
-  font-size: 1.5rem;
+.modal-title-section {
+  flex: 1;
+}
+
+.modal-title-section h2 {
+  font-size: 1.75rem;
   font-weight: 700;
   color: var(--text-main);
+  margin: 0 0 0.5rem 0;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.modal-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
   margin: 0;
 }
 
 .close-btn {
+  background: var(--danger-light);
+  border: 1px solid var(--danger-color);
+  color: var(--danger-color);
+  cursor: pointer;
+  padding: 0.75rem;
+  border-radius: 12px;
+  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 8px;
-  background: var(--bg-secondary);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.3s ease;
 }
 
 .close-btn:hover {
   background: var(--danger-color);
-  color: var(--text-inverse);
+  color: white;
+  transform: rotate(90deg);
 }
 
 /* Form Styles */
 .technician-form {
   padding: 2rem;
+}
+
+.form-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.section-header svg {
+  color: var(--accent-blue);
+}
+
+.section-header h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.service-count {
+  font-size: 0.875rem;
+  color: var(--accent-blue);
+  font-weight: 600;
+  background: var(--accent-blue-light);
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
 }
 
 .form-grid {
@@ -1407,37 +1674,56 @@
 
 /* Services TI Styles */
 .services-checkbox-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
 }
 
 .service-checkbox {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 }
 
 .service-checkbox:hover {
-  background: var(--bg-hover);
-  border-color: var(--primary-color);
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.service-checkbox.checked {
+  background: var(--accent-blue-light);
+  border-color: var(--accent-blue);
 }
 
 .service-checkbox input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent-blue);
   cursor: pointer;
 }
 
-.service-checkbox span {
-  font-size: 0.9rem;
+.service-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.service-name {
+  font-weight: 600;
   color: var(--text-main);
+  font-size: 0.875rem;
+}
+
+.service-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 .services-tags {
