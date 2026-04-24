@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { 
-  Users, 
-  UserPlus, 
-  Search, 
-  Filter, 
-  MapPin, 
-  Mail, 
-  Phone, 
-  Calendar, 
+import TechnicianAnalytics from './TechnicianAnalytics';
+import {
+  Users,
+  User,
+  UserPlus,
+  Search,
+  Filter,
+  MapPin,
+  Mail,
+  Phone,
+  Calendar,
   Award,
   TrendingUp,
   Activity,
@@ -28,12 +30,16 @@ import {
   ChevronDown,
   X,
   Plus,
-  BarChart3,
-  Building,
-  Wrench,
+  Network,
+  Headphones,
+  Code,
   Coffee,
+  ArrowLeft,
+  BarChart3,
+  Wrench,
+  Building,
   Heart,
-  ArrowLeft
+  Ticket
 } from 'lucide-react';
 import './TechnicianManagement.css';
 
@@ -43,8 +49,13 @@ interface Technician {
   First_Name: string;
   Last_Name: string;
   Email: string;
-  Status: 'Activo' | 'Inactivo';
+  Status: 'Disponible' | 'Ocupado' | 'Inactivo';
+  Status_Reason?: 'ticket' | 'lunch' | 'schedule' | null;
   Fk_Lunch_Block?: number;
+  Lunch_Block?: {
+    name: string;
+    hours: string;
+  } | null;
   Lunch_Block_Hours?: string;
   TI_Services: TI_Service[];
   Schedules?: Technician_Schedule[];
@@ -52,6 +63,17 @@ interface Technician {
   Avatar?: string;
   Tickets_Assigned?: number;
   Tickets_Resolved?: number;
+  AssignedTickets?: AssignedTicket[];
+}
+
+interface AssignedTicket {
+  ID_Service_Request: string;
+  Ticket_Code: string;
+  Subject: string;
+  Status: string;
+  System_Priority: string;
+  Coordination_Name: string;
+  Assigned_At: string;
 }
 
 interface TI_Service {
@@ -124,7 +146,7 @@ const TechnicianManagement: React.FC = () => {
   });
   
   // Vista actual
-  const [currentView, setCurrentView] = useState<'grid' | 'list' | 'analytics'>('grid');
+  const [currentView, setCurrentView] = useState<'list' | 'analytics'>('list');
 
   // Cargar datos del API
   useEffect(() => {
@@ -133,76 +155,52 @@ const TechnicianManagement: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      // Load technicians
-      console.log('Cargando técnicos desde backend...');
+      console.log('Cargando técnicos...');
       const techResponse = await ApiService.getTechnicians();
-      console.log('Respuesta del backend:', techResponse);
-      
+      console.log('Respuesta del API:', techResponse);
+
       if (techResponse.success && techResponse.data) {
-        console.log('Datos de técnicos recibidos:', techResponse.data);
+        console.log('Datos recibidos:', techResponse.data);
+        console.log('Número de técnicos:', techResponse.data.length);
+        
         // Map backend data to frontend format
         const mappedTechnicians = techResponse.data.map((tech: any) => {
-          // Parse Services string into TI_Services array
-          // Map service names to IDs based on TI_Service table
-          const serviceMap: { [key: string]: number } = {
-            'Redes': 1,
-            'Soporte': 2,
-            'Programación': 3
-          };
-
-          const servicesArray = tech.Services ? tech.Services.split(',').map((s: string) => {
-            const serviceName = s.trim();
-            return {
-              ID_TI_Service: serviceMap[serviceName] || 0,
-              Type_Service: serviceName,
-              Details: serviceName
-            };
-          }) : [];
-
-          // Format lunch block hours from backend data
-          const lunchBlockHours = tech.Start_Time && tech.End_Time
-            ? `${tech.Start_Time.substring(0, 5)} - ${tech.End_Time.substring(0, 5)}`
-            : undefined;
-
-          // Map schedules from backend
-          const schedulesArray = tech.Schedules && Array.isArray(tech.Schedules)
-            ? tech.Schedules.map((s: any) => ({
-                ID_Schedule: s.ID_Schedule,
-                Fk_Technician: s.Fk_Technician,
-                Day_Of_Week: s.Day_Of_Week,
-                Work_Start_Time: s.Work_Start_Time.substring(0, 5),
-                Work_End_Time: s.Work_End_Time.substring(0, 5)
-              }))
-            : [];
-
-          return {
+          const mappedTechnician = {
             ID_Technicians: parseInt(tech.ID_Technicians),
             Fk_Users: parseInt(tech.Fk_Users),
             First_Name: tech.First_Name,
             Last_Name: tech.Last_Name,
             Email: tech.Email,
             Status: tech.Status,
+            Status_Reason: null as 'ticket' | 'lunch' | 'schedule' | null,
             Fk_Lunch_Block: tech.Fk_Lunch_Block ? parseInt(tech.Fk_Lunch_Block) : undefined,
-            Lunch_Block_Hours: lunchBlockHours,
-            TI_Services: servicesArray,
-            Schedules: schedulesArray,
+            Lunch_Block: tech.Lunch_Block || null,
+            Lunch_Block_Hours: tech.Lunch_Block?.hours || null,
+            TI_Services: tech.TI_Services || [],
+            Schedules: tech.Schedules || [],
             created_at: tech.created_at,
             Avatar: `${tech.First_Name[0]}${tech.Last_Name[0]}`.toUpperCase(),
-            Tickets_Assigned: 0,
-            Tickets_Resolved: 0
+            Tickets_Assigned: tech.Tickets_Assigned || 0,
+            Tickets_Resolved: tech.Tickets_Resolved || 0,
+            AssignedTickets: []
           };
+
+          // Calcular status en tiempo real basado en hora Venezuela
+          const statusResult = calculateRealTimeStatus(mappedTechnician);
+          mappedTechnician.Status = statusResult.status;
+          mappedTechnician.Status_Reason = statusResult.reason;
+
+          return mappedTechnician;
         });
+
+        console.log('Técnicos mapeados:', mappedTechnicians);
 
         // Filter technicians based on user role
         if (isTechnician() && user) {
-          // If user is technician, find their own profile by matching user ID
-          console.log('Usuario logueado ID:', user.id);
-          console.log('Técnicos mapeados:', mappedTechnicians.map((t: Technician) => ({ id: t.ID_Technicians, fk_users: t.Fk_Users, name: t.First_Name + ' ' + t.Last_Name })));
-          
           const ownProfile = mappedTechnicians.find((t: Technician) => t.Fk_Users === user.id);
-          console.log('Perfil encontrado:', ownProfile);
-          
+
           if (ownProfile) {
             setCurrentUserTechnician(ownProfile);
             setTechnicians([ownProfile]);
@@ -211,7 +209,6 @@ const TechnicianManagement: React.FC = () => {
             setTechnicians([]);
           }
         } else {
-          // Admin sees all technicians
           setTechnicians(mappedTechnicians);
         }
       } else {
@@ -250,24 +247,47 @@ const TechnicianManagement: React.FC = () => {
     const fullName = `${technician.First_Name} ${technician.Last_Name}`.toLowerCase();
     const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
                          technician.Email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         technician.TI_Services.some(s => s.Type_Service.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (technician.TI_Services && technician.TI_Services.length > 0 && 
+                          technician.TI_Services.some(s => s.Type_Service.toLowerCase().includes(searchTerm.toLowerCase())));
     const matchesStatus = statusFilter === 'all' || technician.Status === statusFilter;
-    const matchesService = serviceFilter === 'all' || 
-                         technician.TI_Services.some(s => s.ID_TI_Service.toString() === serviceFilter);
-    
+    const matchesService = serviceFilter === 'all' ||
+                         (technician.TI_Services && technician.TI_Services.length > 0 &&
+                          technician.TI_Services.some(s => s.ID_TI_Service.toString() === serviceFilter));
+
     return matchesSearch && matchesStatus && matchesService;
   });
 
   // Agrupar técnicos por servicio TI
-  const techniciansByService = tiServices.map(service => ({
-    ...service,
-    technicians: filteredTechnicians.filter(t => t.TI_Services.some(s => s.ID_TI_Service === service.ID_TI_Service))
-  })).filter(service => service.technicians.length > 0);
+  const groupTechniciansByService = (techs: Technician[]) => {
+    const groups: Record<string, Technician[]> = {};
+    
+    techs.forEach(tech => {
+      if (tech.TI_Services && tech.TI_Services.length > 0) {
+        // Usar el primer servicio como categoría principal
+        const primaryService = tech.TI_Services[0].Type_Service;
+        if (!groups[primaryService]) {
+          groups[primaryService] = [];
+        }
+        groups[primaryService].push(tech);
+      } else {
+        // Técnicos sin servicio asignado
+        if (!groups['Sin Asignar']) {
+          groups['Sin Asignar'] = [];
+        }
+        groups['Sin Asignar'].push(tech);
+      }
+    });
+    
+    return groups;
+  };
+
+  const groupedTechnicians = groupTechniciansByService(filteredTechnicians);
 
   // Estadísticas
   const stats = {
     total: technicians.length,
-    active: technicians.filter(t => t.Status === 'Activo').length,
+    available: technicians.filter(t => t.Status === 'Disponible').length,
+    busy: technicians.filter(t => t.Status === 'Ocupado').length,
     inactive: technicians.filter(t => t.Status === 'Inactivo').length,
     totalTickets: technicians.reduce((acc, t) => acc + (t.Tickets_Assigned || 0), 0),
     totalResolved: technicians.reduce((acc, t) => acc + (t.Tickets_Resolved || 0), 0)
@@ -396,7 +416,7 @@ const TechnicianManagement: React.FC = () => {
   const handleEdit = async (technician: Technician) => {
     setSelectedTechnician(technician);
 
-    // Cargar horarios del técnico desde el objeto technician (ya vienen del backend)
+    // Initialize schedules with empty values
     const schedules = {
       Lunes: { start: '', end: '' },
       Martes: { start: '', end: '' },
@@ -407,35 +427,46 @@ const TechnicianManagement: React.FC = () => {
       Domingo: { start: '', end: '' }
     };
 
+    // Load existing schedules
     if (technician.Schedules && Array.isArray(technician.Schedules)) {
       technician.Schedules.forEach((schedule: any) => {
-        schedules[schedule.Day_Of_Week as keyof typeof schedules] = {
-          start: schedule.Work_Start_Time,
-          end: schedule.Work_End_Time
-        };
+        const dayKey = schedule.Day_Of_Week;
+        if (schedules.hasOwnProperty(dayKey)) {
+          schedules[dayKey as keyof typeof schedules] = {
+            start: schedule.Work_Start_Time || '',
+            end: schedule.Work_End_Time || ''
+          };
+        }
       });
     }
 
+    // Load existing services - ensure they are numbers
+    const currentServices = technician.TI_Services && Array.isArray(technician.TI_Services)
+      ? technician.TI_Services.map((s: any) => Number(s.ID_TI_Service))
+      : [];
+
+    // Set form data with proper types
     setFormData({
-      first_name: technician.First_Name,
-      last_name: technician.Last_Name,
-      email: technician.Email,
+      first_name: technician.First_Name || '',
+      last_name: technician.Last_Name || '',
+      email: technician.Email || '',
       password: '',
       confirmPassword: '',
-      status: technician.Status,
-      fk_lunch_block: technician.Fk_Lunch_Block ? technician.Fk_Lunch_Block.toString() : '',
-      ti_services: technician.TI_Services.map(s => s.ID_TI_Service),
+      status: technician.Status || 'Activo',
+      fk_lunch_block: technician.Fk_Lunch_Block ? String(technician.Fk_Lunch_Block) : '',
+      ti_services: currentServices,
       schedules
     });
+
     setShowEditModal(true);
   };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedTechnician) return;
-    
-    // Solo validar contraseña si se está cambiando
+
+    // Validar contraseña si se está cambiando
     if (formData.password && formData.password.length < 6) {
       alert('La contraseña debe tener al menos 6 caracteres');
       return;
@@ -444,16 +475,26 @@ const TechnicianManagement: React.FC = () => {
       alert('Las contraseñas no coinciden');
       return;
     }
-    
+
     try {
-      const response = await ApiService.updateTechnician(selectedTechnician.ID_Technicians, {
+      const updateData: any = {
         first_name: formData.first_name,
         last_name: formData.last_name,
-        status: formData.status,
+        email: formData.email,
         lunch_block: formData.fk_lunch_block || null,
-        services: formData.ti_services,
+        services: Array.from(new Set(formData.ti_services.map(Number))), // Remove duplicates and convert to numbers
         schedules: formData.schedules
-      });
+      };
+
+      // Solo enviar contraseña si se proporcionó
+      if (formData.password) {
+        updateData.password = formData.password;
+      }
+
+      console.log('Enviando datos de actualización:', updateData);
+      console.log('Servicios finales:', updateData.services);
+
+      const response = await ApiService.updateTechnician(selectedTechnician.ID_Technicians, updateData);
 
       if (response.success) {
         alert('Técnico actualizado exitosamente');
@@ -465,6 +506,7 @@ const TechnicianManagement: React.FC = () => {
         alert(response.message || 'Error al actualizar técnico');
       }
     } catch (error) {
+      console.error('Error al actualizar técnico:', error);
       alert('Error de conexión al actualizar técnico');
     }
   };
@@ -474,9 +516,36 @@ const TechnicianManagement: React.FC = () => {
     alert('Generando reporte PDF... (Función se implementará con el backend)');
   };
 
+  const getServiceIcon = (serviceName: string) => {
+    switch (serviceName.toLowerCase()) {
+      case 'redes':
+        return <Network size={20} />;
+      case 'soporte':
+        return <Headphones size={20} />;
+      case 'programación':
+        return <Code size={20} />;
+      default:
+        return <Wrench size={20} />;
+    }
+  };
+
+  const getServiceColor = (serviceName: string) => {
+    switch (serviceName.toLowerCase()) {
+      case 'redes':
+        return '#2563eb'; // Azul institucional
+      case 'soporte':
+        return '#059669'; // Verde institucional
+      case 'programación':
+        return '#7c3aed'; // Púrpura institucional
+      default:
+        return '#64748b'; // Gris
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Activo': return 'success';
+      case 'Disponible': return 'success';
+      case 'Ocupado': return 'warning';
       case 'Inactivo': return 'danger';
       default: return 'secondary';
     }
@@ -515,6 +584,61 @@ const TechnicianManagement: React.FC = () => {
     );
     
     return todaySchedule;
+  };
+
+  // Obtener hora actual en Venezuela (UTC-4)
+  const getVenezuelaTime = (): Date => {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const venezuelaOffset = -4; // UTC-4
+    return new Date(utc + (venezuelaOffset * 3600000));
+  };
+
+  // Verificar si la hora actual está dentro de un rango
+  const isTimeInRange = (currentTime: string, startTime: string, endTime: string): boolean => {
+    const current = currentTime.split(':').map(Number);
+    const start = startTime.split(':').map(Number);
+    const end = endTime.split(':').map(Number);
+    
+    const currentMinutes = current[0] * 60 + current[1];
+    const startMinutes = start[0] * 60 + start[1];
+    const endMinutes = end[0] * 60 + end[1];
+    
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  };
+
+  // Calcular status en tiempo real basado en hora Venezuela, horario, almuerzo y tickets
+  const calculateRealTimeStatus = (technician: Technician): { status: 'Disponible' | 'Ocupado' | 'Inactivo', reason: 'ticket' | 'lunch' | 'schedule' | null } => {
+    const venezuelaTime = getVenezuelaTime();
+    const currentTimeStr = venezuelaTime.toTimeString().substring(0, 5); // HH:MM
+
+    // Obtener horario del día actual
+    const todaySchedule = getTodaySchedule(technician.Schedules);
+
+    // Si no tiene horario para hoy, está inactivo por horario
+    if (!todaySchedule) {
+      return { status: 'Inactivo', reason: 'schedule' };
+    }
+
+    // Verificar si está dentro del horario laboral
+    if (!isTimeInRange(currentTimeStr, todaySchedule.Work_Start_Time, todaySchedule.Work_End_Time)) {
+      return { status: 'Inactivo', reason: 'schedule' };
+    }
+
+    // Verificar si está en bloque de almuerzo
+    if (technician.Lunch_Block_Hours) {
+      const [lunchStart, lunchEnd] = technician.Lunch_Block_Hours.split(' - ');
+      if (lunchStart && lunchEnd && isTimeInRange(currentTimeStr, lunchStart, lunchEnd)) {
+        return { status: 'Inactivo', reason: 'lunch' };
+      }
+    }
+
+    // Si tiene tickets asignados, está ocupado por ticket; si no, disponible
+    if ((technician.Tickets_Assigned || 0) > 0) {
+      return { status: 'Ocupado', reason: 'ticket' };
+    }
+
+    return { status: 'Disponible', reason: null };
   };
 
   return (
@@ -556,12 +680,12 @@ const TechnicianManagement: React.FC = () => {
                     <span className="stat-label">Profesionales</span>
                   </div>
                   <div className="stat-item">
-                    <span className="stat-number">{stats.active}</span>
-                    <span className="stat-label">Activos</span>
+                    <span className="stat-number">{stats.available}</span>
+                    <span className="stat-label">Disponibles</span>
                   </div>
                   <div className="stat-item">
-                    <span className="stat-number">{stats.totalResolved}</span>
-                    <span className="stat-label">Tickets Resueltos</span>
+                    <span className="stat-number">{stats.busy}</span>
+                    <span className="stat-label">Ocupados</span>
                   </div>
                 </>
               )}
@@ -599,14 +723,24 @@ const TechnicianManagement: React.FC = () => {
               <UserCheck size={24} />
             </div>
             <div className="stat-content">
-              <h3 className="stat-value">{stats.active}</h3>
-              <p className="stat-label">Activos</p>
+              <h3 className="stat-value">{stats.available}</h3>
+              <p className="stat-label">Disponibles</p>
             </div>
           </div>
-          
+
           <div className="stat-card warning">
             <div className="stat-icon">
               <Clock size={24} />
+            </div>
+            <div className="stat-content">
+              <h3 className="stat-value">{stats.busy}</h3>
+              <p className="stat-label">Ocupados</p>
+            </div>
+          </div>
+
+          <div className="stat-card danger">
+            <div className="stat-icon">
+              <UserX size={24} />
             </div>
             <div className="stat-content">
               <h3 className="stat-value">{stats.inactive}</h3>
@@ -649,7 +783,8 @@ const TechnicianManagement: React.FC = () => {
                 className="filter-select"
               >
                 <option value="all">Todos</option>
-                <option value="Activo">Activos</option>
+                <option value="Disponible">Disponibles</option>
+                <option value="Ocupado">Ocupados</option>
                 <option value="Inactivo">Inactivos</option>
               </select>
             </div>
@@ -676,18 +811,11 @@ const TechnicianManagement: React.FC = () => {
         <div className="view-options">
           <div className="view-tabs">
             <button
-              className={`tab-btn ${currentView === 'grid' ? 'active' : ''}`}
-              onClick={() => setCurrentView('grid')}
-            >
-              <Users size={16} />
-              <span>Tarjetas</span>
-            </button>
-            <button
               className={`tab-btn ${currentView === 'list' ? 'active' : ''}`}
               onClick={() => setCurrentView('list')}
             >
               <BarChart3 size={16} />
-              <span>Lista</span>
+              <span>Lista Agrupada</span>
             </button>
             <button
               className={`tab-btn ${currentView === 'analytics' ? 'active' : ''}`}
@@ -710,163 +838,167 @@ const TechnicianManagement: React.FC = () => {
               <div className="spinner"></div>
               <p>Cargando técnicos...</p>
             </div>
-          ) : currentView === 'grid' ? (
-            <div className="technicians-grid">
-              {techniciansByService.map(service => (
-                <div key={service.ID_TI_Service} className="coordination-section">
-                  <div className="coordination-header">
-                    <div className="coordination-info">
-                      <Wrench size={20} />
-                      <div>
-                        <h3>{service.Type_Service}</h3>
-                        <p>{service.Details}</p>
+          ) : filteredTechnicians.length === 0 ? (
+            <div className="empty-state">
+              <Users size={48} className="empty-icon" />
+              <h3>No se encontraron técnicos</h3>
+              <p>Intenta ajustar los filtros de búsqueda</p>
+            </div>
+          ) : currentView === 'list' ? (
+            <div className="technicians-grouped-container">
+              {Object.entries(groupedTechnicians).map(([serviceName, techs]) => (
+                <div key={serviceName} className="service-group">
+                  <div className="service-group-header">
+                    <div className="service-group-info">
+                      <div className="service-group-icon" style={{ background: getServiceColor(serviceName) }}>
+                        {getServiceIcon(serviceName)}
                       </div>
+                      <h3 className="service-group-title">{serviceName}</h3>
+                      <span className="service-group-count">{techs.length} técnicos</span>
                     </div>
-                    <div className="coordination-stats">
-                      <span className="technician-count">{service.technicians.length} profesionales</span>
-                      <span className="available-count">
-                        {service.technicians.filter(t => t.Status === 'Activo').length} activos
+                    <div className="service-group-stats">
+                      <span className="group-stat">
+                        <UserCheck size={14} />
+                        {techs.filter(t => t.Status === 'Disponible').length} disponibles
+                      </span>
+                      <span className="group-stat">
+                        <Clock size={14} />
+                        {techs.reduce((acc, t) => acc + (t.Tickets_Assigned || 0), 0)} tickets
                       </span>
                     </div>
                   </div>
-                  
-                  {/* Tabla compacta para muchos técnicos */}
                   <div className="technicians-table-container">
                     <table className="technicians-table">
                       <thead>
                         <tr>
-                          <th>Profesional</th>
-                          <th>Servicios TI</th>
+                          <th>Técnico</th>
                           <th>Email</th>
                           <th>Bloque Almuerzo</th>
-                          <th>Horario</th>
+                          <th>Horario Hoy</th>
                           <th>Estado</th>
                           <th>Tickets</th>
                           <th>Acciones</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {service.technicians.map(technician => (
-                          <tr key={technician.ID_Technicians} className="technician-row">
-                            <td className="technician-name-cell">
-                              <div className="technician-mini-profile">
-                                <div className="technician-avatar-small">
-                                  {technician.Avatar || `${technician.First_Name[0]}${technician.Last_Name[0]}`}
+                        {techs.map(technician => {
+                          const todaySchedule = getTodaySchedule(technician.Schedules);
+                          const todayScheduleText = todaySchedule
+                            ? `${todaySchedule.Work_Start_Time} - ${todaySchedule.Work_End_Time}`
+                            : 'No trabaja';
+                          
+                          return (
+                            <tr key={technician.ID_Technicians}>
+                              <td className="technician-name-cell">
+                                <div className="technician-mini-profile">
+                                  <div className="technician-avatar-small">
+                                    {technician.Avatar || `${technician.First_Name[0]}${technician.Last_Name[0]}`}
+                                  </div>
+                                  <div className="technician-name-info">
+                                    <div className="technician-name">
+                                      {technician.First_Name} {technician.Last_Name}
+                                    </div>
+                                    <div className="technician-experience">
+                                      ID: {technician.ID_Technicians}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="technician-name-info">
-                                  <div className="technician-name">{technician.First_Name} {technician.Last_Name}</div>
-                                  <div className="technician-experience">Creado: {new Date(technician.created_at).toLocaleDateString()}</div>
+                              </td>
+                              <td className="contact-cell">
+                                <div className="contact-info">
+                                  <div className="contact-item">
+                                    <Mail size={14} />
+                                    <span>{technician.Email}</span>
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="specialization-cell">
-                              <div className="services-tags">
-                                {technician.TI_Services.map(s => (
-                                  <span key={s.ID_TI_Service} className="service-tag">{s.Type_Service}</span>
-                                ))}
-                              </div>
-                            </td>
-                            <td className="contact-cell">
-                              <div className="contact-info">
-                                <div className="contact-item">
-                                  <Mail size={14} />
-                                  <span>{technician.Email}</span>
+                              </td>
+                              <td className="lunch-block-cell">
+                                {technician.Lunch_Block ? (
+                                  <div className="lunch-block-info">
+                                    <Coffee size={14} className="lunch-icon" />
+                                    <span className="lunch-block-name">{technician.Lunch_Block.name}</span>
+                                    <span className="lunch-block-hours">{technician.Lunch_Block.hours}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-secondary">Sin asignar</span>
+                                )}
+                              </td>
+                              <td className="schedule-cell">
+                                <div className="schedule-info">
+                                  <Clock size={14} className="schedule-icon" />
+                                  <span>{todayScheduleText}</span>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="schedule-cell">
-                              {technician.Lunch_Block_Hours ? (
-                                <span className="lunch-block-tag">{technician.Lunch_Block_Hours}</span>
-                              ) : (
-                                <span className="no-lunch-block">Sin bloque</span>
-                              )}
-                            </td>
-                            <td className="schedule-cell">
-                              {(() => {
-                                const todaySchedule = getTodaySchedule(technician.Schedules);
-                                if (todaySchedule) {
-                                  return (
-                                    <span className="schedule-summary">
-                                      {todaySchedule.Work_Start_Time} - {todaySchedule.Work_End_Time}
+                              </td>
+                              <td className="status-cell">
+                                <div className="status-wrapper">
+                                  <span className={`status-badge status-${technician.Status.toLowerCase()}`}>
+                                    {technician.Status}
+                                  </span>
+                                  {technician.Status_Reason && (
+                                    <span className={`status-reason status-reason-${technician.Status_Reason}`}>
+                                      {technician.Status_Reason === 'ticket' && <Ticket size={12} />}
+                                      {technician.Status_Reason === 'lunch' && <Coffee size={12} />}
+                                      {technician.Status_Reason === 'schedule' && <Clock size={12} />}
                                     </span>
-                                  );
-                                } else if (technician.Schedules && technician.Schedules.length > 0) {
-                                  return (
-                                    <span className="no-schedule-today">
-                                      No trabaja hoy
-                                    </span>
-                                  );
-                                } else {
-                                  return (
-                                    <span className="no-schedule">Sin horario</span>
-                                  );
-                                }
-                              })()}
-                            </td>
-                            <td className="status-cell">
-                              <span className={`status-badge ${getStatusColor(technician.Status)}`}>
-                                {technician.Status}
-                              </span>
-                            </td>
-                            <td className="tickets-cell">
-                              <div className="tickets-info">
-                                <span className="tickets-assigned">{technician.Tickets_Assigned || 0}</span>
-                                <span className="tickets-resolved">{technician.Tickets_Resolved || 0}</span>
-                              </div>
-                            </td>
-                            <td className="actions-cell">
-                              <div className="technician-actions">
-                                <button
-                                  className="action-btn-small"
-                                  onClick={() => {
-                                    setSelectedTechnician(technician);
-                                    setShowDetailModal(true);
-                                  }}
-                                  title="Ver detalles"
-                                >
-                                  <Eye size={14} />
-                                </button>
-                                {!isTechnician() || technician.Fk_Users === user?.id ? (
+                                  )}
+                                </div>
+                              </td>
+                              <td className="tickets-cell">
+                                <div className="tickets-info">
+                                  <span className="tickets-assigned">{technician.Tickets_Assigned || 0}</span>
+                                  <span className="tickets-resolved">
+                                    {technician.Tickets_Resolved || 0} resueltos
+                                  </span>
+                                </div>
+                              </td>
+                              <td className="actions-cell">
+                                <div className="technician-actions">
                                   <button
                                     className="action-btn-small"
-                                    onClick={() => handleEdit(technician)}
-                                    title="Editar"
-                                  >
-                                    <Edit size={14} />
-                                  </button>
-                                ) : null}
-                                {!isTechnician() && (
-                                  <button
-                                    className="action-btn-small danger"
                                     onClick={() => {
                                       setSelectedTechnician(technician);
-                                      setShowDeleteModal(true);
+                                      setShowDetailModal(true);
                                     }}
-                                    title="Eliminar"
+                                    title="Ver detalles"
                                   >
-                                    <Trash2 size={14} />
+                                    <Eye size={16} />
                                   </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                                  {!isTechnician() || technician.Fk_Users === user?.id ? (
+                                    <>
+                                      <button
+                                        className="action-btn-small"
+                                        onClick={() => handleEdit(technician)}
+                                        title="Editar"
+                                      >
+                                        <Edit size={16} />
+                                      </button>
+                                      {!isTechnician() && (
+                                        <button
+                                          className="action-btn-small danger"
+                                          onClick={() => {
+                                            setSelectedTechnician(technician);
+                                            setShowDeleteModal(true);
+                                          }}
+                                          title="Eliminar"
+                                        >
+                                          <Trash2 size={16} />
+                                        </button>
+                                      )}
+                                    </>
+                                  ) : null}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </div>
               ))}
             </div>
-          ) : currentView === 'list' ? (
-            <div className="technicians-list">
-              {/* Vista de lista - implementar después */}
-              <p>Vista de lista en desarrollo...</p>
-            </div>
           ) : (
-            <div className="technicians-analytics">
-              {/* Vista de análisis - implementar después */}
-              <p>Vista de análisis en desarrollo...</p>
-            </div>
+            <TechnicianAnalytics />
           )}
         </div>
       </div>
@@ -1052,15 +1184,22 @@ const TechnicianManagement: React.FC = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h2>Editar Técnico</h2>
+              <div className="modal-title-section">
+                <h2>Editar Técnico</h2>
+                <p className="modal-subtitle">Modifica la información del técnico</p>
+              </div>
               <button className="close-btn" onClick={() => setShowEditModal(false)}>
                 <X size={20} />
               </button>
             </div>
-            
+
             <form onSubmit={handleUpdate} className="technician-form">
+              {/* Información Personal */}
               <div className="form-section">
-                <h3>Información Personal</h3>
+                <div className="section-header">
+                  <User size={18} />
+                  <h3>Información Personal</h3>
+                </div>
                 <div className="form-grid">
                   <div className="form-group">
                     <label>Primer Nombre</label>
@@ -1071,9 +1210,10 @@ const TechnicianManagement: React.FC = () => {
                       onChange={handleInputChange}
                       required
                       maxLength={25}
+                      placeholder="Ej: Juan"
                     />
                   </div>
-                  
+
                   <div className="form-group">
                     <label>Apellido</label>
                     <input
@@ -1083,9 +1223,10 @@ const TechnicianManagement: React.FC = () => {
                       onChange={handleInputChange}
                       required
                       maxLength={25}
+                      placeholder="Ej: Pérez"
                     />
                   </div>
-                  
+
                   <div className="form-group">
                     <label>Email</label>
                     <input
@@ -1094,9 +1235,10 @@ const TechnicianManagement: React.FC = () => {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
+                      placeholder="correo@ejemplo.com"
                     />
                   </div>
-                  
+
                   <div className="form-group">
                     <label>Nueva Contraseña (Opcional)</label>
                     <input
@@ -1105,9 +1247,10 @@ const TechnicianManagement: React.FC = () => {
                       value={formData.password}
                       onChange={handleInputChange}
                       placeholder="Dejar vacío para mantener la actual"
+                      minLength={6}
                     />
                   </div>
-                  
+
                   <div className="form-group">
                     <label>Confirmar Contraseña</label>
                     <input
@@ -1116,29 +1259,21 @@ const TechnicianManagement: React.FC = () => {
                       value={formData.confirmPassword}
                       onChange={handleInputChange}
                       placeholder="Repita la nueva contraseña"
+                      disabled={!formData.password}
                     />
                   </div>
                 </div>
               </div>
 
+              {/* Información del Técnico */}
               <div className="form-section">
-                <h3>Información del Técnico</h3>
+                <div className="section-header">
+                  <Briefcase size={18} />
+                  <h3>Información del Técnico</h3>
+                </div>
                 <div className="form-grid">
                   <div className="form-group">
-                    <label>Estado</label>
-                    <select
-                      name="status"
-                      value={formData.status}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="Activo">Activo</option>
-                      <option value="Inactivo">Inactivo</option>
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Bloque de Almuerzo (Opcional)</label>
+                    <label>Bloque de Almuerzo</label>
                     <select
                       name="fk_lunch_block"
                       value={formData.fk_lunch_block}
@@ -1155,29 +1290,47 @@ const TechnicianManagement: React.FC = () => {
                 </div>
               </div>
 
+              {/* Servicios TI */}
               <div className="form-section">
-                <h3>Servicios TI</h3>
+                <div className="section-header">
+                  <Wrench size={18} />
+                  <h3>Servicios TI</h3>
+                  <span className="service-count">{formData.ti_services.length} seleccionados</span>
+                </div>
                 <div className="form-grid">
                   <div className="form-group full-width">
-                    <label>Seleccione los servicios que puede ofrecer:</label>
+                    <label>Seleccione los servicios que puede ofrecer (múltiple selección):</label>
                     <div className="services-checkbox-group">
-                      {tiServices.map(service => (
-                        <label key={service.ID_TI_Service} className="service-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={formData.ti_services.includes(service.ID_TI_Service)}
-                            onChange={() => handleServiceToggle(service.ID_TI_Service)}
-                          />
-                          <span>{service.Type_Service} - {service.Details}</span>
-                        </label>
-                      ))}
+                      {tiServices.map(service => {
+                        const isChecked = formData.ti_services.includes(Number(service.ID_TI_Service));
+                        return (
+                          <label
+                            key={service.ID_TI_Service}
+                            className={`service-checkbox ${isChecked ? 'checked' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleServiceToggle(Number(service.ID_TI_Service))}
+                            />
+                            <div className="service-info">
+                              <span className="service-name">{service.Type_Service}</span>
+                              <span className="service-desc">{service.Details}</span>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
               </div>
 
+              {/* Horario de Trabajo */}
               <div className="form-section">
-                <h3>Horario de Trabajo</h3>
+                <div className="section-header">
+                  <Clock size={18} />
+                  <h3>Horario de Trabajo</h3>
+                </div>
                 <div className="form-grid">
                   <div className="form-group full-width">
                     <label>Horarios por día de la semana:</label>
@@ -1206,7 +1359,8 @@ const TechnicianManagement: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
+              {/* Acciones */}
               <div className="form-actions">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
                   Cancelar
@@ -1282,14 +1436,24 @@ const TechnicianManagement: React.FC = () => {
                   <h4>Horario de Trabajo</h4>
                   {selectedTechnician.Schedules && selectedTechnician.Schedules.length > 0 ? (
                     <div className="schedule-display">
-                      {selectedTechnician.Schedules.map(schedule => (
-                        <div key={schedule.ID_Schedule} className="schedule-day-display">
-                          <span className="day-label">{schedule.Day_Of_Week}:</span>
-                          <span className="time-range">
-                            {schedule.Work_Start_Time} - {schedule.Work_End_Time}
-                          </span>
-                        </div>
-                      ))}
+                      {(() => {
+                        // Group schedules by day to avoid duplicates
+                        const scheduleMap = new Map();
+                        selectedTechnician.Schedules.forEach(schedule => {
+                          const day = schedule.Day_Of_Week;
+                          if (!scheduleMap.has(day)) {
+                            scheduleMap.set(day, schedule);
+                          }
+                        });
+                        return Array.from(scheduleMap.values()).map(schedule => (
+                          <div key={schedule.ID_Schedule} className="schedule-day-display">
+                            <span className="day-label">{schedule.Day_Of_Week}:</span>
+                            <span className="time-range">
+                              {schedule.Work_Start_Time.substring(0, 5)} - {schedule.Work_End_Time.substring(0, 5)}
+                            </span>
+                          </div>
+                        ));
+                      })()}
                     </div>
                   ) : (
                     <p className="no-schedule">Sin horario definido</p>
