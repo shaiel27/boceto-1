@@ -5,9 +5,9 @@
 
 // Cargar variables de entorno manualmente (simulando .env)
 $_ENV['DB_HOST'] = 'localhost';
-$_ENV['DB_NAME'] = 'tickets_municipal';
+$_ENV['DB_NAME'] = 'tickets_system';
 $_ENV['DB_USER'] = 'root';
-$_ENV['DB_PASS'] = '';
+$_ENV['DB_PASS'] = 'NuevaClave123';
 $_ENV['DB_CHARSET'] = 'utf8mb4';
 $_ENV['JWT_SECRET'] = 'test-secret-key-for-development';
 $_ENV['JWT_EXPIRES_IN'] = '86400';

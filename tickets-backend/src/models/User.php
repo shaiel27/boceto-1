@@ -17,10 +17,11 @@ class User {
 
     public function login($email, $password) {
         $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, u.Password, r.Role, r.ID_Role,
-                         b.Fk_Office as office_id
+                         o.ID_Office as office_id
                   FROM " . $this->table_name . " u
                   JOIN Role r ON u.Fk_Role = r.ID_Role
                   LEFT JOIN Boss b ON u.ID_Users = b.Fk_User
+                  LEFT JOIN Office o ON b.ID_Boss = o.Fk_Boss_ID
                   WHERE u.Email = :email LIMIT 1";
 
         $stmt = $this->conn->prepare($query);
