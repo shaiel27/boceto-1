@@ -38,6 +38,8 @@ export interface LoginResponse {
 
     boss_name?: string;
 
+    office_id?: number | null;
+
   };
 
 }
@@ -118,6 +120,10 @@ export class ApiService {
 
           roleNumber = 3;
 
+        } else if (roleString.toLowerCase() === 'solicitante') {
+
+          roleNumber = 4;
+
         }
 
 
@@ -142,7 +148,9 @@ export class ApiService {
 
               role: roleNumber,
 
-              role_name: roleString.charAt(0).toUpperCase() + roleString.slice(1)
+              role_name: roleString.charAt(0).toUpperCase() + roleString.slice(1),
+
+              office_id: data.user.office_id ? parseInt(data.user.office_id) : null
 
             }
 
@@ -300,6 +308,17 @@ export class ApiService {
 
       if (data.success && data.user) {
 
+        const roleString = data.user.role || data.user.role_name || 'admin';
+        let roleNumber = 1;
+
+        if (roleString.toLowerCase() === 'tecnico' || roleString.toLowerCase() === 'technician') {
+          roleNumber = 2;
+        } else if (roleString.toLowerCase() === 'jefe' || roleString.toLowerCase() === 'requester') {
+          roleNumber = 3;
+        } else if (roleString.toLowerCase() === 'solicitante') {
+          roleNumber = 4;
+        }
+
         return {
 
           success: true,
@@ -308,13 +327,17 @@ export class ApiService {
 
           data: {
 
-            id: data.user.id,
+            id: data.user.id || data.user.ID_Users,
 
-            email: data.user.email,
+            email: data.user.email || data.user.Email,
 
-            role: data.user.role === 'admin' ? 1 : data.user.role === 'technician' ? 2 : 3,
+            role: roleNumber,
 
-            role_name: data.user.role.charAt(0).toUpperCase() + data.user.role.slice(1)
+            role_name: roleString.charAt(0).toUpperCase() + roleString.slice(1),
+
+            full_name: data.user.full_name || data.user.Full_Name,
+
+            office_id: data.user.office_id ? parseInt(data.user.office_id) : null
 
           }
 
@@ -724,9 +747,9 @@ export class ApiService {
 
     try {
 
-      const response = await fetch(`${API_BASE_URL}/api/tickets?id=${id}`, {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=update-status&id=${id}`, {
 
-        method: 'PUT',
+        method: 'POST',
 
         headers: {
 
@@ -740,39 +763,15 @@ export class ApiService {
 
           status,
 
-          assigned_to: resolutionNotes ? parseInt(resolutionNotes) : null
+          resolution_notes: resolutionNotes
 
         })
 
       });
 
-
-
       const data = await response.json();
 
-
-
-      if (data.success) {
-
-        return {
-
-          success: true,
-
-          message: data.message
-
-        };
-
-      } else {
-
-        return {
-
-          success: false,
-
-          message: data.message || 'Error al actualizar ticket'
-
-        };
-
-      }
+      return data;
 
     } catch (error) {
 
@@ -780,7 +779,7 @@ export class ApiService {
 
         success: false,
 
-        message: 'Error de conexión con el servidor'
+        message: 'Error al actualizar estado del ticket'
 
       };
 
@@ -807,53 +806,65 @@ export class ApiService {
 
 
   static async addTicketComment(id: number, comment: string): Promise<ApiResponse> {
-
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    return {
-
-      success: true,
-
-      message: 'Comentario agregado exitosamente'
-
-    };
-
+    return this.addComment(id, comment);
   }
 
 
 
   static async getTicketComments(id: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=comments&id=${id}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+        }
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    return {
-
-      success: true,
-
-      message: 'Comentarios obtenidos exitosamente',
-
-      data: []
-
-    };
-
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al obtener comentarios'
+      };
+    }
   }
 
 
 
   static async getTechnicianTickets(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=technician-tickets`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+        }
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al obtener tickets del técnico'
+      };
+    }
+  }
 
-    return {
+  static async getTechnicianProfile(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users?action=technician-profile`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+        }
+      });
 
-      success: true,
-
-      message: 'Tickets del técnico obtenidos exitosamente',
-
-      data: []
-
-    };
-
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al obtener perfil del técnico'
+      };
+    }
   }
 
 
@@ -1146,20 +1157,28 @@ export class ApiService {
 
 
 
-  static async getAvailableTechnicians(serviceId: number, officeId: number): Promise<ApiResponse> {
+  static async getAvailableTechnicians(serviceId: number): Promise<ApiResponse> {
+    try {
+      console.log('=== API CALL: getAvailableTechnicians ===');
+      console.log('Service ID:', serviceId);
+      console.log('Endpoint: /api/users?action=technicians-by-service');
+      
+      const response = await fetch(`${API_BASE_URL}/api/users?action=technicians-by-service&service_id=${serviceId}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+        }
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    return {
-
-      success: true,
-
-      message: 'Técnicos disponibles obtenidos exitosamente',
-
-      data: []
-
-    };
-
+      const data = await response.json();
+      console.log('Raw API Response:', data);
+      return data;
+    } catch (error) {
+      console.error('API Error:', error);
+      return {
+        success: false,
+        message: 'Error al obtener técnicos disponibles'
+      };
+    }
   }
 
 
@@ -1613,37 +1632,73 @@ export class ApiService {
 
 
   static async getProblems(serviceId?: number): Promise<ApiResponse> {
+    try {
+      const url = serviceId 
+        ? `${API_BASE_URL}/api/services?action=problems&service_id=${serviceId}`
+        : `${API_BASE_URL}/api/services?action=problems`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+      const data = await response.json();
 
-    return {
-
-      success: true,
-
-      message: 'Problemas obtenidos exitosamente',
-
-      data: []
-
-    };
-
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener problemas'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
 
 
   static async getSystems(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/services?action=software-systems`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+      const data = await response.json();
 
-    return {
-
-      success: true,
-
-      message: 'Sistemas obtenidos exitosamente',
-
-      data: []
-
-    };
-
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener sistemas'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
 
@@ -1926,6 +1981,76 @@ export class ApiService {
 
     }
 
+  }
+
+  // Admin ticket management methods
+  static async assignMultipleTechnicians(ticketId: number, technicianIds: number[]): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=assign-multiple-technicians`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          ticket_id: ticketId,
+          technician_ids: technicianIds
+        })
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al asignar técnicos'
+      };
+    }
+  }
+
+  static async updateTicketPriority(ticketId: number, priority: string): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=priority&id=${ticketId}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ System_Priority: priority })
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al actualizar prioridad'
+      };
+    }
+  }
+
+  static async addComment(ticketId: number, comment: string): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=comment`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          Fk_Service_Request: ticketId,
+          Comment: comment
+        })
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al agregar comentario'
+      };
+    }
   }
 
 }

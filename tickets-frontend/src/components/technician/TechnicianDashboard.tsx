@@ -18,7 +18,8 @@ import {
   Crown,
   Users,
   X,
-  Send
+  Send,
+  History
 } from 'lucide-react';
 import './TechnicianDashboard.css';
 import TechnicianProfileComponent from './TechnicianProfile';
@@ -44,13 +45,19 @@ interface Ticket {
 
 interface TechnicianProfile {
   id: string;
-  name: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
   email: string;
-  status: 'available' | 'busy' | 'lunch';
-  lunch_block: 1 | 2 | 3 | 4;
-  end_time: '14:00' | '17:00';
-  services: string[];
-  hireDate: string;
+  username: string;
+  status: string;
+  lunch_block: number | null;
+  lunch_block_name: string | null;
+  lunch_start_time: string | null;
+  lunch_end_time: string | null;
+  created_at: string;
+  services: any[];
+  schedules: any[];
 }
 
 const TechnicianDashboard: React.FC = () => {
@@ -151,30 +158,12 @@ const TechnicianDashboard: React.FC = () => {
       }
 
       try {
-        // Obtener técnicos del backend
-        const techResponse = await ApiService.getTechnicians();
-        console.log('Respuesta del backend:', techResponse);
+        // Obtener perfil del técnico
+        const profileResponse = await ApiService.getTechnicianProfile();
+        console.log('Perfil del técnico:', profileResponse);
 
-        if (techResponse.success && techResponse.data) {
-          // Buscar el técnico correspondiente al usuario actual
-          const currentTech = techResponse.data.find((t: any) => t.Fk_Users == user.id);
-          console.log('Técnico encontrado:', currentTech);
-
-          if (currentTech) {
-            // Extraer servicios del técnico
-            const services = currentTech.Services ? currentTech.Services.split(',').map((s: string) => s.trim()) : [];
-
-            setTechnicianProfile({
-              id: currentTech.ID_Technicians,
-              name: `${currentTech.First_Name} ${currentTech.Last_Name}`,
-              email: currentTech.Email,
-              status: 'available',
-              lunch_block: currentTech.Fk_Lunch_Block || 2,
-              end_time: '17:00',
-              services: services,
-              hireDate: currentTech.created_at
-            });
-          }
+        if (profileResponse.success && profileResponse.data) {
+          setTechnicianProfile(profileResponse.data);
         }
 
         // Cargar tickets del técnico
@@ -302,9 +291,9 @@ const TechnicianDashboard: React.FC = () => {
         <div className="profile-actions-bar">
           <div className="profile-info-display">
             <User size={20} />
-            <span>{technicianProfile!.name}</span>
-            <span className={`status-badge ${technicianProfile!.status}`}>
-              {technicianProfile!.status === 'available' ? 'Disponible' : technicianProfile!.status === 'busy' ? 'Ocupado' : 'Almuerzo'}
+            <span>{technicianProfile?.first_name} {technicianProfile?.last_name}</span>
+            <span className={`status-badge ${technicianProfile?.status === 'Activo' || technicianProfile?.status === 'Disponible' ? 'available' : 'busy'}`}>
+              {technicianProfile?.status === 'Activo' || technicianProfile?.status === 'Disponible' ? 'Disponible' : technicianProfile?.status === 'Ocupado' ? 'Ocupado' : 'Inactivo'}
             </span>
           </div>
           <div className="action-buttons">
@@ -330,11 +319,13 @@ const TechnicianDashboard: React.FC = () => {
             </div>
             <div className="time-info">
               <h3 className="time-title">Bloque de Almuerzo</h3>
-              <p className="time-subtitle">Bloque {technicianProfile!.lunch_block}</p>
+              <p className="time-subtitle">
+                {technicianProfile?.lunch_block_name || `Bloque ${technicianProfile?.lunch_block || 'N/A'}`}
+              </p>
               <div className="time-value">
-                {technicianProfile!.status === 'lunch' 
-                  ? `Quedan ${formatTime(lunchTimeRemaining)}` 
-                  : `Comienza en ${formatTime(30)}` 
+                {technicianProfile?.lunch_start_time && technicianProfile?.lunch_end_time
+                  ? `${technicianProfile.lunch_start_time} - ${technicianProfile.lunch_end_time}`
+                  : 'No configurado'
                 }
               </div>
             </div>
@@ -345,24 +336,30 @@ const TechnicianDashboard: React.FC = () => {
               <LogOut size={28} />
             </div>
             <div className="time-info">
-              <h3 className="time-title">Hora de Salida</h3>
-              <p className="time-subtitle">Jornada Completa</p>
+              <h3 className="time-title">Estado</h3>
+              <p className="time-subtitle">Disponibilidad</p>
               <div className="time-value">
-                {technicianProfile!.end_time} ({formatTime(workTimeRemaining)})
+                {technicianProfile?.status === 'Activo' || technicianProfile?.status === 'Disponible' 
+                  ? 'Disponible' 
+                  : technicianProfile?.status || 'Desconocido'
+                }
               </div>
             </div>
           </div>
 
           <div className="status-card">
-            <h3 className="status-title">Estado Actual</h3>
-            <button
-              className={`status-toggle ${technicianProfile!.status}`}
-              onClick={toggleStatus}
-            >
-              <div className="status-indicator"></div>
-              {technicianProfile!.status === 'available' ? 'Disponible' : 
-               technicianProfile!.status === 'busy' ? 'Ocupado' : 'Almuerzo'}
-            </button>
+            <h3 className="status-title">Servicios Asignados</h3>
+            <div className="services-list">
+              {technicianProfile?.services && technicianProfile.services.length > 0 ? (
+                technicianProfile.services.map((service: any) => (
+                  <span key={service.ID_TI_Service} className="service-tag">
+                    {service.Type_Service}
+                  </span>
+                ))
+              ) : (
+                <p className="no-services">Sin servicios asignados</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -373,11 +370,11 @@ const TechnicianDashboard: React.FC = () => {
               <Settings size={24} />
               Mis Tickets Activos
             </h2>
-            <span className="ticket-count">{myTickets.length} activos</span>
+            <span className="ticket-count">{myTickets.filter(t => t.Status !== 'Cerrado').length} activos</span>
           </div>
 
           <div className="tickets-list">
-            {myTickets.map((ticket) => (
+            {myTickets.filter(t => t.Status !== 'Cerrado').map((ticket) => (
               <div key={ticket.id} className="ticket-card">
                 <div className="ticket-header">
                   <div className="ticket-code">
@@ -460,6 +457,85 @@ const TechnicianDashboard: React.FC = () => {
             ))}
           </div>
         </section>
+
+        {/* Historial de Tickets */}
+        <section className="tickets-section history-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              <History size={24} />
+              Historial de Tickets
+            </h2>
+            <span className="ticket-count">{myTickets.filter(t => t.Status === 'Cerrado').length} cerrados</span>
+          </div>
+
+          <div className="tickets-list">
+            {myTickets.filter(t => t.Status === 'Cerrado').map((ticket) => (
+              <div key={ticket.id} className="ticket-card closed">
+                <div className="ticket-header">
+                  <div className="ticket-code">
+                    <span className="code-label">Código:</span>
+                    <span className="code-value">{ticket.Code}</span>
+                  </div>
+                  <div className="ticket-priority">
+                    <span className={`priority-badge ${getPriorityColor(ticket.System_Priority)}`}>
+                      {ticket.System_Priority}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="ticket-body">
+                  <h3 className="ticket-subject">{ticket.Subject}</h3>
+                  <p className="ticket-description">{ticket.Description}</p>
+                  
+                  <div className="ticket-location">
+                    <MapPin size={16} />
+                    <div className="location-hierarchy">
+                      <span className="location-item">{ticket.Direction_Name}</span>
+                      <span className="location-separator">→</span>
+                      <span className="location-item">{ticket.Division_Name}</span>
+                      <span className="location-separator">→</span>
+                      <span className="location-item">{ticket.Coordination_Name}</span>
+                    </div>
+                  </div>
+
+                  <div className="ticket-meta">
+                    <div className="meta-item">
+                      <span className="meta-label">Cerrado el:</span>
+                      <span className="meta-value">{new Date(ticket.Created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="meta-item">
+                      <span className="meta-label">Estado:</span>
+                      <span className="meta-value status-cerrado">Cerrado</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ticket-footer">
+                  <div className="role-badge">
+                    {ticket.Is_Lead ? (
+                      <span className="role-lead">
+                        <Crown size={14} />
+                        Técnico Principal
+                      </span>
+                    ) : (
+                      <span className="role-support">
+                        <Users size={14} />
+                        Téc. de Apoyo
+                      </span>
+                    )}
+                  </div>
+                  
+                  <div className="ticket-actions">
+                    <button className="action-btn secondary" onClick={() => handleViewDetails(ticket)}>
+                      <MessageSquare size={18} />
+                      Ver Detalles
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
 
       {/* Modal de Perfil */}
@@ -476,15 +552,15 @@ const TechnicianDashboard: React.FC = () => {
               <TechnicianProfileComponent
                 profile={{
                   id: technicianProfile!.id,
-                  firstName: technicianProfile!.name.split(' ')[0],
-                  lastName: technicianProfile!.name.split(' ').slice(1).join(' '),
+                  firstName: technicianProfile!.first_name,
+                  lastName: technicianProfile!.last_name,
                   email: technicianProfile!.email,
-                  status: technicianProfile!.status === 'available' ? 'Activo' : 'Inactivo',
-                  hireDate: technicianProfile!.hireDate,
-                  lunchBlock: `Bloque ${technicianProfile!.lunch_block}`,
+                  status: technicianProfile!.status === 'Activo' || technicianProfile!.status === 'Disponible' ? 'Activo' : 'Inactivo',
+                  hireDate: technicianProfile!.created_at,
+                  lunchBlock: technicianProfile!.lunch_block_name || `Bloque ${technicianProfile!.lunch_block}`,
                   workStartTime: '08:00',
-                  workEndTime: technicianProfile!.end_time,
-                  services: technicianProfile!.services
+                  workEndTime: '17:00',
+                  services: technicianProfile!.services.map((s: any) => s.Type_Service)
                 }}
               />
             </div>

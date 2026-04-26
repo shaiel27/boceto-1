@@ -4,10 +4,29 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/User.php';
 
-$database = new Database();
-$db = $database->getConnection();
+try {
+    $database = new Database();
+    $db = $database->getConnection();
 
-$user = new User($db);
+    if (!$db) {
+        http_response_code(500);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Error de conexión a la base de datos'
+        ]);
+        exit;
+    }
+
+    $user = new User($db);
+} catch (Exception $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
+    exit;
+}
+
 $data = json_decode(file_get_contents("php://input"));
 
 // Get JWT service from global (initialized in index.php)
@@ -17,10 +36,11 @@ if (empty($jwtSecret)) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Get current authenticated user from middleware context
-    $userId = $_SERVER['AUTH_USER_ID'] ?? null;
+    // Validate JWT token directly for GET requests
+    $headers = getallheaders();
+    $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
     
-    if ($userId === null) {
+    if (empty($authHeader)) {
         http_response_code(401);
         echo json_encode([
             'success' => false,
@@ -29,7 +49,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         exit;
     }
     
+    // Extract Bearer token
+    if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Formato de autorización inválido'
+        ]);
+        exit;
+    }
+    
+    $token = $matches[1];
+    
+    // Validate token
+    require_once __DIR__ . '/../Services/JwtService.php';
+    $jwtService = new \App\Services\JwtService($jwtSecret);
+    $payload = $jwtService->validateToken($token);
+    
+    if ($payload === null) {
+        http_response_code(401);
+        echo json_encode([
+            'success' => false,
+            'message' => 'Token inválido o expirado'
+        ]);
+        exit;
+    }
+    
+    $userId = $payload['sub'];
     $userData = $user->getById($userId);
+    
     if ($userData) {
         echo json_encode([
             'success' => true,
@@ -43,10 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'full_name' => $userData['Full_Name'],
                 'role_name' => $userData['role_name'],
                 'role' => strtolower($userData['role_name']),
-                'office_name' => $userData['office_name'] ?? null,
-                'office_type' => $userData['office_type'] ?? null,
+                'office_name' => $userData['office_name'] ?? '',
+                'office_type' => $userData['office_type'] ?? '',
                 'office_id' => $userData['office_id'] ?? null,
-                'created_at' => $userData['created_at'] ?? null
+                'created_at' => $userData['created_at'] ?? date('Y-m-d H:i:s')
             ]
         ]);
     } else {

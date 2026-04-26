@@ -37,6 +37,12 @@ class User {
                 if (password_verify($password, $row['Password'])) {
                     // Remove password from response
                     unset($row['Password']);
+                    
+                    // Ensure office_id is properly set (can be null if no office assigned)
+                    if (!isset($row['office_id'])) {
+                        $row['office_id'] = null;
+                    }
+                    
                     return $row;
                 }
             }
@@ -96,15 +102,84 @@ class User {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    /**
+     * Get technicians with their TI services
+     * @return array<int, array{ID_Technicians: int, First_Name: string, Last_Name: string, Email: string, Status: string, TI_Services: array}>
+     */
+    public function getTechniciansWithServices(): array
+    {
+        error_log("=== getTechniciansWithServices START ===");
+        
+        $query = "SELECT t.ID_Technicians, 
+                         t.First_Name, 
+                         t.Last_Name, 
+                         t.Status, 
+                         u.Email,
+                         ts.Fk_TI_Service,
+                         s.Type_Service
+                  FROM Technicians t
+                  INNER JOIN Users u ON t.Fk_Users = u.ID_Users
+                  LEFT JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                  LEFT JOIN TI_Service s ON ts.Fk_TI_Service = s.ID_TI_Service
+                  WHERE t.Status IN ('Activo', 'Disponible', 'Ocupado')
+                  ORDER BY t.First_Name, t.Last_Name";
+
+        error_log("Query: " . $query);
+
+        try {
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            error_log("Raw results count: " . count($results));
+            error_log("Raw results: " . json_encode($results));
+
+            // Group by technician
+            $technicians = [];
+            foreach ($results as $row) {
+                $techId = $row['ID_Technicians'];
+                
+                if (!isset($technicians[$techId])) {
+                    $technicians[$techId] = [
+                        'ID_Technicians' => $row['ID_Technicians'],
+                        'First_Name' => $row['First_Name'],
+                        'Last_Name' => $row['Last_Name'],
+                        'Email' => $row['Email'],
+                        'Status' => $row['Status'],
+                        'TI_Services' => []
+                    ];
+                }
+                
+                if ($row['Fk_TI_Service'] && $row['Type_Service']) {
+                    $technicians[$techId]['TI_Services'][] = [
+                        'ID_TI_Service' => $row['Fk_TI_Service'],
+                        'Type_Service' => $row['Type_Service']
+                    ];
+                }
+            }
+
+            $finalResult = array_values($technicians);
+            error_log("Grouped technicians count: " . count($finalResult));
+            error_log("Grouped technicians: " . json_encode($finalResult));
+            error_log("=== getTechniciansWithServices END ===");
+            
+            return $finalResult;
+        } catch (PDOException $e) {
+            error_log("Error in getTechniciansWithServices: " . $e->getMessage());
+            error_log("Error trace: " . $e->getTraceAsString());
+            return [];
+        }
+    }
+
     public function getById($id) {
         $query = "SELECT u.ID_Users, u.Full_Name, u.Email, u.created_at,
-                         b.Fk_Office as office_id,
-                         o.Name_Office as office_name,
-                         o.Office_Type as office_type,
+                         COALESCE(o.ID_Office, NULL) as office_id,
+                         COALESCE(o.Name_Office, '') as office_name,
+                         COALESCE(o.Office_Type, '') as office_type,
                          r.Role as role_name
                   FROM " . $this->table_name . " u
                   LEFT JOIN Boss b ON u.ID_Users = b.Fk_User
-                  LEFT JOIN Office o ON b.Fk_Office = o.ID_Office
+                  LEFT JOIN Office o ON b.ID_Boss = o.Fk_Boss_ID
                   LEFT JOIN Role r ON u.Fk_Role = r.ID_Role
                   WHERE u.ID_Users = :id";
         
@@ -112,7 +187,14 @@ class User {
         $stmt->bindParam(":id", $id);
         $stmt->execute();
         
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        // Ensure created_at has a value if null
+        if ($result && empty($result['created_at'])) {
+            $result['created_at'] = date('Y-m-d H:i:s');
+        }
+        
+        return $result;
     }
 
     public function createWithOffice($data) {
@@ -135,24 +217,40 @@ class User {
             
             // If role is Jefe (3), create Boss record and assign office
             if ($data->role == 3 && isset($data->office_id)) {
-                $query = "INSERT INTO Boss (Name_Boss, Pronoun, Fk_User, Fk_Office) 
-                          VALUES (:name_boss, :pronoun, :user_id, :office_id)";
+                $query = "INSERT INTO Boss (Name_Boss, Pronoun, Fk_User)
+                          VALUES (:name_boss, :pronoun, :user_id)";
                 $stmt = $this->conn->prepare($query);
                 $stmt->bindParam(":name_boss", $data->name_boss);
                 $stmt->bindParam(":pronoun", $data->pronoun);
                 $stmt->bindParam(":user_id", $userId);
+                $stmt->execute();
+
+                $bossId = $this->conn->lastInsertId();
+
+                // Update Office to link to this Boss
+                $query = "UPDATE Office SET Fk_Boss_ID = :boss_id WHERE ID_Office = :office_id";
+                $stmt = $this->conn->prepare($query);
+                $stmt->bindParam(":boss_id", $bossId);
                 $stmt->bindParam(":office_id", $data->office_id);
                 $stmt->execute();
             }
-            
+
             // If role is Solicitante (4) and has office_id, create Boss record as requester
             if ($data->role == 4 && isset($data->office_id)) {
-                $query = "INSERT INTO Boss (Name_Boss, Pronoun, Fk_User, Fk_Office) 
-                          VALUES (:name_boss, :pronoun, :user_id, :office_id)";
+                $query = "INSERT INTO Boss (Name_Boss, Pronoun, Fk_User)
+                          VALUES (:name_boss, :pronoun, :user_id)";
                 $stmt = $this->conn->prepare($query);
                 $stmt->bindParam(":name_boss", $data->name_boss);
                 $stmt->bindParam(":pronoun", $data->pronoun);
                 $stmt->bindParam(":user_id", $userId);
+                $stmt->execute();
+
+                $bossId = $this->conn->lastInsertId();
+
+                // Update Office to link to this Boss
+                $query = "UPDATE Office SET Fk_Boss_ID = :boss_id WHERE ID_Office = :office_id";
+                $stmt = $this->conn->prepare($query);
+                $stmt->bindParam(":boss_id", $bossId);
                 $stmt->bindParam(":office_id", $data->office_id);
                 $stmt->execute();
             }

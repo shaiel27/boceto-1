@@ -1,9 +1,28 @@
-# Setup Rápido para Windows (Sin Composer)
+# Setup Rápido para Windows
 
-## Problema
-PHP y Composer no están instalados o no están en el PATH de Windows.
+## Comando para Iniciar el Backend
 
-## Solución Alternativa
+### Usando XAMPP (recomendado - ya tiene drivers MySQL):
+```powershell
+C:\xampp\php\php.exe -S localhost:8000 -t public
+```
+
+### Desde el directorio del backend (si PHP está en PATH):
+```powershell
+php -S localhost:8000 -t public
+```
+
+### Desde cualquier ubicación:
+```powershell
+cd "c:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-backend"
+C:\xampp\php\php.exe -S localhost:8000 -t public
+```
+
+El backend estará disponible en: **http://localhost:8000**
+
+---
+
+## Requisitos Previos
 
 ### 1. Verificar si PHP está instalado
 ```powershell
@@ -14,29 +33,12 @@ Si PHP no está instalado, necesitas instalarlo primero:
 - Descarga PHP desde https://www.php.net/downloads.php
 - O usa XAMPP/WAMP que incluye PHP + MySQL + Apache
 
-### 2. Usar el backend simplificado
+### 2. Verificar configuración de base de datos
+Asegúrate que `src/config/database.php` tenga las credenciales correctas de tu base de datos MySQL.
 
-He creado una versión simplificada que no requiere Composer:
+---
 
-#### Opción A: Usar el index-simple.php
-```powershell
-cd tickets-backend
-php -S localhost:8000 -t public
-```
-
-Luego accede a `http://localhost:8000/api/test` para probar.
-
-#### Opción B: Configurar el .htaccess para usar index-simple.php
-Edita `public/.htaccess` y cambia:
-```
-RewriteRule ^(.*)$ index.php [QSA,L]
-```
-a:
-```
-RewriteRule ^(.*)$ index-simple.php [QSA,L]
-```
-
-### 3. Probar los endpoints
+## Probar los Endpoints
 
 #### Test básico:
 ```bash
@@ -56,45 +58,55 @@ curl -X GET http://localhost:8000/api/auth/me \
   -H "Authorization: Bearer TU_TOKEN"
 ```
 
-### 4. Configuración del Frontend
+---
 
-Asegúrate que `.env` en el frontend tenga:
-```
-REACT_APP_API_URL=http://localhost:8000/api
-```
+## Configuración del Frontend
 
-### 5. Credenciales de Prueba
+Asegúrate que el frontend tenga la URL correcta del API:
+- En `src/services/api.ts`: `const API_BASE_URL = 'http://localhost:8000/api';`
+- O usa variable de entorno: `REACT_APP_API_URL=http://localhost:8000/api`
 
-El backend simplificado usa estos datos de prueba:
+---
+
+## Credenciales de Prueba
+
+El backend usa estos datos de prueba (verifica en tu base de datos):
 - **Email**: `admin@alcaldia.gob`
 - **Password**: `password123`
-- **Roles**: Admin (1), Técnico (2), Jefe (3)
+- **Roles**: Admin, Técnico, Jefe, Solicitante
 
-## Si tienes PHP pero no Composer
-
-Puedes instalar Composer manualmente:
-
-```powershell
-# Descargar Composer
-Invoke-WebRequest -Uri https://getcomposer.org/installer -OutFile composer-setup.php
-
-# Instalar
-php composer-setup.php
-
-# Mover al PATH
-Move-Item composer.phar C:\xampp\php\composer.phar
-
-# Agregar al PATH de Windows
-```
-
-## Next Steps
-
-1. **Probar el backend simplificado** primero
-2. **Verificar conexión a base de datos** MySQL
-3. **Probar login desde frontend**
-4. **Si funciona, instalar Composer** para el backend completo
+---
 
 ## Troubleshooting
+
+### "Connection error: could not find driver"
+El driver PDO de MySQL no está habilitado. Sigue estos pasos:
+
+1. **Encuentra tu archivo php.ini**:
+   ```powershell
+   php --ini
+   ```
+   Esto mostrará la ubicación del archivo php.ini cargado.
+
+2. **Edita php.ini** y descomenta estas líneas (quita el `;` al inicio):
+   ```ini
+   extension=pdo_mysql
+   extension=mysqli
+   ```
+
+3. **Reinicia el servidor PHP**:
+   - Detén el servidor actual (Ctrl+C)
+   - Vuelve a ejecutar: `php -S localhost:8000 -t public`
+
+4. **Verifica que el driver esté cargado**:
+   ```powershell
+   php -m | findstr mysql
+   ```
+   Deberías ver `mysqli` y `pdo_mysql` en la lista.
+
+**Si usas XAMPP/WAMP**:
+- El archivo php.ini está en: `C:\xampp\php\php.ini` o `C:\wamp64\bin\php\php8.x.x\php.ini`
+- XAMPP/WAMP ya tienen estos drivers habilitados por defecto
 
 ### "php no es reconocido"
 - Instala XAMPP o WAMP
@@ -103,13 +115,32 @@ Move-Item composer.phar C:\xampp\php\composer.phar
 
 ### "Conexión a base de datos falla"
 - Verifica que MySQL esté corriendo
-- Verifica credenciales en setup-simple.php
-- Asegúrate que la base de datos `tickets_municipal` exista
+- Verifica credenciales en `src/config/database.php`
+- Asegúrate que la base de datos `tickets_system` exista
 
 ### "CORS errors"
-- El backend simplificado ya tiene CORS configurado
+- El backend ya tiene CORS configurado en `src/Middleware/CorsMiddleware.php`
 - Verifica que el frontend use la URL correcta
 
 ### "404 Not Found"
-- Verifica que estés usando `index-simple.php`
-- Revisa la configuración del .htaccess
+- Verifica que estés en el directorio correcto
+- Asegúrate que el archivo `public/index.php` exista
+- Revisa la configuración del .htaccess si usas Apache
+
+---
+
+## Estructura del Proyecto
+
+```
+tickets-backend/
+├── public/
+│   ├── index.php          # Entry point principal
+│   └── .htaccess          # Configuración de rutas
+├── src/
+│   ├── config/            # Configuración (database.php)
+│   ├── controllers/       # Controladores (Auth, Ticket, User, etc.)
+│   ├── models/           # Modelos (User, Technician, Ticket, etc.)
+│   ├── Services/          # Servicios (JWT, Email, etc.)
+│   └── Middleware/       # Middleware (Auth, CORS, etc.)
+└── README-SETUP.md       # Este archivo
+```

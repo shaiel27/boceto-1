@@ -68,14 +68,14 @@ const RequesterDashboard: React.FC = () => {
   const { logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [requesterProfile, setRequesterProfile] = useState<RequesterProfile>({
-    id: '1',
-    name: 'Carlos Rodríguez',
-    email: 'carlos.rodriguez@alcaldia.gob',
-    position: 'Analista de Sistemas',
-    hireDate: '2019-03-15',
+    id: '',
+    name: '',
+    email: '',
+    position: '',
+    hireDate: '',
     office_name: '',
     office_type: '',
-    supervisor: 'Ing. María González'
+    supervisor: ''
   });
 
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
@@ -92,7 +92,7 @@ const RequesterDashboard: React.FC = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('auth_token');
+      const token = sessionStorage.getItem('auth_token');
       if (!token) {
         navigate('/login');
         return;
@@ -116,19 +116,41 @@ const RequesterDashboard: React.FC = () => {
             
             setRequesterProfile({
               id: userId.toString(),
-              name: profileData.Full_Name || 'Usuario',
-              email: profileData.Email || '',
-              position: profileData.role_name || 'Solicitante',
-              hireDate: profileData.created_at || '2020-01-01',
+              name: profileData.Full_Name || userResponse.data.full_name || 'Usuario',
+              email: profileData.Email || userResponse.data.email || '',
+              position: profileData.role_name || userResponse.data.role_name || 'Solicitante',
+              hireDate: new Date().toISOString().split('T')[0],
               office_name: profileData.office_name || '',
               office_type: profileData.office_type || '',
-              supervisor: 'No asignado'
+              supervisor: profileData.supervisor || 'No asignado'
             });
           } else {
             console.error('Profile response not successful:', profileResponse);
+            // Use basic user data as fallback
+            setRequesterProfile({
+              id: userId.toString(),
+              name: userResponse.data.full_name || 'Usuario',
+              email: userResponse.data.email || '',
+              position: userResponse.data.role_name || 'Solicitante',
+              hireDate: new Date().toISOString().split('T')[0],
+              office_name: '',
+              office_type: '',
+              supervisor: 'No asignado'
+            });
           }
         } catch (error) {
-          console.error('Error loading profile, using mock data:', error);
+          console.error('Error loading profile:', error);
+          // Use basic user data as fallback
+          setRequesterProfile({
+            id: userId.toString(),
+            name: userResponse.data.full_name || 'Usuario',
+            email: userResponse.data.email || '',
+            position: userResponse.data.role_name || 'Solicitante',
+            hireDate: new Date().toISOString().split('T')[0],
+            office_name: '',
+            office_type: '',
+            supervisor: 'No asignado'
+          });
         }
 
         try {
@@ -157,14 +179,35 @@ const RequesterDashboard: React.FC = () => {
             setMyTickets([]);
           }
         } catch (error) {
-          console.error('Error loading tickets, using empty array:', error);
+          console.error('Error loading tickets:', error);
           setMyTickets([]);
         }
       } else {
+        console.error('User authentication failed:', userResponse);
+        setRequesterProfile({
+          id: '',
+          name: '',
+          email: '',
+          position: '',
+          hireDate: '',
+          office_name: '',
+          office_type: '',
+          supervisor: ''
+        });
         setMyTickets([]);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
+      setRequesterProfile({
+        id: '',
+        name: '',
+        email: '',
+        position: '',
+        hireDate: '',
+        office_name: '',
+        office_type: '',
+        supervisor: ''
+      });
       setMyTickets([]);
     } finally {
       setLoading(false);

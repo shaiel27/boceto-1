@@ -66,6 +66,13 @@ const TicketForm: React.FC = () => {
   // Load offices from backend
   const [offices, setOffices] = useState<any[]>([]);
   const [loadingOffices, setLoadingOffices] = useState(false);
+  const [officeSearchTerm, setOfficeSearchTerm] = useState('');
+
+  // Filter offices based on search term
+  const filteredOffices = offices.filter(office =>
+    office.name.toLowerCase().includes(officeSearchTerm.toLowerCase()) ||
+    office.type.toLowerCase().includes(officeSearchTerm.toLowerCase())
+  );
 
   // Fetch offices on component mount
   useEffect(() => {
@@ -123,8 +130,8 @@ const TicketForm: React.FC = () => {
             setProblemsCatalog(problems);
           }
 
-          // Cargar sistemas de software si el tipo de servicio es Programación (ID 2)
-          if (formData.fkTiService === '2') {
+          // Cargar sistemas de software si el tipo de servicio es Programación (ID 3)
+          if (formData.fkTiService === '3') {
             const systemsResponse = await ApiService.getSystems();
             if (systemsResponse.success && systemsResponse.data) {
               const systems: SoftwareSystem[] = systemsResponse.data.map((s: any) => ({
@@ -161,8 +168,8 @@ const TicketForm: React.FC = () => {
 
   const [tiServices] = useState([
     { id: '1', name: 'Redes', description: 'Problemas de conectividad' },
-    { id: '2', name: 'Programación', description: 'Desarrollo de software' },
-    { id: '3', name: 'Soporte Técnico', description: 'Hardware y mantenimiento' }
+    { id: '2', name: 'Soporte', description: 'Hardware y mantenimiento' },
+    { id: '3', name: 'Programación', description: 'Desarrollo de software' }
   ]);
 
   const formSteps = [
@@ -193,7 +200,7 @@ const TicketForm: React.FC = () => {
       }
 
       // Validar sistema de software si es Programación
-      if (formData.fkTiService === '2' && !formData.fkSoftwareSystem) {
+      if (formData.fkTiService === '3' && !formData.fkSoftwareSystem) {
         newErrors.fkSoftwareSystem = 'Debe seleccionar un sistema de software para Programación';
       }
     }
@@ -268,12 +275,12 @@ const TicketForm: React.FC = () => {
 
       if (response.success) {
         setSubmitStatus('success');
-        
+
         // Guardar datos del ticket creado para mostrar en el resumen
         const officeName = offices.find(o => o.id === formData.fkOffice)?.name || 'No asignado';
         const serviceName = tiServices.find(s => s.id === formData.fkTiService)?.name || 'No asignado';
         const problemName = problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.name || 'No asignado';
-        
+
         setCreatedTicket({
           subject: formData.subject,
           description: formData.description,
@@ -281,7 +288,9 @@ const TicketForm: React.FC = () => {
           officeName: officeName,
           serviceName: serviceName,
           problemName: problemName,
-          priority: systemPriority
+          priority: systemPriority,
+          technicianAssigned: false,
+          technicianName: null
         });
 
         setTimeout(() => {
@@ -396,6 +405,18 @@ const TicketForm: React.FC = () => {
                 <label>
                   Selecciona tu Oficina *
                 </label>
+                {isAdmin() && (
+                  <div className="input-with-icon" style={{ marginBottom: '10px' }}>
+                    <Building size={18} />
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Buscar oficina por nombre o tipo..."
+                      value={officeSearchTerm}
+                      onChange={(e) => setOfficeSearchTerm(e.target.value)}
+                    />
+                  </div>
+                )}
                 <div className="input-with-icon">
                   <Building size={18} />
                   {loadingOffices ? (
@@ -410,7 +431,7 @@ const TicketForm: React.FC = () => {
                       disabled={!!(user && user.role !== 1)}
                     >
                       <option value="">Selecciona tu oficina</option>
-                      {offices.map(office => (
+                      {(isAdmin() ? filteredOffices : offices).map(office => (
                         <option key={office.id} value={office.id}>
                           {office.name} ({office.type})
                         </option>
@@ -424,11 +445,14 @@ const TicketForm: React.FC = () => {
                 {user && user.role !== 1 && !formData.fkOffice && (
                   <small className="info-message">Oficina asignada automáticamente según tu rol</small>
                 )}
+                {isAdmin() && filteredOffices.length === 0 && officeSearchTerm && (
+                  <small className="info-message">No se encontraron oficinas con ese criterio</small>
+                )}
                 {errors.fkOffice && <span className="error-message">{errors.fkOffice}</span>}
               </div>
             </div>
 
-            {formData.fkTiService === '2' && (
+            {formData.fkTiService === '3' && (
               <div className="form-section">
                 <div className="form-section-title">
                   <Settings size={18} />
@@ -666,7 +690,7 @@ const TicketForm: React.FC = () => {
                 </div>
               </div>
 
-              {formData.fkTiService === '2' && (
+              {formData.fkTiService === '3' && (
                 <div className="confirmation-card">
                   <h4>Sistema de Software</h4>
                   <div className="confirmation-item">
@@ -684,6 +708,16 @@ const TicketForm: React.FC = () => {
                 <h4>Detalles</h4>
                 <p className="description-preview">{formData.description}</p>
               </div>
+
+              {createdTicket && createdTicket.technicianAssigned && (
+                <div className="confirmation-card" style={{ border: '2px solid #10b981', backgroundColor: '#f0fdf4' }}>
+                  <h4 style={{ color: '#10b981' }}>✓ Técnico Asignado</h4>
+                  <div className="confirmation-item">
+                    <span>Técnico:</span>
+                    <span style={{ fontWeight: 'bold', color: '#10b981' }}>{createdTicket.technicianName}</span>
+                  </div>
+                </div>
+              )}
 
               {formData.attachments.length > 0 && (
                 <div className="confirmation-card">
@@ -779,7 +813,11 @@ const TicketForm: React.FC = () => {
           <div className="success-message">
             <CheckCircle size={48} />
             <h3>¡Ticket Creado Exitosamente!</h3>
-            <p>Tu solicitud ha sido registrada y será procesada pronto.</p>
+            {createdTicket.technicianAssigned ? (
+              <p>Tu solicitud ha sido registrada y asignada a un técnico.</p>
+            ) : (
+              <p>Tu solicitud ha sido registrada. Se te asignará un técnico automáticamente cuando uno esté disponible.</p>
+            )}
             <div className="ticket-summary">
               <div className="summary-item">
                 <strong>Asunto:</strong> {createdTicket.subject}
@@ -799,6 +837,15 @@ const TicketForm: React.FC = () => {
               <div className="summary-item">
                 <strong>Número de Bien:</strong> {createdTicket.propertyNumber || 'No especificado'}
               </div>
+              {createdTicket.technicianAssigned ? (
+                <div className="summary-item" style={{ color: '#10b981', fontWeight: 'bold' }}>
+                  <strong>Técnico Asignado:</strong> {createdTicket.technicianName}
+                </div>
+              ) : (
+                <div className="summary-item" style={{ color: '#f59e0b', fontWeight: 'bold' }}>
+                  <strong>Estado:</strong> Pendiente de asignación de técnico
+                </div>
+              )}
             </div>
           </div>
         )}

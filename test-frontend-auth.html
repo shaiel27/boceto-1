@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Authentication - Role 3 Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Test Authentication - Role 3 Dashboard</h1>
+    
+    <div class="test-section info">
+        <h2>Instructions</h2>
+        <p>1. Open browser developer tools (F12)</p>
+        <p>2. Check the Console tab for detailed logs</p>
+        <p>3. Click the test buttons below to verify authentication flow</p>
+        <p>4. Make sure the backend server is running on localhost:8000</p>
+    </div>
+
+    <div class="test-section">
+        <h2>Authentication Tests</h2>
+        <button onclick="testLogin()">Test Login (Role 3)</button>
+        <button onclick="testGetMe()">Test Get Current User</button>
+        <button onclick="testGetProfile()">Test Get User Profile</button>
+        <button onclick="testMyTickets()">Test Get My Tickets</button>
+        <button onclick="clearStorage()">Clear Storage</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        
+        function log(message, data = null) {
+            console.log(message, data);
+            addResult(message, data);
+        }
+
+        function addResult(message, data = null) {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = 'test-section info';
+            div.innerHTML = `
+                <h3>${new Date().toLocaleTimeString()}</h3>
+                <p>${message}</p>
+                ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `;
+            results.appendChild(div);
+        }
+
+        async function testLogin() {
+            try {
+                log('🔐 Testing login with role 3 credentials...');
+                
+                const response = await fetch(`${API_BASE_URL}/api/auth`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'login',
+                        email: 'jefe@ejemplo.com', // Change to actual role 3 user email
+                        password: 'password123'     // Change to actual password
+                    })
+                });
+
+                const data = await response.json();
+                log('Login response:', data);
+
+                if (data.success && data.token) {
+                    sessionStorage.setItem('auth_token', data.token);
+                    log('✅ Token stored in sessionStorage');
+                } else {
+                    log('❌ Login failed:', data.message);
+                }
+            } catch (error) {
+                log('❌ Login error:', error.message);
+            }
+        }
+
+        async function testGetMe() {
+            try {
+                const token = sessionStorage.getItem('auth_token');
+                if (!token) {
+                    log('❌ No token found. Please login first.');
+                    return;
+                }
+
+                log('👤 Testing get current user...');
+                
+                const response = await fetch(`${API_BASE_URL}/api/auth`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                log('Get current user response:', data);
+
+                if (data.success) {
+                    log('✅ Current user data retrieved successfully');
+                } else {
+                    log('❌ Get current user failed:', data.message);
+                }
+            } catch (error) {
+                log('❌ Get current user error:', error.message);
+            }
+        }
+
+        async function testGetProfile() {
+            try {
+                const token = sessionStorage.getItem('auth_token');
+                if (!token) {
+                    log('❌ No token found. Please login first.');
+                    return;
+                }
+
+                log('📋 Testing get user profile...');
+                
+                // First get current user to get ID
+                const meResponse = await fetch(`${API_BASE_URL}/api/auth`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const meData = await meResponse.json();
+                if (meData.success && meData.user) {
+                    const userId = meData.user.id;
+                    log(`Getting profile for user ID: ${userId}`);
+
+                    const profileResponse = await fetch(`${API_BASE_URL}/api/users?action=profile&id=${userId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    const profileData = await profileResponse.json();
+                    log('User profile response:', profileData);
+
+                    if (profileData.success) {
+                        log('✅ User profile retrieved successfully');
+                    } else {
+                        log('❌ Get user profile failed:', profileData.message);
+                    }
+                } else {
+                    log('❌ Could not get user ID from /api/auth');
+                }
+            } catch (error) {
+                log('❌ Get user profile error:', error.message);
+            }
+        }
+
+        async function testMyTickets() {
+            try {
+                const token = sessionStorage.getItem('auth_token');
+                if (!token) {
+                    log('❌ No token found. Please login first.');
+                    return;
+                }
+
+                log('🎫 Testing get my tickets...');
+                
+                // First get current user to get ID
+                const meResponse = await fetch(`${API_BASE_URL}/api/auth`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const meData = await meResponse.json();
+                if (meData.success && meData.user) {
+                    const userId = meData.user.id;
+                    log(`Getting tickets for user ID: ${userId}`);
+
+                    const ticketsResponse = await fetch(`${API_BASE_URL}/api/tickets?action=my-tickets&user_id=${userId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    const ticketsData = await ticketsResponse.json();
+                    log('My tickets response:', ticketsData);
+
+                    if (ticketsData.success) {
+                        log('✅ My tickets retrieved successfully');
+                        if (ticketsData.data && ticketsData.data.length > 0) {
+                            log(`Found ${ticketsData.data.length} tickets`);
+                        } else {
+                            log('No tickets found for this user');
+                        }
+                    } else {
+                        log('❌ Get my tickets failed:', ticketsData.message);
+                    }
+                } else {
+                    log('❌ Could not get user ID from /api/auth');
+                }
+            } catch (error) {
+                log('❌ Get my tickets error:', error.message);
+            }
+        }
+
+        function clearStorage() {
+            sessionStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_token');
+            log('🧹 Storage cleared');
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Check current authentication status on load
+        window.onload = function() {
+            const token = sessionStorage.getItem('auth_token') || localStorage.getItem('auth_token');
+            if (token) {
+                log('🔑 Found existing token in storage');
+            } else {
+                log('⚠️ No token found in storage');
+            }
+        };
+    </script>
+</body>
+</html>

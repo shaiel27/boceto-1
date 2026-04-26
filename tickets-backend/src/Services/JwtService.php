@@ -39,7 +39,7 @@ final class JwtService
             'sub' => $userId,
             'email' => $email,
             'role_id' => $roleId,
-            'role' => strtolower($roleName),
+            'role' => $roleName,
         ];
 
         $header = $this->base64UrlEncode(json_encode(['typ' => 'JWT', 'alg' => self::ALGORITHM]));

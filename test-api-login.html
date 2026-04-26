@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login API</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        input { padding: 8px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Test Login API</h1>
+    
+    <div class="test-section info">
+        <h2>Backend Server</h2>
+        <p>URL: http://localhost:8000</p>
+        <p>Status: <span id="serverStatus">Checking...</span></p>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Login</h2>
+        <input type="email" id="email" value="jefe1@alcaldia.gob" placeholder="Email">
+        <input type="password" id="password" value="password123" placeholder="Password">
+        <button onclick="testLogin()">Test Login</button>
+        <button onclick="clearResults()">Clear</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+        
+        function log(message, data = null, type = 'info') {
+            console.log(message, data);
+            addResult(message, data, type);
+        }
+
+        function addResult(message, data = null, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-section ${type}`;
+            div.innerHTML = `
+                <h3>${new Date().toLocaleTimeString()}</h3>
+                <p>${message}</p>
+                ${data ? `<pre>${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `;
+            results.appendChild(div);
+        }
+
+        async function checkServer() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/auth`, {
+                    method: 'OPTIONS'
+                });
+                document.getElementById('serverStatus').innerHTML = '<span style="color: green">✅ Online</span>';
+                log('Server is online');
+            } catch (error) {
+                document.getElementById('serverStatus').innerHTML = '<span style="color: red">❌ Offline</span>';
+                log('Server is offline', error.message, 'error');
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                log('🔐 Testing login...', null, 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/api/auth`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'login',
+                        email: email,
+                        password: password
+                    })
+                });
+
+                const data = await response.json();
+                log('Login response:', data, response.ok ? 'success' : 'error');
+
+                if (data.success && data.token) {
+                    sessionStorage.setItem('auth_token', data.token);
+                    log('✅ Token stored in sessionStorage');
+                    log('User data:', data.user, 'success');
+                } else {
+                    log('❌ Login failed:', data.message, 'error');
+                }
+            } catch (error) {
+                log('❌ Login error:', error.message, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            sessionStorage.removeItem('auth_token');
+        }
+
+        // Check server on load
+        window.onload = function() {
+            checkServer();
+        };
+    </script>
+</body>
+</html>

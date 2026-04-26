@@ -1,8 +1,9 @@
 <?php
-// CORS headers
-header("Access-Control-Allow-Origin: *");
+// CORS headers - must be set before any output
+header("Access-Control-Allow-Origin: http://localhost:3000");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Access-Control-Allow-Headers, Authorization, X-Requested-With");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Credentials: true");
 header("Content-Type: application/json; charset=UTF-8");
 
 // Handle preflight requests
@@ -28,9 +29,16 @@ $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $path = explode('?', $path)[0];
 
 if ($path !== '/api/auth' && $path !== '/api/auth/') {
-    $user = $authMiddleware->optionalAuth();
-    if ($user) {
+    // Tickets endpoint requires authentication
+    if ($path === '/api/tickets' || $path === '/api/tickets/') {
+        $user = $authMiddleware->requireAuth();
         $authMiddleware->setUserContext($user);
+    } else {
+        // Other endpoints use optional auth
+        $user = $authMiddleware->optionalAuth();
+        if ($user) {
+            $authMiddleware->setUserContext($user);
+        }
     }
 }
 
@@ -72,6 +80,21 @@ switch ($path) {
     case '/api/analytics':
     case '/api/analytics/':
         require_once '../src/controllers/AnalyticsController.php';
+        break;
+
+    case '/api/service':
+    case '/api/service/':
+        require_once '../src/controllers/ServiceController.php';
+        break;
+
+    case '/api/services':
+    case '/api/services/':
+        require_once '../src/controllers/ServiceController.php';
+        break;
+
+    case '/api/assignments':
+    case '/api/assignments/':
+        require_once '../src/controllers/AssignmentController.php';
         break;
 
     default:

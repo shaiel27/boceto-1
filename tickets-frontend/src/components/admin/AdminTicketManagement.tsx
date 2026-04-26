@@ -28,7 +28,8 @@ import {
   ArrowLeft,
   MapPin,
   Flag,
-  Star
+  Star,
+  Wrench
 } from 'lucide-react';
 import './AdminTicketManagement.css';
 import ApiService from '../../services/api';
@@ -70,7 +71,7 @@ interface Technician {
   Email: string;
   Status: 'Disponible' | 'Ocupado';
   Specialization: string;
-  TI_Services: string[];
+  TI_Services: Array<{ID_TI_Service: number; Type_Service: string}>;
 }
 
 interface TimelineEvent {
@@ -148,10 +149,14 @@ const AdminTicketManagement: React.FC = () => {
 
   const loadTickets = async () => {
     setLoading(true);
-    
+
     try {
+      console.log('Cargando tickets...');
       const response = await ApiService.getTickets();
+      console.log('Respuesta del API:', response);
+
       if (response.success && response.data) {
+        console.log('Tickets recibidos:', response.data);
         const formattedTickets = response.data.map((ticket: any) => ({
           ID_Service_Request: ticket.ID_Service_Request.toString(),
           Ticket_Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
@@ -180,7 +185,11 @@ const AdminTicketManagement: React.FC = () => {
           Attachments_Count: 0,
           Comments_Count: 0
         }));
+        console.log('Tickets formateados:', formattedTickets);
         setTickets(formattedTickets);
+      } else {
+        console.error('Error en respuesta:', response.message);
+        setError(response.message || 'Error al cargar tickets');
       }
     } catch (error) {
       console.error('Error loading tickets:', error);
@@ -216,34 +225,82 @@ const AdminTicketManagement: React.FC = () => {
     setFilteredTickets(filtered);
   }, [tickets, searchTerm, statusFilter, serviceFilter, priorityFilter]);
 
-  // Cargar detalles del ticket
-  const loadTicketDetails = (ticket: Ticket) => {
-    setSelectedTicket(ticket);
-    
-    // Mock de datos adicionales
-    const mockComments: Comment[] = [
-      {
-        ID_Comment: '1',
-        Fk_Service_Request: ticket.ID_Service_Request,
-        Comment_Text: 'He revisado el problema y parece ser un problema con el router principal.',
-        Comment_Type: 'public',
-        Created_By: '1',
-        Created_at: '2024-01-15T10:00:00Z',
-        User_Name: 'Carlos Rodríguez',
-        User_Role: 'Technician'
-      },
-      {
-        ID_Comment: '2',
-        Fk_Service_Request: ticket.ID_Service_Request,
-        Comment_Text: 'Por favor, mantengan informados a los usuarios sobre el progreso.',
-        Comment_Type: 'internal',
-        Created_By: 'admin',
-        Created_at: '2024-01-15T10:30:00Z',
-        User_Name: 'Administrador',
-        User_Role: 'Admin'
+  // Cargar técnicos disponibles cuando se abre el modal de asignación
+  const loadAvailableTechnicians = async (serviceId: string) => {
+    try {
+      console.log('=== LOAD AVAILABLE TECHNICIANS ===');
+      console.log('Ticket service ID:', serviceId);
+      
+      // Load technicians filtered by service from database
+      const response = await ApiService.getAvailableTechnicians(parseInt(serviceId));
+      console.log('API Response:', response);
+      
+      if (response.success && response.data) {
+        console.log('Technicians data:', response.data);
+        console.log('Number of technicians:', response.data.length);
+        
+        // Filter only available technicians (Activo or Disponible)
+        const availableTechs = response.data.filter((t: any) => {
+          const isAvailable = t.Status === 'Activo' || t.Status === 'Disponible';
+          console.log(`Technician ${t.First_Name} ${t.Last_Name} status: ${t.Status}, available: ${isAvailable}`);
+          return isAvailable;
+        });
+        
+        console.log('Available technicians for this service:', availableTechs.length);
+        
+        const formattedTechs = availableTechs.map((t: any) => ({
+          ID_Technician: t.ID_Technicians?.toString() || '',
+          Name: `${t.First_Name} ${t.Last_Name}`,
+          Email: t.Email || '',
+          Status: t.Status === 'Activo' || t.Status === 'Disponible' ? 'Disponible' : 'Ocupado',
+          Specialization: 'Especializado en este servicio'
+        }));
+        
+        setTechnicians(formattedTechs);
+        console.log('Formatted technicians:', formattedTechs);
+      } else {
+        console.log('No technicians found or error:', response.message);
+        setTechnicians([]);
       }
-    ];
+    } catch (error) {
+      console.error('Error loading technicians:', error);
+      setTechnicians([]);
+    }
+  };
 
+  // Cargar detalles del ticket
+  const loadTicketDetails = async (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+
+    // Cargar comentarios reales del backend
+    try {
+      console.log('=== LOADING COMMENTS ===');
+      console.log('Ticket ID:', ticket.ID_Service_Request);
+      
+      const commentsResponse = await ApiService.getTicketComments(parseInt(ticket.ID_Service_Request));
+      console.log('Comments API Response:', commentsResponse);
+      
+      if (commentsResponse.success && commentsResponse.data) {
+        const formattedComments = commentsResponse.data.map((c: any) => ({
+          ID_Comment: c.ID_Comment?.toString() || '',
+          Fk_Service_Request: c.Fk_Service_Request?.toString() || ticket.ID_Service_Request,
+          Comment_Text: c.Comment || '',
+          Created_at: c.Created_at || new Date().toISOString(),
+          User_Name: c.user_name || 'Usuario',
+          User_Role: c.user_role || 'User'
+        }));
+        console.log('Formatted comments:', formattedComments);
+        setComments(formattedComments);
+      } else {
+        console.log('No comments or error:', commentsResponse.message);
+        setComments([]);
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      setComments([]);
+    }
+
+    // Timeline mock (por ahora, ya que no hay endpoint real)
     const mockTimeline: TimelineEvent[] = [
       {
         ID_Timeline: '1',
@@ -252,160 +309,130 @@ const AdminTicketManagement: React.FC = () => {
         Description: 'Ticket creado',
         Created_By: 'coordinator',
         Created_at: ticket.Created_at
-      },
-      {
-        ID_Timeline: '2',
-        Fk_Service_Request: ticket.ID_Service_Request,
-        Event_Type: 'assigned',
-        Description: 'Asignado a Carlos Rodríguez',
-        Created_By: 'admin',
-        Created_at: '2024-01-15T09:45:00Z'
       }
     ];
-
-    const mockAttachments: Attachment[] = [
-      {
-        ID_Attachment: '1',
-        Fk_Service_Request: ticket.ID_Service_Request,
-        File_Name: 'screenshot_red.png',
-        File_Path: '/uploads/screenshot_red.png',
-        File_Type: 'image/png',
-        File_Size: 1024000,
-        Uploaded_By: 'coordinator',
-        Uploaded_At: '2024-01-15T09:35:00Z'
-      }
-    ];
-
-    setComments(mockComments);
     setTimeline(mockTimeline);
-    setAttachments(mockAttachments);
+
+    // Attachments mock (por ahora)
+    setAttachments([]);
   };
 
   // Manejar asignación de técnicos
-  const handleAssignTechnician = () => {
+  const handleAssignTechnician = async () => {
     if (!selectedTicket || selectedTechnicians.length === 0) return;
 
     setLoading(true);
-    
-    // Simular asignación
-    setTimeout(() => {
-      const updatedTickets = tickets.map(ticket => {
-        if (ticket.ID_Service_Request === selectedTicket.ID_Service_Request) {
-          // Determinar si hay técnicos asignados
-          const hasExistingTechnicians = ticket.Technicians.length > 0;
-          
-          // Crear nuevos objetos TicketTechnician para los técnicos seleccionados
-          const newTechnicians = selectedTechnicians.map((techId, index) => {
-            const tech = technicians.find(t => t.ID_Technician === techId);
-            return {
-              ID_Ticket_Technician: Date.now().toString() + index,
-              Fk_Technician: techId,
-              Is_Lead: !hasExistingTechnicians && index === 0, // El primero es lead si no hay técnicos existentes
-              Assigned_At: new Date().toISOString(),
-              Technician_Name: tech?.Name || '',
-              Technician_Email: tech?.Email || ''
-            };
-          });
-          
-          // Combinar técnicos existentes con nuevos (evitar duplicados)
-          const existingTechIds = ticket.Technicians.map(t => t.Fk_Technician);
-          const uniqueNewTechnicians = newTechnicians.filter(
-            nt => !existingTechIds.includes(nt.Fk_Technician)
-          );
-          
-          return {
-            ...ticket,
-            Technicians: [...ticket.Technicians, ...uniqueNewTechnicians],
-            Status: 'En Proceso' as const
-          };
-        }
-        return ticket;
-      });
-      
-      setTickets(updatedTickets as Ticket[]);
-      setShowAssignModal(false);
-      setSelectedTechnicians([]);
-      setReassignmentReason('');
+
+    try {
+      const response = await ApiService.assignMultipleTechnicians(
+        parseInt(selectedTicket.ID_Service_Request),
+        selectedTechnicians.map(id => parseInt(id))
+      );
+
+      if (response.success) {
+        // Recargar tickets para reflejar cambios
+        await loadTickets();
+
+        setShowAssignModal(false);
+        setSelectedTechnicians([]);
+        setReassignmentReason('');
+        alert(`Técnico${selectedTechnicians.length > 1 ? 's' : ''} asignado${selectedTechnicians.length > 1 ? 's' : ''} exitosamente`);
+      } else {
+        alert(`Error: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Error assigning technicians:', error);
+      alert('Error al asignar técnicos');
+    } finally {
       setLoading(false);
-      
-      // Actualizar timeline
-      const newEvent: TimelineEvent = {
-        ID_Timeline: Date.now().toString(),
-        Fk_Service_Request: selectedTicket.ID_Service_Request,
-        Event_Type: selectedTicket.Technicians.length > 0 ? 'assigned' : 'reassigned',
-        Description: `Asignado${selectedTechnicians.length > 1 ? 's' : ''} técnico${selectedTechnicians.length > 1 ? 's' : ''}: ${selectedTechnicians.map(id => {
-          const tech = technicians.find(t => t.ID_Technician === id);
-          return tech?.Name || id;
-        }).join(', ')}`,
-        Created_By: 'admin',
-        Created_at: new Date().toISOString()
-      };
-      
-      setTimeline(prev => [...prev, newEvent]);
-      alert(`Técnico${selectedTechnicians.length > 1 ? 's' : ''} asignado${selectedTechnicians.length > 1 ? 's' : ''} exitosamente`);
-    }, 1000);
+    }
   };
 
   // Manejar cambio de prioridad
-  const handlePriorityChange = () => {
+  const handlePriorityChange = async () => {
     if (!selectedTicket) return;
 
     setLoading(true);
-    
-    setTimeout(() => {
-      const updatedTickets = tickets.map(ticket =>
-        ticket.ID_Service_Request === selectedTicket.ID_Service_Request
-          ? { ...ticket, System_Priority: newPriority }
-          : ticket
+
+    try {
+      const response = await ApiService.updateTicketPriority(
+        parseInt(selectedTicket.ID_Service_Request),
+        newPriority
       );
-      
-      setTickets(updatedTickets as Ticket[]);
-      setShowPriorityModal(false);
+
+      if (response.success) {
+        await loadTickets();
+        setShowPriorityModal(false);
+        alert('Prioridad actualizada exitosamente');
+      } else {
+        alert(`Error: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Error updating priority:', error);
+      alert('Error al actualizar prioridad');
+    } finally {
       setLoading(false);
-      
-      // Actualizar timeline
-      const newEvent: TimelineEvent = {
-        ID_Timeline: Date.now().toString(),
-        Fk_Service_Request: selectedTicket.ID_Service_Request,
-        Event_Type: 'priority_changed',
-        Description: `Prioridad cambiada a ${newPriority}`,
-        Created_By: 'admin',
-        Created_at: new Date().toISOString()
-      };
-      
-      setTimeline([...timeline, newEvent]);
-    }, 1000);
+    }
   };
 
   // Manejar envío de comentario
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!selectedTicket || !newComment.trim()) return;
 
-    const comment: Comment = {
-      ID_Comment: Date.now().toString(),
-      Fk_Service_Request: selectedTicket.ID_Service_Request,
-      Comment_Text: newComment,
-      Comment_Type: commentType,
-      Created_By: 'admin',
-      Created_at: new Date().toISOString(),
-      User_Name: 'Administrador',
-      User_Role: 'Admin'
-    };
+    setLoading(true);
 
-    setComments([...comments, comment]);
-    setNewComment('');
+    try {
+      const response = await ApiService.addComment(
+        parseInt(selectedTicket.ID_Service_Request),
+        newComment
+      );
 
-    // Actualizar timeline
-    const newEvent: TimelineEvent = {
-      ID_Timeline: Date.now().toString(),
-      Fk_Service_Request: selectedTicket.ID_Service_Request,
-      Event_Type: 'commented',
-      Description: `Comentario ${commentType} añadido`,
-      Created_By: 'admin',
-      Created_at: new Date().toISOString()
-    };
-    
-    setTimeline([...timeline, newEvent]);
+      if (response.success) {
+        // Recargar comentarios
+        await loadTicketDetails(selectedTicket);
+        setNewComment('');
+        alert('Comentario agregado exitosamente');
+      } else {
+        alert(`Error: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Error sending comment:', error);
+      alert('Error al agregar comentario');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manejar cierre de ticket
+  const handleCloseTicket = async () => {
+    if (!selectedTicket) return;
+
+    if (!window.confirm('¿Estás seguro de que deseas cerrar este ticket?')) {
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await ApiService.updateTicketStatus(
+        parseInt(selectedTicket.ID_Service_Request),
+        'Cerrado'
+      );
+
+      if (response.success) {
+        setShowDetailModal(false);
+        setSelectedTicket(null);
+        await loadTickets();
+        alert('Ticket cerrado exitosamente');
+      } else {
+        alert(`Error: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Error closing ticket:', error);
+      alert('Error al cerrar ticket');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Obtener color de prioridad
@@ -674,8 +701,13 @@ const AdminTicketManagement: React.FC = () => {
                       </button>
                       <button
                         className="action-btn assign-btn"
-                        onClick={() => {
-                          loadTicketDetails(ticket);
+                        onClick={async () => {
+                          console.log('=== ASSIGN BUTTON CLICKED ===');
+                          console.log('Ticket:', ticket);
+                          console.log('Ticket Fk_TI_Service:', ticket.Fk_TI_Service);
+                          console.log('Ticket Fk_TI_Service type:', typeof ticket.Fk_TI_Service);
+                          await loadTicketDetails(ticket);
+                          await loadAvailableTechnicians(ticket.Fk_TI_Service);
                           setShowAssignModal(true);
                         }}
                         title="Asignar técnico"
@@ -743,38 +775,51 @@ const AdminTicketManagement: React.FC = () => {
                     t.Specialization.toLowerCase().includes(technicianSearch.toLowerCase())
                   ).length} técnicos encontrados
                 </div>
-                <div className="technicians-checkbox-list">
-                  {technicians
-                    .filter(t => 
-                      technicianSearch === '' || 
-                      t.Name.toLowerCase().includes(technicianSearch.toLowerCase()) ||
-                      t.Email.toLowerCase().includes(technicianSearch.toLowerCase()) ||
-                      t.Specialization.toLowerCase().includes(technicianSearch.toLowerCase())
-                    )
-                    .map((tech) => (
-                    <label key={tech.ID_Technician} className="technician-checkbox-item">
-                      <input
-                        type="checkbox"
-                        checked={selectedTechnicians.includes(tech.ID_Technician)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedTechnicians([...selectedTechnicians, tech.ID_Technician]);
-                          } else {
-                            setSelectedTechnicians(selectedTechnicians.filter(id => id !== tech.ID_Technician));
-                          }
-                        }}
-                      />
-                      <div className="technician-checkbox-info">
-                        <span className="technician-name">{tech.Name}</span>
-                        <span className="technician-email">{tech.Email}</span>
-                        <span className="technician-specialization">{tech.Specialization}</span>
-                        <span className={`technician-status ${tech.Status === 'Disponible' ? 'status-available' : 'status-busy'}`}>
-                          {tech.Status}
-                        </span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
+                {technicians.length === 0 ? (
+                  <div className="no-technicians-message">
+                    <UserX size={48} />
+                    <p>No hay técnicos disponibles para este servicio</p>
+                    <p className="subtext">Verifica que los técnicos estén asignados al servicio en el módulo de Gestión de Técnicos</p>
+                  </div>
+                ) : (
+                  <div className="technicians-checkbox-list">
+                    {technicians
+                      .filter(t => 
+                        technicianSearch === '' || 
+                        t.Name.toLowerCase().includes(technicianSearch.toLowerCase()) ||
+                        t.Email.toLowerCase().includes(technicianSearch.toLowerCase()) ||
+                        t.Specialization.toLowerCase().includes(technicianSearch.toLowerCase())
+                      )
+                      .map((tech) => (
+                      <label key={tech.ID_Technician} className="technician-checkbox-item">
+                        <input
+                          type="checkbox"
+                          checked={selectedTechnicians.includes(tech.ID_Technician)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTechnicians([...selectedTechnicians, tech.ID_Technician]);
+                            } else {
+                              setSelectedTechnicians(selectedTechnicians.filter(id => id !== tech.ID_Technician));
+                            }
+                          }}
+                        />
+                        <div className="technician-checkbox-info">
+                          <div className="technician-header">
+                            <span className="technician-name">{tech.Name}</span>
+                            <span className={`technician-status ${tech.Status === 'Disponible' ? 'status-available' : 'status-busy'}`}>
+                              {tech.Status}
+                            </span>
+                          </div>
+                          {tech.Email && <span className="technician-email">{tech.Email}</span>}
+                          <span className="technician-specialization">
+                            <Wrench size={14} />
+                            {tech.Specialization}
+                          </span>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             
@@ -994,46 +1039,44 @@ const AdminTicketManagement: React.FC = () => {
                   </h3>
                   
                   <div className="comments-container">
-                    {comments.map((comment) => (
-                      <div key={comment.ID_Comment} className={`comment-item ${comment.Comment_Type}`}>
-                        <div className="comment-header">
-                          <div className="comment-author">
-                            <strong>{comment.User_Name}</strong>
-                            <span className={`comment-type-badge ${comment.Comment_Type}`}>
-                              {comment.Comment_Type === 'internal' ? 'Interno' : 'Público'}
+                    {comments.length === 0 ? (
+                      <div className="no-comments-message">
+                        <MessageSquare size={48} />
+                        <p>No hay comentarios aún</p>
+                        <p className="subtext">Sé el primero en comentar</p>
+                      </div>
+                    ) : (
+                      comments.map((comment) => (
+                        <div key={comment.ID_Comment} className={`comment-item ${comment.Comment_Type}`}>
+                          <div className="comment-header">
+                            <div className="comment-author">
+                              <div className="author-avatar">
+                                {(comment.User_Name || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="author-info">
+                                <strong>{comment.User_Name || 'Usuario'}</strong>
+                                <span className={`comment-role-badge ${comment.User_Role?.toLowerCase()}`}>
+                                  {comment.User_Role || 'Usuario'}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="comment-date">
+                              {new Date(comment.Created_at).toLocaleString('es-ES', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </span>
                           </div>
-                          <span className="comment-date">
-                            {new Date(comment.Created_at).toLocaleString()}
-                          </span>
+                          <p className="comment-text">{comment.Comment_Text}</p>
                         </div>
-                        <p className="comment-text">{comment.Comment_Text}</p>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
                   
                   <div className="comment-form">
-                    <div className="comment-type-selector">
-                      <label>
-                        <input
-                          type="radio"
-                          value="public"
-                          checked={commentType === 'public'}
-                          onChange={(e) => setCommentType(e.target.value as any)}
-                        />
-                        Comentario Público
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          value="internal"
-                          checked={commentType === 'internal'}
-                          onChange={(e) => setCommentType(e.target.value as any)}
-                        />
-                        Comentario Interno
-                      </label>
-                    </div>
-                    
                     <div className="comment-input-group">
                       <textarea
                         value={newComment}
@@ -1053,6 +1096,23 @@ const AdminTicketManagement: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Acciones */}
+                {selectedTicket.Status !== 'Cerrado' && (
+                  <div className="detail-section">
+                    <h3>Acciones</h3>
+                    <div className="detail-actions">
+                      <button
+                        className="btn btn-danger"
+                        onClick={handleCloseTicket}
+                        disabled={loading}
+                      >
+                        <CheckCircle size={18} />
+                        {loading ? 'Cerrando...' : 'Cerrar Ticket'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

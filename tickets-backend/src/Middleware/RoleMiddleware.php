@@ -12,10 +12,10 @@ namespace App\Middleware;
 final class RoleMiddleware
 {
     // Role definitions matching database
-    public const ROLE_ADMIN = 'administrador';
-    public const ROLE_TECHNICIAN = 'tecnico';
-    public const ROLE_BOSS = 'jefe';
-    public const ROLE_REQUESTER = 'solicitante';
+    public const ROLE_ADMIN = 'Admin';
+    public const ROLE_TECHNICIAN = 'Tecnico';
+    public const ROLE_BOSS = 'Jefe';
+    public const ROLE_REQUESTER = 'Solicitante';
 
     // Role ID mappings
     private const ROLE_IDS = [

@@ -10,7 +10,7 @@ export interface User {
   full_name?: string;
   boss_id?: number;
   boss_name?: string;
-  office_id?: number;
+  office_id?: number | null;
 }
 
 export interface AuthState {
