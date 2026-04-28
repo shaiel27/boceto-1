@@ -100,16 +100,27 @@ class ServiceRequest {
                 try {
                     require_once __DIR__ . '/Technician.php';
                     $technician = new Technician($this->conn);
-                    $availableTechnicians = $technician->getAvailableTechniciansByService($this->Fk_TI_Service);
-                    
+
+                    // Get all technicians for this service
+                    $allTechnicians = $technician->getAllTechniciansByService((int)$this->Fk_TI_Service);
+
+                    // Filter only technicians with status 'Disponible' or 'Activo'
+                    $availableTechnicians = array_filter($allTechnicians, function($tech) {
+                        return in_array($tech['Status'], ['Disponible', 'Activo']);
+                    });
+
+                    // Reindex array after filtering
+                    $availableTechnicians = array_values($availableTechnicians);
+
                     if (!empty($availableTechnicians)) {
                         $selectedTechnician = $availableTechnicians[0];
-                        $technician->assignToTicket($this->ID_Service_Request, $selectedTechnician['ID_Technicians'], null, true);
-                        
-                        $updateQuery = "UPDATE " . $this->table_name . " SET Status = 'Técnicos Asignados' WHERE ID_Service_Request = :id";
-                        $updateStmt = $this->conn->prepare($updateQuery);
-                        $updateStmt->bindParam(":id", $this->ID_Service_Request);
-                        $updateStmt->execute();
+                        $assigned = $technician->assignToTicket($this->ID_Service_Request, $selectedTechnician['ID_Technicians'], null, true);
+
+                        if ($assigned) {
+                            error_log("Auto-assigned technician {$selectedTechnician['First_Name']} {$selectedTechnician['Last_Name']} to ticket {$this->ID_Service_Request}");
+                        }
+                    } else {
+                        error_log("No available technicians found for service {$this->Fk_TI_Service}");
                     }
                 } catch (Exception $e) {
                     // Si falla la asignación, el ticket se queda en Pendiente
@@ -280,19 +291,23 @@ class ServiceRequest {
     }
 
     public function getTicketTechnicians($ticketId) {
-        $query = "SELECT t.ID_Technicians, 
+        $query = "SELECT t.ID_Technicians,
                          CONCAT(t.First_Name, ' ', t.Last_Name) as name,
                          tt.Is_Lead as is_lead,
                          tt.Assignment_Role as role,
-                         tt.Assigned_At as assigned_at
+                         tt.Assigned_At as assigned_at,
+                         tt.Status as assignment_status,
+                         u.Email as email
                   FROM Ticket_Technicians tt
                   INNER JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
-                  WHERE tt.Fk_Service_Request = :ticketId AND tt.Status = 'Activo'";
-        
+                  LEFT JOIN Users u ON t.Fk_Users = u.ID_Users
+                  WHERE tt.Fk_Service_Request = :ticketId
+                  ORDER BY tt.Assigned_At ASC";
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":ticketId", $ticketId);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -333,14 +348,16 @@ class ServiceRequest {
                          o.Office_Type as office_type,
                          ts.Type_Service as service_type_name,
                          b.Name_Boss as boss_name,
-                         tt.Is_Lead as is_lead
+                         tt.Is_Lead as is_lead,
+                         tt.Status as assignment_status
                   FROM " . $this->table_name . " sr
                   LEFT JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
                   LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                   LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
                   LEFT JOIN Boss b ON sr.Fk_Boss_Requester = b.ID_Boss
-                  INNER JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request AND tt.Status = 'Activo'
+                  INNER JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request
                   WHERE tt.Fk_Technician = :technicianId
+                    AND tt.Status IN ('Activo', 'Finalizado')
                   ORDER BY sr.Created_at DESC
                   LIMIT :limit OFFSET :offset";
 

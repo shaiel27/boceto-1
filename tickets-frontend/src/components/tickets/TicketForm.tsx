@@ -810,42 +810,16 @@ const TicketForm: React.FC = () => {
         </div>
 
         {submitStatus === 'success' && createdTicket && (
-          <div className="success-message">
-            <CheckCircle size={48} />
-            <h3>¡Ticket Creado Exitosamente!</h3>
-            {createdTicket.technicianAssigned ? (
-              <p>Tu solicitud ha sido registrada y asignada a un técnico.</p>
-            ) : (
-              <p>Tu solicitud ha sido registrada. Se te asignará un técnico automáticamente cuando uno esté disponible.</p>
-            )}
-            <div className="ticket-summary">
-              <div className="summary-item">
-                <strong>Asunto:</strong> {createdTicket.subject}
-              </div>
-              <div className="summary-item">
-                <strong>Oficina:</strong> {createdTicket.officeName}
-              </div>
-              <div className="summary-item">
-                <strong>Servicio:</strong> {createdTicket.serviceName}
-              </div>
-              <div className="summary-item">
-                <strong>Problema:</strong> {createdTicket.problemName}
-              </div>
-              <div className="summary-item">
-                <strong>Prioridad:</strong> {createdTicket.priority}
-              </div>
-              <div className="summary-item">
-                <strong>Número de Bien:</strong> {createdTicket.propertyNumber || 'No especificado'}
-              </div>
-              {createdTicket.technicianAssigned ? (
-                <div className="summary-item" style={{ color: '#10b981', fontWeight: 'bold' }}>
-                  <strong>Técnico Asignado:</strong> {createdTicket.technicianName}
-                </div>
-              ) : (
-                <div className="summary-item" style={{ color: '#f59e0b', fontWeight: 'bold' }}>
-                  <strong>Estado:</strong> Pendiente de asignación de técnico
-                </div>
-              )}
+          <div className="success-toast">
+            <CheckCircle size={20} />
+            <div className="toast-content">
+              <strong>¡Ticket Creado!</strong>
+              <p>
+                {createdTicket.technicianAssigned 
+                  ? `Asignado a ${createdTicket.technicianName}` 
+                  : 'Pendiente de asignación de técnico'
+                }
+              </p>
             </div>
           </div>
         )}

@@ -73,9 +73,9 @@ final class TicketService
             );
 
             if ($assigned) {
-                // Update ticket status
-                $this->ticketModel->updateStatus($ticketId, 'Técnicos Asignados');
-                
+                // Update ticket status to 'En Proceso'
+                $this->ticketModel->updateStatus($ticketId, 'En Proceso');
+
                 return [
                     'id' => $selectedTechnician['ID_Technicians'],
                     'name' => $selectedTechnician['First_Name'] . ' ' . $selectedTechnician['Last_Name']

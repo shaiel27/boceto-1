@@ -231,12 +231,10 @@ const RequesterDashboard: React.FC = () => {
     switch (status) {
       case 'Pendiente':
         return 1;
-      case 'Técnicos Asignados':
-        return 2;
       case 'En Proceso':
+        return 2;
+      case 'Cerrado':
         return 3;
-      case 'Resuelto':
-        return 4;
       default:
         return 1;
     }
@@ -263,8 +261,8 @@ const RequesterDashboard: React.FC = () => {
     return years;
   };
 
-  const activeTickets = myTickets.filter(t => t.Status !== 'Resuelto');
-  const resolvedTickets = myTickets.filter(t => t.Status === 'Resuelto');
+  const activeTickets = myTickets.filter(t => t.Status !== 'Cerrado');
+  const resolvedTickets = myTickets.filter(t => t.Status === 'Cerrado');
 
   const handleAddComment = async (ticketId: string) => {
     const comment = commentInputs[ticketId];
@@ -437,23 +435,15 @@ const RequesterDashboard: React.FC = () => {
                     <div className="step-indicator">
                       {getStatusStep(ticket.Status) >= 2 ? <Users size={16} /> : <div className="step-dot"></div>}
                     </div>
-                    <div className="step-label">Técnicos Asignados</div>
-                  </div>
-                  <div className={`timeline-connector ${getStatusStep(ticket.Status) >= 2 ? 'completed' : ''}`}></div>
-                  
-                  <div className={`timeline-step ${getStatusStep(ticket.Status) >= 3 ? 'completed' : 'pending'}`}>
-                    <div className="step-indicator">
-                      {getStatusStep(ticket.Status) >= 3 ? <Settings size={16} /> : <div className="step-dot"></div>}
-                    </div>
                     <div className="step-label">En Proceso</div>
                   </div>
-                  <div className={`timeline-connector ${getStatusStep(ticket.Status) >= 3 ? 'completed' : ''}`}></div>
-                  
-                  <div className={`timeline-step ${getStatusStep(ticket.Status) >= 4 ? 'completed' : 'pending'}`}>
+                  <div className={`timeline-connector ${getStatusStep(ticket.Status) >= 2 ? 'completed' : ''}`}></div>
+
+                  <div className={`timeline-step ${getStatusStep(ticket.Status) >= 3 ? 'completed' : 'pending'}`}>
                     <div className="step-indicator">
-                      {getStatusStep(ticket.Status) >= 4 ? <CheckCircle size={16} /> : <div className="step-dot"></div>}
+                      {getStatusStep(ticket.Status) >= 3 ? <CheckCircle size={16} /> : <div className="step-dot"></div>}
                     </div>
-                    <div className="step-label">Resuelto</div>
+                    <div className="step-label">Cerrado</div>
                   </div>
                 </div>
 

@@ -73,7 +73,7 @@ function getOverviewStats($db, $days) {
                   FROM Technicians t
                   INNER JOIN Ticket_Technicians tt ON t.ID_Technicians = tt.Fk_Technician
                   INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                  WHERE tt.Status = 'Activo' AND sr.Status IN ('Asignado', 'En Proceso', 'Técnicos Asignados')";
+                  WHERE tt.Status = 'Activo' AND sr.Status = 'En Proceso'";
     $stmt = $db->prepare($busyQuery);
     $stmt->execute();
     $busy = $stmt->fetch(PDO::FETCH_ASSOC)['busy'];

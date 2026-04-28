@@ -25,7 +25,7 @@ function App() {
         <div className="App">
           <Router>
             <Routes>
-              <Route path="/" element={<DashboardPage />} />
+              <Route path="/" element={<ProtectedRoute allowedRoles={[1]}><AdminManagementPage /></ProtectedRoute>} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/admin" element={<ProtectedRoute allowedRoles={[1]}><AdminManagementPage /></ProtectedRoute>} />

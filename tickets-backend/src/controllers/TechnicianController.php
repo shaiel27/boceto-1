@@ -52,6 +52,13 @@ try {
                         'message' => 'Técnico no encontrado'
                     ]);
                 }
+            } elseif ($action === 'grouped') {
+                // Get all technicians grouped by service type
+                $groupedTechnicians = $technician->getAllTechniciansGroupedByService();
+                echo json_encode([
+                    'success' => true,
+                    'data' => $groupedTechnicians
+                ]);
             } else {
                 // Get all technicians
                 $technicians = $technician->getAll();

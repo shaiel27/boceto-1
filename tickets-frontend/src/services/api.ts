@@ -1,6 +1,7 @@
 // API Configuration - Real backend
 
 const API_BASE_URL = 'http://localhost:8000';
+const DASHBOARD_API_BASE = 'http://localhost:8000/api/dashboard-public';
 
 
 
@@ -797,7 +798,7 @@ export class ApiService {
 
       success: true,
 
-      message: 'Técnicos asignados exitosamente'
+      message: 'Técnico asignado exitosamente'
 
     };
 
@@ -1177,6 +1178,38 @@ export class ApiService {
       return {
         success: false,
         message: 'Error al obtener técnicos disponibles'
+      };
+    }
+  }
+
+  static async getAllTechniciansGroupedByService(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technicians?action=grouped`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener técnicos agrupados'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
       };
     }
   }
@@ -1570,6 +1603,374 @@ export class ApiService {
         };
 
       }
+
+    } catch (error) {
+
+      return {
+
+        success: false,
+
+        message: 'Error de conexión con el servidor'
+
+      };
+
+    }
+
+  }
+
+
+
+  // Dashboard endpoints - Real backend integration
+
+  static async getDashboardData(): Promise<ApiResponse> {
+
+    try {
+
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=full`, {
+
+        method: 'GET',
+
+        headers: {
+
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+
+          'Content-Type': 'application/json',
+
+        }
+
+      });
+
+
+
+      const data = await response.json();
+
+
+
+      if (data.success) {
+
+        return {
+
+          success: true,
+
+          message: data.message,
+
+          data: data.data
+
+        };
+
+      } else {
+
+        return {
+
+          success: false,
+
+          message: data.message || 'Error al obtener datos del dashboard'
+
+        };
+
+      }
+
+    } catch (error) {
+
+      return {
+
+        success: false,
+
+        message: 'Error de conexión con el servidor'
+
+      };
+
+    }
+
+  }
+
+
+
+  static async getDashboardStats(): Promise<ApiResponse> {
+
+    try {
+
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=stats`, {
+
+        method: 'GET',
+
+        headers: {
+
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+
+          'Content-Type': 'application/json',
+
+        }
+
+      });
+
+
+
+      const data = await response.json();
+
+
+
+      return data;
+
+    } catch (error) {
+
+      return {
+
+        success: false,
+
+        message: 'Error de conexión con el servidor'
+
+      };
+
+    }
+
+  }
+
+
+
+  static async getRecentTickets(limit?: number, offset?: number): Promise<ApiResponse> {
+
+    try {
+
+      const params = new URLSearchParams();
+
+      if (limit) params.append('limit', limit.toString());
+
+      if (offset) params.append('offset', offset.toString());
+
+
+
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=recent&${params.toString()}`, {
+
+        method: 'GET',
+
+        headers: {
+
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+
+          'Content-Type': 'application/json',
+
+        }
+
+      });
+
+
+
+      const data = await response.json();
+
+
+
+      return data;
+
+    } catch (error) {
+
+      return {
+
+        success: false,
+
+        message: 'Error de conexión con el servidor'
+
+      };
+
+    }
+
+  }
+
+
+
+  static async getPriorityDistribution(): Promise<ApiResponse> {
+
+    try {
+
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=priority`, {
+
+        method: 'GET',
+
+        headers: {
+
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+
+          'Content-Type': 'application/json',
+
+        }
+
+      });
+
+
+
+      const data = await response.json();
+
+
+
+      return data;
+
+    } catch (error) {
+
+      return {
+
+        success: false,
+
+        message: 'Error de conexión con el servidor'
+
+      };
+
+    }
+
+  }
+
+
+
+  static async getOfficeDistribution(): Promise<ApiResponse> {
+
+    try {
+
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=offices`, {
+
+        method: 'GET',
+
+        headers: {
+
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+
+          'Content-Type': 'application/json',
+
+        }
+
+      });
+
+
+
+      const data = await response.json();
+
+
+
+      return data;
+
+    } catch (error) {
+
+      return {
+
+        success: false,
+
+        message: 'Error de conexión con el servidor'
+
+      };
+
+    }
+
+  }
+
+
+
+  static async getTechnicianPerformance(): Promise<ApiResponse> {
+
+    try {
+
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=technicians`, {
+
+        method: 'GET',
+
+        headers: {
+
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+
+          'Content-Type': 'application/json',
+
+        }
+
+      });
+
+
+
+      const data = await response.json();
+
+
+
+      return data;
+
+    } catch (error) {
+
+      return {
+
+        success: false,
+
+        message: 'Error de conexión con el servidor'
+
+      };
+
+    }
+
+  }
+
+
+
+  static async getTicketTrends(): Promise<ApiResponse> {
+
+    try {
+
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=trends`, {
+
+        method: 'GET',
+
+        headers: {
+
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+
+          'Content-Type': 'application/json',
+
+        }
+
+      });
+
+
+
+      const data = await response.json();
+
+
+
+      return data;
+
+    } catch (error) {
+
+      return {
+
+        success: false,
+
+        message: 'Error de conexión con el servidor'
+
+      };
+
+    }
+
+  }
+
+
+
+  static async getServiceDistribution(): Promise<ApiResponse> {
+
+    try {
+
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=services`, {
+
+        method: 'GET',
+
+        headers: {
+
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+
+          'Content-Type': 'application/json',
+
+        }
+
+      });
+
+
+
+      const data = await response.json();
+
+
+
+      return data;
 
     } catch (error) {
 

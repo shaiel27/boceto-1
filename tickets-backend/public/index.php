@@ -97,6 +97,16 @@ switch ($path) {
         require_once '../src/controllers/AssignmentController.php';
         break;
 
+    case '/api/dashboard':
+    case '/api/dashboard/':
+        require_once '../api-dashboard.php';
+        break;
+
+    case '/api/dashboard-public':
+    case '/api/dashboard-public/':
+        require_once '../api-dashboard-public.php';
+        break;
+
     default:
         http_response_code(404);
         echo json_encode([

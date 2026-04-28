@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Search,
@@ -12,6 +12,7 @@ import {
   Paperclip, 
   AlertCircle,
   CheckCircle,
+  CheckCircle2,
   XCircle,
   Calendar,
   FileText,
@@ -27,6 +28,7 @@ import {
   History,
   ArrowLeft,
   MapPin,
+  Check,
   Flag,
   Star,
   Wrench
@@ -41,6 +43,7 @@ interface TicketTechnician {
   Assigned_At: string;
   Technician_Name: string;
   Technician_Email: string;
+  assignment_status: string;
 }
 
 interface Ticket {
@@ -72,6 +75,8 @@ interface Technician {
   Status: 'Disponible' | 'Ocupado';
   Specialization: string;
   TI_Services: Array<{ID_TI_Service: number; Type_Service: string}>;
+  Tickets_Resolved?: number;
+  Active_Tickets?: number;
 }
 
 interface TimelineEvent {
@@ -128,9 +133,11 @@ const AdminTicketManagement: React.FC = () => {
 
   // Estados de asignación
   const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [groupedTechnicians, setGroupedTechnicians] = useState<any[]>([]);
   const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
   const [reassignmentReason, setReassignmentReason] = useState('');
   const [technicianSearch, setTechnicianSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('all');
 
   // Estados de comentarios y timeline
   const [comments, setComments] = useState<Comment[]>([]);
@@ -141,6 +148,30 @@ const AdminTicketManagement: React.FC = () => {
 
   // Estado de prioridad
   const [newPriority, setNewPriority] = useState<'Baja' | 'Media' | 'Alta' | 'Crítica'>('Media');
+
+  // Estado de notificaciones
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Mostrar notificación
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  // Click outside to close modal
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        setShowDetailModal(false);
+      }
+    };
+
+    if (showDetailModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDetailModal]);
 
   // Datos mock para demostración
   useEffect(() => {
@@ -228,43 +259,99 @@ const AdminTicketManagement: React.FC = () => {
   // Cargar técnicos disponibles cuando se abre el modal de asignación
   const loadAvailableTechnicians = async (serviceId: string) => {
     try {
-      console.log('=== LOAD AVAILABLE TECHNICIANS ===');
-      console.log('Ticket service ID:', serviceId);
+      console.log('=== LOAD GROUPED TECHNICIANS ===');
+      console.log('Service ID:', serviceId);
       
-      // Load technicians filtered by service from database
-      const response = await ApiService.getAvailableTechnicians(parseInt(serviceId));
+      // Load all technicians grouped by service type
+      const response = await ApiService.getAllTechniciansGroupedByService();
       console.log('API Response:', response);
       
       if (response.success && response.data) {
-        console.log('Technicians data:', response.data);
-        console.log('Number of technicians:', response.data.length);
+        console.log('Grouped technicians data:', response.data);
+        console.log('Number of service groups:', response.data.length);
         
-        // Filter only available technicians (Activo or Disponible)
-        const availableTechs = response.data.filter((t: any) => {
-          const isAvailable = t.Status === 'Activo' || t.Status === 'Disponible';
-          console.log(`Technician ${t.First_Name} ${t.Last_Name} status: ${t.Status}, available: ${isAvailable}`);
-          return isAvailable;
+        // Log each service group and its technicians
+        response.data.forEach((group: any) => {
+          console.log(`Service: ${group.service_name}, Technicians: ${group.technicians.length}`);
+          group.technicians.forEach((tech: any) => {
+            console.log(`  - ${tech.First_Name} ${tech.Last_Name} (${tech.Status})`);
+          });
         });
         
-        console.log('Available technicians for this service:', availableTechs.length);
-        
-        const formattedTechs = availableTechs.map((t: any) => ({
-          ID_Technician: t.ID_Technicians?.toString() || '',
-          Name: `${t.First_Name} ${t.Last_Name}`,
-          Email: t.Email || '',
-          Status: t.Status === 'Activo' || t.Status === 'Disponible' ? 'Disponible' : 'Ocupado',
-          Specialization: 'Especializado en este servicio'
-        }));
-        
-        setTechnicians(formattedTechs);
-        console.log('Formatted technicians:', formattedTechs);
+        setGroupedTechnicians(response.data);
       } else {
-        console.log('No technicians found or error:', response.message);
-        setTechnicians([]);
+        console.log('No technicians found or error, using mock data:', response.message);
+        // Use mock data as fallback
+        const mockGroupedTechnicians = [
+          {
+            service_id: 1,
+            service_name: 'Redes',
+            service_details: 'Infraestructura de red y conectividad',
+            count: 2,
+            technicians: [
+              { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Activo', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 2 },
+              { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
+            ]
+          },
+          {
+            service_id: 2,
+            service_name: 'Soporte',
+            service_details: 'Soporte técnico general',
+            count: 2,
+            technicians: [
+              { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Activo', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 3 },
+              { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 1 }
+            ]
+          },
+          {
+            service_id: 3,
+            service_name: 'Programación',
+            service_details: 'Desarrollo de software y aplicaciones',
+            count: 2,
+            technicians: [
+              { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Activo', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 4 },
+              { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
+            ]
+          }
+        ];
+        setGroupedTechnicians(mockGroupedTechnicians);
       }
     } catch (error) {
-      console.error('Error loading technicians:', error);
-      setTechnicians([]);
+      console.error('Error loading technicians, using mock data:', error);
+      // Use mock data as fallback
+      const mockGroupedTechnicians = [
+        {
+          service_id: 1,
+          service_name: 'Redes',
+          service_details: 'Infraestructura de red y conectividad',
+          count: 2,
+          technicians: [
+            { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Activo', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 2 },
+            { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
+          ]
+        },
+        {
+          service_id: 2,
+          service_name: 'Soporte',
+          service_details: 'Soporte técnico general',
+          count: 2,
+          technicians: [
+            { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Activo', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 3 },
+            { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 1 }
+          ]
+        },
+        {
+          service_id: 3,
+          service_name: 'Programación',
+          service_details: 'Desarrollo de software y aplicaciones',
+          count: 2,
+          technicians: [
+            { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Activo', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 4 },
+            { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
+          ]
+        }
+      ];
+      setGroupedTechnicians(mockGroupedTechnicians);
     }
   };
 
@@ -336,13 +423,13 @@ const AdminTicketManagement: React.FC = () => {
         setShowAssignModal(false);
         setSelectedTechnicians([]);
         setReassignmentReason('');
-        alert(`Técnico${selectedTechnicians.length > 1 ? 's' : ''} asignado${selectedTechnicians.length > 1 ? 's' : ''} exitosamente`);
+        showNotification('success', `Técnico${selectedTechnicians.length > 1 ? 's' : ''} asignado${selectedTechnicians.length > 1 ? 's' : ''} exitosamente`);
       } else {
-        alert(`Error: ${response.message}`);
+        showNotification('error', response.message);
       }
     } catch (error) {
       console.error('Error assigning technicians:', error);
-      alert('Error al asignar técnicos');
+      showNotification('error', 'Error al asignar técnicos');
     } finally {
       setLoading(false);
     }
@@ -363,13 +450,13 @@ const AdminTicketManagement: React.FC = () => {
       if (response.success) {
         await loadTickets();
         setShowPriorityModal(false);
-        alert('Prioridad actualizada exitosamente');
+        showNotification('success', 'Prioridad actualizada exitosamente');
       } else {
-        alert(`Error: ${response.message}`);
+        showNotification('error', response.message);
       }
     } catch (error) {
       console.error('Error updating priority:', error);
-      alert('Error al actualizar prioridad');
+      showNotification('error', 'Error al actualizar prioridad');
     } finally {
       setLoading(false);
     }
@@ -391,13 +478,13 @@ const AdminTicketManagement: React.FC = () => {
         // Recargar comentarios
         await loadTicketDetails(selectedTicket);
         setNewComment('');
-        alert('Comentario agregado exitosamente');
+        showNotification('success', 'Comentario agregado exitosamente');
       } else {
-        alert(`Error: ${response.message}`);
+        showNotification('error', response.message);
       }
     } catch (error) {
       console.error('Error sending comment:', error);
-      alert('Error al agregar comentario');
+      showNotification('error', 'Error al agregar comentario');
     } finally {
       setLoading(false);
     }
@@ -406,10 +493,6 @@ const AdminTicketManagement: React.FC = () => {
   // Manejar cierre de ticket
   const handleCloseTicket = async () => {
     if (!selectedTicket) return;
-
-    if (!window.confirm('¿Estás seguro de que deseas cerrar este ticket?')) {
-      return;
-    }
 
     setLoading(true);
 
@@ -423,13 +506,13 @@ const AdminTicketManagement: React.FC = () => {
         setShowDetailModal(false);
         setSelectedTicket(null);
         await loadTickets();
-        alert('Ticket cerrado exitosamente');
+        showNotification('success', 'Ticket cerrado exitosamente');
       } else {
-        alert(`Error: ${response.message}`);
+        showNotification('error', response.message);
       }
     } catch (error) {
       console.error('Error closing ticket:', error);
-      alert('Error al cerrar ticket');
+      showNotification('error', 'Error al cerrar ticket');
     } finally {
       setLoading(false);
     }
@@ -458,6 +541,18 @@ const AdminTicketManagement: React.FC = () => {
 
   return (
     <div className="admin-ticket-management">
+      {/* Notification Toast */}
+      {notification && (
+        <div className={`notification-toast ${notification.type}`}>
+          {notification.type === 'success' ? (
+            <CheckCircle2 size={20} />
+          ) : (
+            <XCircle size={20} />
+          )}
+          <span>{notification.message}</span>
+        </div>
+      )}
+
       <div className="management-container">
         {/* Header */}
         <div className="management-header">
@@ -565,8 +660,8 @@ const AdminTicketManagement: React.FC = () => {
             >
               <option value="all">Todos los Servicios</option>
               <option value="1">Redes</option>
-              <option value="2">Soporte Técnico</option>
-              <option value="3">Hardware</option>
+              <option value="2">Soporte</option>
+              <option value="3">Programación</option>
             </select>
             
             <select
@@ -583,8 +678,8 @@ const AdminTicketManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Tickets Cards */}
-        <div className="tickets-cards-container">
+        {/* Tickets Cards - New Design */}
+        <div className="tickets-container">
           {loading ? (
             <div className="loading-state">
               <RefreshCw className="spinner" size={32} />
@@ -596,135 +691,160 @@ const AdminTicketManagement: React.FC = () => {
               <p>{error}</p>
             </div>
           ) : (
-            <div className="tickets-grid">
+            <div className="tickets-grid-new">
               {filteredTickets.map((ticket) => (
-                <div key={ticket.ID_Service_Request} className="ticket-card">
-                  <div className="ticket-card-header">
-                    <div className="ticket-code-info">
-                      <span className="ticket-code">{ticket.Ticket_Code}</span>
-                      <span className={`status-badge ${getStatusColor(ticket.Status)}`}>
-                        {ticket.Status}
-                      </span>
+                <div key={ticket.ID_Service_Request} className="ticket-card-new">
+                  {/* Card Header with Status and Priority */}
+                  <div className="ticket-header-new">
+                    <div className="ticket-identity">
+                      <div className="ticket-code-new">
+                        <FileText size={14} />
+                        {ticket.Ticket_Code}
+                      </div>
+                      <div className="ticket-badges">
+                        <span className={`status-indicator ${getStatusColor(ticket.Status)}`}>
+                          <div className="status-dot"></div>
+                          {ticket.Status}
+                        </span>
+                        <span className={`priority-indicator ${getPriorityColor(ticket.System_Priority)}`}>
+                          <Flag size={12} />
+                          {ticket.System_Priority}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`priority-badge ${getPriorityColor(ticket.System_Priority)}`}>
-                      {ticket.System_Priority}
-                    </span>
+                    <div className="ticket-time">
+                      <Clock size={14} />
+                      {new Date(ticket.Created_at).toLocaleTimeString('es-ES', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
                   </div>
-                  
-                  <div className="ticket-card-body">
-                    <h4 className="ticket-subject">{ticket.Subject}</h4>
+
+                  {/* Card Content */}
+                  <div className="ticket-content-new">
+                    <h3 className="ticket-title">{ticket.Subject}</h3>
                     
-                    <div className="ticket-location">
-                      <div className="location-icon">
-                        <MapPin size={18} strokeWidth={2} />
-                      </div>
-                      <div className="location-info">
-                        <div className="location-main">{ticket.Coordination_Name}</div>
-                        <div className="location-sub">{ticket.Direction_Name}</div>
-                      </div>
-                    </div>
-                    
-                    <div className="ticket-service">
-                      <div className="service-icon">
-                        <Settings size={18} strokeWidth={2} />
-                      </div>
-                      <span>{ticket.Service_Name}</span>
-                    </div>
-                    
-                    <div className="ticket-description">
-                      {ticket.Description.length > 100 
-                        ? `${ticket.Description.substring(0, 100)}...`
+                    <div className="ticket-description-new">
+                      {ticket.Description.length > 80 
+                        ? `${ticket.Description.substring(0, 80)}...`
                         : ticket.Description
                       }
                     </div>
-                    
-                    <div className="ticket-meta">
-                      <div className="meta-item">
-                        <Calendar size={16} strokeWidth={2} />
-                        <span>{new Date(ticket.Created_at).toLocaleDateString()}</span>
+
+                    {/* Metadata Grid */}
+                    <div className="ticket-metadata">
+                      <div className="metadata-item">
+                        <MapPin size={14} />
+                        <div className="metadata-text">
+                          <span className="metadata-label">Ubicación</span>
+                          <span className="metadata-value">{ticket.Coordination_Name}</span>
+                        </div>
                       </div>
-                      <div className="meta-item">
-                        <Clock size={16} strokeWidth={2} />
-                        <span>{new Date(ticket.Created_at).toLocaleTimeString()}</span>
+                      
+                      <div className="metadata-item">
+                        <Settings size={14} />
+                        <div className="metadata-text">
+                          <span className="metadata-label">Servicio</span>
+                          <span className="metadata-value">{ticket.Service_Name}</span>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="ticket-attachments">
-                      {(ticket.Attachments_Count || 0) > 0 && (
-                        <span className="attachment-badge">
-                          <Paperclip size={16} strokeWidth={2} />
-                          {ticket.Attachments_Count}
-                        </span>
-                      )}
-                      {(ticket.Comments_Count || 0) > 0 && (
-                        <span className="comment-badge">
-                          <MessageSquare size={16} strokeWidth={2} />
-                          {ticket.Comments_Count}
-                        </span>
-                      )}
+                      
+                      <div className="metadata-item">
+                        <Calendar size={14} />
+                        <div className="metadata-text">
+                          <span className="metadata-label">Fecha</span>
+                          <span className="metadata-value">{new Date(ticket.Created_at).toLocaleDateString('es-ES', {
+                            day: '2-digit',
+                            month: 'short'
+                          })}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="ticket-card-footer">
-                    <div className="technician-info">
+
+                  {/* Card Footer with Technicians and Actions */}
+                  <div className="ticket-footer-new">
+                    <div className="technician-section">
                       {ticket.Technicians.length > 0 ? (
-                        <div className="technicians-assigned">
-                          <Users size={18} strokeWidth={2} />
-                          <span>{ticket.Technicians.length} técnico{ticket.Technicians.length > 1 ? 's' : ''}</span>
-                          <div className="technicians-list">
-                            {ticket.Technicians.map(tech => (
-                              <span key={tech.ID_Ticket_Technician} className="technician-tag">
-                                {tech.Is_Lead && <Star size={12} />}
-                                {tech.Technician_Name}
-                              </span>
+                        <div className="technician-info-new">
+                          <div className="technician-avatars">
+                            {ticket.Technicians.slice(0, 3).map((tech, index) => (
+                              <div 
+                                key={tech.ID_Ticket_Technician} 
+                                className="technician-avatar-small"
+                                title={tech.Technician_Name}
+                              >
+                                {tech.Technician_Name.charAt(0).toUpperCase()}
+                                {tech.Is_Lead && <Star size={8} className="lead-indicator" />}
+                              </div>
                             ))}
+                            {ticket.Technicians.length > 3 && (
+                              <div className="technician-more">
+                                +{ticket.Technicians.length - 3}
+                              </div>
+                            )}
                           </div>
+                          <span className="technician-count">
+                            {ticket.Technicians.length} técnico{ticket.Technicians.length > 1 ? 's' : ''}
+                          </span>
                         </div>
                       ) : (
-                        <div className="technician-unassigned">
-                          <UserX size={18} strokeWidth={2} />
+                        <div className="technician-unassigned-new">
+                          <UserX size={14} />
                           <span>Sin asignar</span>
                         </div>
                       )}
                     </div>
-                    
-                    <div className="ticket-actions">
-                      <button
-                        className="action-btn view-btn"
-                        onClick={() => {
-                          loadTicketDetails(ticket);
-                          setShowDetailModal(true);
-                        }}
-                        title="Ver detalles"
-                      >
-                        <Eye size={22} strokeWidth={2} />
-                      </button>
-                      <button
-                        className="action-btn assign-btn"
-                        onClick={async () => {
-                          console.log('=== ASSIGN BUTTON CLICKED ===');
-                          console.log('Ticket:', ticket);
-                          console.log('Ticket Fk_TI_Service:', ticket.Fk_TI_Service);
-                          console.log('Ticket Fk_TI_Service type:', typeof ticket.Fk_TI_Service);
-                          await loadTicketDetails(ticket);
-                          await loadAvailableTechnicians(ticket.Fk_TI_Service);
-                          setShowAssignModal(true);
-                        }}
-                        title="Asignar técnico"
-                      >
-                        <User size={22} strokeWidth={2} />
-                      </button>
-                      <button
-                        className="action-btn priority-btn"
-                        onClick={() => {
-                          loadTicketDetails(ticket);
-                          setNewPriority(ticket.System_Priority);
-                          setShowPriorityModal(true);
-                        }}
-                        title="Cambiar prioridad"
-                      >
-                        <Flag size={22} strokeWidth={2} />
-                      </button>
+
+                    <div className="ticket-actions-new">
+                      {(ticket.Attachments_Count || 0) > 0 && (
+                        <span className="attachment-indicator">
+                          <Paperclip size={14} />
+                          {ticket.Attachments_Count}
+                        </span>
+                      )}
+                      {(ticket.Comments_Count || 0) > 0 && (
+                        <span className="comment-indicator">
+                          <MessageSquare size={14} />
+                          {ticket.Comments_Count}
+                        </span>
+                      )}
+                      
+                      <div className="action-buttons">
+                        <button
+                          className="action-btn-new view-btn-new"
+                          onClick={() => {
+                            loadTicketDetails(ticket);
+                            setShowDetailModal(true);
+                          }}
+                          title="Ver detalles"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          className="action-btn-new assign-btn-new"
+                          onClick={async () => {
+                            await loadTicketDetails(ticket);
+                            await loadAvailableTechnicians(ticket.Fk_TI_Service);
+                            setShowAssignModal(true);
+                          }}
+                          title="Asignar técnico"
+                        >
+                          <User size={16} />
+                        </button>
+                        <button
+                          className="action-btn-new priority-btn-new"
+                          onClick={() => {
+                            loadTicketDetails(ticket);
+                            setNewPriority(ticket.System_Priority);
+                            setShowPriorityModal(true);
+                          }}
+                          title="Cambiar prioridad"
+                        >
+                          <Flag size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -737,7 +857,7 @@ const AdminTicketManagement: React.FC = () => {
       {/* Modal de Asignación de Técnico */}
       {showAssignModal && selectedTicket && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content modal-wide">
             <div className="modal-header">
               <h2>Asignar Técnicos</h2>
               <button
@@ -756,68 +876,152 @@ const AdminTicketManagement: React.FC = () => {
               </div>
               
               <div className="form-group">
-                <label>Seleccionar Técnicos Disponibles:</label>
-                <div className="technician-search-container">
-                  <Search size={18} className="search-icon" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nombre, email o especialización..."
-                    value={technicianSearch}
-                    onChange={(e) => setTechnicianSearch(e.target.value)}
-                    className="technician-search-input"
-                  />
-                </div>
-                <div className="technicians-count">
-                  {technicians.filter(t => 
-                    technicianSearch === '' || 
-                    t.Name.toLowerCase().includes(technicianSearch.toLowerCase()) ||
-                    t.Email.toLowerCase().includes(technicianSearch.toLowerCase()) ||
-                    t.Specialization.toLowerCase().includes(technicianSearch.toLowerCase())
-                  ).length} técnicos encontrados
-                </div>
-                {technicians.length === 0 ? (
-                  <div className="no-technicians-message">
-                    <UserX size={48} />
-                    <p>No hay técnicos disponibles para este servicio</p>
-                    <p className="subtext">Verifica que los técnicos estén asignados al servicio en el módulo de Gestión de Técnicos</p>
+                <label className="form-label">Seleccionar Técnicos</label>
+                
+                {groupedTechnicians.length === 0 ? (
+                  <div className="empty-state-professional">
+                    <div className="empty-icon">
+                      <Users size={40} />
+                    </div>
+                    <p className="empty-title">No hay técnicos disponibles</p>
+                    <p className="empty-subtitle">Verifica que los técnicos estén asignados en el módulo de Gestión de Técnicos</p>
                   </div>
                 ) : (
-                  <div className="technicians-checkbox-list">
-                    {technicians
-                      .filter(t => 
-                        technicianSearch === '' || 
-                        t.Name.toLowerCase().includes(technicianSearch.toLowerCase()) ||
-                        t.Email.toLowerCase().includes(technicianSearch.toLowerCase()) ||
-                        t.Specialization.toLowerCase().includes(technicianSearch.toLowerCase())
-                      )
-                      .map((tech) => (
-                      <label key={tech.ID_Technician} className="technician-checkbox-item">
+                  <div className="tabbed-assignment-container">
+                    <div className="tabs-header">
+                      <button 
+                        className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('all')}
+                      >
+                        Todos
+                        <span className="tab-count">
+                          {groupedTechnicians.reduce((acc: number, group: any) => 
+                            acc + group.technicians.filter((t: any) => t.Status === 'Activo' || t.Status === 'Disponible').length, 0)}
+                        </span>
+                      </button>
+                      {groupedTechnicians.map((serviceGroup) => {
+                        const availableCount = serviceGroup.technicians.filter((t: any) => 
+                          t.Status === 'Activo' || t.Status === 'Disponible'
+                        ).length;
+                        
+                        if (availableCount === 0) return null;
+                        
+                        const getTabIcon = (serviceName: string) => {
+                          switch (serviceName.toLowerCase()) {
+                            case 'redes': return '🌐';
+                            case 'soporte': return '🔧';
+                            case 'programación': return '💻';
+                            default: return '⚙️';
+                          }
+                        };
+
+                        return (
+                          <button
+                            key={serviceGroup.service_id}
+                            className={`tab-button ${activeTab === serviceGroup.service_name ? 'active' : ''}`}
+                            onClick={() => setActiveTab(serviceGroup.service_name)}
+                          >
+                            <span className="tab-icon">{getTabIcon(serviceGroup.service_name)}</span>
+                            {serviceGroup.service_name}
+                            <span className="tab-count">{availableCount}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    <div className="tab-content">
+                      <div className="tab-search">
+                        <Search size={16} className="search-icon" />
                         <input
-                          type="checkbox"
-                          checked={selectedTechnicians.includes(tech.ID_Technician)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedTechnicians([...selectedTechnicians, tech.ID_Technician]);
-                            } else {
-                              setSelectedTechnicians(selectedTechnicians.filter(id => id !== tech.ID_Technician));
-                            }
-                          }}
+                          type="text"
+                          placeholder="Buscar técnico..."
+                          value={technicianSearch}
+                          onChange={(e) => setTechnicianSearch(e.target.value)}
+                          className="tab-search-input"
                         />
-                        <div className="technician-checkbox-info">
-                          <div className="technician-header">
-                            <span className="technician-name">{tech.Name}</span>
-                            <span className={`technician-status ${tech.Status === 'Disponible' ? 'status-available' : 'status-busy'}`}>
-                              {tech.Status}
-                            </span>
-                          </div>
-                          {tech.Email && <span className="technician-email">{tech.Email}</span>}
-                          <span className="technician-specialization">
-                            <Wrench size={14} />
-                            {tech.Specialization}
-                          </span>
-                        </div>
-                      </label>
-                    ))}
+                      </div>
+                      
+                      <div className="technicians-grid-new">
+                        {(() => {
+                          let techniciansToShow: any[] = [];
+                          
+                          if (activeTab === 'all') {
+                            groupedTechnicians.forEach((group: any) => {
+                              const availableTechs = group.technicians.filter((t: any) => 
+                                t.Status === 'Activo' || t.Status === 'Disponible'
+                              );
+                              techniciansToShow = [...techniciansToShow, ...availableTechs];
+                            });
+                          } else {
+                            const activeGroup = groupedTechnicians.find((g: any) => g.service_name === activeTab);
+                            if (activeGroup) {
+                              techniciansToShow = activeGroup.technicians.filter((t: any) => 
+                                t.Status === 'Activo' || t.Status === 'Disponible'
+                              );
+                            }
+                          }
+                          
+                          const filteredTechs = techniciansToShow.filter((t: any) =>
+                            technicianSearch === '' ||
+                            `${t.First_Name} ${t.Last_Name}`.toLowerCase().includes(technicianSearch.toLowerCase())
+                          );
+
+                          if (filteredTechs.length === 0) {
+                            return (
+                              <div className="no-results">
+                                <p>No se encontraron técnicos</p>
+                              </div>
+                            );
+                          }
+
+                          return filteredTechs.map((tech: any) => {
+                            const techId = tech.ID_Technicians?.toString();
+                            const isSelected = selectedTechnicians.includes(techId);
+                            
+                            return (
+                              <div 
+                                key={techId} 
+                                className={`tech-card-new ${isSelected ? 'selected' : ''}`}
+                                onClick={() => {
+                                  if (isSelected) {
+                                    setSelectedTechnicians(selectedTechnicians.filter(id => id !== techId));
+                                  } else {
+                                    setSelectedTechnicians([...selectedTechnicians, techId]);
+                                  }
+                                }}
+                              >
+                                <div className="tech-card-header">
+                                  <div className="tech-avatar-new">
+                                    {tech.First_Name?.charAt(0)}{tech.Last_Name?.charAt(0)}
+                                  </div>
+                                  <div className="tech-card-info">
+                                    <div className="tech-name-new">
+                                      {tech.First_Name} {tech.Last_Name}
+                                    </div>
+                                    <div className="tech-email-new">
+                                      {tech.Email}
+                                    </div>
+                                  </div>
+                                  <div className={`tech-check ${isSelected ? 'checked' : ''}`}>
+                                    <Check size={16} />
+                                  </div>
+                                </div>
+                                <div className="tech-card-stats-new">
+                                  <div className="stat-item-new">
+                                    <span className="stat-value-new">{tech.Tickets_Resolved || 0}</span>
+                                    <span className="stat-label-new">Resueltos</span>
+                                  </div>
+                                  <div className="stat-item-new">
+                                    <span className="stat-value-new">{tech.Active_Tickets || 0}</span>
+                                    <span className="stat-label-new">Activos</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -902,217 +1106,230 @@ const AdminTicketManagement: React.FC = () => {
       {/* Modal de Detalles del Ticket */}
       {showDetailModal && selectedTicket && (
         <div className="modal-overlay modal-large">
-          <div className="modal-content modal-large-content">
-            <div className="modal-header">
-              <h2>Detalles del Ticket - {selectedTicket.Ticket_Code}</h2>
+          <div className="modal-large-content" ref={modalRef}>
+            <div className="detail-modal-header">
+              <div className="detail-modal-title-section">
+                <div className="ticket-code-badge">
+                  <FileText size={16} />
+                  {selectedTicket.Ticket_Code}
+                </div>
+                <div className="detail-modal-badges">
+                  <span className={`priority-badge ${getPriorityColor(selectedTicket.System_Priority)}`}>
+                    {selectedTicket.System_Priority}
+                  </span>
+                  <span className={`status-badge ${getStatusColor(selectedTicket.Status)}`}>
+                    {selectedTicket.Status}
+                  </span>
+                </div>
+              </div>
               <button
-                className="close-btn"
+                className="close-btn detail-close-btn"
                 onClick={() => setShowDetailModal(false)}
               >
                 <X size={20} />
               </button>
             </div>
-            
-            <div className="modal-body modal-large-body">
-              <div className="ticket-detail-grid">
-                {/* Información Principal */}
-                <div className="detail-section">
-                  <h3>Información General</h3>
-                  <div className="detail-grid">
-                    <div className="detail-item">
-                      <label>Asunto:</label>
-                      <p>{selectedTicket.Subject}</p>
+
+            <div className="modal-large-body">
+              <div className="detail-modal-layout">
+                {/* Left Column - Main Info */}
+                <div className="detail-modal-left">
+                  {/* Subject & Description Card */}
+                  <div className="detail-card">
+                    <div className="detail-card-header">
+                      <h3 className="detail-card-title">
+                        <FileText size={18} />
+                        Información del Ticket
+                      </h3>
                     </div>
-                    <div className="detail-item">
-                      <label>Descripción:</label>
-                      <p>{selectedTicket.Description}</p>
+                    <div className="detail-card-content">
+                      <div className="ticket-subject-section">
+                        <label>Asunto</label>
+                        <p className="ticket-subject-text">{selectedTicket.Subject}</p>
+                      </div>
+                      <div className="ticket-description-section">
+                        <label>Descripción</label>
+                        <p className="ticket-description-text">{selectedTicket.Description}</p>
+                      </div>
                     </div>
-                    <div className="detail-item">
-                      <label>Dirección:</label>
-                      <p>{selectedTicket.Direction_Name}</p>
+                  </div>
+
+                  {/* Location & Service Card */}
+                  <div className="detail-card">
+                    <div className="detail-card-header">
+                      <h3 className="detail-card-title">
+                        <MapPin size={18} />
+                        Ubicación y Servicio
+                      </h3>
                     </div>
-                    <div className="detail-item">
-                      <label>División:</label>
-                      <p>{selectedTicket.Division_Name}</p>
+                    <div className="detail-card-content">
+                      <div className="info-grid">
+                        <div className="info-item">
+                          <label>Dirección</label>
+                          <p>{selectedTicket.Direction_Name}</p>
+                        </div>
+                        <div className="info-item">
+                          <label>División</label>
+                          <p>{selectedTicket.Division_Name}</p>
+                        </div>
+                        <div className="info-item">
+                          <label>Coordinación</label>
+                          <p>{selectedTicket.Coordination_Name}</p>
+                        </div>
+                        <div className="info-item">
+                          <label>Servicio</label>
+                          <p>{selectedTicket.Service_Name}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="detail-item">
-                      <label>Coordinación:</label>
-                      <p>{selectedTicket.Coordination_Name}</p>
+                  </div>
+
+                  {/* Timeline Card */}
+                  <div className="detail-card">
+                    <div className="detail-card-header">
+                      <h3 className="detail-card-title">
+                        <History size={18} />
+                        Timeline
+                      </h3>
                     </div>
-                    <div className="detail-item">
-                      <label>Servicio:</label>
-                      <p>{selectedTicket.Service_Name}</p>
+                    <div className="detail-card-content">
+                      <div className="timeline-container">
+                        {timeline.map((event) => (
+                          <div key={event.ID_Timeline} className="timeline-item">
+                            <div className="timeline-dot"></div>
+                            <div className="timeline-content">
+                              <span className="timeline-event">{event.Description}</span>
+                              <span className="timeline-date">
+                                {new Date(event.Created_at).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className="detail-item">
-                      <label>Prioridad:</label>
-                      <span className={`priority-badge ${getPriorityColor(selectedTicket.System_Priority)}`}>
-                        {selectedTicket.System_Priority}
-                      </span>
+                  </div>
+                </div>
+
+                {/* Right Column - Technicians, Comments, Actions */}
+                <div className="detail-modal-right">
+                  {/* Technicians Card */}
+                  <div className="detail-card">
+                    <div className="detail-card-header">
+                      <h3 className="detail-card-title">
+                        <Users size={18} />
+                        Técnicos Asignados
+                        <span className="badge-count">{selectedTicket.Technicians.length}</span>
+                      </h3>
                     </div>
-                    <div className="detail-item">
-                      <label>Estado:</label>
-                      <span className={`status-badge ${getStatusColor(selectedTicket.Status)}`}>
-                        {selectedTicket.Status}
-                      </span>
-                    </div>
-                    <div className="detail-item">
-                      <label>Técnicos Asignados:</label>
-                      <div className="technicians-detail-list">
-                        {selectedTicket.Technicians.length > 0 ? (
-                          selectedTicket.Technicians.map(tech => (
-                            <div key={tech.ID_Ticket_Technician} className="technician-detail-item">
-                              <div className="technician-detail-header">
-                                <span className="technician-detail-name">
-                                  {tech.Is_Lead && <Star size={14} className="lead-star" />}
-                                  {tech.Technician_Name}
-                                </span>
-                                {tech.Is_Lead && <span className="lead-badge">Principal</span>}
+                    <div className="detail-card-content">
+                      {selectedTicket.Technicians.length > 0 ? (
+                        <div className="technicians-list">
+                          {selectedTicket.Technicians.map(tech => (
+                            <div key={tech.ID_Ticket_Technician} className="technician-card">
+                              <div className="technician-card-header">
+                                <div className="technician-avatar">
+                                  {tech.Technician_Name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="technician-info">
+                                  <span className="technician-name">
+                                    {tech.Technician_Name}
+                                    {tech.Is_Lead && <Star size={12} className="lead-star" />}
+                                  </span>
+                                  {tech.Is_Lead && <span className="lead-badge">Principal</span>}
+                                </div>
                               </div>
-                              <div className="technician-detail-email">{tech.Technician_Email}</div>
-                              <div className="technician-detail-date">
-                                Asignado: {new Date(tech.Assigned_At).toLocaleString()}
+                              <div className="technician-meta">
+                                <Clock size={12} />
+                                {new Date(tech.Assigned_At).toLocaleDateString()}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="empty-state">
+                          <UserX size={32} />
+                          <p>Sin técnicos asignados</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Comments Card */}
+                  <div className="detail-card comments-card">
+                    <div className="detail-card-header">
+                      <h3 className="detail-card-title">
+                        <MessageSquare size={18} />
+                        Comentarios
+                        <span className="badge-count">{comments.length}</span>
+                      </h3>
+                    </div>
+                    <div className="detail-card-content">
+                      <div className="comments-list">
+                        {comments.length === 0 ? (
+                          <div className="empty-state">
+                            <MessageSquare size={32} />
+                            <p>No hay comentarios</p>
+                          </div>
+                        ) : (
+                          comments.map((comment) => (
+                            <div key={comment.ID_Comment} className="comment-card">
+                              <div className="comment-avatar">
+                                {(comment.User_Name || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <div className="comment-content">
+                                <div className="comment-header">
+                                  <span className="comment-author">{comment.User_Name || 'Usuario'}</span>
+                                  <span className="comment-date">
+                                    {new Date(comment.Created_at).toLocaleString('es-ES', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                                <p className="comment-text">{comment.Comment_Text}</p>
                               </div>
                             </div>
                           ))
-                        ) : (
-                          <p className="no-technicians">Sin técnicos asignados</p>
                         )}
                       </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Timeline */}
-                <div className="detail-section">
-                  <h3>
-                    <History size={20} />
-                    Timeline del Ticket
-                  </h3>
-                  <div className="timeline-container">
-                    {timeline.map((event, index) => (
-                      <div key={event.ID_Timeline} className="timeline-item">
-                        <div className="timeline-dot"></div>
-                        <div className="timeline-content">
-                          <div className="timeline-header">
-                            <span className="timeline-event">{event.Description}</span>
-                            <span className="timeline-date">
-                              {new Date(event.Created_at).toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Adjuntos */}
-                <div className="detail-section">
-                  <h3>
-                    <Paperclip size={20} />
-                    Archivos Adjuntos
-                  </h3>
-                  <div className="attachments-container">
-                    {attachments.map((attachment) => (
-                      <div key={attachment.ID_Attachment} className="attachment-item">
-                        <div className="attachment-icon">
-                          <FileText size={20} />
-                        </div>
-                        <div className="attachment-info">
-                          <p className="attachment-name">{attachment.File_Name}</p>
-                          <p className="attachment-meta">
-                            {(attachment.File_Size / 1024).toFixed(1)} KB
-                          </p>
-                        </div>
-                        <button className="attachment-download">
-                          <Download size={16} />
+                      <div className="comment-form-wrapper">
+                        <textarea
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder="Escribe un comentario..."
+                          className="comment-textarea"
+                          rows={2}
+                        />
+                        <button
+                          className="btn btn-primary comment-send-btn"
+                          onClick={handleSendComment}
+                          disabled={!newComment.trim() || loading}
+                        >
+                          <Send size={14} />
+                          {loading ? 'Enviando...' : 'Enviar'}
                         </button>
                       </div>
-                    ))}
+                    </div>
                   </div>
-                </div>
 
-                {/* Comentarios */}
-                <div className="detail-section">
-                  <h3>
-                    <MessageSquare size={20} />
-                    Comentarios
-                  </h3>
-                  
-                  <div className="comments-container">
-                    {comments.length === 0 ? (
-                      <div className="no-comments-message">
-                        <MessageSquare size={48} />
-                        <p>No hay comentarios aún</p>
-                        <p className="subtext">Sé el primero en comentar</p>
+                  {/* Actions Card */}
+                  {selectedTicket.Status !== 'Cerrado' && (
+                    <div className="detail-card actions-card">
+                      <div className="detail-card-content">
+                        <button
+                          className="btn btn-danger close-ticket-btn"
+                          onClick={handleCloseTicket}
+                          disabled={loading}
+                        >
+                          <CheckCircle size={16} />
+                          {loading ? 'Cerrando...' : 'Cerrar Ticket'}
+                        </button>
                       </div>
-                    ) : (
-                      comments.map((comment) => (
-                        <div key={comment.ID_Comment} className={`comment-item ${comment.Comment_Type}`}>
-                          <div className="comment-header">
-                            <div className="comment-author">
-                              <div className="author-avatar">
-                                {(comment.User_Name || 'U').charAt(0).toUpperCase()}
-                              </div>
-                              <div className="author-info">
-                                <strong>{comment.User_Name || 'Usuario'}</strong>
-                                <span className={`comment-role-badge ${comment.User_Role?.toLowerCase()}`}>
-                                  {comment.User_Role || 'Usuario'}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="comment-date">
-                              {new Date(comment.Created_at).toLocaleString('es-ES', {
-                                day: '2-digit',
-                                month: 'short',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </span>
-                          </div>
-                          <p className="comment-text">{comment.Comment_Text}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  
-                  <div className="comment-form">
-                    <div className="comment-input-group">
-                      <textarea
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Escribe tu comentario..."
-                        className="comment-input"
-                        rows={3}
-                      />
-                      <button
-                        className="btn btn-primary send-comment-btn"
-                        onClick={handleSendComment}
-                        disabled={!newComment.trim()}
-                      >
-                        <Send size={16} />
-                        Enviar
-                      </button>
                     </div>
-                  </div>
+                  )}
                 </div>
-
-                {/* Acciones */}
-                {selectedTicket.Status !== 'Cerrado' && (
-                  <div className="detail-section">
-                    <h3>Acciones</h3>
-                    <div className="detail-actions">
-                      <button
-                        className="btn btn-danger"
-                        onClick={handleCloseTicket}
-                        disabled={loading}
-                      >
-                        <CheckCircle size={18} />
-                        {loading ? 'Cerrando...' : 'Cerrar Ticket'}
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

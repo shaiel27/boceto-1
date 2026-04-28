@@ -187,20 +187,57 @@ final class Technician
     }
 
     public function delete($id) {
-        $query = "DELETE FROM " . $this->table_name . " WHERE ID_Technicians = :id";
-        
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $id);
-        
         try {
-            if ($stmt->execute()) {
-                return true;
+            $this->conn->beginTransaction();
+
+            // Get technician user ID before deleting
+            $getTechQuery = "SELECT Fk_Users FROM " . $this->table_name . " WHERE ID_Technicians = :id";
+            $getTechStmt = $this->conn->prepare($getTechQuery);
+            $getTechStmt->bindParam(":id", $id);
+            $getTechStmt->execute();
+            $techData = $getTechStmt->fetch(PDO::FETCH_ASSOC);
+            $userId = $techData['Fk_Users'] ?? null;
+
+            // Delete ticket assignments
+            $deleteTicketsQuery = "DELETE FROM Ticket_Technicians WHERE Fk_Technician = :id";
+            $deleteTicketsStmt = $this->conn->prepare($deleteTicketsQuery);
+            $deleteTicketsStmt->bindParam(":id", $id);
+            $deleteTicketsStmt->execute();
+
+            // Delete schedules
+            $deleteSchedulesQuery = "DELETE FROM Technician_Schedules WHERE Fk_Technician = :id";
+            $deleteSchedulesStmt = $this->conn->prepare($deleteSchedulesQuery);
+            $deleteSchedulesStmt->bindParam(":id", $id);
+            $deleteSchedulesStmt->execute();
+
+            // Delete services
+            $deleteServicesQuery = "DELETE FROM Technicians_Service WHERE Fk_Technicians = :id";
+            $deleteServicesStmt = $this->conn->prepare($deleteServicesQuery);
+            $deleteServicesStmt->bindParam(":id", $id);
+            $deleteServicesStmt->execute();
+
+            // Delete technician
+            $query = "DELETE FROM " . $this->table_name . " WHERE ID_Technicians = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":id", $id);
+            $stmt->execute();
+
+            // Delete user if exists
+            if ($userId) {
+                $deleteUserQuery = "DELETE FROM Users WHERE ID_Users = :userId";
+                $deleteUserStmt = $this->conn->prepare($deleteUserQuery);
+                $deleteUserStmt->bindParam(":userId", $userId);
+                $deleteUserStmt->execute();
             }
+
+            $this->conn->commit();
+            return true;
+
         } catch(PDOException $exception) {
-            echo "Delete error: " . $exception->getMessage();
+            $this->conn->rollBack();
+            error_log("Delete error: " . $exception->getMessage());
+            return false;
         }
-        
-        return false;
     }
 
     public function addService($technicianId, $serviceId) {
@@ -286,7 +323,9 @@ final class Technician
         ];
         $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
 
-        $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block
+        // Primero intentar obtener técnicos en horario laboral
+        $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                         1 as priority_score
                   FROM " . $this->table_name . " t
                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
                   LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician
@@ -303,7 +342,7 @@ final class Technician
                         FROM Ticket_Technicians tt
                         INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                         WHERE tt.Status = 'Activo'
-                          AND sr.Status IN ('En Proceso', 'Técnicos Asignados')
+                          AND sr.Status = 'En Proceso'
                     )
                   ORDER BY t.First_Name, t.Last_Name";
 
@@ -316,9 +355,35 @@ final class Technician
             $stmt->execute();
             $technicians = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            // Si no hay técnicos en horario, obtener todos los disponibles sin restricción de tiempo
+            if (empty($technicians)) {
+                error_log("No technicians available in working hours, getting all available technicians for service {$serviceId}");
+                
+                $fallbackQuery = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                                         2 as priority_score
+                                  FROM " . $this->table_name . " t
+                                  INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                                  WHERE ts.Fk_TI_Service = :serviceId
+                                    AND ts.Status = 'Activo'
+                                    AND t.Status IN ('Activo', 'Disponible')
+                                    AND t.ID_Technicians NOT IN (
+                                        SELECT tt.Fk_Technician
+                                        FROM Ticket_Technicians tt
+                                        INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                                        WHERE tt.Status = 'Activo'
+                                          AND sr.Status = 'En Proceso'
+                                    )
+                                  ORDER BY priority_score, t.First_Name, t.Last_Name";
+
+                $fallbackStmt = $this->conn->prepare($fallbackQuery);
+                $fallbackStmt->bindParam(":serviceId", $serviceId);
+                $fallbackStmt->execute();
+                $technicians = $fallbackStmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+
             error_log("Available technicians for service {$serviceId} at {$currentDaySpanish} {$currentTime}: " . count($technicians));
             foreach ($technicians as $tech) {
-                error_log("  - {$tech['First_Name']} {$tech['Last_Name']}");
+                error_log("  - {$tech['First_Name']} {$tech['Last_Name']} (Priority: {$tech['priority_score']})");
             }
 
             return $technicians;
@@ -347,7 +412,18 @@ final class Technician
                          t.First_Name, 
                          t.Last_Name, 
                          t.Status, 
-                         u.Email
+                         u.Email,
+                         (SELECT COUNT(*)
+                          FROM Ticket_Technicians tt
+                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                          WHERE tt.Fk_Technician = t.ID_Technicians
+                          AND sr.Status = 'Cerrado') as Tickets_Resolved,
+                         (SELECT COUNT(*)
+                          FROM Ticket_Technicians tt
+                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                          WHERE tt.Fk_Technician = t.ID_Technicians
+                          AND tt.Status = 'Activo'
+                          AND sr.Status != 'Cerrado') as Active_Tickets
                   FROM " . $this->table_name . " t
                   INNER JOIN Users u ON t.Fk_Users = u.ID_Users
                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
@@ -358,43 +434,13 @@ final class Technician
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(":serviceId", $serviceId, PDO::PARAM_INT);
             $stmt->execute();
-            
-            $technicians = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
-            if (empty($technicians)) {
-                error_log("No technicians found for service ID: {$serviceId}");
-                error_log("Query: " . $query);
-                error_log("Service ID used: {$serviceId}");
-                
-                // Log for debugging - check if service exists
-                $checkQuery = "SELECT ID_TI_Service, Type_Service FROM TI_Service WHERE ID_TI_Service = :serviceId";
-                $checkStmt = $this->conn->prepare($checkQuery);
-                $checkStmt->bindParam(":serviceId", $serviceId, PDO::PARAM_INT);
-                $checkStmt->execute();
-                $service = $checkStmt->fetch(PDO::FETCH_ASSOC);
-                
-                if ($service) {
-                    error_log("Service exists: ID={$service['ID_TI_Service']}, Name={$service['Type_Service']}");
-                    
-                    // Check if any technicians are assigned to this service
-                    $countQuery = "SELECT COUNT(*) FROM Technicians_Service WHERE Fk_TI_Service = :serviceId";
-                    $countStmt = $this->conn->prepare($countQuery);
-                    $countStmt->bindParam(":serviceId", $serviceId, PDO::PARAM_INT);
-                    $countStmt->execute();
-                    $count = $countStmt->fetchColumn();
-                    error_log("Technicians_Service count for this service: {$count}");
-                } else {
-                    error_log("Service ID {$serviceId} does not exist in TI_Service table");
-                }
-            } else {
-                error_log("Found " . count($technicians) . " technicians for service ID {$serviceId}");
-                foreach ($technicians as $tech) {
-                    error_log("  - ID: {$tech['ID_Technicians']}, Name: {$tech['First_Name']} {$tech['Last_Name']}, Status: {$tech['Status']}, Email: " . ($tech['Email'] ?? 'NULL'));
-                }
-            }
-            
-            return $technicians ?: [];
-            
+
+            $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            error_log("getAllTechniciansByService: Found " . count($result) . " technicians for service {$serviceId}");
+
+            return $result;
+
         } catch (PDOException $e) {
             error_log("PDOException in getAllTechniciansByService: " . $e->getMessage());
             error_log("Query: " . $query);
@@ -423,7 +469,13 @@ final class Technician
                 $updateStmt->bindParam(":technicianId", $technicianId);
                 $updateStmt->execute();
 
-                error_log("Successfully assigned technician {$technicianId} to ticket {$ticketId}");
+                // Update ticket status to 'En Proceso' when technician is assigned
+                $updateTicketQuery = "UPDATE Service_Request SET Status = 'En Proceso' WHERE ID_Service_Request = :ticketId";
+                $updateTicketStmt = $this->conn->prepare($updateTicketQuery);
+                $updateTicketStmt->bindParam(":ticketId", $ticketId);
+                $updateTicketStmt->execute();
+
+                error_log("Successfully assigned technician {$technicianId} to ticket {$ticketId} and updated ticket status to 'En Proceso'");
                 return true;
             } else {
                 error_log("Failed to execute assignToTicket query for technician {$technicianId} to ticket {$ticketId}");
@@ -438,8 +490,8 @@ final class Technician
     }
 
     public function releaseFromTicket($ticketId, $technicianId) {
-        // Mark the technician-ticket relationship as inactive
-        $query = "UPDATE Ticket_Technicians SET Status = 'Inactivo' WHERE Fk_Service_Request = :ticketId AND Fk_Technician = :technicianId";
+        // Mark the technician-ticket relationship as Finalizado (not Inactivo to preserve history)
+        $query = "UPDATE Ticket_Technicians SET Status = 'Finalizado' WHERE Fk_Service_Request = :ticketId AND Fk_Technician = :technicianId";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":ticketId", $ticketId);
@@ -448,32 +500,32 @@ final class Technician
         try {
             if ($stmt->execute()) {
                 // Check if technician has other active tickets
-                $checkQuery = "SELECT COUNT(*) as active_tickets 
+                $checkQuery = "SELECT COUNT(*) as active_tickets
                               FROM Ticket_Technicians tt
                               JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                              WHERE tt.Fk_Technician = :technicianId 
-                              AND tt.Status = 'Activo' 
+                              WHERE tt.Fk_Technician = :technicianId
+                              AND tt.Status = 'Activo'
                               AND sr.Status != 'Cerrado'";
-                
+
                 $checkStmt = $this->conn->prepare($checkQuery);
                 $checkStmt->bindParam(":technicianId", $technicianId);
                 $checkStmt->execute();
                 $result = $checkStmt->fetch(PDO::FETCH_ASSOC);
-                
+
                 $activeTickets = (int)$result['active_tickets'];
-                
+
                 // If no active tickets, restore technician to Disponible
                 if ($activeTickets === 0) {
                     $updateQuery = "UPDATE " . $this->table_name . " SET Status = 'Disponible' WHERE ID_Technicians = :technicianId";
                     $updateStmt = $this->conn->prepare($updateQuery);
                     $updateStmt->bindParam(":technicianId", $technicianId);
                     $updateStmt->execute();
-                    
+
                     error_log("Technician {$technicianId} released from ticket {$ticketId} and restored to Disponible");
                 } else {
                     error_log("Technician {$technicianId} released from ticket {$ticketId} but still has {$activeTickets} active tickets");
                 }
-                
+
                 return true;
             }
         } catch(PDOException $exception) {
@@ -484,7 +536,8 @@ final class Technician
     }
 
     public function unassignFromTicket($ticketId, $technicianId) {
-        $query = "UPDATE Ticket_Technicians SET Status = 'Inactivo' WHERE Fk_Service_Request = :ticketId AND Fk_Technician = :technicianId";
+        // Mark the technician-ticket relationship as Finalizado (not Inactivo to preserve history)
+        $query = "UPDATE Ticket_Technicians SET Status = 'Finalizado' WHERE Fk_Service_Request = :ticketId AND Fk_Technician = :technicianId";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":ticketId", $ticketId);
@@ -506,7 +559,7 @@ final class Technician
 
                 // If no more active tickets, set technician to Disponible
                 if ($result['active_count'] == 0) {
-                    $updateQuery = "UPDATE " . $this->table_name . " SET Status = 'Activo' WHERE ID_Technicians = :technicianId";
+                    $updateQuery = "UPDATE " . $this->table_name . " SET Status = 'Disponible' WHERE ID_Technicians = :technicianId";
                     $updateStmt = $this->conn->prepare($updateQuery);
                     $updateStmt->bindParam(":technicianId", $technicianId);
                     $updateStmt->execute();
@@ -543,22 +596,25 @@ final class Technician
 
             foreach ($pendingTickets as $ticket) {
                 $ticketId = $ticket['ID_Service_Request'];
-                $serviceId = $ticket['Fk_TI_Service'];
+                $serviceId = (int)$ticket['Fk_TI_Service'];
 
-                // Get available technicians for this service
-                $availableTechs = $this->getAvailableTechniciansByService($serviceId);
+                // Get all technicians for this service (without time restrictions)
+                $availableTechs = $this->getAllTechniciansByService($serviceId);
+
+                // Filter only technicians with status 'Disponible' or 'Activo'
+                $availableTechs = array_filter($availableTechs, function($tech) {
+                    return in_array($tech['Status'], ['Disponible', 'Activo']);
+                });
+
+                // Reindex array after filtering
+                $availableTechs = array_values($availableTechs);
 
                 if (!empty($availableTechs)) {
                     $selectedTech = $availableTechs[0];
                     $assigned = $this->assignToTicket($ticketId, $selectedTech['ID_Technicians'], null, true);
 
                     if ($assigned) {
-                        // Update ticket status
-                        $updateTicketQuery = "UPDATE Service_Request SET Status = 'Técnicos Asignados' WHERE ID_Service_Request = :ticketId";
-                        $updateTicketStmt = $this->conn->prepare($updateTicketQuery);
-                        $updateTicketStmt->bindParam(":ticketId", $ticketId);
-                        $updateTicketStmt->execute();
-
+                        // Update ticket status to 'En Proceso' (already done in assignToTicket)
                         $assignedCount++;
                         $results[] = [
                             'ticket_id' => $ticketId,
@@ -578,6 +634,151 @@ final class Technician
             'assigned_count' => $assignedCount,
             'assignments' => $results
         ];
+    }
+
+    /**
+     * Close a ticket and release all assigned technicians
+     * This method marks all technician-ticket relationships as Finalizado
+     * and updates the ticket status to 'Cerrado'
+     *
+     * @param int $ticketId The ticket ID to close
+     * @return bool True if successful, false otherwise
+     */
+    public function closeTicket(int $ticketId): bool
+    {
+        try {
+            // Get all technicians assigned to this ticket
+            $query = "SELECT Fk_Technician FROM Ticket_Technicians
+                      WHERE Fk_Service_Request = :ticketId AND Status = 'Activo'";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":ticketId", $ticketId);
+            $stmt->execute();
+            $assignedTechnicians = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Mark all technician-ticket relationships as Finalizado
+            $updateQuery = "UPDATE Ticket_Technicians SET Status = 'Finalizado'
+                           WHERE Fk_Service_Request = :ticketId AND Status = 'Activo'";
+            $updateStmt = $this->conn->prepare($updateQuery);
+            $updateStmt->bindParam(":ticketId", $ticketId);
+            $updateStmt->execute();
+
+            // Update ticket status to 'Cerrado' and set resolved timestamp
+            $ticketUpdateQuery = "UPDATE Service_Request
+                                 SET Status = 'Cerrado', Resolved_at = NOW()
+                                 WHERE ID_Service_Request = :ticketId";
+            $ticketUpdateStmt = $this->conn->prepare($ticketUpdateQuery);
+            $ticketUpdateStmt->bindParam(":ticketId", $ticketId);
+            $ticketUpdateStmt->execute();
+
+            // Release all technicians to 'Disponible' status
+            foreach ($assignedTechnicians as $tech) {
+                $technicianId = $tech['Fk_Technician'];
+
+                // Check if technician has other active tickets
+                $checkQuery = "SELECT COUNT(*) as active_count
+                              FROM Ticket_Technicians tt
+                              INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                              WHERE tt.Fk_Technician = :technicianId
+                                AND tt.Status = 'Activo'
+                                AND sr.Status != 'Cerrado'";
+                $checkStmt = $this->conn->prepare($checkQuery);
+                $checkStmt->bindParam(":technicianId", $technicianId);
+                $checkStmt->execute();
+                $result = $checkStmt->fetch(PDO::FETCH_ASSOC);
+
+                // If no more active tickets, set technician to Disponible
+                if ($result['active_count'] == 0) {
+                    $updateTechQuery = "UPDATE " . $this->table_name . " SET Status = 'Disponible'
+                                       WHERE ID_Technicians = :technicianId";
+                    $updateTechStmt = $this->conn->prepare($updateTechQuery);
+                    $updateTechStmt->bindParam(":technicianId", $technicianId);
+                    $updateTechStmt->execute();
+
+                    error_log("Technician {$technicianId} released to Disponible after closing ticket {$ticketId}");
+                }
+            }
+
+            error_log("Ticket {$ticketId} closed successfully with " . count($assignedTechnicians) . " technicians released");
+            return true;
+
+        } catch (PDOException $e) {
+            error_log("Error closing ticket: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Get all technicians grouped by TI Service type
+     * Returns technicians organized by service area (Redes, Soporte, Programación)
+     *
+     * @return array<string, array{service_id: int, service_name: string, technicians: array}>
+     */
+    public function getAllTechniciansGroupedByService(): array
+    {
+        try {
+            // Get all TI Services
+            $servicesQuery = "SELECT ID_TI_Service, Type_Service, Details
+                             FROM TI_Service
+                             ORDER BY ID_TI_Service ASC";
+            $servicesStmt = $this->conn->prepare($servicesQuery);
+            $servicesStmt->execute();
+            $services = $servicesStmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $groupedTechnicians = [];
+
+            foreach ($services as $service) {
+                $serviceId = (int)$service['ID_TI_Service'];
+                $serviceName = $service['Type_Service'];
+
+                // Get technicians for this service
+                $query = "SELECT DISTINCT 
+                         t.ID_Technicians, 
+                         t.First_Name, 
+                         t.Last_Name, 
+                         t.Status, 
+                         u.Email,
+                         (SELECT COUNT(*)
+                          FROM Ticket_Technicians tt
+                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                          WHERE tt.Fk_Technician = t.ID_Technicians
+                          AND sr.Status = 'Cerrado') as Tickets_Resolved,
+                         (SELECT COUNT(*)
+                          FROM Ticket_Technicians tt
+                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                          WHERE tt.Fk_Technician = t.ID_Technicians
+                          AND tt.Status = 'Activo'
+                          AND sr.Status != 'Cerrado') as Active_Tickets
+                  FROM " . $this->table_name . " t
+                  INNER JOIN Users u ON t.Fk_Users = u.ID_Users
+                  INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                  WHERE ts.Fk_TI_Service = :serviceId
+                    AND ts.Status = 'Activo'
+                  ORDER BY t.First_Name ASC, t.Last_Name ASC";
+
+                $stmt = $this->conn->prepare($query);
+                $stmt->bindParam(":serviceId", $serviceId, PDO::PARAM_INT);
+                $stmt->execute();
+                $technicians = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                $groupedTechnicians[] = [
+                    'service_id' => $serviceId,
+                    'service_name' => $serviceName,
+                    'service_details' => $service['Details'],
+                    'technicians' => $technicians,
+                    'count' => count($technicians)
+                ];
+            }
+
+            error_log("getAllTechniciansGroupedByService: Retrieved " . count($groupedTechnicians) . " service groups");
+            return $groupedTechnicians;
+
+        } catch (PDOException $e) {
+            error_log("PDOException in getAllTechniciansGroupedByService: " . $e->getMessage());
+            return [];
+        } catch (Exception $e) {
+            error_log("Exception in getAllTechniciansGroupedByService: " . $e->getMessage());
+            return [];
+        }
     }
 }
 ?>

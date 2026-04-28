@@ -37,7 +37,7 @@ const ModernSidebar: React.FC = () => {
       id: 'dashboard',
       label: 'Dashboard',
       icon: <BarChart3 size={20} />,
-      path: '/'
+      path: '/admin'
     },
     {
       id: 'tickets',
