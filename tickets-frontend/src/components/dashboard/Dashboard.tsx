@@ -1,454 +1,392 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Building,
-  FileText,
-  Users,
-  BarChart3,
-  Settings,
-  TrendingUp,
-  Clock,
-  UserCheck,
-  User,
-  Plus,
-  Search,
-  Filter,
-  ChevronDown,
-  ArrowLeft,
-  UserPlus,
-  Calendar,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
   Ticket,
+  Users,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
   Activity,
-  Zap,
-  Target,
-  Shield,
-  Database,
-  Layers,
-  LayoutGrid
+  Plus,
+  RefreshCw,
+  BarChart3,
+  TrendingUp
 } from 'lucide-react';
-import Stepper from '../common/Stepper';
-import TicketForm from '../tickets/TicketForm';
 import ModernSidebar from '../layout/ModernSidebar';
+import ApiService from '../../services/api';
 import '../layout/ModernSidebar.css';
 import './Dashboard.css';
 
+// Types for PHP-PRO integration
+interface DashboardStats {
+  totalTickets: number;
+  pendingTickets: number;
+  inProgressTickets: number;
+  completedTickets: number;
+  activeTechnicians: number;
+  criticalTickets: number;
+}
+
+interface Ticket {
+  id: string;
+  subject: string;
+  office: string;
+  priority: 'Alta' | 'Media' | 'Baja';
+  status: 'Pendiente' | 'En Proceso' | 'Cerrado';
+  assignedTo: string;
+  date: string;
+}
+
+interface Technician {
+  id: number;
+  name: string;
+  status: 'available' | 'busy';
+  currentTickets: number;
+  totalCompleted?: number;
+}
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [activeFilter, setActiveFilter] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTicket, setSelectedTicket] = useState<number | null>(null);
-  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Ticket workflow steps
-  const ticketSteps = [
-    {
-      id: 1,
-      title: 'Solicitud',
-      description: 'Usuario crea el ticket',
-      status: 'completed' as const
-    },
-    {
-      id: 2,
-      title: 'Asignación',
-      description: 'Asignado a técnico',
-      status: 'active' as const
-    },
-    {
-      id: 3,
-      title: 'En Progreso',
-      description: 'Técnico trabajando',
-      status: 'pending' as const
-    },
-    {
-      id: 4,
-      title: 'Resuelto',
-      description: 'Ticket cerrado',
-      status: 'pending' as const
-    }
-  ];
-
-  const statsData = [
-    {
-      title: 'Total de Tickets',
-      value: '1250',
-      trend: '+30%',
-      trendUp: true,
-      icon: Ticket
-    },
-    {
-      title: 'Técnicos Activos',
-      value: '9/15',
-      status: 'Disponible',
-      icon: Activity
-    },
-    {
-      title: 'Oficinas Top',
-      value: 'Catastro, Obras, Bienestar',
-      icon: Layers
-    },
-    {
-      title: 'Eficiencia',
-      value: '4.5 horas',
-      trend: '+15%',
-      trendUp: true,
-      icon: Zap
-    }
-  ];
-
-  const ticketsData = [
-    {
-      id: '#T-00123',
-      subject: 'Alcaldía SC inici...',
-      office: 'Catastro',
-      priority: 'Alta',
-      status: 'Pendiente',
-      assignedTo: 'Usuario M...',
-      date: '15/03/2024'
-    },
-    {
-      id: '#T-00124',
-      subject: 'Alcaldía SC ave...',
-      office: 'Obras',
-      priority: 'Alta',
-      status: 'Pendiente',
-      assignedTo: 'Amna Verez',
-      date: '15/03/2024'
-    },
-    {
-      id: '#T-00125',
-      subject: 'Asunto de nailia...',
-      office: 'Obras',
-      priority: 'Media',
-      status: 'En Proceso',
-      assignedTo: 'Usuario M...',
-      date: '15/03/2024'
-    },
-    {
-      id: '#T-00126',
-      subject: 'Alcaldía SC aver...',
-      office: 'Bienestar',
-      priority: 'Baja',
-      status: 'En Proceso',
-      assignedTo: 'Usuario M...',
-      date: '15/03/2024'
-    },
-    {
-      id: '#T-00127',
-      subject: 'Reparación equipo...',
-      office: 'Obras',
-      priority: 'Baja',
-      status: 'Cerrado',
-      assignedTo: 'Usuario M...',
-      date: '15/03/2024'
-    }
-  ];
-
-  const techniciansData = [
-    { name: 'Amna Verez', status: 'available' },
-    { name: 'Carlos Diaz', status: 'unavailable' },
-    { name: 'Lavila Kavrvn', status: 'available' },
-    { name: 'Usuario Municipal', status: 'available' }
-  ];
-
-  const getPriorityClass = (priority: string) => {
-    switch (priority.toLowerCase()) {
-      case 'alta': return 'priority-high';
-      case 'media': return 'priority-medium';
-      case 'baja': return 'priority-low';
-      default: return '';
-    }
-  };
-
-  const getStatusClass = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'pendiente': return 'status-pending';
-      case 'en proceso': return 'status-progress';
-      case 'cerrado': return 'status-resolved';
-      default: return '';
-    }
-  };
-
-  const handleStepClick = (stepId: number) => {
-    console.log(`Step ${stepId} clicked`);
-  };
-
-  const filteredTickets = ticketsData.filter(ticket => {
-    const matchesFilter = activeFilter === 'all' || ticket.status === activeFilter;
-    const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ticket.id.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesFilter && matchesSearch;
+  // PHP-PRO state management
+  const [stats, setStats] = useState<DashboardStats>({
+    totalTickets: 0,
+    pendingTickets: 0,
+    inProgressTickets: 0,
+    completedTickets: 0,
+    activeTechnicians: 0,
+    criticalTickets: 0
   });
+  
+  const [recentTickets, setRecentTickets] = useState<Ticket[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  
+  // PHP-PRO Data fetching from backend
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch data from PHP backend
+        const [ticketsResponse, techniciansResponse] = await Promise.all([
+          ApiService.getTickets({ limit: 10 }),
+          ApiService.getTechnicians()
+        ]);
+
+        // Update tickets with PHP-PRO structure
+        if (ticketsResponse.success && ticketsResponse.data) {
+          const transformedTickets = transformTicketData(ticketsResponse.data);
+          setRecentTickets(transformedTickets);
+          calculateStats(transformedTickets);
+        }
+
+        // Update technicians with PHP-PRO structure  
+        if (techniciansResponse.success && techniciansResponse.data) {
+          setTechnicians(transformTechnicianData(techniciansResponse.data));
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Transform backend data to frontend format (PHP-PRO pattern)
+  const transformTicketData = (backendData: any[]): Ticket[] => {
+    return backendData.map((ticket, index) => ({
+      id: `#T-${String(ticket.id || index + 1).padStart(5, '0')}`,
+      subject: ticket.subject || ticket.title || `Ticket ${index + 1}`,
+      office: ticket.office_name || ticket.office || 'General',
+      priority: ticket.priority || 'Media',
+      status: ticket.status || 'Pendiente',
+      assignedTo: ticket.technician_name || ticket.assigned_to || 'Sin asignar',
+      date: new Date(ticket.created_at || Date.now()).toLocaleDateString('es-VE')
+    }));
+  };
+
+  const transformTechnicianData = (backendData: any[]): Technician[] => {
+    return backendData.map((tech, index) => ({
+      id: tech.id || index + 1,
+      name: tech.name || tech.full_name || `Técnico ${index + 1}`,
+      status: tech.status || 'available',
+      currentTickets: tech.current_tickets || 0
+    }));
+  };
+
+  const calculateStats = (tickets: Ticket[]) => {
+    const totalTickets = tickets.length;
+    const pendingTickets = tickets.filter(t => t.status === 'Pendiente').length;
+    const inProgressTickets = tickets.filter(t => t.status === 'En Proceso').length;
+    const completedTickets = tickets.filter(t => t.status === 'Cerrado').length;
+    const criticalTickets = tickets.filter(t => t.priority === 'Alta' && t.status !== 'Cerrado').length;
+    const activeTechnicians = technicians.filter(t => t.status === 'available').length;
+
+    setStats({
+      totalTickets,
+      pendingTickets,
+      inProgressTickets,
+      completedTickets,
+      activeTechnicians,
+      criticalTickets
+    });
+  };
+
+  const handleCreateTicket = () => navigate('/new-ticket');
+  const handleViewTicket = (id: string) => navigate(`/tickets/${id}`);
+
+  if (isLoading) {
+    return (
+      <div className="minimal-dashboard">
+        <ModernSidebar />
+        <main className="minimal-main">
+          <div className="loading-state">
+            <RefreshCw className="spinner" size={24} />
+            <p>Cargando datos...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Calculate percentages for charts
+  const totalForPercentage = stats.totalTickets || 1;
+  const pendingPercent = Math.round((stats.pendingTickets / totalForPercentage) * 100);
+  const inProgressPercent = Math.round((stats.inProgressTickets / totalForPercentage) * 100);
+  const completedPercent = Math.round((stats.completedTickets / totalForPercentage) * 100);
+
+  const maxTickets = Math.max(...technicians.map(t => t.currentTickets), 1);
 
   return (
-    <div className="dashboard-container">
-      {showTicketForm ? (
-        <div className="ticket-form-view">
-          <div className="form-header-actions">
-            <button 
-              className="back-btn" 
-              onClick={() => setShowTicketForm(false)}
-            >
-              <ArrowLeft size={20} />
-              Volver al Dashboard
+    <div className="minimal-dashboard">
+      <ModernSidebar />
+      <main className="minimal-main">
+        <header className="minimal-header">
+          <div>
+            <h1>Dashboard Administrativo</h1>
+            <p>Sistema de Gestión de Tickets - Alcaldía de San Cristóbal</p>
+          </div>
+          <div className="header-actions">
+            <button className="btn-secondary" onClick={() => window.location.reload()}>
+              <RefreshCw size={18} />
+              Actualizar
+            </button>
+            <button className="btn-primary" onClick={handleCreateTicket}>
+              <Plus size={18} />
+              Nuevo Ticket
             </button>
           </div>
-          <TicketForm />
-        </div>
-      ) : (
-        <>
-          {/* Modern Sidebar */}
-          <ModernSidebar />
+        </header>
 
-          {/* Main Content */}
-          <main className="main-content-area">
-        {/* Ticket Workflow Stepper */}
-       
-          {/* Action Button */}
-        <div className="dashboard-actions">
-          <button 
-            className="new-ticket-btn"
-            onClick={() => setShowTicketForm(true)}
-          >
-            <Plus size={18} />
-            Nuevo Ticket
-          </button>
-        </div>
-
-        {/* Enhanced Stats Cards - Iconos más visibles */}
-        <div className="stats-grid">
-          {statsData.map((stat, index) => (
-            <div key={index} className="stat-card enhanced">
-              <div className="stat-header">
-                <div className="stat-icon">
-                  <stat.icon size={32} strokeWidth={2} />
-                </div>
-                <div className="stat-title">{stat.title}</div>
-              </div>
-              <div className="stat-value">{stat.value}</div>
-              {stat.trend && (
-                <div className={`stat-trend ${stat.trendUp ? 'trend-up' : 'trend-down'}`}>
-                  <TrendingUp size={18} strokeWidth={2.5} />
-                  {stat.trend}
-                </div>
-              )}
-              {stat.status && (
-                <div className="stat-trend trend-up">
-                  <div className="status-dot status-resolved"></div>
-                  {stat.status}
-                </div>
-              )}
+        {/* KPI Cards */}
+        <div className="kpi-grid">
+          <div className="kpi-card main">
+            <div className="kpi-icon">
+              <Ticket size={32} />
             </div>
-          ))}
+            <div className="kpi-content">
+              <p className="kpi-label">Total Tickets</p>
+              <h2 className="kpi-value">{stats.totalTickets}</h2>
+            </div>
+          </div>
+
+          <div className="kpi-card warning">
+            <div className="kpi-icon">
+              <AlertTriangle size={32} />
+            </div>
+            <div className="kpi-content">
+              <p className="kpi-label">Críticos</p>
+              <h2 className="kpi-value">{stats.criticalTickets}</h2>
+            </div>
+          </div>
+
+          <div className="kpi-card info">
+            <div className="kpi-icon">
+              <Users size={32} />
+            </div>
+            <div className="kpi-content">
+              <p className="kpi-label">Técnicos Activos</p>
+              <h2 className="kpi-value">{stats.activeTechnicians}</h2>
+            </div>
+          </div>
         </div>
 
-        
-        {/* Enhanced Tickets Section */}
-        <div className="content-card tickets-section">
-          <div className="section-header">
-            <div className="section-title-area">
-              <h2 className="section-title">
-                <LayoutGrid size={24} />
-                Gestión de Tickets
-              </h2>
-              <p className="section-subtitle">Administra y monitorea todas las solicitudes</p>
-            </div>
-            <div className="section-actions">
-              <div className="search-box">
-                <Search size={18} className="search-icon" />
-                <input
-                  type="text"
-                  placeholder="Buscar tickets..."
-                  className="search-input"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="filter-controls">
-                <select 
-                  className="status-filter"
-                  value={activeFilter}
-                  onChange={(e) => setActiveFilter(e.target.value)}
-                >
-                  <option value="all">Todos los Estados</option>
-                  <option value="Pendiente">Pendientes</option>
-                  <option value="En Proceso">En Proceso</option>
-                  <option value="Cerrado">Cerrados</option>
-                </select>
+        {/* Charts Row */}
+        <div className="charts-row">
+          {/* Status Distribution Chart */}
+          <div className="chart-card">
+            <h3>Distribución por Estado</h3>
+            <div className="chart-content">
+              <div className="bar-chart">
+                <div className="bar-item">
+                  <div className="bar-label">Pendientes</div>
+                  <div className="bar-container">
+                    <div className="bar-fill pending" style={{ width: `${pendingPercent}%` }}></div>
+                  </div>
+                  <div className="bar-value">{stats.pendingTickets}</div>
+                </div>
+                <div className="bar-item">
+                  <div className="bar-label">En Proceso</div>
+                  <div className="bar-container">
+                    <div className="bar-fill progress" style={{ width: `${inProgressPercent}%` }}></div>
+                  </div>
+                  <div className="bar-value">{stats.inProgressTickets}</div>
+                </div>
+                <div className="bar-item">
+                  <div className="bar-label">Completados</div>
+                  <div className="bar-container">
+                    <div className="bar-fill completed" style={{ width: `${completedPercent}%` }}></div>
+                  </div>
+                  <div className="bar-value">{stats.completedTickets}</div>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Tickets Stats Overview */}
-          <div className="tickets-overview">
-            <div className="overview-card">
-              <div className="overview-icon pending">
-                <Target size={20} />
-              </div>
-              <div className="overview-info">
-                <div className="overview-number">{filteredTickets.filter(t => t.status === 'Pendiente').length}</div>
-                <div className="overview-label">Pendientes</div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <div className="overview-icon progress">
-                <Activity size={20} />
-              </div>
-              <div className="overview-info">
-                <div className="overview-number">{filteredTickets.filter(t => t.status === 'En Proceso').length}</div>
-                <div className="overview-label">En Proceso</div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <div className="overview-icon resolved">
-                <Shield size={20} />
-              </div>
-              <div className="overview-info">
-                <div className="overview-number">{filteredTickets.filter(t => t.status === 'Cerrado').length}</div>
-                <div className="overview-label">Resueltos</div>
-              </div>
-            </div>
-            <div className="overview-card">
-              <div className="overview-icon total">
-                <Database size={20} />
-              </div>
-              <div className="overview-info">
-                <div className="overview-number">{filteredTickets.length}</div>
-                <div className="overview-label">Total</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Modern Tickets Grid */}
-          <div className="tickets-modern-grid">
-            {filteredTickets.map((ticket, index) => (
-              <div 
-                key={index} 
-                className={`ticket-modern-card ${selectedTicket === index ? 'selected' : ''} ${ticket.status.toLowerCase().replace(' ', '-')}`}
-                onClick={() => setSelectedTicket(index)}
-              >
-                <div className="ticket-header">
-                  <div className="ticket-id-section">
-                    <span className="ticket-id-modern">{ticket.id}</span>
-                    <span className={`priority-indicator ${getPriorityClass(ticket.priority)}`}>
-                      {ticket.priority}
-                    </span>
+          {/* Priority Distribution */}
+          <div className="chart-card">
+            <h3>Tickets por Prioridad</h3>
+            <div className="chart-content">
+              <div className="priority-stats">
+                <div className="priority-stat high">
+                  <div className="priority-icon">
+                    <AlertTriangle size={24} />
                   </div>
-                  <div className="ticket-status">
-                    {ticket.status === 'Pendiente' && <Target size={16} className="status-icon pending" />}
-                    {ticket.status === 'En Proceso' && <Activity size={16} className="status-icon progress" />}
-                    {ticket.status === 'Cerrado' && <Shield size={16} className="status-icon resolved" />}
+                  <div className="priority-info">
+                    <span className="priority-label">Alta</span>
+                    <span className="priority-count">{recentTickets.filter(t => t.priority === 'Alta').length}</span>
                   </div>
                 </div>
-
-                <div className="ticket-content">
-                  <h3 className="ticket-subject">{ticket.subject}</h3>
-                  <div className="ticket-meta">
-                    <div className="meta-item">
-                      <Building size={14} />
-                      <span>{ticket.office}</span>
-                    </div>
-                    <div className="meta-item">
-                      <User size={14} />
-                      <span>{ticket.assignedTo}</span>
-                    </div>
-                    <div className="meta-item">
-                      <Calendar size={14} />
-                      <span>{ticket.date}</span>
-                    </div>
+                <div className="priority-stat medium">
+                  <div className="priority-icon">
+                    <Clock size={24} />
+                  </div>
+                  <div className="priority-info">
+                    <span className="priority-label">Media</span>
+                    <span className="priority-count">{recentTickets.filter(t => t.priority === 'Media').length}</span>
                   </div>
                 </div>
-
-                <div className="ticket-footer">
-                  <div className="status-badge">
-                    <div className={`status-dot ${getStatusClass(ticket.status)}`}></div>
-                    <span>{ticket.status}</span>
+                <div className="priority-stat low">
+                  <div className="priority-icon">
+                    <CheckCircle size={24} />
                   </div>
-                  <button className="ticket-action-btn">
-                    Ver Detalles
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredTickets.length === 0 && (
-            <div className="empty-state">
-              <FileText size={48} className="empty-icon" />
-              <h3>No se encontraron tickets</h3>
-              <p>No hay tickets que coincidan con los filtros seleccionados.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Enhanced Technical Staff - Rediseñado */}
-        <div className="content-card technical-staff-card">
-          <div className="card-header">
-            <div className="header-title-section">
-              <div className="header-icon">
-                <Users size={28} />
-              </div>
-              <h2 className="card-title">Equipo Técnico</h2>
-            </div>
-            <div className="staff-stats">
-              <span className="stat-badge available">
-                <div className="status-dot status-resolved"></div>
-                <span className="stat-number">{techniciansData.filter(t => t.status === 'available').length}</span>
-                <span className="stat-label">Disponibles</span>
-              </span>
-              <span className="stat-badge busy">
-                <div className="status-dot status-pending"></div>
-                <span className="stat-number">{techniciansData.filter(t => t.status === 'unavailable').length}</span>
-                <span className="stat-label">Ocupados</span>
-              </span>
-            </div>
-          </div>
-          
-          {/* Nueva tabla de técnicos */}
-          <div className="technicians-table-container">
-            <div className="technicians-table-header">
-              <div className="table-cell tech-cell">Técnico</div>
-              <div className="table-cell status-cell">Estado</div>
-              <div className="table-cell actions-cell">Acciones</div>
-            </div>
-            {techniciansData.map((tech, index) => (
-              <div key={index} className="technician-row-table">
-                <div className="table-cell tech-cell">
-                  <div className="tech-profile">
-                    <div className="tech-avatar">
-                      <User size={22} />
-                      <div className={`status-indicator ${tech.status}`}></div>
-                    </div>
-                    <div className="tech-info">
-                      <span className="tech-name">{tech.name}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="table-cell status-cell">
-                  <div className={`status-badge-large ${tech.status}`}>
-                    <div className={`status-dot ${tech.status === 'available' ? 'status-resolved' : 'status-pending'}`}></div>
-                    <span>{tech.status === 'available' ? 'Disponible' : 'Ocupado'}</span>
-                  </div>
-                </div>
-                <div className="table-cell actions-cell">
-                  <div className="tech-actions">
-                    <button className="tech-action-btn assign" title="Asignar ticket">
-                      <UserPlus size={20} />
-                    </button>
-                    <button className="tech-action-btn settings" title="Configuración">
-                      <Settings size={20} />
-                    </button>
+                  <div className="priority-info">
+                    <span className="priority-label">Baja</span>
+                    <span className="priority-count">{recentTickets.filter(t => t.priority === 'Baja').length}</span>
                   </div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
-          </main>
-        </>
-      )}
+
+        {/* Technicians Performance */}
+        <div className="chart-card full-width">
+          <h3>Estado del Equipo Técnico</h3>
+          <div className="chart-content">
+            <div className="technicians-grid-visual">
+              {technicians.slice(0, 6).map((tech) => (
+                <div key={tech.id} className="technician-visual-card">
+                  <div className="tech-visual-avatar">
+                    <span>{tech.name.charAt(0)}</span>
+                    <div className={`tech-status-indicator ${tech.status}`}></div>
+                  </div>
+                  <div className="tech-visual-info">
+                    <span className="tech-visual-name">{tech.name.split(' ')[0]}</span>
+                    <div className="tech-visual-metrics">
+                      <span className="tech-ticket-count">{tech.currentTickets}</span>
+                      <span className="tech-ticket-label">tickets</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Quick Stats */}
+            <div className="tech-quick-stats">
+              <div className="tech-stat-item">
+                <div className="tech-stat-icon available">
+                  <CheckCircle size={20} />
+                </div>
+                <div className="tech-stat-info">
+                  <span className="tech-stat-number">{technicians.filter(t => t.status === 'available').length}</span>
+                  <span className="tech-stat-label">Disponibles</span>
+                </div>
+              </div>
+              <div className="tech-stat-item">
+                <div className="tech-stat-icon busy">
+                  <Clock size={20} />
+                </div>
+                <div className="tech-stat-info">
+                  <span className="tech-stat-number">{technicians.filter(t => t.status === 'busy').length}</span>
+                  <span className="tech-stat-label">Ocupados</span>
+                </div>
+              </div>
+              <div className="tech-stat-item">
+                <div className="tech-stat-icon total">
+                  <Users size={20} />
+                </div>
+                <div className="tech-stat-info">
+                  <span className="tech-stat-number">{technicians.reduce((sum, t) => sum + t.currentTickets, 0)}</span>
+                  <span className="tech-stat-label">Tickets Activos</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Activity Summary */}
+        <div className="chart-card full-width">
+          <h3>Resumen de Actividad Reciente</h3>
+          <div className="chart-content">
+            <div className="activity-summary">
+              <div className="activity-item">
+                <div className="activity-icon pending">
+                  <Clock size={20} />
+                </div>
+                <div className="activity-info">
+                  <span className="activity-label">Tickets Pendientes</span>
+                  <span className="activity-value">{stats.pendingTickets}</span>
+                </div>
+              </div>
+              <div className="activity-item">
+                <div className="activity-icon progress">
+                  <Activity size={20} />
+                </div>
+                <div className="activity-info">
+                  <span className="activity-label">En Proceso</span>
+                  <span className="activity-value">{stats.inProgressTickets}</span>
+                </div>
+              </div>
+              <div className="activity-item">
+                <div className="activity-icon completed">
+                  <CheckCircle size={20} />
+                </div>
+                <div className="activity-info">
+                  <span className="activity-label">Completados Hoy</span>
+                  <span className="activity-value">{stats.completedTickets}</span>
+                </div>
+              </div>
+              <div className="activity-item">
+                <div className="activity-icon critical">
+                  <AlertTriangle size={20} />
+                </div>
+                <div className="activity-info">
+                  <span className="activity-label">Requieren Atención</span>
+                  <span className="activity-value">{stats.criticalTickets}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

@@ -1152,6 +1152,21 @@
   transition: all 0.2s ease;
 }
 
+.status-reason-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.status-reason-text {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-left: 0;
+}
+
 .status-reason-ticket {
   background: var(--warning-light);
   color: var(--warning-color);

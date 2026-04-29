@@ -31,7 +31,8 @@ import {
   Check,
   Flag,
   Star,
-  Wrench
+  Wrench,
+  Lock
 } from 'lucide-react';
 import './AdminTicketManagement.css';
 import ApiService from '../../services/api';
@@ -63,6 +64,7 @@ interface Ticket {
   Division_Name?: string;
   Coordination_Name?: string;
   Service_Name?: string;
+  Software_System_Name?: string;
   Technicians: TicketTechnician[];
   Attachments_Count?: number;
   Comments_Count?: number;
@@ -82,10 +84,12 @@ interface Technician {
 interface TimelineEvent {
   ID_Timeline: string;
   Fk_Service_Request: string;
-  Event_Type: 'created' | 'assigned' | 'reassigned' | 'priority_changed' | 'status_changed' | 'commented' | 'resolved';
-  Description: string;
-  Created_By: string;
-  Created_at: string;
+  Fk_User_Actor: string;
+  Action_Description: string;
+  Old_Status: string | null;
+  New_Status: string | null;
+  Event_Date: string;
+  User_Name?: string;
 }
 
 interface Comment {
@@ -125,6 +129,9 @@ const AdminTicketManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [serviceFilter, setServiceFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
 
   // Estados de modales
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -205,6 +212,7 @@ const AdminTicketManagement: React.FC = () => {
           Division_Name: ticket.office_type || 'No asignado',
           Coordination_Name: ticket.service_type_name || 'No asignado',
           Service_Name: ticket.service_type_name || 'No asignado',
+          Software_System_Name: ticket.software_system_name || null,
           Technicians: ticket.technicians?.map((t: any) => ({
             ID_Ticket_Technician: t.id?.toString() || '',
             Fk_Technician: t.id?.toString() || '',
@@ -253,16 +261,45 @@ const AdminTicketManagement: React.FC = () => {
       filtered = filtered.filter(ticket => ticket.System_Priority === priorityFilter);
     }
 
+    // Filtro por fecha
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const ticketDate = (dateStr: string) => new Date(dateStr);
+
+      if (dateFilter === 'today') {
+        filtered = filtered.filter(ticket => {
+          const ticketDateObj = ticketDate(ticket.Created_at);
+          return ticketDateObj.toDateString() === today.toDateString();
+        });
+      } else if (dateFilter === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        filtered = filtered.filter(ticket => {
+          const ticketDateObj = ticketDate(ticket.Created_at);
+          return ticketDateObj >= weekAgo && ticketDateObj <= now;
+        });
+      } else if (dateFilter === 'custom' && customStartDate && customEndDate) {
+        const startDate = new Date(customStartDate);
+        const endDate = new Date(customEndDate);
+        endDate.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(ticket => {
+          const ticketDateObj = ticketDate(ticket.Created_at);
+          return ticketDateObj >= startDate && ticketDateObj <= endDate;
+        });
+      }
+    }
+
     setFilteredTickets(filtered);
-  }, [tickets, searchTerm, statusFilter, serviceFilter, priorityFilter]);
+  }, [tickets, searchTerm, statusFilter, serviceFilter, priorityFilter, dateFilter, customStartDate, customEndDate]);
 
   // Cargar técnicos disponibles cuando se abre el modal de asignación
   const loadAvailableTechnicians = async (serviceId: string) => {
     try {
       console.log('=== LOAD GROUPED TECHNICIANS ===');
-      console.log('Service ID:', serviceId);
+      console.log('Ticket Service ID:', serviceId);
       
-      // Load all technicians grouped by service type
+      // Load all technicians grouped by service type (para asignación manual mostrar todos los servicios)
       const response = await ApiService.getAllTechniciansGroupedByService();
       console.log('API Response:', response);
       
@@ -270,18 +307,24 @@ const AdminTicketManagement: React.FC = () => {
         console.log('Grouped technicians data:', response.data);
         console.log('Number of service groups:', response.data.length);
         
+        // Para asignación manual: mostrar TODOS los técnicos de TODAS las áreas
+        // El usuario puede navegar entre pestañas para ver diferentes servicios
+        const allGroups = response.data;
+        
+        console.log('All service groups for manual assignment:', allGroups);
+        
         // Log each service group and its technicians
-        response.data.forEach((group: any) => {
+        allGroups.forEach((group: any) => {
           console.log(`Service: ${group.service_name}, Technicians: ${group.technicians.length}`);
           group.technicians.forEach((tech: any) => {
             console.log(`  - ${tech.First_Name} ${tech.Last_Name} (${tech.Status})`);
           });
         });
         
-        setGroupedTechnicians(response.data);
+        setGroupedTechnicians(allGroups);
       } else {
         console.log('No technicians found or error, using mock data:', response.message);
-        // Use mock data as fallback
+        // Use mock data as fallback - mostrar todos los servicios
         const mockGroupedTechnicians = [
           {
             service_id: 1,
@@ -289,7 +332,7 @@ const AdminTicketManagement: React.FC = () => {
             service_details: 'Infraestructura de red y conectividad',
             count: 2,
             technicians: [
-              { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Activo', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 2 },
+              { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
               { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
             ]
           },
@@ -299,26 +342,27 @@ const AdminTicketManagement: React.FC = () => {
             service_details: 'Soporte técnico general',
             count: 2,
             technicians: [
-              { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Activo', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 3 },
-              { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 1 }
+              { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Disponible', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 0 },
+              { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 0 }
             ]
           },
           {
             service_id: 3,
             service_name: 'Programación',
-            service_details: 'Desarrollo de software y aplicaciones',
+            service_details: 'Desarrollo de software',
             count: 2,
             technicians: [
-              { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Activo', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 4 },
+              { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Disponible', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 0 },
               { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
             ]
           }
         ];
+        
         setGroupedTechnicians(mockGroupedTechnicians);
       }
     } catch (error) {
       console.error('Error loading technicians, using mock data:', error);
-      // Use mock data as fallback
+      // Use mock data as fallback - mostrar todos los servicios
       const mockGroupedTechnicians = [
         {
           service_id: 1,
@@ -326,7 +370,7 @@ const AdminTicketManagement: React.FC = () => {
           service_details: 'Infraestructura de red y conectividad',
           count: 2,
           technicians: [
-            { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Activo', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 2 },
+            { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
             { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
           ]
         },
@@ -336,21 +380,22 @@ const AdminTicketManagement: React.FC = () => {
           service_details: 'Soporte técnico general',
           count: 2,
           technicians: [
-            { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Activo', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 3 },
-            { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 1 }
+            { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Disponible', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 0 },
+            { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 0 }
           ]
         },
         {
           service_id: 3,
           service_name: 'Programación',
-          service_details: 'Desarrollo de software y aplicaciones',
+          service_details: 'Desarrollo de software',
           count: 2,
           technicians: [
-            { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Activo', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 4 },
+            { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Disponible', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 0 },
             { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
           ]
         }
       ];
+      
       setGroupedTechnicians(mockGroupedTechnicians);
     }
   };
@@ -368,15 +413,15 @@ const AdminTicketManagement: React.FC = () => {
       console.log('Comments API Response:', commentsResponse);
       
       if (commentsResponse.success && commentsResponse.data) {
-        const formattedComments = commentsResponse.data.map((c: any) => ({
-          ID_Comment: c.ID_Comment?.toString() || '',
-          Fk_Service_Request: c.Fk_Service_Request?.toString() || ticket.ID_Service_Request,
-          Comment_Text: c.Comment || '',
-          Created_at: c.Created_at || new Date().toISOString(),
-          User_Name: c.user_name || 'Usuario',
-          User_Role: c.user_role || 'User'
+        const formattedComments = commentsResponse.data.map((comment: any) => ({
+          ID_Comment: comment.ID_Comment,
+          Fk_Service_Request: comment.Fk_Service_Request,
+          Comment_Text: comment.Comment,
+          Comment_Type: comment.Comment_Type || 'public',
+          Created_By: comment.Created_By,
+          Created_at: comment.Created_at,
+          User_Name: comment.User_Name || 'Usuario'
         }));
-        console.log('Formatted comments:', formattedComments);
         setComments(formattedComments);
       } else {
         console.log('No comments or error:', commentsResponse.message);
@@ -387,18 +432,34 @@ const AdminTicketManagement: React.FC = () => {
       setComments([]);
     }
 
-    // Timeline mock (por ahora, ya que no hay endpoint real)
-    const mockTimeline: TimelineEvent[] = [
-      {
-        ID_Timeline: '1',
-        Fk_Service_Request: ticket.ID_Service_Request,
-        Event_Type: 'created',
-        Description: 'Ticket creado',
-        Created_By: 'coordinator',
-        Created_at: ticket.Created_at
+    // Cargar timeline del backend real usando PHP-PRO
+    try {
+      console.log('=== LOADING TIMELINE ===');
+      console.log('Ticket ID:', ticket.ID_Service_Request);
+      
+      const timelineResponse = await ApiService.getTicketTimeline(parseInt(ticket.ID_Service_Request));
+      console.log('Timeline API Response:', timelineResponse);
+      
+      if (timelineResponse.success && timelineResponse.data) {
+        const formattedTimeline = timelineResponse.data.map((event: any) => ({
+          ID_Timeline: event.ID_Timeline,
+          Fk_Service_Request: event.Fk_Service_Request,
+          Fk_User_Actor: event.Fk_User_Actor,
+          Action_Description: event.Action_Description,
+          Old_Status: event.Old_Status,
+          New_Status: event.New_Status,
+          Event_Date: event.Event_Date,
+          User_Name: event.User_Name || 'Usuario'
+        }));
+        setTimeline(formattedTimeline);
+      } else {
+        console.log('No timeline or error:', timelineResponse.message);
+        setTimeline([]);
       }
-    ];
-    setTimeline(mockTimeline);
+    } catch (error) {
+      console.error('Error loading timeline:', error);
+      setTimeline([]);
+    }
 
     // Attachments mock (por ahora)
     setAttachments([]);
@@ -652,7 +713,7 @@ const AdminTicketManagement: React.FC = () => {
               <option value="En Proceso">En Proceso</option>
               <option value="Cerrado">Cerrado</option>
             </select>
-            
+
             <select
               value={serviceFilter}
               onChange={(e) => setServiceFilter(e.target.value)}
@@ -663,7 +724,7 @@ const AdminTicketManagement: React.FC = () => {
               <option value="2">Soporte</option>
               <option value="3">Programación</option>
             </select>
-            
+
             <select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
@@ -675,6 +736,35 @@ const AdminTicketManagement: React.FC = () => {
               <option value="Media">Media</option>
               <option value="Baja">Baja</option>
             </select>
+
+            <select
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="filter-select"
+            >
+              <option value="all">Todas las Fechas</option>
+              <option value="today">Hoy</option>
+              <option value="week">Esta Semana</option>
+              <option value="custom">Rango Personalizado</option>
+            </select>
+
+            {dateFilter === 'custom' && (
+              <div className="custom-date-filters">
+                <input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  className="date-input"
+                />
+                <span className="date-separator">-</span>
+                <input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  className="date-input"
+                />
+              </div>
+            )}
           </div>
         </div>
 
@@ -693,158 +783,95 @@ const AdminTicketManagement: React.FC = () => {
           ) : (
             <div className="tickets-grid-new">
               {filteredTickets.map((ticket) => (
-                <div key={ticket.ID_Service_Request} className="ticket-card-new">
-                  {/* Card Header with Status and Priority */}
-                  <div className="ticket-header-new">
-                    <div className="ticket-identity">
-                      <div className="ticket-code-new">
-                        <FileText size={14} />
-                        {ticket.Ticket_Code}
-                      </div>
-                      <div className="ticket-badges">
-                        <span className={`status-indicator ${getStatusColor(ticket.Status)}`}>
-                          <div className="status-dot"></div>
-                          {ticket.Status}
-                        </span>
-                        <span className={`priority-indicator ${getPriorityColor(ticket.System_Priority)}`}>
-                          <Flag size={12} />
-                          {ticket.System_Priority}
-                        </span>
-                      </div>
+                <div key={ticket.ID_Service_Request} className="ticket-card-minimal">
+                  {/* Top Row: Code and Status */}
+                  <div className="ticket-top-row">
+                    <div className="ticket-code-minimal">
+                      <FileText size={16} />
+                      <span>{ticket.Ticket_Code}</span>
                     </div>
-                    <div className="ticket-time">
+                    <div className="ticket-status-minimal">
+                      <span className={`status-dot-minimal ${getStatusColor(ticket.Status)}`}></span>
+                      <span className="status-text">{ticket.Status}</span>
+                    </div>
+                  </div>
+
+                  {/* Subject */}
+                  <h3 className="ticket-subject-minimal">{ticket.Subject}</h3>
+
+                  {/* Description Preview */}
+                  <p className="ticket-desc-minimal">
+                    {ticket.Description.length > 60 
+                      ? `${ticket.Description.substring(0, 60)}...`
+                      : ticket.Description
+                    }
+                  </p>
+
+                  {/* Info Row */}
+                  <div className="ticket-info-row">
+                    <div className="info-item">
+                      <MapPin size={14} />
+                      <span>{ticket.Direction_Name || 'N/A'}</span>
+                    </div>
+                    <div className="info-item">
+                      <Settings size={14} />
+                      <span>{ticket.Service_Name || 'N/A'}</span>
+                    </div>
+                    <div className="info-item">
                       <Clock size={14} />
-                      {new Date(ticket.Created_at).toLocaleTimeString('es-ES', {
+                      <span>{new Date(ticket.Created_at).toLocaleString('es-ES', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
-                      })}
+                      })}</span>
                     </div>
                   </div>
 
-                  {/* Card Content */}
-                  <div className="ticket-content-new">
-                    <h3 className="ticket-title">{ticket.Subject}</h3>
-                    
-                    <div className="ticket-description-new">
-                      {ticket.Description.length > 80 
-                        ? `${ticket.Description.substring(0, 80)}...`
-                        : ticket.Description
-                      }
+                  {/* Bottom Row: Priority and Actions */}
+                  <div className="ticket-bottom-row">
+                    <div className={`priority-minimal ${getPriorityColor(ticket.System_Priority)}`}>
+                      <Flag size={12} />
+                      <span>{ticket.System_Priority}</span>
                     </div>
-
-                    {/* Metadata Grid */}
-                    <div className="ticket-metadata">
-                      <div className="metadata-item">
-                        <MapPin size={14} />
-                        <div className="metadata-text">
-                          <span className="metadata-label">Ubicación</span>
-                          <span className="metadata-value">{ticket.Coordination_Name}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="metadata-item">
-                        <Settings size={14} />
-                        <div className="metadata-text">
-                          <span className="metadata-label">Servicio</span>
-                          <span className="metadata-value">{ticket.Service_Name}</span>
-                        </div>
-                      </div>
-                      
-                      <div className="metadata-item">
-                        <Calendar size={14} />
-                        <div className="metadata-text">
-                          <span className="metadata-label">Fecha</span>
-                          <span className="metadata-value">{new Date(ticket.Created_at).toLocaleDateString('es-ES', {
-                            day: '2-digit',
-                            month: 'short'
-                          })}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card Footer with Technicians and Actions */}
-                  <div className="ticket-footer-new">
-                    <div className="technician-section">
-                      {ticket.Technicians.length > 0 ? (
-                        <div className="technician-info-new">
-                          <div className="technician-avatars">
-                            {ticket.Technicians.slice(0, 3).map((tech, index) => (
-                              <div 
-                                key={tech.ID_Ticket_Technician} 
-                                className="technician-avatar-small"
-                                title={tech.Technician_Name}
-                              >
-                                {tech.Technician_Name.charAt(0).toUpperCase()}
-                                {tech.Is_Lead && <Star size={8} className="lead-indicator" />}
-                              </div>
-                            ))}
-                            {ticket.Technicians.length > 3 && (
-                              <div className="technician-more">
-                                +{ticket.Technicians.length - 3}
-                              </div>
-                            )}
-                          </div>
-                          <span className="technician-count">
-                            {ticket.Technicians.length} técnico{ticket.Technicians.length > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="technician-unassigned-new">
-                          <UserX size={14} />
-                          <span>Sin asignar</span>
-                        </div>
+                    <div className="ticket-actions-minimal">
+                      <button
+                        className="action-icon-btn"
+                        onClick={() => {
+                          loadTicketDetails(ticket);
+                          setShowDetailModal(true);
+                        }}
+                        title="Ver detalles"
+                      >
+                        <Eye size={18} />
+                      </button>
+                      {ticket.Status !== 'Cerrado' && (
+                        <>
+                          <button
+                            className="action-icon-btn"
+                            onClick={async () => {
+                              await loadTicketDetails(ticket);
+                              await loadAvailableTechnicians(ticket.Fk_TI_Service);
+                              setShowAssignModal(true);
+                            }}
+                            title="Asignar técnico"
+                          >
+                            <User size={18} />
+                          </button>
+                          <button
+                            className="action-icon-btn"
+                            onClick={() => {
+                              loadTicketDetails(ticket);
+                              setNewPriority(ticket.System_Priority);
+                              setShowPriorityModal(true);
+                            }}
+                            title="Cambiar prioridad"
+                          >
+                            <Flag size={18} />
+                          </button>
+                        </>
                       )}
-                    </div>
-
-                    <div className="ticket-actions-new">
-                      {(ticket.Attachments_Count || 0) > 0 && (
-                        <span className="attachment-indicator">
-                          <Paperclip size={14} />
-                          {ticket.Attachments_Count}
-                        </span>
-                      )}
-                      {(ticket.Comments_Count || 0) > 0 && (
-                        <span className="comment-indicator">
-                          <MessageSquare size={14} />
-                          {ticket.Comments_Count}
-                        </span>
-                      )}
-                      
-                      <div className="action-buttons">
-                        <button
-                          className="action-btn-new view-btn-new"
-                          onClick={() => {
-                            loadTicketDetails(ticket);
-                            setShowDetailModal(true);
-                          }}
-                          title="Ver detalles"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          className="action-btn-new assign-btn-new"
-                          onClick={async () => {
-                            await loadTicketDetails(ticket);
-                            await loadAvailableTechnicians(ticket.Fk_TI_Service);
-                            setShowAssignModal(true);
-                          }}
-                          title="Asignar técnico"
-                        >
-                          <User size={16} />
-                        </button>
-                        <button
-                          className="action-btn-new priority-btn-new"
-                          onClick={() => {
-                            loadTicketDetails(ticket);
-                            setNewPriority(ticket.System_Priority);
-                            setShowPriorityModal(true);
-                          }}
-                          title="Cambiar prioridad"
-                        >
-                          <Flag size={16} />
-                        </button>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -896,12 +923,12 @@ const AdminTicketManagement: React.FC = () => {
                         Todos
                         <span className="tab-count">
                           {groupedTechnicians.reduce((acc: number, group: any) => 
-                            acc + group.technicians.filter((t: any) => t.Status === 'Activo' || t.Status === 'Disponible').length, 0)}
+                            acc + group.technicians.filter((t: any) => t.Status === 'Disponible').length, 0)}
                         </span>
                       </button>
                       {groupedTechnicians.map((serviceGroup) => {
                         const availableCount = serviceGroup.technicians.filter((t: any) => 
-                          t.Status === 'Activo' || t.Status === 'Disponible'
+                          t.Status === 'Disponible'
                         ).length;
                         
                         if (availableCount === 0) return null;
@@ -917,7 +944,7 @@ const AdminTicketManagement: React.FC = () => {
 
                         return (
                           <button
-                            key={serviceGroup.service_id}
+                            key={serviceGroup.service_id || serviceGroup.service_name}
                             className={`tab-button ${activeTab === serviceGroup.service_name ? 'active' : ''}`}
                             onClick={() => setActiveTab(serviceGroup.service_name)}
                           >
@@ -926,7 +953,7 @@ const AdminTicketManagement: React.FC = () => {
                             <span className="tab-count">{availableCount}</span>
                           </button>
                         );
-                      })}
+                      }).filter(Boolean)}
                     </div>
                     
                     <div className="tab-content">
@@ -948,7 +975,7 @@ const AdminTicketManagement: React.FC = () => {
                           if (activeTab === 'all') {
                             groupedTechnicians.forEach((group: any) => {
                               const availableTechs = group.technicians.filter((t: any) => 
-                                t.Status === 'Activo' || t.Status === 'Disponible'
+                                t.Status === 'Disponible'
                               );
                               techniciansToShow = [...techniciansToShow, ...availableTechs];
                             });
@@ -956,7 +983,7 @@ const AdminTicketManagement: React.FC = () => {
                             const activeGroup = groupedTechnicians.find((g: any) => g.service_name === activeTab);
                             if (activeGroup) {
                               techniciansToShow = activeGroup.technicians.filter((t: any) => 
-                                t.Status === 'Activo' || t.Status === 'Disponible'
+                                t.Status === 'Disponible'
                               );
                             }
                           }
@@ -1180,6 +1207,43 @@ const AdminTicketManagement: React.FC = () => {
                           <label>Servicio</label>
                           <p>{selectedTicket.Service_Name}</p>
                         </div>
+                        {selectedTicket.Software_System_Name && (
+                          <div className="info-item info-item-full">
+                            <label>Sistema de Software</label>
+                            <p className="software-system">
+                              <Wrench size={14} />
+                              {selectedTicket.Software_System_Name}
+                            </p>
+                          </div>
+                        )}
+                        <div className="info-item info-item-full">
+                          <label>Fecha y Hora de Solicitud</label>
+                          <p className="created-at">
+                            <Calendar size={14} />
+                            {new Date(selectedTicket.Created_at).toLocaleString('es-ES', {
+                              day: '2-digit',
+                              month: 'long',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </div>
+                        {selectedTicket.Status === 'Cerrado' && selectedTicket.Resolved_at && (
+                          <div className="info-item info-item-full">
+                            <label>Fecha y Hora de Cierre</label>
+                            <p className="resolved-at">
+                              <Clock size={14} />
+                              {new Date(selectedTicket.Resolved_at).toLocaleString('es-ES', {
+                                day: '2-digit',
+                                month: 'long',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1194,17 +1258,48 @@ const AdminTicketManagement: React.FC = () => {
                     </div>
                     <div className="detail-card-content">
                       <div className="timeline-container">
-                        {timeline.map((event) => (
-                          <div key={event.ID_Timeline} className="timeline-item">
-                            <div className="timeline-dot"></div>
-                            <div className="timeline-content">
-                              <span className="timeline-event">{event.Description}</span>
-                              <span className="timeline-date">
-                                {new Date(event.Created_at).toLocaleString()}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
+                        {timeline.length === 0 ? (
+                          <p className="no-timeline">No hay eventos registrados</p>
+                        ) : (
+                          timeline
+                            .filter(event => {
+                              // Solo mostrar: creación, asignación de técnicos, y cierre
+                              const desc = (event.Action_Description || '').toLowerCase();
+                              return (
+                                desc.includes('creado') || 
+                                desc.includes('asign') || 
+                                desc.includes('cerrado') ||
+                                desc.includes('closed')
+                              );
+                            })
+                            .map((event) => (
+                              <div key={event.ID_Timeline} className="timeline-item">
+                                <div className="timeline-dot"></div>
+                                <div className="timeline-content">
+                                  <div className="timeline-header">
+                                    <span className="timeline-action">{event.Action_Description}</span>
+                                    <span className="timeline-user">por {event.User_Name || 'Usuario'}</span>
+                                  </div>
+                                  {(event.Old_Status || event.New_Status) && (
+                                    <div className="timeline-status-change">
+                                      {event.Old_Status && <span className="old-status">{event.Old_Status}</span>}
+                                      {(event.Old_Status && event.New_Status) && <span className="status-arrow">→</span>}
+                                      {event.New_Status && <span className="new-status">{event.New_Status}</span>}
+                                    </div>
+                                  )}
+                                  <span className="timeline-date">
+                                    {new Date(event.Event_Date).toLocaleString('es-ES', {
+                                      day: '2-digit',
+                                      month: 'short',
+                                      year: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </span>
+                                </div>
+                              </div>
+                            ))
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1294,23 +1389,46 @@ const AdminTicketManagement: React.FC = () => {
                           ))
                         )}
                       </div>
-                      <div className="comment-form-wrapper">
-                        <textarea
-                          value={newComment}
-                          onChange={(e) => setNewComment(e.target.value)}
-                          placeholder="Escribe un comentario..."
-                          className="comment-textarea"
-                          rows={2}
-                        />
-                        <button
-                          className="btn btn-primary comment-send-btn"
-                          onClick={handleSendComment}
-                          disabled={!newComment.trim() || loading}
-                        >
-                          <Send size={14} />
-                          {loading ? 'Enviando...' : 'Enviar'}
-                        </button>
-                      </div>
+                      {selectedTicket.Status !== 'Cerrado' ? (
+                        <div className="comment-form-wrapper">
+                          <textarea
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="Escribe un comentario..."
+                            className="comment-textarea"
+                            rows={2}
+                          />
+                          <button
+                            className="btn btn-primary comment-send-btn"
+                            onClick={handleSendComment}
+                            disabled={!newComment.trim() || loading}
+                          >
+                            <Send size={14} />
+                            {loading ? 'Enviando...' : 'Enviar'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="ticket-closed-notice">
+                          <div className="closed-notice-icon">
+                            <Lock size={20} />
+                          </div>
+                          <div className="closed-notice-content">
+                            <h4>Ticket Cerrado</h4>
+                            <p>Este ticket ha sido cerrado y no se pueden agregar nuevos comentarios.</p>
+                            {selectedTicket.Resolved_at && (
+                              <span className="closed-notice-time">
+                                Cerrado el {new Date(selectedTicket.Resolved_at).toLocaleString('es-ES', {
+                                  day: '2-digit',
+                                  month: 'long',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 

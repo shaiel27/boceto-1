@@ -212,6 +212,34 @@
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
+.custom-date-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+}
+
+.date-input {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.date-input:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.date-separator {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 /* New Tickets Cards Design */
 .tickets-container {
   background: var(--bg-card);
@@ -438,85 +466,216 @@
   background: linear-gradient(90deg, transparent 0%, var(--accent-blue) 50%, transparent 100%);
 }
 
-/* New Ticket Card Header */
-.ticket-header-new {
-  padding: 1.25rem 1.5rem;
-  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(59, 130, 246, 0.05) 100%);
-  border-bottom: 1px solid var(--border-color);
+/* Minimal Ticket Card Design */
+.ticket-card-minimal {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ticket-card-minimal:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  border-color: #1e3a8a;
+  transform: translateY(-2px);
+}
+
+/* Top Row */
+.ticket-top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: relative;
-  backdrop-filter: blur(10px);
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.ticket-identity {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex: 1;
-}
-
-.ticket-code-new {
+.ticket-code-minimal {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-blue-hover) 100%);
-  color: white;
-  border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  color: #1e3a8a;
 }
 
-.ticket-badges {
+.ticket-status-minimal {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.status-dot-minimal {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot-minimal.status-pending {
+  background: #f59e0b;
+}
+
+.status-dot-minimal.status-progress {
+  background: #3b82f6;
+}
+
+.status-dot-minimal.status-resolved {
+  background: #10b981;
+}
+
+/* Subject */
+.ticket-subject-minimal {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Description */
+.ticket-desc-minimal {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Info Row */
+.ticket-info-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.info-item svg {
+  color: #94a3b8;
+}
+
+/* Bottom Row */
+.ticket-bottom-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.priority-minimal {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.priority-minimal.priority-critical {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.priority-minimal.priority-high {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.priority-minimal.priority-medium {
+  background: #fefce8;
+  color: #ca8a04;
+}
+
+.priority-minimal.priority-low {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.ticket-actions-minimal {
   display: flex;
   gap: 0.5rem;
+}
+
+.action-icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-icon-btn:hover {
+  background: #1e3a8a;
+  color: white;
+  border-color: #1e3a8a;
 }
 
 .status-indicator,
 .priority-indicator {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  white-space: nowrap;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .status-indicator {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(22, 163, 74, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(22, 163, 74, 0.1) 100%);
   color: #16a34a;
-  border: 1px solid rgba(34, 197, 94, 0.3);
+  border: 2px solid rgba(34, 197, 94, 0.4);
 }
 
 .status-indicator.status-pending {
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
   color: #d97706;
-  border: 1px solid rgba(251, 191, 36, 0.3);
+  border: 2px solid rgba(251, 191, 36, 0.4);
 }
 
 .status-indicator.status-progress {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.1) 100%);
   color: #2563eb;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  border: 2px solid rgba(59, 130, 246, 0.4);
 }
 
 .status-indicator.status-resolved {
-  background: linear-gradient(135deg, rgba(156, 163, 175, 0.2) 0%, rgba(107, 114, 128, 0.15) 100%);
+  background: linear-gradient(135deg, rgba(156, 163, 175, 0.15) 0%, rgba(107, 114, 128, 0.1) 100%);
   color: #6b7280;
-  border: 1px solid rgba(156, 163, 175, 0.3);
+  border: 2px solid rgba(156, 163, 175, 0.4);
 }
 
 .priority-indicator.priority-critical {
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%);
   color: #dc2626;
+  border: 2px solid rgba(239, 68, 68, 0.4);
   border: 1px solid rgba(239, 68, 68, 0.3);
   animation: pulse-critical 2s infinite;
 }
@@ -540,11 +699,23 @@
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   background: currentColor;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.3);
+  animation: pulse-status 2s infinite;
+}
+
+@keyframes pulse-status {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
 }
 
 .ticket-time {
@@ -1368,6 +1539,30 @@
   line-height: 1.4;
 }
 
+.info-item-full {
+  grid-column: 1 / -1;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.5rem;
+}
+
+.created-at,
+.resolved-at,
+.software-system {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.created-at svg,
+.resolved-at svg,
+.software-system svg {
+  color: var(--accent-blue);
+}
+
 /* Timeline */
 .timeline-container {
   padding: 0;
@@ -1572,6 +1767,58 @@
 
 .comment-send-btn {
   align-self: flex-end;
+}
+
+/* Ticket Closed Notice */
+.ticket-closed-notice {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  margin-top: 1rem;
+}
+
+.closed-notice-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: #fee2e2;
+  border-radius: 50%;
+  color: #dc2626;
+  flex-shrink: 0;
+}
+
+.closed-notice-content {
+  flex: 1;
+}
+
+.closed-notice-content h4 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #991b1b;
+}
+
+.closed-notice-content p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85rem;
+  color: #7f1d1d;
+  line-height: 1.4;
+}
+
+.closed-notice-time {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: #fecaca;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #991b1b;
 }
 
 /* Actions Card */

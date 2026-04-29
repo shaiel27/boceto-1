@@ -54,6 +54,7 @@ final class TicketService
 
     /**
      * Automatically assign an available technician to a ticket
+     * Uses intelligent selection based on workload and availability
      */
     private function assignTechnicianAutomatically(int $ticketId, int $serviceId): ?array
     {
@@ -61,10 +62,16 @@ final class TicketService
             $availableTechnicians = $this->technicianModel->getAvailableTechniciansByService($serviceId);
 
             if (empty($availableTechnicians)) {
+                error_log("No available technicians found for service {$serviceId}");
                 return null;
             }
 
+            // Select technician with lowest workload (already ordered by Active_Tickets_Count ASC)
             $selectedTechnician = $availableTechnicians[0];
+
+            error_log("Auto-assigning technician: {$selectedTechnician['First_Name']} {$selectedTechnician['Last_Name']} " .
+                      "(Active Tickets: {$selectedTechnician['Active_Tickets_Count']}, Priority: {$selectedTechnician['priority_score']})");
+
             $assigned = $this->technicianModel->assignToTicket(
                 $ticketId,
                 $selectedTechnician['ID_Technicians'],
@@ -76,10 +83,14 @@ final class TicketService
                 // Update ticket status to 'En Proceso'
                 $this->ticketModel->updateStatus($ticketId, 'En Proceso');
 
+                error_log("Successfully auto-assigned technician {$selectedTechnician['ID_Technicians']} to ticket {$ticketId}");
+
                 return [
                     'id' => $selectedTechnician['ID_Technicians'],
                     'name' => $selectedTechnician['First_Name'] . ' ' . $selectedTechnician['Last_Name']
                 ];
+            } else {
+                error_log("Failed to assign technician {$selectedTechnician['ID_Technicians']} to ticket {$ticketId}");
             }
 
             return null;

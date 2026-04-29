@@ -138,12 +138,14 @@ class ServiceRequest {
 
     public function getAll($limit = 50, $offset = 0) {
         $query = "SELECT sr.*, u.Full_Name as user_name, o.Name_Office as office_name,
-                         ts.Type_Service as service_type_name, b.Name_Boss as boss_name
+                         ts.Type_Service as service_type_name, b.Name_Boss as boss_name,
+                         ss.System_Name as software_system_name
                   FROM " . $this->table_name . " sr
                   LEFT JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
                   LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                   LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
                   LEFT JOIN Boss b ON sr.Fk_Boss_Requester = b.ID_Boss
+                  LEFT JOIN Software_Systems ss ON sr.Fk_Software_System = ss.ID_System
                   ORDER BY sr.Created_at DESC
                   LIMIT :limit OFFSET :offset";
 
@@ -163,25 +165,27 @@ class ServiceRequest {
     }
 
     public function getById($id) {
-        $query = "SELECT sr.*, u.Full_Name as user_name, o.Name_Office as office_name, 
-                         ts.Type_Service as service_type_name, b.Name_Boss as boss_name
+        $query = "SELECT sr.*, u.Full_Name as user_name, o.Name_Office as office_name,
+                         ts.Type_Service as service_type_name, b.Name_Boss as boss_name,
+                         ss.System_Name as software_system_name
                   FROM " . $this->table_name . " sr
                   LEFT JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
                   LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                   LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
                   LEFT JOIN Boss b ON sr.Fk_Boss_Requester = b.ID_Boss
+                  LEFT JOIN Software_Systems ss ON sr.Fk_Software_System = ss.ID_System
                   WHERE sr.ID_Service_Request = :id";
-        
+
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":id", $id);
         $stmt->execute();
-        
+
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         if ($result) {
             $result['technicians'] = $this->getTicketTechnicians($id);
         }
-        
+
         return $result;
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/ServiceRequest.php';
 require_once __DIR__ . '/../models/TicketComment.php';
+require_once __DIR__ . '/../models/TicketTimeline.php';
 require_once __DIR__ . '/../models/Technician.php';
 require_once __DIR__ . '/../DTO/CreateTicketDTO.php';
 require_once __DIR__ . '/../Services/TicketService.php';
@@ -23,6 +24,7 @@ try {
 
     $ticket = new ServiceRequest($db);
     $comment = new TicketComment($db);
+    $timeline = new TicketTimeline($db);
     $technician = new Technician($db);
     $ticketService = new TicketService($db, $ticket, $technician);
 } catch (Exception $e) {
@@ -178,6 +180,32 @@ switch ($method) {
                 ]);
                 break;
 
+            case 'timeline':
+                error_log("=== GET TIMELINE ACTION ===");
+                error_log("Ticket ID: " . ($_GET['id'] ?? 'NOT SET'));
+                
+                if (!isset($_GET['id'])) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'ID no proporcionado'
+                    ]);
+                    break;
+                }
+
+                $ticketId = (int)$_GET['id'];
+                $timelineEvents = $timeline->getByTicket($ticketId);
+                
+                error_log("Timeline count: " . count($timelineEvents));
+                error_log("Timeline data: " . json_encode($timelineEvents));
+                
+                echo json_encode([
+                    'success' => true,
+                    'data' => $timelineEvents,
+                    'count' => count($timelineEvents)
+                ]);
+                break;
+
             case 'available-technicians':
                 if (!isset($_GET['service_id'])) {
                     http_response_code(400);
@@ -328,7 +356,8 @@ switch ($method) {
             }
 
             $isLead = $data->is_lead ?? true;
-            if ($technician->assignToTicket($data->ticket_id, $data->technician_id, $currentUserId, $isLead)) {
+            // Asignación manual: permitir asignación cruzada ($allowCrossService = true)
+            if ($technician->assignToTicket($data->ticket_id, $data->technician_id, $currentUserId, $isLead, true)) {
                 // Update ticket status to "En Proceso" if it was pending
                 $ticketData = $ticket->getById($data->ticket_id);
                 if ($ticketData && $ticketData['Status'] === 'Pendiente') {
@@ -354,7 +383,7 @@ switch ($method) {
             error_log("=== assign-multiple-technicians called ===");
             error_log("Request data: " . json_encode($data));
             error_log("Current user role: " . ($currentUserRole ?? 'null'));
-            
+
             if (!isset($data->ticket_id) || !isset($data->technician_ids) || !is_array($data->technician_ids)) {
                 http_response_code(400);
                 echo json_encode([
@@ -381,8 +410,9 @@ switch ($method) {
             foreach ($data->technician_ids as $index => $techId) {
                 $isLead = ($index === 0); // First technician is lead
                 error_log("Assigning technician {$techId} to ticket {$data->ticket_id} (isLead: " . ($isLead ? 'true' : 'false') . ")");
-                
-                if ($technician->assignToTicket($data->ticket_id, $techId, $currentUserId, $isLead)) {
+
+                // Asignación manual: permitir asignación cruzada ($allowCrossService = true)
+                if ($technician->assignToTicket($data->ticket_id, $techId, $currentUserId, $isLead, true)) {
                     $assignedCount++;
                     error_log("Successfully assigned technician {$techId}");
                 } else {

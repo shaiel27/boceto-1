@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -150,11 +150,21 @@ const TechnicianManagement: React.FC = () => {
 
   // Cargar datos del API
   useEffect(() => {
-    loadData();
+    loadData(true); // Carga inicial con loading state
+
+    // Actualizar datos cada 30 segundos para reflejar cambios de estado (almuerzo, tickets)
+    // Intervalo más largo para evitar sensación de recarga constante
+    const interval = setInterval(() => {
+      loadData(false); // Polling sin loading state
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (showLoading: boolean = true) => {
+    if (showLoading) {
+      setLoading(true);
+    }
     setError(null);
     try {
       console.log('Cargando técnicos...');
@@ -173,8 +183,8 @@ const TechnicianManagement: React.FC = () => {
             First_Name: tech.First_Name,
             Last_Name: tech.Last_Name,
             Email: tech.Email,
-            Status: tech.Status,
-            Status_Reason: null as 'ticket' | 'lunch' | 'schedule' | null,
+            Status: tech.Status, // Usar el estado del backend (actualizado por lógica completa)
+            Status_Reason: tech.Status_Reason as 'ticket' | 'lunch' | 'schedule' | null, // Usar el motivo del backend
             Fk_Lunch_Block: tech.Fk_Lunch_Block ? parseInt(tech.Fk_Lunch_Block) : undefined,
             Lunch_Block: tech.Lunch_Block || null,
             Lunch_Block_Hours: tech.Lunch_Block?.hours || null,
@@ -187,29 +197,33 @@ const TechnicianManagement: React.FC = () => {
             AssignedTickets: []
           };
 
-          // Calcular status en tiempo real basado en hora Venezuela
-          const statusResult = calculateRealTimeStatus(mappedTechnician);
-          mappedTechnician.Status = statusResult.status;
-          mappedTechnician.Status_Reason = statusResult.reason;
+          console.log(`Técnico mapeado: ${tech.First_Name} ${tech.Last_Name} - Estado: ${tech.Status} - Motivo: ${tech.Status_Reason}`);
 
           return mappedTechnician;
         });
 
-        console.log('Técnicos mapeados:', mappedTechnicians);
+        // Solo actualizar estado si hay cambios reales para evitar re-renders innecesarios
+        const hasChanges = JSON.stringify(mappedTechnicians) !== JSON.stringify(technicians);
+        
+        if (hasChanges || technicians.length === 0) {
+          console.log('Datos han cambiado, actualizando estado...');
+          
+          // Filter technicians based on user role
+          if (isTechnician() && user) {
+            const ownProfile = mappedTechnicians.find((t: Technician) => t.Fk_Users === user.id);
 
-        // Filter technicians based on user role
-        if (isTechnician() && user) {
-          const ownProfile = mappedTechnicians.find((t: Technician) => t.Fk_Users === user.id);
-
-          if (ownProfile) {
-            setCurrentUserTechnician(ownProfile);
-            setTechnicians([ownProfile]);
+            if (ownProfile) {
+              setCurrentUserTechnician(ownProfile);
+              setTechnicians([ownProfile]);
+            } else {
+              setError('No se encontró tu perfil de técnico');
+              setTechnicians([]);
+            }
           } else {
-            setError('No se encontró tu perfil de técnico');
-            setTechnicians([]);
+            setTechnicians(mappedTechnicians);
           }
         } else {
-          setTechnicians(mappedTechnicians);
+          console.log('Datos sin cambios, omitiendo actualización de estado');
         }
       } else {
         setError(techResponse.message || 'Error al cargar técnicos');
@@ -243,25 +257,27 @@ const TechnicianManagement: React.FC = () => {
   };
 
   // Filtrar técnicos
-  const filteredTechnicians = technicians.filter(technician => {
-    const fullName = `${technician.First_Name} ${technician.Last_Name}`.toLowerCase();
-    const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
-                         technician.Email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (technician.TI_Services && technician.TI_Services.length > 0 && 
-                          technician.TI_Services.some(s => s.Type_Service.toLowerCase().includes(searchTerm.toLowerCase())));
-    const matchesStatus = statusFilter === 'all' || technician.Status === statusFilter;
-    const matchesService = serviceFilter === 'all' ||
-                         (technician.TI_Services && technician.TI_Services.length > 0 &&
-                          technician.TI_Services.some(s => s.ID_TI_Service.toString() === serviceFilter));
+  const filteredTechnicians = useMemo(() => {
+    return technicians.filter(technician => {
+      const fullName = `${technician.First_Name} ${technician.Last_Name}`.toLowerCase();
+      const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
+                           technician.Email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (technician.TI_Services && technician.TI_Services.length > 0 && 
+                            technician.TI_Services.some(s => s.Type_Service.toLowerCase().includes(searchTerm.toLowerCase())));
+      const matchesStatus = statusFilter === 'all' || technician.Status === statusFilter;
+      const matchesService = serviceFilter === 'all' ||
+                           (technician.TI_Services && technician.TI_Services.length > 0 &&
+                            technician.TI_Services.some(s => s.ID_TI_Service.toString() === serviceFilter));
 
-    return matchesSearch && matchesStatus && matchesService;
-  });
+      return matchesSearch && matchesStatus && matchesService;
+    });
+  }, [technicians, searchTerm, statusFilter, serviceFilter]);
 
   // Agrupar técnicos por servicio TI
-  const groupTechniciansByService = (techs: Technician[]) => {
+  const groupedTechnicians = useMemo(() => {
     const groups: Record<string, Technician[]> = {};
     
-    techs.forEach(tech => {
+    filteredTechnicians.forEach((tech: Technician) => {
       if (tech.TI_Services && tech.TI_Services.length > 0) {
         // Usar el primer servicio como categoría principal
         const primaryService = tech.TI_Services[0].Type_Service;
@@ -279,27 +295,27 @@ const TechnicianManagement: React.FC = () => {
     });
     
     return groups;
-  };
+  }, [filteredTechnicians]);
 
-  const groupedTechnicians = groupTechniciansByService(filteredTechnicians);
-
-  // Estadísticas
-  const stats = {
-    total: technicians.length,
-    available: technicians.filter(t => t.Status === 'Disponible').length,
-    busy: technicians.filter(t => t.Status === 'Ocupado').length,
-    inactive: technicians.filter(t => t.Status === 'Inactivo').length,
-    totalTickets: technicians.reduce((acc, t) => acc + (t.Tickets_Assigned || 0), 0),
-    totalResolved: technicians.reduce((acc, t) => acc + (t.Tickets_Resolved || 0), 0)
-  };
+  // Calcular estadísticas de técnicos
+  const stats = useMemo(() => {
+    return {
+      total: technicians.length,
+      available: technicians.filter(t => t.Status === 'Disponible').length,
+      busy: technicians.filter(t => t.Status === 'Ocupado').length,
+      inactive: technicians.filter(t => t.Status === 'Inactivo').length,
+      totalTickets: technicians.reduce((acc, t) => acc + (t.Tickets_Assigned || 0), 0),
+      totalResolved: technicians.reduce((acc, t) => acc + (t.Tickets_Resolved || 0), 0)
+    };
+  }, [technicians]);
 
   // Manejo de formulario
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,
       [e.target.name]: e.target.value
     }));
-  };
+  }, []);
 
   const handleScheduleChange = (day: string, field: 'start' | 'end', value: string) => {
     setFormData(prev => ({
@@ -607,38 +623,20 @@ const TechnicianManagement: React.FC = () => {
     return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   };
 
-  // Calcular status en tiempo real basado en hora Venezuela, horario, almuerzo y tickets
-  const calculateRealTimeStatus = (technician: Technician): { status: 'Disponible' | 'Ocupado' | 'Inactivo', reason: 'ticket' | 'lunch' | 'schedule' | null } => {
-    const venezuelaTime = getVenezuelaTime();
-    const currentTimeStr = venezuelaTime.toTimeString().substring(0, 5); // HH:MM
-
-    // Obtener horario del día actual
-    const todaySchedule = getTodaySchedule(technician.Schedules);
-
-    // Si no tiene horario para hoy, está inactivo por horario
-    if (!todaySchedule) {
-      return { status: 'Inactivo', reason: 'schedule' };
+  // Obtener etiqueta descriptiva del motivo del estado
+  const getStatusReasonLabel = (reason: 'ticket' | 'lunch' | 'schedule' | null): string => {
+    switch (reason) {
+      case 'ticket':
+        return 'Con tickets activos';
+      case 'lunch':
+        return 'En bloque de almuerzo';
+      case 'schedule':
+        return 'Fuera de horario laboral';
+      case null:
+        return 'Disponible';
+      default:
+        return '';
     }
-
-    // Verificar si está dentro del horario laboral
-    if (!isTimeInRange(currentTimeStr, todaySchedule.Work_Start_Time, todaySchedule.Work_End_Time)) {
-      return { status: 'Inactivo', reason: 'schedule' };
-    }
-
-    // Verificar si está en bloque de almuerzo
-    if (technician.Lunch_Block_Hours) {
-      const [lunchStart, lunchEnd] = technician.Lunch_Block_Hours.split(' - ');
-      if (lunchStart && lunchEnd && isTimeInRange(currentTimeStr, lunchStart, lunchEnd)) {
-        return { status: 'Inactivo', reason: 'lunch' };
-      }
-    }
-
-    // Si tiene tickets asignados, está ocupado por ticket; si no, disponible
-    if ((technician.Tickets_Assigned || 0) > 0) {
-      return { status: 'Ocupado', reason: 'ticket' };
-    }
-
-    return { status: 'Disponible', reason: null };
   };
 
   return (
@@ -846,7 +844,7 @@ const TechnicianManagement: React.FC = () => {
             </div>
           ) : currentView === 'list' ? (
             <div className="technicians-grouped-container">
-              {Object.entries(groupedTechnicians).map(([serviceName, techs]) => (
+              {Object.entries(groupedTechnicians).map(([serviceName, techs]: [string, Technician[]]) => (
                 <div key={serviceName} className="service-group">
                   <div className="service-group-header">
                     <div className="service-group-info">
@@ -859,11 +857,11 @@ const TechnicianManagement: React.FC = () => {
                     <div className="service-group-stats">
                       <span className="group-stat">
                         <UserCheck size={14} />
-                        {techs.filter(t => t.Status === 'Disponible').length} disponibles
+                        {techs.filter((t: Technician) => t.Status === 'Disponible').length} disponibles
                       </span>
                       <span className="group-stat">
                         <Clock size={14} />
-                        {techs.reduce((acc, t) => acc + (t.Tickets_Assigned || 0), 0)} tickets
+                        {techs.reduce((acc: number, t: Technician) => acc + (t.Tickets_Assigned || 0), 0)} tickets
                       </span>
                     </div>
                   </div>
@@ -881,7 +879,7 @@ const TechnicianManagement: React.FC = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {techs.map(technician => {
+                        {techs.map((technician: Technician) => {
                           const todaySchedule = getTodaySchedule(technician.Schedules);
                           const todayScheduleText = todaySchedule
                             ? `${todaySchedule.Work_Start_Time} - ${todaySchedule.Work_End_Time}`
@@ -935,11 +933,16 @@ const TechnicianManagement: React.FC = () => {
                                     {technician.Status}
                                   </span>
                                   {technician.Status_Reason && (
-                                    <span className={`status-reason status-reason-${technician.Status_Reason}`}>
-                                      {technician.Status_Reason === 'ticket' && <Ticket size={12} />}
-                                      {technician.Status_Reason === 'lunch' && <Coffee size={12} />}
-                                      {technician.Status_Reason === 'schedule' && <Clock size={12} />}
-                                    </span>
+                                    <div className="status-reason-container">
+                                      <span className={`status-reason status-reason-${technician.Status_Reason}`}>
+                                        {technician.Status_Reason === 'ticket' && <Ticket size={12} />}
+                                        {technician.Status_Reason === 'lunch' && <Coffee size={12} />}
+                                        {technician.Status_Reason === 'schedule' && <Clock size={12} />}
+                                      </span>
+                                      <span className="status-reason-text">
+                                        {getStatusReasonLabel(technician.Status_Reason)}
+                                      </span>
+                                    </div>
                                   )}
                                 </div>
                               </td>

@@ -370,6 +370,13 @@ INSERT INTO Service_Request (Fk_Office, Fk_User_Requester, Fk_TI_Service, Fk_Bos
 (7, 5, 2, 2, 'Computadora no enciende', 'La computadora no responde al encender', 'Alta', 'En Proceso'),
 (5, 4, 3, 1, 'Error en sistema de facturación', 'El sistema muestra error al generar reportes', 'Media', 'Pendiente');
 
+-- Timeline de prueba
+INSERT INTO Ticket_Timeline (Fk_Service_Request, Fk_User_Actor, Action_Description, Old_Status, New_Status, Event_Date) VALUES
+(1, 1, 'Ticket creado por el usuario', NULL, 'Pendiente', NOW()),
+(2, 1, 'Ticket creado por el usuario', NULL, 'Pendiente', NOW()),
+(2, 1, 'Estado cambiado a En Proceso', 'Pendiente', 'En Proceso', NOW() + INTERVAL 1 HOUR),
+(3, 1, 'Ticket creado por el usuario', NULL, 'Pendiente', NOW());
+
 INSERT INTO Lunch_Blocks (Block_Name, Start_Time, End_Time) VALUES
 ('Primer turno', '11:30:00', '12:10:00'),
 ('Segundo turno', '12:10:00', '12:50:00'),

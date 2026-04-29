@@ -24,26 +24,105 @@ final class Technician
         $this->conn = $db;
     }
 
-    public function getAll() {
-        $query = "SELECT t.ID_Technicians, t.Fk_Users, t.First_Name, t.Last_Name, 
+    public function getAll(): array {
+        // Actualizar estado de técnicos basado en horario laboral, almuerzo y tickets antes de retornar
+        $currentDay = date('l');
+        $currentTime = date('H:i:s');
+        $dayMap = [
+            'Monday' => 'Lunes',
+            'Tuesday' => 'Martes',
+            'Wednesday' => 'Miercoles',
+            'Thursday' => 'Jueves',
+            'Friday' => 'Viernes',
+            'Saturday' => 'Sabado',
+            'Sunday' => 'Domingo'
+        ];
+        $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
+        $this->updateTechniciansStatus($currentDaySpanish, $currentTime);
+
+        $query = "SELECT t.ID_Technicians, t.Fk_Users, t.First_Name, t.Last_Name,
                           t.Fk_Lunch_Block, t.Status, t.created_at,
                           u.Email, u.Username,
                           lb.Block_Name, lb.Start_Time, lb.End_Time,
-                          (SELECT COUNT(*) FROM Ticket_Technicians tt 
-                           JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
-                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status != 'Resuelto') as Tickets_Assigned,
-                          (SELECT COUNT(*) FROM Ticket_Technicians tt 
-                           JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
-                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status = 'Resuelto') as Tickets_Resolved
+                          (SELECT COUNT(*) FROM Ticket_Technicians tt
+                           JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status != 'Cerrado') as Tickets_Assigned,
+                          (SELECT COUNT(*) FROM Ticket_Technicians tt
+                           JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status = 'Cerrado') as Tickets_Resolved
                   FROM " . $this->table_name . " t
                   LEFT JOIN Users u ON t.Fk_Users = u.ID_Users
                   LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
                   ORDER BY t.created_at DESC";
-        
+
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
-        
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $technicians = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Add status reason to each technician
+        foreach ($technicians as &$tech) {
+            $tech['Status_Reason'] = $this->calculateStatusReasonForTechnician($tech['ID_Technicians'], $currentDaySpanish, $currentTime);
+        }
+
+        return $technicians;
+    }
+
+    /**
+     * Calculate status reason for a specific technician
+     */
+    private function calculateStatusReasonForTechnician(int $technicianId, string $currentDaySpanish, string $currentTime): ?string {
+        $query = "SELECT sched.Work_Start_Time, sched.Work_End_Time,
+                         lb.Start_Time as Lunch_Start, lb.End_Time as Lunch_End,
+                         (SELECT COUNT(*)
+                          FROM Ticket_Technicians tt
+                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                          WHERE tt.Fk_Technician = :techIdSub
+                          AND tt.Status = 'Activo'
+                          AND sr.Status != 'Cerrado') as Active_Tickets_Count
+                  FROM " . $this->table_name . " t
+                  LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
+                  LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = :currentDay
+                  WHERE t.ID_Technicians = :techIdMain";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":techIdSub", $technicianId);
+        $stmt->bindParam(":techIdMain", $technicianId);
+        $stmt->bindParam(":currentDay", $currentDaySpanish);
+        $stmt->execute();
+        $tech = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$tech) {
+            return null;
+        }
+
+        $currentSeconds = strtotime($currentTime);
+        $workStart = $tech['Work_Start_Time'];
+        $workEnd = $tech['Work_End_Time'];
+        $lunchStart = $tech['Lunch_Start'];
+        $lunchEnd = $tech['Lunch_End'];
+        $activeTickets = $tech['Active_Tickets_Count'];
+
+        // Determine if in work hours
+        $isInWorkHours = false;
+        if ($workStart && $workEnd) {
+            $workStartSeconds = strtotime($workStart);
+            $workEndSeconds = strtotime($workEnd);
+            $isInWorkHours = ($currentSeconds >= $workStartSeconds && $currentSeconds <= $workEndSeconds);
+        }
+
+        // Determine if in lunch block
+        $isInLunchBlock = false;
+        if ($lunchStart && $lunchEnd) {
+            $lunchStartSeconds = strtotime($lunchStart);
+            $lunchEndSeconds = strtotime($lunchEnd);
+            $isInLunchBlock = ($currentSeconds >= $lunchStartSeconds && $currentSeconds <= $lunchEndSeconds);
+        }
+
+        // Determine if has active tickets
+        $hasActiveTickets = ($activeTickets > 0);
+
+        return $this->calculateStatusReason($isInWorkHours, $isInLunchBlock, $hasActiveTickets);
     }
 
     public function getById($id) {
@@ -53,10 +132,10 @@ final class Technician
                           lb.Block_Name, lb.Start_Time, lb.End_Time,
                           (SELECT COUNT(*) FROM Ticket_Technicians tt 
                            JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
-                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status != 'Resuelto') as Tickets_Assigned,
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status != 'Cerrado') as Tickets_Assigned,
                           (SELECT COUNT(*) FROM Ticket_Technicians tt 
                            JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
-                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status = 'Resuelto') as Tickets_Resolved
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status = 'Cerrado') as Tickets_Resolved
                   FROM " . $this->table_name . " t
                   LEFT JOIN Users u ON t.Fk_Users = u.ID_Users
                   LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
@@ -310,6 +389,7 @@ final class Technician
         // Get current day and time
         $currentDay = date('l'); // Monday, Tuesday, etc.
         $currentTime = date('H:i:s');
+        $yesterday = date('Y-m-d H:i:s', strtotime('-24 hours'));
 
         // Map English day names to Spanish
         $dayMap = [
@@ -323,8 +403,23 @@ final class Technician
         ];
         $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
 
-        // Primero intentar obtener técnicos en horario laboral
+        // Actualizar estado de técnicos basado en horario laboral, almuerzo y tickets
+        $this->updateTechniciansStatus($currentDaySpanish, $currentTime);
+
+        // Estrategia Round-Robin Ponderado:
+        // Puntaje = (Tickets Activos × 2) + (Asignaciones Recientes × 1)
+        // Esto garantiza rotación equitativa mientras respeta la carga de trabajo actual
         $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                         (SELECT COUNT(*)
+                          FROM Ticket_Technicians tt
+                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                          WHERE tt.Fk_Technician = t.ID_Technicians
+                          AND tt.Status = 'Activo'
+                          AND sr.Status != 'Cerrado') as Active_Tickets_Count,
+                         (SELECT COUNT(*)
+                          FROM Ticket_Technicians tt
+                          WHERE tt.Fk_Technician = t.ID_Technicians
+                          AND tt.Assigned_At >= :yesterday) as Recent_Assignments_Count,
                          1 as priority_score
                   FROM " . $this->table_name . " t
                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
@@ -332,24 +427,18 @@ final class Technician
                   LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
                   WHERE ts.Fk_TI_Service = :serviceId
                     AND ts.Status = 'Activo'
-                    AND t.Status IN ('Activo', 'Disponible')
+                    AND t.Status = 'Disponible'
                     AND sched.Day_Of_Week = :currentDay
                     AND sched.Work_Start_Time <= :currentTime
                     AND sched.Work_End_Time >= :currentTime
                     AND (lb.Start_Time IS NULL OR lb.Start_Time > :currentTime OR lb.End_Time <= :currentTime)
-                    AND t.ID_Technicians NOT IN (
-                        SELECT tt.Fk_Technician
-                        FROM Ticket_Technicians tt
-                        INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                        WHERE tt.Status = 'Activo'
-                          AND sr.Status = 'En Proceso'
-                    )
-                  ORDER BY t.First_Name, t.Last_Name";
+                  ORDER BY (Active_Tickets_Count * 2 + Recent_Assignments_Count) ASC, t.First_Name, t.Last_Name";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":serviceId", $serviceId);
         $stmt->bindParam(":currentDay", $currentDaySpanish);
         $stmt->bindParam(":currentTime", $currentTime);
+        $stmt->bindParam(":yesterday", $yesterday);
 
         try {
             $stmt->execute();
@@ -358,38 +447,175 @@ final class Technician
             // Si no hay técnicos en horario, obtener todos los disponibles sin restricción de tiempo
             if (empty($technicians)) {
                 error_log("No technicians available in working hours, getting all available technicians for service {$serviceId}");
-                
+
                 $fallbackQuery = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                                         (SELECT COUNT(*)
+                                          FROM Ticket_Technicians tt
+                                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                                          WHERE tt.Fk_Technician = t.ID_Technicians
+                                          AND tt.Status = 'Activo'
+                                          AND sr.Status != 'Cerrado') as Active_Tickets_Count,
+                                         (SELECT COUNT(*)
+                                          FROM Ticket_Technicians tt
+                                          WHERE tt.Fk_Technician = t.ID_Technicians
+                                          AND tt.Assigned_At >= :yesterday) as Recent_Assignments_Count,
                                          2 as priority_score
                                   FROM " . $this->table_name . " t
                                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
                                   WHERE ts.Fk_TI_Service = :serviceId
                                     AND ts.Status = 'Activo'
-                                    AND t.Status IN ('Activo', 'Disponible')
-                                    AND t.ID_Technicians NOT IN (
-                                        SELECT tt.Fk_Technician
-                                        FROM Ticket_Technicians tt
-                                        INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                                        WHERE tt.Status = 'Activo'
-                                          AND sr.Status = 'En Proceso'
-                                    )
-                                  ORDER BY priority_score, t.First_Name, t.Last_Name";
+                                    AND t.Status = 'Disponible'
+                                  ORDER BY (Active_Tickets_Count * 2 + Recent_Assignments_Count) ASC, priority_score, t.First_Name, t.Last_Name";
 
                 $fallbackStmt = $this->conn->prepare($fallbackQuery);
                 $fallbackStmt->bindParam(":serviceId", $serviceId);
+                $fallbackStmt->bindParam(":yesterday", $yesterday);
                 $fallbackStmt->execute();
                 $technicians = $fallbackStmt->fetchAll(PDO::FETCH_ASSOC);
             }
 
             error_log("Available technicians for service {$serviceId} at {$currentDaySpanish} {$currentTime}: " . count($technicians));
             foreach ($technicians as $tech) {
-                error_log("  - {$tech['First_Name']} {$tech['Last_Name']} (Priority: {$tech['priority_score']})");
+                $score = ($tech['Active_Tickets_Count'] * 2) + $tech['Recent_Assignments_Count'];
+                error_log("  - {$tech['First_Name']} {$tech['Last_Name']} " .
+                          "(Active: {$tech['Active_Tickets_Count']}, Recent: {$tech['Recent_Assignments_Count']}, Score: {$score})");
             }
 
             return $technicians;
         } catch(PDOException $exception) {
             error_log("Error getting available technicians: " . $exception->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Actualizar estado de técnicos basado en horario laboral, bloque de almuerzo y tickets activos
+     * Lógica completa de estados según esquema de base de datos:
+     * - 'Inactivo': Fuera de horario laboral
+     * - 'Ocupado': Con tickets activos o en bloque de almuerzo
+     * - 'Disponible': En horario laboral, fuera de almuerzo, sin tickets
+     */
+    /**
+     * Calculate status reason for a technician based on current conditions
+     * Returns: 'schedule' (outside work hours), 'lunch' (in lunch block), 'ticket' (has active tickets), or null (available)
+     */
+    private function calculateStatusReason(bool $isInWorkHours, bool $isInLunchBlock, bool $hasActiveTickets): ?string
+    {
+        if (!$isInWorkHours) {
+            return 'schedule';
+        }
+        if ($isInLunchBlock) {
+            return 'lunch';
+        }
+        if ($hasActiveTickets) {
+            return 'ticket';
+        }
+        return null; // Available
+    }
+
+    private function updateTechniciansStatus($currentDaySpanish, $currentTime) {
+        try {
+            error_log("=== updateTechniciansStatus ===");
+            error_log("Current Day: {$currentDaySpanish}, Current Time: {$currentTime}");
+
+            // Obtener todos los técnicos con sus horarios, bloques de almuerzo y tickets activos
+            $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                             lb.Start_Time as Lunch_Start, lb.End_Time as Lunch_End,
+                             sched.Work_Start_Time, sched.Work_End_Time,
+                             (SELECT COUNT(*)
+                              FROM Ticket_Technicians tt
+                              INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                              WHERE tt.Fk_Technician = t.ID_Technicians
+                              AND tt.Status = 'Activo'
+                              AND sr.Status != 'Cerrado') as Active_Tickets_Count
+                      FROM " . $this->table_name . " t
+                      LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
+                      LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = :currentDay";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":currentDay", $currentDaySpanish);
+            $stmt->execute();
+            $technicians = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            error_log("Found " . count($technicians) . " technicians to update status");
+
+            // Convertir tiempo actual a segundos
+            $currentSeconds = strtotime($currentTime);
+
+            foreach ($technicians as $tech) {
+                $workStart = $tech['Work_Start_Time'];
+                $workEnd = $tech['Work_End_Time'];
+                $lunchStart = $tech['Lunch_Start'];
+                $lunchEnd = $tech['Lunch_End'];
+                $currentStatus = $tech['Status'];
+                $activeTickets = $tech['Active_Tickets_Count'];
+
+                error_log("Technician: {$tech['First_Name']} {$tech['Last_Name']}");
+                error_log("  Work Schedule: {$workStart} - {$workEnd}");
+                error_log("  Lunch Block: {$lunchStart} - {$lunchEnd}");
+                error_log("  Current Time: {$currentTime}");
+                error_log("  Current Status: {$currentStatus}");
+                error_log("  Active Tickets: {$activeTickets}");
+
+                // Determinar si está en horario laboral
+                $isInWorkHours = false;
+                if ($workStart && $workEnd) {
+                    $workStartSeconds = strtotime($workStart);
+                    $workEndSeconds = strtotime($workEnd);
+                    $isInWorkHours = ($currentSeconds >= $workStartSeconds && $currentSeconds <= $workEndSeconds);
+                }
+
+                // Determinar si está en bloque de almuerzo
+                $isInLunchBlock = false;
+                if ($lunchStart && $lunchEnd) {
+                    $lunchStartSeconds = strtotime($lunchStart);
+                    $lunchEndSeconds = strtotime($lunchEnd);
+                    $isInLunchBlock = ($currentSeconds >= $lunchStartSeconds && $currentSeconds <= $lunchEndSeconds);
+                }
+
+                // Determinar si tiene tickets activos
+                $hasActiveTickets = ($activeTickets > 0);
+
+                error_log("  Is in work hours: " . ($isInWorkHours ? 'YES' : 'NO'));
+                error_log("  Is in lunch block: " . ($isInLunchBlock ? 'YES' : 'NO'));
+                error_log("  Has active tickets: " . ($hasActiveTickets ? 'YES' : 'NO'));
+
+                // Determinar nuevo estado según lógica completa
+                $newStatus = $currentStatus;
+                $statusReason = $this->calculateStatusReason($isInWorkHours, $isInLunchBlock, $hasActiveTickets);
+
+                if (!$isInWorkHours) {
+                    // Fuera de horario laboral -> Inactivo
+                    $newStatus = 'Inactivo';
+                    error_log("  Reason: Outside work hours");
+                } elseif ($isInLunchBlock) {
+                    // En bloque de almuerzo -> Ocupado
+                    $newStatus = 'Ocupado';
+                    error_log("  Reason: In lunch block");
+                } elseif ($hasActiveTickets) {
+                    // Tiene tickets activos -> Ocupado
+                    $newStatus = 'Ocupado';
+                    error_log("  Reason: Has active tickets");
+                } else {
+                    // En horario laboral, fuera de almuerzo, sin tickets -> Disponible
+                    $newStatus = 'Disponible';
+                    error_log("  Reason: Available (in work hours, no lunch, no tickets)");
+                }
+
+                // Actualizar estado si cambió
+                if ($newStatus !== $currentStatus) {
+                    $updateQuery = "UPDATE " . $this->table_name . " SET Status = :newStatus WHERE ID_Technicians = :techId";
+                    $updateStmt = $this->conn->prepare($updateQuery);
+                    $updateStmt->bindParam(":newStatus", $newStatus);
+                    $updateStmt->bindParam(":techId", $tech['ID_Technicians']);
+                    $updateStmt->execute();
+                    error_log("  ACTION: Updated from '{$currentStatus}' to '{$newStatus}'");
+                } else {
+                    error_log("  ACTION: No change needed (already '{$currentStatus}')");
+                }
+            }
+        } catch(PDOException $exception) {
+            error_log("Error updating technicians status: " . $exception->getMessage());
         }
     }
 
@@ -452,16 +678,83 @@ final class Technician
         }
     }
 
-    public function assignToTicket($ticketId, $technicianId, $assignedBy = null, $isLead = true) {
-        $query = "INSERT INTO Ticket_Technicians (Fk_Service_Request, Fk_Technician, Is_Lead, Assigned_At, Status)
-                  VALUES (:ticketId, :technicianId, :isLead, NOW(), 'Activo')";
-
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":ticketId", $ticketId);
-        $stmt->bindParam(":technicianId", $technicianId);
-        $stmt->bindParam(":isLead", $isLead, PDO::PARAM_BOOL);
-
+    public function assignToTicket($ticketId, $technicianId, $assignedBy = null, $isLead = true, $allowCrossService = false) {
         try {
+            // Validación 1: Verificar si el técnico existe
+            $techQuery = "SELECT ID_Technicians, Status FROM " . $this->table_name . " WHERE ID_Technicians = :technicianId";
+            $techStmt = $this->conn->prepare($techQuery);
+            $techStmt->bindParam(":technicianId", $technicianId);
+            $techStmt->execute();
+            $technician = $techStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$technician) {
+                error_log("Error: Técnico {$technicianId} no existe");
+                return false;
+            }
+
+            // Validación 2: Verificar si el técnico está disponible
+            if ($technician['Status'] === 'Ocupado') {
+                error_log("Error: Técnico {$technicianId} está ocupado y no puede ser asignado");
+                return false;
+            }
+
+            // Validación 3: Verificar si el técnico tiene el servicio del ticket
+            // Solo aplicar esta validación en asignación automática ($allowCrossService = false)
+            if (!$allowCrossService) {
+                $ticketQuery = "SELECT Fk_TI_Service FROM Service_Request WHERE ID_Service_Request = :ticketId";
+                $ticketStmt = $this->conn->prepare($ticketQuery);
+                $ticketStmt->bindParam(":ticketId", $ticketId);
+                $ticketStmt->execute();
+                $ticket = $ticketStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$ticket) {
+                    error_log("Error: Ticket {$ticketId} no existe");
+                    return false;
+                }
+
+                $serviceId = $ticket['Fk_TI_Service'];
+
+                $serviceQuery = "SELECT COUNT(*) as has_service
+                                FROM Technicians_Service
+                                WHERE Fk_Technicians = :technicianId AND Fk_TI_Service = :serviceId AND Status = 'Activo'";
+                $serviceStmt = $this->conn->prepare($serviceQuery);
+                $serviceStmt->bindParam(":technicianId", $technicianId);
+                $serviceStmt->bindParam(":serviceId", $serviceId);
+                $serviceStmt->execute();
+                $serviceResult = $serviceStmt->fetch(PDO::FETCH_ASSOC);
+
+                if (!$serviceResult || $serviceResult['has_service'] == 0) {
+                    error_log("Error: Técnico {$technicianId} no tiene el servicio {$serviceId} requerido por el ticket");
+                    return false;
+                }
+            } else {
+                error_log("Asignación manual: Permitiendo asignación cruzada para técnico {$technicianId} al ticket {$ticketId}");
+            }
+
+            // Validación 4: Verificar si el técnico ya está asignado a este ticket
+            $existingQuery = "SELECT COUNT(*) as already_assigned
+                             FROM Ticket_Technicians
+                             WHERE Fk_Service_Request = :ticketId AND Fk_Technician = :technicianId AND Status = 'Activo'";
+            $existingStmt = $this->conn->prepare($existingQuery);
+            $existingStmt->bindParam(":ticketId", $ticketId);
+            $existingStmt->bindParam(":technicianId", $technicianId);
+            $existingStmt->execute();
+            $existingResult = $existingStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existingResult['already_assigned'] > 0) {
+                error_log("Error: Técnico {$technicianId} ya está asignado al ticket {$ticketId}");
+                return false;
+            }
+
+            // Todas las validaciones pasaron, proceder con la asignación
+            $query = "INSERT INTO Ticket_Technicians (Fk_Service_Request, Fk_Technician, Is_Lead, Assigned_At, Status)
+                      VALUES (:ticketId, :technicianId, :isLead, NOW(), 'Activo')";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":ticketId", $ticketId);
+            $stmt->bindParam(":technicianId", $technicianId);
+            $stmt->bindParam(":isLead", $isLead, PDO::PARAM_BOOL);
+
             if ($stmt->execute()) {
                 // Update technician status to Ocupado
                 $updateQuery = "UPDATE " . $this->table_name . " SET Status = 'Ocupado' WHERE ID_Technicians = :technicianId";
@@ -475,14 +768,14 @@ final class Technician
                 $updateTicketStmt->bindParam(":ticketId", $ticketId);
                 $updateTicketStmt->execute();
 
-                error_log("Successfully assigned technician {$technicianId} to ticket {$ticketId} and updated ticket status to 'En Proceso'");
+                $assignmentType = $allowCrossService ? 'manual (cross-service)' : 'automatic';
+                error_log("Successfully assigned technician {$technicianId} to ticket {$ticketId} ({$assignmentType}) and updated ticket status to 'En Proceso'");
                 return true;
             } else {
                 error_log("Failed to execute assignToTicket query for technician {$technicianId} to ticket {$ticketId}");
             }
         } catch(PDOException $exception) {
             error_log("Error assigning technician: " . $exception->getMessage());
-            error_log("Query: " . $query);
             error_log("Params: ticketId={$ticketId}, technicianId={$technicianId}, isLead=" . ($isLead ? 'true' : 'false'));
         }
 

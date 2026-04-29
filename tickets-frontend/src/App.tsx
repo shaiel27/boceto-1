@@ -25,7 +25,7 @@ function App() {
         <div className="App">
           <Router>
             <Routes>
-              <Route path="/" element={<ProtectedRoute allowedRoles={[1]}><AdminManagementPage /></ProtectedRoute>} />
+              <Route path="/" element={<ProtectedRoute allowedRoles={[1]}><DashboardPage /></ProtectedRoute>} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/admin" element={<ProtectedRoute allowedRoles={[1]}><AdminManagementPage /></ProtectedRoute>} />
@@ -37,7 +37,7 @@ function App() {
               <Route path="/admin/register-user" element={<ProtectedRoute allowedRoles={[1]}><UserRegistrationPage /></ProtectedRoute>} />
               <Route path="/technician" element={<ProtectedRoute allowedRoles={[2]}><TechnicianDashboardPage /></ProtectedRoute>} />
               <Route path="/requester" element={<ProtectedRoute allowedRoles={[3]}><RequesterDashboardPage /></ProtectedRoute>} />
-              <Route path="/new-ticket" element={<ProtectedRoute allowedRoles={[3]}><TicketForm /></ProtectedRoute>} />
+              <Route path="/new-ticket" element={<ProtectedRoute allowedRoles={[1, 3]}><TicketForm /></ProtectedRoute>} />
             </Routes>
           </Router>
         </div>
