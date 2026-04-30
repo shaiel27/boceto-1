@@ -99,12 +99,17 @@ switch ($path) {
 
     case '/api/dashboard':
     case '/api/dashboard/':
-        require_once '../api-dashboard.php';
+        require_once 'api-dashboard.php';
+        break;
+
+    case '/api/dashboard-public-temp':
+    case '/api/dashboard-public-temp/':
+        require_once 'api-dashboard-public-temp.php';
         break;
 
     case '/api/dashboard-public':
     case '/api/dashboard-public/':
-        require_once '../api-dashboard-public.php';
+        require_once 'api-dashboard-public.php';
         break;
 
     default:

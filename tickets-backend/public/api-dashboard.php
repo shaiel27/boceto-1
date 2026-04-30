@@ -1,6 +1,14 @@
 <?php
 declare(strict_types=1);
 
+// Enable error reporting for debugging
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
+// Log errors to file instead of displaying
+ini_set('log_errors', '1');
+ini_set('error_log', __DIR__ . '/../error.log');
+
 // CORS headers
 header("Access-Control-Allow-Origin: http://localhost:3000");
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
@@ -13,6 +21,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit(0);
 }
+
+// Custom error handler to return JSON on errors
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    error_log("PHP Error: [$errno] $errstr in $errfile on line $errline");
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Internal server error',
+        'error' => $errstr,
+        'file' => $errfile,
+        'line' => $errline
+    ]);
+    exit;
+});
+
+set_exception_handler(function($exception) {
+    error_log("Uncaught Exception: " . $exception->getMessage());
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Internal server error',
+        'error' => $exception->getMessage(),
+        'file' => $exception->getFile(),
+        'line' => $exception->getLine()
+    ]);
+    exit;
+});
 
 // Initialize JWT service and auth middleware
 require_once __DIR__ . '/../src/Services/JwtService.php';

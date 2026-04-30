@@ -4,8 +4,8 @@ import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import TechnicianAnalytics from './TechnicianAnalytics';
 import {
-  Users,
   User,
+  Users,
   UserPlus,
   Search,
   Filter,
@@ -14,6 +14,7 @@ import {
   Phone,
   Calendar,
   Award,
+  Lock,
   TrendingUp,
   Activity,
   Download,
@@ -39,7 +40,12 @@ import {
   Wrench,
   Building,
   Heart,
-  Ticket
+  Ticket,
+  BadgeCheck,
+  CheckCircle,
+  AlertCircle,
+  XCircle,
+  ClipboardList
 } from 'lucide-react';
 import './TechnicianManagement.css';
 
@@ -352,28 +358,65 @@ const TechnicianManagement: React.FC = () => {
       return;
     }
     
-    const selectedServices = tiServices.filter(s => formData.ti_services.includes(s.ID_TI_Service));
+    // Validar que al menos un servicio esté seleccionado
+    if (formData.ti_services.length === 0) {
+      alert('Debe seleccionar al menos un servicio TI');
+      return;
+    }
+
+    // Preparar datos según estructura de database.sql
+    const username = `${formData.first_name.toLowerCase()}.${formData.last_name.toLowerCase()}`;
+    const full_name = `${formData.first_name} ${formData.last_name}`;
+    
+    // Preparar horarios según Technician_Schedules - formato esperado por backend PHP-PRO
+    const schedulesObject: Record<string, { start: string; end: string }> = {};
+    Object.entries(formData.schedules).forEach(([day, times]) => {
+      if (times.start && times.end) {
+        schedulesObject[day] = {
+          start: times.start + ':00',
+          end: times.end + ':00'
+        };
+      }
+    });
 
     console.log('Creating technician with data:', {
-      username: formData.first_name.toLowerCase() + '.' + formData.last_name.toLowerCase(),
-      email: formData.email,
-      first_name: formData.first_name,
-      last_name: formData.last_name,
-      lunch_block: formData.fk_lunch_block || null,
-      services: formData.ti_services,
-      schedules: formData.schedules
+      // Users table
+      user: {
+        Fk_Role: 2, // Role: Tecnico
+        Email: formData.email,
+        Password: formData.password,
+        Username: username,
+        Full_Name: full_name
+      },
+      // Technicians table
+      technician: {
+        First_Name: formData.first_name,
+        Last_Name: formData.last_name,
+        Fk_Lunch_Block: formData.fk_lunch_block ? parseInt(formData.fk_lunch_block) : null,
+        Status: formData.status
+      },
+      // Technicians_Service table
+      services: formData.ti_services.map(serviceId => ({
+        Fk_TI_Service: serviceId,
+        Status: 'Activo'
+      })),
+      // Technician_Schedules table
+      schedules: schedulesObject
     });
 
     try {
       const response = await ApiService.createTechnician({
-        username: formData.first_name.toLowerCase() + '.' + formData.last_name.toLowerCase(),
+        username: username,
         email: formData.email,
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name,
-        lunch_block: formData.fk_lunch_block || null,
+        full_name: full_name,
+        role_id: 2, // Tecnico
+        lunch_block: formData.fk_lunch_block ? parseInt(formData.fk_lunch_block) : null,
+        status: formData.status,
         services: formData.ti_services,
-        schedules: formData.schedules
+        schedules: schedulesObject
       });
 
       if (response.success) {
@@ -385,6 +428,7 @@ const TechnicianManagement: React.FC = () => {
         alert(response.message || 'Error al crear técnico');
       }
     } catch (error) {
+      console.error('Error al crear técnico:', error);
       alert('Error de conexión al crear técnico');
     }
   };
@@ -647,7 +691,7 @@ const TechnicianManagement: React.FC = () => {
           <div className="header-content">
             <div className="title-section">
               <h1 className="page-title">
-                <Users size={28} />
+                <BadgeCheck size={28} />
                 {isTechnician() ? 'Mi Perfil Técnico' : 'Equipo Técnico Municipal'}
               </h1>
               <p className="page-description">
@@ -704,56 +748,31 @@ const TechnicianManagement: React.FC = () => {
           </div>
         </header>
 
-        {/* Stats Cards */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon">
-              <Users size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">{stats.total}</h3>
-              <p className="stat-label">Total Técnicos</p>
-            </div>
+        {/* Stats Bar - Compact Design */}
+        <div className="stats-bar">
+          <div className="stat-item">
+            <span className="stat-label">Total Técnicos</span>
+            <span className="stat-value">{stats.total}</span>
           </div>
-          
-          <div className="stat-card success">
-            <div className="stat-icon">
-              <UserCheck size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">{stats.available}</h3>
-              <p className="stat-label">Disponibles</p>
-            </div>
+          <div className="stat-separator"></div>
+          <div className="stat-item success">
+            <span className="stat-label">Disponibles</span>
+            <span className="stat-value">{stats.available}</span>
           </div>
-
-          <div className="stat-card warning">
-            <div className="stat-icon">
-              <Clock size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">{stats.busy}</h3>
-              <p className="stat-label">Ocupados</p>
-            </div>
+          <div className="stat-separator"></div>
+          <div className="stat-item warning">
+            <span className="stat-label">Ocupados</span>
+            <span className="stat-value">{stats.busy}</span>
           </div>
-
-          <div className="stat-card danger">
-            <div className="stat-icon">
-              <UserX size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">{stats.inactive}</h3>
-              <p className="stat-label">Inactivos</p>
-            </div>
+          <div className="stat-separator"></div>
+          <div className="stat-item danger">
+            <span className="stat-label">Inactivos</span>
+            <span className="stat-value">{stats.inactive}</span>
           </div>
-          
-          <div className="stat-card info">
-            <div className="stat-icon">
-              <TrendingUp size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">{stats.totalTickets}</h3>
-              <p className="stat-label">Tickets Asignados</p>
-            </div>
+          <div className="stat-separator"></div>
+          <div className="stat-item info">
+            <span className="stat-label">Tickets Asignados</span>
+            <span className="stat-value">{stats.totalTickets}</span>
           </div>
         </div>
 
@@ -838,7 +857,7 @@ const TechnicianManagement: React.FC = () => {
             </div>
           ) : filteredTechnicians.length === 0 ? (
             <div className="empty-state">
-              <Users size={48} className="empty-icon" />
+              <BadgeCheck size={48} className="empty-icon" />
               <h3>No se encontraron técnicos</h3>
               <p>Intenta ajustar los filtros de búsqueda</p>
             </div>
@@ -1006,175 +1025,210 @@ const TechnicianManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Modal Agregar Técnico */}
+      {/* Modal Agregar Técnico - Nuevo Diseño */}
       {showAddModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Agregar Nuevo Técnico</h2>
-              <button className="close-btn" onClick={() => setShowAddModal(false)}>
-                <X size={20} />
+          <div className="modal-content-full">
+            <div className="modal-header-full">
+              <div className="modal-title-section-full">
+                <h2>Agregar Nuevo Técnico</h2>
+                <p className="modal-subtitle-full">Complete la información para registrar un nuevo profesional en el sistema</p>
+              </div>
+              <button className="close-btn-full" onClick={() => setShowAddModal(false)}>
+                <X size={24} />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="technician-form">
-              <div className="form-section">
-                <h3>Información de Cuenta</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>Primer Nombre</label>
-                    <input
-                      type="text"
-                      name="first_name"
-                      value={formData.first_name}
-                      onChange={handleInputChange}
-                      required
-                      maxLength={25}
-                    />
+            <form onSubmit={handleSubmit} className="technician-form-full">
+              <div className="form-sections-container">
+                {/* Información Personal */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <User size={20} />
+                    <h3>Información Personal</h3>
                   </div>
-                  
-                  <div className="form-group">
-                    <label>Apellido</label>
-                    <input
-                      type="text"
-                      name="last_name"
-                      value={formData.last_name}
-                      onChange={handleInputChange}
-                      required
-                      maxLength={25}
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Contraseña *</label>
-                    <input
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="Mínimo 6 caracteres"
-                    />
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Confirmar Contraseña *</label>
-                    <input
-                      type="password"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="Repita la contraseña"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-section">
-                <h3>Información del Técnico</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>Estado</label>
-                    <select
-                      name="status"
-                      value={formData.status}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="Activo">Activo</option>
-                      <option value="Inactivo">Inactivo</option>
-                    </select>
-                  </div>
-                  
-                  <div className="form-group">
-                    <label>Bloque de Almuerzo (Opcional)</label>
-                    <select
-                      name="fk_lunch_block"
-                      value={formData.fk_lunch_block}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Sin bloque de almuerzo</option>
-                      {lunchBlocks.map(block => (
-                        <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
-                          {block.Block_Name} ({block.Start_Time} - {block.End_Time})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-section">
-                <h3>Servicios TI</h3>
-                <div className="form-grid">
-                  <div className="form-group full-width">
-                    <label>Seleccione los servicios que puede ofrecer:</label>
-                    <div className="services-checkbox-group">
-                      {tiServices.map(service => (
-                        <label key={service.ID_TI_Service} className="service-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={formData.ti_services.includes(service.ID_TI_Service)}
-                            onChange={() => handleServiceToggle(service.ID_TI_Service)}
-                          />
-                          <span>{service.Type_Service} - {service.Details}</span>
-                        </label>
-                      ))}
+                  <div className="form-grid-full">
+                    <div className="form-group-full">
+                      <label>Primer Nombre</label>
+                      <input
+                        type="text"
+                        name="first_name"
+                        value={formData.first_name}
+                        onChange={handleInputChange}
+                        required
+                        maxLength={25}
+                        placeholder="Ej: Juan"
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label>Apellido</label>
+                      <input
+                        type="text"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleInputChange}
+                        required
+                        maxLength={25}
+                        placeholder="Ej: Pérez"
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label>Email</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="correo@ejemplo.com"
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label>Nombre de Usuario</label>
+                      <input
+                        type="text"
+                        value={`${formData.first_name.toLowerCase()}.${formData.last_name.toLowerCase()}`}
+                        disabled
+                        placeholder="Se genera automáticamente"
+                      />
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="form-section">
-                <h3>Horario de Trabajo</h3>
-                <div className="form-grid">
-                  <div className="form-group full-width">
-                    <label>Horarios por día de la semana:</label>
-                    <div className="schedule-grid">
-                      {Object.keys(formData.schedules).map(day => (
-                        <div key={day} className="schedule-day-row">
-                          <span className="day-label">{day}</span>
-                          <div className="time-inputs">
-                            <input
-                              type="time"
-                              value={formData.schedules[day as keyof typeof formData.schedules].start}
-                              onChange={(e) => handleScheduleChange(day, 'start', e.target.value)}
-                              className="time-input"
-                            />
-                            <span className="time-separator">-</span>
-                            <input
-                              type="time"
-                              value={formData.schedules[day as keyof typeof formData.schedules].end}
-                              onChange={(e) => handleScheduleChange(day, 'end', e.target.value)}
-                              className="time-input"
-                            />
+                {/* Credenciales de Acceso */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <Lock size={20} />
+                    <h3>Credenciales de Acceso</h3>
+                  </div>
+                  <div className="form-grid-full">
+                    <div className="form-group-full">
+                      <label>Contraseña</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Mínimo 6 caracteres"
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label>Confirmar Contraseña</label>
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="Repita la contraseña"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Información del Técnico */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <Briefcase size={20} />
+                    <h3>Información del Técnico</h3>
+                  </div>
+                  <div className="form-grid-full">
+                    <div className="form-group-full">
+                      <label>Estado Inicial</label>
+                      <select
+                        name="status"
+                        value={formData.status}
+                        onChange={handleInputChange}
+                        required
+                      >
+                        <option value="Disponible">Disponible</option>
+                        <option value="Inactivo">Inactivo</option>
+                      </select>
+                    </div>
+                    <div className="form-group-full">
+                      <label>Bloque de Almuerzo (Opcional)</label>
+                      <select
+                        name="fk_lunch_block"
+                        value={formData.fk_lunch_block}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Sin bloque de almuerzo</option>
+                        {lunchBlocks.map(block => (
+                          <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
+                            {block.Block_Name} ({block.Start_Time} - {block.End_Time})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Servicios TI */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <Wrench size={20} />
+                    <h3>Servicios TI</h3>
+                  </div>
+                  <div className="services-grid-full">
+                    {tiServices.map(service => (
+                      <label 
+                        key={service.ID_TI_Service} 
+                        className={`service-card-full ${formData.ti_services.includes(service.ID_TI_Service) ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.ti_services.includes(service.ID_TI_Service)}
+                          onChange={() => handleServiceToggle(service.ID_TI_Service)}
+                        />
+                        <div className="service-content-full">
+                          <span className="service-icon-full">{getServiceIcon(service.Type_Service)}</span>
+                          <div className="service-text-full">
+                            <span className="service-name-full">{service.Type_Service}</span>
+                            <span className="service-desc-full">{service.Details}</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Horario de Trabajo */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <Calendar size={20} />
+                    <h3>Horario de Trabajo</h3>
+                  </div>
+                  <div className="schedule-grid-full">
+                    {Object.keys(formData.schedules).map(day => (
+                      <div key={day} className="schedule-row-full">
+                        <div className="schedule-day-full">{day}</div>
+                        <div className="schedule-times-full">
+                          <input
+                            type="time"
+                            value={formData.schedules[day as keyof typeof formData.schedules].start}
+                            onChange={(e) => handleScheduleChange(day, 'start', e.target.value)}
+                          />
+                          <span className="schedule-separator-full">-</span>
+                          <input
+                            type="time"
+                            value={formData.schedules[day as keyof typeof formData.schedules].end}
+                            onChange={(e) => handleScheduleChange(day, 'end', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
               
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
+              <div className="form-actions-full">
+                <button type="button" className="btn-full btn-secondary-full" onClick={() => setShowAddModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  <Plus size={16} />
-                  Agregar Técnico y Crear Usuario
+                <button type="submit" className="btn-full btn-primary-full">
+                  <Plus size={18} />
+                  Crear Técnico
                 </button>
               </div>
             </form>
@@ -1182,194 +1236,198 @@ const TechnicianManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Modal Editar Técnico */}
+      {/* Modal Editar Técnico - Nuevo Diseño Full-Screen */}
       {showEditModal && selectedTechnician && (
         <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <div className="modal-title-section">
+          <div className="modal-content-full">
+            <div className="modal-header-full">
+              <div className="modal-title-section-full">
                 <h2>Editar Técnico</h2>
-                <p className="modal-subtitle">Modifica la información del técnico</p>
+                <p className="modal-subtitle-full">Modifica la información del técnico seleccionado</p>
               </div>
-              <button className="close-btn" onClick={() => setShowEditModal(false)}>
-                <X size={20} />
+              <button className="close-btn-full" onClick={() => setShowEditModal(false)}>
+                <X size={24} />
               </button>
             </div>
 
-            <form onSubmit={handleUpdate} className="technician-form">
-              {/* Información Personal */}
-              <div className="form-section">
-                <div className="section-header">
-                  <User size={18} />
-                  <h3>Información Personal</h3>
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>Primer Nombre</label>
-                    <input
-                      type="text"
-                      name="first_name"
-                      value={formData.first_name}
-                      onChange={handleInputChange}
-                      required
-                      maxLength={25}
-                      placeholder="Ej: Juan"
-                    />
+            <form onSubmit={handleUpdate} className="technician-form-full">
+              <div className="form-sections-container">
+                {/* Información Personal */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <User size={20} />
+                    <h3>Información Personal</h3>
                   </div>
-
-                  <div className="form-group">
-                    <label>Apellido</label>
-                    <input
-                      type="text"
-                      name="last_name"
-                      value={formData.last_name}
-                      onChange={handleInputChange}
-                      required
-                      maxLength={25}
-                      placeholder="Ej: Pérez"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Email</label>
-                    <input
-                      type="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      placeholder="correo@ejemplo.com"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Nueva Contraseña (Opcional)</label>
-                    <input
-                      type="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      placeholder="Dejar vacío para mantener la actual"
-                      minLength={6}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Confirmar Contraseña</label>
-                    <input
-                      type="password"
-                      name="confirmPassword"
-                      value={formData.confirmPassword}
-                      onChange={handleInputChange}
-                      placeholder="Repita la nueva contraseña"
-                      disabled={!formData.password}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Información del Técnico */}
-              <div className="form-section">
-                <div className="section-header">
-                  <Briefcase size={18} />
-                  <h3>Información del Técnico</h3>
-                </div>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label>Bloque de Almuerzo</label>
-                    <select
-                      name="fk_lunch_block"
-                      value={formData.fk_lunch_block}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Sin bloque de almuerzo</option>
-                      {lunchBlocks.map(block => (
-                        <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
-                          {block.Block_Name} ({block.Start_Time} - {block.End_Time})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Servicios TI */}
-              <div className="form-section">
-                <div className="section-header">
-                  <Wrench size={18} />
-                  <h3>Servicios TI</h3>
-                  <span className="service-count">{formData.ti_services.length} seleccionados</span>
-                </div>
-                <div className="form-grid">
-                  <div className="form-group full-width">
-                    <label>Seleccione los servicios que puede ofrecer (múltiple selección):</label>
-                    <div className="services-checkbox-group">
-                      {tiServices.map(service => {
-                        const isChecked = formData.ti_services.includes(Number(service.ID_TI_Service));
-                        return (
-                          <label
-                            key={service.ID_TI_Service}
-                            className={`service-checkbox ${isChecked ? 'checked' : ''}`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => handleServiceToggle(Number(service.ID_TI_Service))}
-                            />
-                            <div className="service-info">
-                              <span className="service-name">{service.Type_Service}</span>
-                              <span className="service-desc">{service.Details}</span>
-                            </div>
-                          </label>
-                        );
-                      })}
+                  <div className="form-grid-full">
+                    <div className="form-group-full">
+                      <label>Primer Nombre</label>
+                      <input
+                        type="text"
+                        name="first_name"
+                        value={formData.first_name}
+                        onChange={handleInputChange}
+                        required
+                        maxLength={25}
+                        placeholder="Ej: Juan"
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label>Apellido</label>
+                      <input
+                        type="text"
+                        name="last_name"
+                        value={formData.last_name}
+                        onChange={handleInputChange}
+                        required
+                        maxLength={25}
+                        placeholder="Ej: Pérez"
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label>Email</label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        placeholder="correo@ejemplo.com"
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label>Nombre de Usuario</label>
+                      <input
+                        type="text"
+                        value={`${formData.first_name.toLowerCase()}.${formData.last_name.toLowerCase()}`}
+                        disabled
+                        placeholder="Se genera automáticamente"
+                      />
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Horario de Trabajo */}
-              <div className="form-section">
-                <div className="section-header">
-                  <Clock size={18} />
-                  <h3>Horario de Trabajo</h3>
+                {/* Credenciales de Acceso */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <Lock size={20} />
+                    <h3>Credenciales de Acceso</h3>
+                  </div>
+                  <div className="form-grid-full">
+                    <div className="form-group-full">
+                      <label>Nueva Contraseña (Opcional)</label>
+                      <input
+                        type="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        placeholder="Dejar vacío para mantener la actual"
+                        minLength={6}
+                      />
+                    </div>
+                    <div className="form-group-full">
+                      <label>Confirmar Contraseña</label>
+                      <input
+                        type="password"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        placeholder="Repita la nueva contraseña"
+                        disabled={!formData.password}
+                      />
+                    </div>
+                  </div>
                 </div>
-                <div className="form-grid">
-                  <div className="form-group full-width">
-                    <label>Horarios por día de la semana:</label>
-                    <div className="schedule-grid">
-                      {Object.keys(formData.schedules).map(day => (
-                        <div key={day} className="schedule-day-row">
-                          <span className="day-label">{day}</span>
-                          <div className="time-inputs">
-                            <input
-                              type="time"
-                              value={formData.schedules[day as keyof typeof formData.schedules].start}
-                              onChange={(e) => handleScheduleChange(day, 'start', e.target.value)}
-                              className="time-input"
-                            />
-                            <span className="time-separator">-</span>
-                            <input
-                              type="time"
-                              value={formData.schedules[day as keyof typeof formData.schedules].end}
-                              onChange={(e) => handleScheduleChange(day, 'end', e.target.value)}
-                              className="time-input"
-                            />
+
+                {/* Información del Técnico */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <Briefcase size={20} />
+                    <h3>Información del Técnico</h3>
+                  </div>
+                  <div className="form-grid-full">
+                    <div className="form-group-full">
+                      <label>Bloque de Almuerzo (Opcional)</label>
+                      <select
+                        name="fk_lunch_block"
+                        value={formData.fk_lunch_block}
+                        onChange={handleInputChange}
+                      >
+                        <option value="">Sin bloque de almuerzo</option>
+                        {lunchBlocks.map(block => (
+                          <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
+                            {block.Block_Name} ({block.Start_Time} - {block.End_Time})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Servicios TI */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <Wrench size={20} />
+                    <h3>Servicios TI</h3>
+                    <span className="service-count-badge">{formData.ti_services.length} seleccionados</span>
+                  </div>
+                  <div className="services-grid-full">
+                    {tiServices.map(service => (
+                      <label 
+                        key={service.ID_TI_Service} 
+                        className={`service-card-full ${formData.ti_services.includes(service.ID_TI_Service) ? 'selected' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formData.ti_services.includes(service.ID_TI_Service)}
+                          onChange={() => handleServiceToggle(service.ID_TI_Service)}
+                        />
+                        <div className="service-content-full">
+                          <span className="service-icon-full">{getServiceIcon(service.Type_Service)}</span>
+                          <div className="service-text-full">
+                            <span className="service-name-full">{service.Type_Service}</span>
+                            <span className="service-desc-full">{service.Details}</span>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Horario de Trabajo */}
+                <div className="form-section-full">
+                  <div className="section-header-full">
+                    <Calendar size={20} />
+                    <h3>Horario de Trabajo</h3>
+                  </div>
+                  <div className="schedule-grid-full">
+                    {Object.keys(formData.schedules).map(day => (
+                      <div key={day} className="schedule-row-full">
+                        <div className="schedule-day-full">{day}</div>
+                        <div className="schedule-times-full">
+                          <input
+                            type="time"
+                            value={formData.schedules[day as keyof typeof formData.schedules].start}
+                            onChange={(e) => handleScheduleChange(day, 'start', e.target.value)}
+                          />
+                          <span className="schedule-separator-full">-</span>
+                          <input
+                            type="time"
+                            value={formData.schedules[day as keyof typeof formData.schedules].end}
+                            onChange={(e) => handleScheduleChange(day, 'end', e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-
-              {/* Acciones */}
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
+              
+              <div className="form-actions-full">
+                <button type="button" className="btn-full btn-secondary-full" onClick={() => setShowEditModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  <Edit size={16} />
+                <button type="submit" className="btn-full btn-primary-full">
+                  <Edit size={18} />
                   Guardar Cambios
                 </button>
               </div>

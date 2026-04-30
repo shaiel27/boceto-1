@@ -37,7 +37,7 @@ const ModernSidebar: React.FC = () => {
       id: 'dashboard',
       label: 'Dashboard',
       icon: <BarChart3 size={20} />,
-      path: '/admin'
+      path: '/'
     },
     {
       id: 'tickets',
@@ -111,7 +111,11 @@ const ModernSidebar: React.FC = () => {
   };
 
   const isActive = (path?: string) => {
-    return path ? location.pathname === path : false;
+    if (!path) return false;
+    if (path === '/') {
+      return location.pathname === '/' || location.pathname === '/admin';
+    }
+    return location.pathname === path;
   };
 
   return (

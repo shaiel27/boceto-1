@@ -419,7 +419,7 @@ final class Technician
                          (SELECT COUNT(*)
                           FROM Ticket_Technicians tt
                           WHERE tt.Fk_Technician = t.ID_Technicians
-                          AND tt.Assigned_At >= :yesterday) as Recent_Assignments_Count,
+                          AND tt.Assigned_At >= '{$yesterday}') as Recent_Assignments_Count,
                          1 as priority_score
                   FROM " . $this->table_name . " t
                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
@@ -429,16 +429,18 @@ final class Technician
                     AND ts.Status = 'Activo'
                     AND t.Status = 'Disponible'
                     AND sched.Day_Of_Week = :currentDay
-                    AND sched.Work_Start_Time <= :currentTime
-                    AND sched.Work_End_Time >= :currentTime
-                    AND (lb.Start_Time IS NULL OR lb.Start_Time > :currentTime OR lb.End_Time <= :currentTime)
+                    AND sched.Work_Start_Time <= :currentTime1
+                    AND sched.Work_End_Time >= :currentTime2
+                    AND (lb.Start_Time IS NULL OR lb.Start_Time > :currentTime3 OR lb.End_Time <= :currentTime4)
                   ORDER BY (Active_Tickets_Count * 2 + Recent_Assignments_Count) ASC, t.First_Name, t.Last_Name";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":serviceId", $serviceId);
         $stmt->bindParam(":currentDay", $currentDaySpanish);
-        $stmt->bindParam(":currentTime", $currentTime);
-        $stmt->bindParam(":yesterday", $yesterday);
+        $stmt->bindParam(":currentTime1", $currentTime);
+        $stmt->bindParam(":currentTime2", $currentTime);
+        $stmt->bindParam(":currentTime3", $currentTime);
+        $stmt->bindParam(":currentTime4", $currentTime);
 
         try {
             $stmt->execute();
@@ -458,7 +460,7 @@ final class Technician
                                          (SELECT COUNT(*)
                                           FROM Ticket_Technicians tt
                                           WHERE tt.Fk_Technician = t.ID_Technicians
-                                          AND tt.Assigned_At >= :yesterday) as Recent_Assignments_Count,
+                                          AND tt.Assigned_At >= '{$yesterday}') as Recent_Assignments_Count,
                                          2 as priority_score
                                   FROM " . $this->table_name . " t
                                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
@@ -469,7 +471,6 @@ final class Technician
 
                 $fallbackStmt = $this->conn->prepare($fallbackQuery);
                 $fallbackStmt->bindParam(":serviceId", $serviceId);
-                $fallbackStmt->bindParam(":yesterday", $yesterday);
                 $fallbackStmt->execute();
                 $technicians = $fallbackStmt->fetchAll(PDO::FETCH_ASSOC);
             }
@@ -871,6 +872,11 @@ final class Technician
      * Assign pending tickets to available technicians
      * This method should be called periodically or when a technician becomes available
      */
+    /**
+     * Assign pending tickets to available technicians
+     * Uses intelligent selection based on workload, schedule, and availability
+     * @return array Assignment results with count and details
+     */
     public function assignPendingTickets(): array
     {
         $assignedCount = 0;
@@ -887,27 +893,28 @@ final class Technician
             $pendingStmt->execute();
             $pendingTickets = $pendingStmt->fetchAll(PDO::FETCH_ASSOC);
 
+            error_log("Found " . count($pendingTickets) . " pending tickets to assign");
+
             foreach ($pendingTickets as $ticket) {
                 $ticketId = $ticket['ID_Service_Request'];
                 $serviceId = (int)$ticket['Fk_TI_Service'];
 
-                // Get all technicians for this service (without time restrictions)
-                $availableTechs = $this->getAllTechniciansByService($serviceId);
+                // Get available technicians for this service (with time restrictions)
+                // This method already filters by: work schedule, lunch block, and status = 'Disponible'
+                $availableTechs = $this->getAvailableTechniciansByService($serviceId);
 
-                // Filter only technicians with status 'Disponible' or 'Activo'
-                $availableTechs = array_filter($availableTechs, function($tech) {
-                    return in_array($tech['Status'], ['Disponible', 'Activo']);
-                });
-
-                // Reindex array after filtering
-                $availableTechs = array_values($availableTechs);
+                error_log("Found " . count($availableTechs) . " available technicians for service {$serviceId}");
 
                 if (!empty($availableTechs)) {
+                    // Select technician with lowest workload (already ordered by priority score)
                     $selectedTech = $availableTechs[0];
+                    
+                    error_log("Selecting technician: {$selectedTech['First_Name']} {$selectedTech['Last_Name']} " .
+                              "(Active Tickets: {$selectedTech['Active_Tickets_Count']}, Priority: {$selectedTech['priority_score']})");
+
                     $assigned = $this->assignToTicket($ticketId, $selectedTech['ID_Technicians'], null, true);
 
                     if ($assigned) {
-                        // Update ticket status to 'En Proceso' (already done in assignToTicket)
                         $assignedCount++;
                         $results[] = [
                             'ticket_id' => $ticketId,
@@ -915,8 +922,12 @@ final class Technician
                             'service_id' => $serviceId
                         ];
 
-                        error_log("Assigned technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
+                        error_log("Successfully assigned technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
+                    } else {
+                        error_log("Failed to assign technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
                     }
+                } else {
+                    error_log("No available technicians found for service {$serviceId} and ticket {$ticketId}");
                 }
             }
         } catch (PDOException $e) {
