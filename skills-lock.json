@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "pdf-best-practices": {
+      "source": "pdfnoodle/pdf-best-practices",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "bb3582a1b3cfe59b7e27383a8d7956a20942677127fc77c081a234b80b570a02"
+    },
     "php-pro": {
       "source": "jeffallan/claude-skills",
       "sourceType": "github",
