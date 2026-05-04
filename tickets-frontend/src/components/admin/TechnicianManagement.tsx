@@ -889,7 +889,6 @@ const TechnicianManagement: React.FC = () => {
                       <thead>
                         <tr>
                           <th>Técnico</th>
-                          <th>Email</th>
                           <th>Bloque Almuerzo</th>
                           <th>Horario Hoy</th>
                           <th>Estado</th>
@@ -921,14 +920,6 @@ const TechnicianManagement: React.FC = () => {
                                   </div>
                                 </div>
                               </td>
-                              <td className="contact-cell">
-                                <div className="contact-info">
-                                  <div className="contact-item">
-                                    <Mail size={14} />
-                                    <span>{technician.Email}</span>
-                                  </div>
-                                </div>
-                              </td>
                               <td className="lunch-block-cell">
                                 {technician.Lunch_Block ? (
                                   <div className="lunch-block-info">
@@ -949,7 +940,10 @@ const TechnicianManagement: React.FC = () => {
                               <td className="status-cell">
                                 <div className="status-wrapper">
                                   <span className={`status-badge status-${technician.Status.toLowerCase()}`}>
-                                    {technician.Status}
+                                    {technician.Status === 'Disponible' && <CheckCircle size={14} />}
+                                    {technician.Status === 'Ocupado' && <AlertCircle size={14} />}
+                                    {technician.Status === 'Inactivo' && <XCircle size={14} />}
+                                    <span style={{ marginLeft: '0.5rem' }}>{technician.Status}</span>
                                   </span>
                                   {technician.Status_Reason && (
                                     <div className="status-reason-container">

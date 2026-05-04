@@ -112,6 +112,13 @@ switch ($path) {
         require_once 'api-dashboard-public.php';
         break;
 
+    case '/api/weekly-report':
+    case '/api/weekly-report/':
+        $user = $authMiddleware->requireAuth();
+        $authMiddleware->setUserContext($user);
+        require_once '../src/controllers/WeeklyReportController.php';
+        break;
+
     default:
         http_response_code(404);
         echo json_encode([

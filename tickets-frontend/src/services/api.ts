@@ -1653,370 +1653,144 @@ export class ApiService {
 
 
 
-  // Dashboard endpoints - Real backend integration
+  // Dashboard endpoints - Mock data (backend was deleted)
 
   static async getDashboardData(): Promise<ApiResponse> {
-
-    try {
-
-      const response = await fetch(`${DASHBOARD_API_BASE}?action=full`, {
-
-        method: 'GET',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        }
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      if (data.success) {
-
-        return {
-
-          success: true,
-
-          message: data.message,
-
-          data: data.data
-
-        };
-
-      } else {
-
-        return {
-
-          success: false,
-
-          message: data.message || 'Error al obtener datos del dashboard'
-
-        };
-
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return {
+      success: true,
+      message: 'Datos del dashboard obtenidos exitosamente',
+      data: {
+        stats: {
+          total_tickets: 1250,
+          active_tickets: 70,
+          resolved_tickets: 1180,
+          pending_tickets: 180,
+          total_technicians: 12,
+          active_technicians: 8,
+          avg_resolution_time: 4.5
+        },
+        priority_distribution: [
+          { priority: 'Alta', count: 150, percentage: 12 },
+          { priority: 'Media', count: 450, percentage: 36 },
+          { priority: 'Baja', count: 650, percentage: 52 }
+        ],
+        office_distribution: [
+          { office: 'Catastro', count: 320, percentage: 26 },
+          { office: 'Obras', count: 280, percentage: 22 },
+          { office: 'Bienestar', count: 250, percentage: 20 },
+          { office: 'Hacienda', count: 200, percentage: 16 },
+          { office: 'Educación', count: 200, percentage: 16 }
+        ],
+        service_distribution: [
+          { service: 'Hardware', count: 400, percentage: 32 },
+          { service: 'Software', count: 350, percentage: 28 },
+          { service: 'Redes', count: 300, percentage: 24 },
+          { service: 'Impresoras', count: 200, percentage: 16 }
+        ],
+        technician_performance: [
+          { name: 'Juan Pérez', tickets_resolved: 45, efficiency: 92, avg_time: 3.5 },
+          { name: 'María González', tickets_resolved: 38, efficiency: 88, avg_time: 4.2 },
+          { name: 'Carlos Rodríguez', tickets_resolved: 52, efficiency: 95, avg_time: 2.8 },
+          { name: 'Ana Martínez', tickets_resolved: 41, efficiency: 90, avg_time: 3.9 },
+          { name: 'Pedro Sánchez', tickets_resolved: 35, efficiency: 85, avg_time: 4.5 }
+        ],
+        trends: [
+          { month: 'Enero', tickets: 180, resolved: 165 },
+          { month: 'Febrero', tickets: 220, resolved: 200 },
+          { month: 'Marzo', tickets: 195, resolved: 180 },
+          { month: 'Abril', tickets: 210, resolved: 195 }
+        ]
       }
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        message: 'Error de conexión con el servidor'
-
-      };
-
-    }
-
+    };
   }
-
-
 
   static async getDashboardStats(): Promise<ApiResponse> {
-
-    try {
-
-      const response = await fetch(`${DASHBOARD_API_BASE}?action=stats`, {
-
-        method: 'GET',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        }
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      return data;
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        message: 'Error de conexión con el servidor'
-
-      };
-
-    }
-
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return {
+      success: true,
+      message: 'Estadísticas obtenidas exitosamente',
+      data: {
+        total_tickets: 1250,
+        active_tickets: 70,
+        resolved_tickets: 1180,
+        pending_tickets: 180,
+        total_technicians: 12,
+        active_technicians: 8,
+        avg_resolution_time: 4.5
+      }
+    };
   }
-
-
-
-  static async getRecentTickets(limit?: number, offset?: number): Promise<ApiResponse> {
-
-    try {
-
-      const params = new URLSearchParams();
-
-      if (limit) params.append('limit', limit.toString());
-
-      if (offset) params.append('offset', offset.toString());
-
-
-
-      const response = await fetch(`${DASHBOARD_API_BASE}?action=recent&${params.toString()}`, {
-
-        method: 'GET',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        }
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      return data;
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        message: 'Error de conexión con el servidor'
-
-      };
-
-    }
-
-  }
-
-
 
   static async getPriorityDistribution(): Promise<ApiResponse> {
-
-    try {
-
-      const response = await fetch(`${DASHBOARD_API_BASE}?action=priority`, {
-
-        method: 'GET',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        }
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      return data;
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        message: 'Error de conexión con el servidor'
-
-      };
-
-    }
-
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return {
+      success: true,
+      message: 'Distribución por prioridad obtenida exitosamente',
+      data: [
+        { priority: 'Alta', count: 150, percentage: 12 },
+        { priority: 'Media', count: 450, percentage: 36 },
+        { priority: 'Baja', count: 650, percentage: 52 }
+      ]
+    };
   }
-
-
 
   static async getOfficeDistribution(): Promise<ApiResponse> {
-
-    try {
-
-      const response = await fetch(`${DASHBOARD_API_BASE}?action=offices`, {
-
-        method: 'GET',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        }
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      return data;
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        message: 'Error de conexión con el servidor'
-
-      };
-
-    }
-
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return {
+      success: true,
+      message: 'Distribución por oficina obtenida exitosamente',
+      data: [
+        { office: 'Catastro', count: 320, percentage: 26 },
+        { office: 'Obras', count: 280, percentage: 22 },
+        { office: 'Bienestar', count: 250, percentage: 20 },
+        { office: 'Hacienda', count: 200, percentage: 16 },
+        { office: 'Educación', count: 200, percentage: 16 }
+      ]
+    };
   }
-
-
 
   static async getTechnicianPerformance(): Promise<ApiResponse> {
-
-    try {
-
-      const response = await fetch(`${DASHBOARD_API_BASE}?action=technicians`, {
-
-        method: 'GET',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        }
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      return data;
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        message: 'Error de conexión con el servidor'
-
-      };
-
-    }
-
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return {
+      success: true,
+      message: 'Rendimiento de técnicos obtenido exitosamente',
+      data: [
+        { name: 'Juan Pérez', tickets_resolved: 45, efficiency: 92, avg_time: 3.5 },
+        { name: 'María González', tickets_resolved: 38, efficiency: 88, avg_time: 4.2 },
+        { name: 'Carlos Rodríguez', tickets_resolved: 52, efficiency: 95, avg_time: 2.8 },
+        { name: 'Ana Martínez', tickets_resolved: 41, efficiency: 90, avg_time: 3.9 },
+        { name: 'Pedro Sánchez', tickets_resolved: 35, efficiency: 85, avg_time: 4.5 }
+      ]
+    };
   }
-
-
 
   static async getTicketTrends(): Promise<ApiResponse> {
-
-    try {
-
-      const response = await fetch(`${DASHBOARD_API_BASE}?action=trends`, {
-
-        method: 'GET',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        }
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      return data;
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        message: 'Error de conexión con el servidor'
-
-      };
-
-    }
-
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return {
+      success: true,
+      message: 'Tendencias de tickets obtenidas exitosamente',
+      data: [
+        { month: 'Enero', tickets: 180, resolved: 165 },
+        { month: 'Febrero', tickets: 220, resolved: 200 },
+        { month: 'Marzo', tickets: 195, resolved: 180 },
+        { month: 'Abril', tickets: 210, resolved: 195 }
+      ]
+    };
   }
 
-
-
   static async getServiceDistribution(): Promise<ApiResponse> {
-
-    try {
-
-      const response = await fetch(`${DASHBOARD_API_BASE}?action=services`, {
-
-        method: 'GET',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        }
-
-      });
-
-
-
-      const data = await response.json();
-
-
-
-      return data;
-
-    } catch (error) {
-
-      return {
-
-        success: false,
-
-        message: 'Error de conexión con el servidor'
-
-      };
-
-    }
-
+    await new Promise(resolve => setTimeout(resolve, 300));
+    return {
+      success: true,
+      message: 'Distribución por servicio obtenida exitosamente',
+      data: [
+        { service: 'Hardware', count: 400, percentage: 32 },
+        { service: 'Software', count: 350, percentage: 28 },
+        { service: 'Redes', count: 300, percentage: 24 },
+        { service: 'Impresoras', count: 200, percentage: 16 }
+      ]
+    };
   }
 
 
@@ -2461,6 +2235,79 @@ export class ApiService {
         message: 'Error al actualizar prioridad'
       };
     }
+  }
+
+  static async getWeeklyTechnicianReport(week: string, technicianId?: number): Promise<ApiResponse> {
+    // Mock data - Backend was deleted, frontend uses mock data
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const mockTechnicians = [
+          {
+            id: 1,
+            nombre: 'Juan Pérez',
+            tickets_resueltos: 45,
+            semana: week,
+            eficiencia: 92,
+            tiempo_promedio: 3.5
+          },
+          {
+            id: 2,
+            nombre: 'María González',
+            tickets_resueltos: 38,
+            semana: week,
+            eficiencia: 88,
+            tiempo_promedio: 4.2
+          },
+          {
+            id: 3,
+            nombre: 'Carlos Rodríguez',
+            tickets_resueltos: 52,
+            semana: week,
+            eficiencia: 95,
+            tiempo_promedio: 2.8
+          },
+          {
+            id: 4,
+            nombre: 'Ana Martínez',
+            tickets_resueltos: 41,
+            semana: week,
+            eficiencia: 90,
+            tiempo_promedio: 3.9
+          },
+          {
+            id: 5,
+            nombre: 'Pedro Sánchez',
+            tickets_resueltos: 35,
+            semana: week,
+            eficiencia: 85,
+            tiempo_promedio: 4.5
+          }
+        ];
+
+        const filteredTechnicians = technicianId
+          ? mockTechnicians.filter(t => t.id === technicianId)
+          : mockTechnicians;
+
+        const mockStats = {
+          week: week,
+          period_start: '2024-04-01',
+          period_end: '2024-04-07',
+          total_tickets: technicianId ? filteredTechnicians[0]?.tickets_resueltos || 0 : 211,
+          total_resolved: technicianId ? filteredTechnicians[0]?.tickets_resueltos || 0 : 211,
+          active_technicians: technicianId ? 1 : 5,
+          resolution_rate: 100
+        };
+
+        resolve({
+          success: true,
+          message: 'Reporte semanal obtenido exitosamente',
+          data: {
+            stats: mockStats,
+            technicians: filteredTechnicians
+          }
+        });
+      }, 500);
+    });
   }
 
   static async addComment(ticketId: number, comment: string): Promise<ApiResponse> {

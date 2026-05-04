@@ -311,6 +311,13 @@ const Reports: React.FC = () => {
           </div>
           <div className="header-right">
             <button 
+              className="enterprise-btn secondary"
+              onClick={() => navigate('/admin/technician-report')}
+            >
+              <Users size={18} />
+              Reporte Técnicos
+            </button>
+            <button 
               className="enterprise-btn primary"
               onClick={handleCreateReport}
             >

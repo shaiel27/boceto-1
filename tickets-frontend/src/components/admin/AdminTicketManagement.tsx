@@ -622,9 +622,6 @@ const AdminTicketManagement: React.FC = () => {
               <FileText size={28} />
               Gestión de Tickets
             </h1>
-            <p className="page-subtitle">
-              Panel de control para la gestión de solicitudes de soporte técnico
-            </p>
           </div>
           
           <div className="header-actions">
@@ -634,10 +631,6 @@ const AdminTicketManagement: React.FC = () => {
             >
               <ArrowLeft size={18} />
               Volver al Dashboard
-            </button>
-            <button className="btn btn-secondary">
-              <Download size={18} />
-              Exportar
             </button>
             <button className="btn btn-primary" onClick={() => window.location.reload()}>
               <RefreshCw size={18} />

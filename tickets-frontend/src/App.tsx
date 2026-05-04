@@ -11,6 +11,8 @@ import RequesterDashboardPage from './pages/RequesterDashboardPage';
 import InstitutionalStructurePage from './pages/InstitutionalStructurePage';
 import ReportsPage from './pages/ReportsPage';
 import UserRegistrationPage from './pages/UserRegistrationPage';
+import { PDFTestReport } from './components/reports/PDFTestReport';
+import { TechnicianWeeklyReport } from './components/reports/TechnicianWeeklyReport';
 import OfficeManagementPage from './pages/OfficeManagementPage';
 import AdminTicketManagementPage from './pages/AdminTicketManagementPage';
 import LoginPage from './pages/LoginPage';
@@ -38,6 +40,8 @@ function App() {
               <Route path="/technician" element={<ProtectedRoute allowedRoles={[2]}><TechnicianDashboardPage /></ProtectedRoute>} />
               <Route path="/requester" element={<ProtectedRoute allowedRoles={[3]}><RequesterDashboardPage /></ProtectedRoute>} />
               <Route path="/new-ticket" element={<ProtectedRoute allowedRoles={[1, 3]}><TicketForm /></ProtectedRoute>} />
+              <Route path="/pdf-test" element={<PDFTestReport />} />
+              <Route path="/admin/technician-report" element={<ProtectedRoute allowedRoles={[1]}><TechnicianWeeklyReport /></ProtectedRoute>} />
             </Routes>
           </Router>
         </div>
