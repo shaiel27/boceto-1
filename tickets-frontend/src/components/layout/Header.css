@@ -7,10 +7,14 @@
   align-items: center;
   justify-content: space-between;
   box-shadow: var(--shadow-lg);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 1000;
   border-bottom: 3px solid var(--alcaldia-emphasis);
+  height: 80px;
+  backdrop-filter: blur(10px);
 }
 
 .header-left {

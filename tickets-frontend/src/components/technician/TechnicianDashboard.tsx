@@ -19,7 +19,9 @@ import {
   Users,
   X,
   Send,
-  History
+  History,
+  BarChart3,
+  AlertTriangle
 } from 'lucide-react';
 import './TechnicianDashboard.css';
 import TechnicianProfileComponent from './TechnicianProfile';
@@ -41,6 +43,29 @@ interface Ticket {
   Technician_Name: string;
   Is_Lead: boolean;
   Comments_Count: number;
+  Resolved_at?: string;
+  Resolution_Time?: number;
+  Office_Name?: string;
+  Type_Service?: string;
+  Priority_Level?: number;
+}
+
+interface TicketHistory {
+  total_tickets: number;
+  resolved_this_month: number;
+  avg_resolution_time: number;
+  success_rate: number;
+  priority_breakdown: {
+    critical: number;
+    high: number;
+    medium: number;
+    low: number;
+  };
+  monthly_trend: Array<{
+    month: string;
+    resolved: number;
+    created: number;
+  }>;
 }
 
 interface TechnicianProfile {
@@ -72,12 +97,149 @@ const TechnicianDashboard: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
+  
+  // PHP-PRO: Enhanced ticket history state
+  const [ticketHistory, setTicketHistory] = useState<TicketHistory | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'week' | 'month' | 'year'>('month');
 
   const [lunchTimeRemaining, setLunchTimeRemaining] = useState<number>(0);
   const [workTimeRemaining, setWorkTimeRemaining] = useState<number>(0);
   const [showProfile, setShowProfile] = useState(false);
 
-  // Cargar comentarios de un ticket
+  // PHP-PRO: Load ticket history with enhanced analytics
+  const loadTicketHistory = async () => {
+    try {
+      setHistoryLoading(true);
+      console.log('🔍 Cargando historial de tickets desde backend PHP-PRO...');
+      console.log('📊 Current tickets count:', myTickets.length);
+      
+      // First, try to calculate from current tickets (fallback)
+      if (myTickets.length > 0) {
+        console.log('📋 Using current tickets for calculation');
+        const calculatedHistory = calculateTicketHistory(myTickets);
+        console.log('📊 Calculated history:', calculatedHistory);
+        setTicketHistory(calculatedHistory);
+      } else {
+        console.log('⚠️ No tickets available, setting empty history');
+        setTicketHistory({
+          total_tickets: 0,
+          resolved_this_month: 0,
+          avg_resolution_time: 0,
+          success_rate: 0,
+          priority_breakdown: {
+            critical: 0,
+            high: 0,
+            medium: 0,
+            low: 0
+          },
+          monthly_trend: []
+        });
+      }
+      
+      // Try backend API (optional)
+      try {
+        const response = await fetch('http://localhost:8000/api-technician-history.php?action=ticket-history', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📊 Backend history received:', data);
+          
+          if (data.success && data.data) {
+            setTicketHistory(data.data);
+          }
+        }
+      } catch (apiError) {
+        console.log('📡 Backend API not available, using fallback calculation');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error cargando historial de tickets:', error);
+      // Fallback to calculated history
+      const calculatedHistory = calculateTicketHistory(myTickets);
+      setTicketHistory(calculatedHistory);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+  
+  // PHP-PRO: Calculate ticket history from current tickets (fallback)
+  const calculateTicketHistory = (tickets: Ticket[]): TicketHistory => {
+    console.log('📊 Calculating history from tickets:', tickets.length);
+    console.log('📋 Sample ticket:', tickets[0]);
+    
+    const resolvedTickets = tickets.filter(t => t.Status === 'Cerrado');
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    console.log('📈 Resolved tickets:', resolvedTickets.length);
+    console.log('📅 Current month/year:', currentMonth + 1, currentYear);
+    
+    const resolvedThisMonth = resolvedTickets.filter(t => {
+      const resolvedDate = new Date(t.Resolved_at || t.Created_at);
+      const isCurrentMonth = resolvedDate.getMonth() === currentMonth && resolvedDate.getFullYear() === currentYear;
+      console.log('🔍 Ticket resolved date:', resolvedDate, 'Is current month:', isCurrentMonth);
+      return isCurrentMonth;
+    }).length;
+    
+    const avgResolutionTime = resolvedTickets.reduce((acc, t) => {
+      const resolutionTime = t.Resolution_Time || 0;
+      console.log('⏱️ Ticket resolution time:', resolutionTime);
+      return acc + resolutionTime;
+    }, 0) / (resolvedTickets.length || 1);
+    
+    const priorityBreakdown = {
+      critical: tickets.filter(t => t.System_Priority === 'Crítica').length,
+      high: tickets.filter(t => t.System_Priority === 'Alta').length,
+      medium: tickets.filter(t => t.System_Priority === 'Media').length,
+      low: tickets.filter(t => t.System_Priority === 'Baja').length
+    };
+    
+    console.log('🎯 Priority breakdown:', priorityBreakdown);
+    
+    const monthlyTrend = generateMonthlyTrend(tickets);
+    
+    const history = {
+      total_tickets: tickets.length,
+      resolved_this_month: resolvedThisMonth,
+      avg_resolution_time: Math.round(avgResolutionTime),
+      success_rate: Math.round((resolvedTickets.length / (tickets.length || 1)) * 100),
+      priority_breakdown: priorityBreakdown,
+      monthly_trend: monthlyTrend
+    };
+    
+    console.log('📊 Final calculated history:', history);
+    return history;
+  };
+  
+  // Generate monthly trend data
+  const generateMonthlyTrend = (tickets: Ticket[]) => {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    return months.slice(0, currentMonth + 1).map((month, index) => {
+      const monthTickets = tickets.filter(t => {
+        const ticketDate = new Date(t.Created_at);
+        return ticketDate.getMonth() === index && ticketDate.getFullYear() === currentYear;
+      });
+      
+      const monthResolved = monthTickets.filter(t => t.Status === 'Cerrado').length;
+      
+      return {
+        month,
+        resolved: monthResolved,
+        created: monthTickets.length
+      };
+    });
+  };
   const loadTicketComments = async (ticketId: string) => {
     try {
       const response = await ApiService.getTicketComments(parseInt(ticketId));
@@ -166,26 +328,41 @@ const TechnicianDashboard: React.FC = () => {
           setTechnicianProfile(profileResponse.data);
         }
 
-        // Cargar tickets del técnico
+        // Cargar tickets del técnico con PHP-PRO integration
         const ticketsResponse = await ApiService.getTechnicianTickets();
         if (ticketsResponse.success && ticketsResponse.data) {
-          const formattedTickets = ticketsResponse.data.map((ticket: any) => ({
-            id: ticket.ID_Service_Request.toString(),
-            Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
-            Subject: ticket.Subject || 'Sin asunto',
-            Description: ticket.Description || 'Sin descripción',
-            Property_Number: ticket.Property_Number || 'No especificado',
-            Direction_Name: ticket.office_name || 'No asignado',
-            Division_Name: ticket.office_type || 'No asignado',
-            Coordination_Name: ticket.service_type_name || 'No asignado',
-            System_Priority: ticket.System_Priority || 'Media',
-            Status: ticket.Status || 'Pendiente',
-            Created_at: ticket.Created_at || new Date().toISOString(),
-            Technician_Name: ticket.technicians?.find((t: any) => t.is_lead)?.name || 'No asignado',
-            Is_Lead: ticket.is_lead || false,
-            Comments_Count: 0
-          }));
+          const formattedTickets = ticketsResponse.data.map((ticket: any) => {
+            // PHP-PRO: Enhanced field mapping with proper backend structure
+            const createdDate = new Date(ticket.Created_at || new Date().toISOString());
+            const resolvedDate = ticket.Resolved_at ? new Date(ticket.Resolved_at) : null;
+            const resolutionTime = resolvedDate ? Math.floor((resolvedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60)) : null;
+            
+            return {
+              id: ticket.ID_Service_Request.toString(),
+              Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
+              Subject: ticket.Subject || 'Sin asunto',
+              Description: ticket.Description || 'Sin descripción',
+              Property_Number: ticket.Property_Number || 'No especificado',
+              Direction_Name: ticket.Office_Name || ticket.office_name || 'No asignado',
+              Division_Name: ticket.Office_Type || ticket.office_type || 'No asignado',
+              Coordination_Name: ticket.Type_Service || ticket.service_type_name || 'No asignado',
+              System_Priority: ticket.System_Priority || 'Media',
+              Status: ticket.Status || 'Pendiente',
+              Created_at: ticket.Created_at || new Date().toISOString(),
+              Technician_Name: ticket.technicians?.find((t: any) => t.is_lead)?.name || 'No asignado',
+              Is_Lead: ticket.is_lead || false,
+              Comments_Count: ticket.Comments_Count || 0,
+              Resolved_at: ticket.Resolved_at || null,
+              Resolution_Time: resolutionTime,
+              Office_Name: ticket.Office_Name || ticket.office_name || 'No asignado',
+              Type_Service: ticket.Type_Service || ticket.service_type_name || 'No asignado',
+              Priority_Level: ticket.Priority_Level || 1
+            };
+          });
           setMyTickets(formattedTickets);
+          
+          // PHP-PRO: Load ticket history after tickets are loaded
+          await loadTicketHistory();
         }
       } catch (error) {
         console.error('Error cargando datos del técnico:', error);
@@ -458,18 +635,79 @@ const TechnicianDashboard: React.FC = () => {
           </div>
         </section>
 
-        {/* Historial de Tickets */}
+        {/* PHP-PRO: Exclusive Ticket History Section */}
         <section className="tickets-section history-section">
           <div className="section-header">
             <h2 className="section-title">
               <History size={24} />
-              Historial de Tickets
+              Mi Historial de Tickets
             </h2>
-            <span className="ticket-count">{myTickets.filter(t => t.Status === 'Cerrado').length} cerrados</span>
+            <div className="history-actions">
+              <button 
+                className="history-btn primary"
+                onClick={() => setShowHistoryModal(true)}
+                disabled={historyLoading}
+              >
+                <BarChart3 size={18} />
+                {historyLoading ? 'Cargando...' : 'Ver Estadísticas'}
+              </button>
+              <span className="ticket-count">
+                {myTickets.filter(t => t.Status === 'Cerrado').length} resueltos
+              </span>
+            </div>
           </div>
 
+          {/* History Summary Cards */}
+          {ticketHistory && (
+            <div className="history-summary-grid">
+              <div className="history-card total">
+                <div className="history-icon">
+                  <Settings size={28} />
+                </div>
+                <div className="history-info">
+                  <h3 className="history-title">Total Tickets</h3>
+                  <p className="history-value">{ticketHistory.total_tickets}</p>
+                  <p className="history-subtitle">En todo el periodo</p>
+                </div>
+              </div>
+              
+              <div className="history-card resolved">
+                <div className="history-icon">
+                  <CheckCircle size={28} />
+                </div>
+                <div className="history-info">
+                  <h3 className="history-title">Resueltos este Mes</h3>
+                  <p className="history-value">{ticketHistory.resolved_this_month}</p>
+                  <p className="history-subtitle">Eficiencia: {ticketHistory.success_rate}%</p>
+                </div>
+              </div>
+              
+              <div className="history-card time">
+                <div className="history-icon">
+                  <Clock size={28} />
+                </div>
+                <div className="history-info">
+                  <h3 className="history-title">Tiempo Promedio</h3>
+                  <p className="history-value">{ticketHistory.avg_resolution_time}h</p>
+                  <p className="history-subtitle">Resolución</p>
+                </div>
+              </div>
+              
+              <div className="history-card priority">
+                <div className="history-icon">
+                  <AlertTriangle size={28} />
+                </div>
+                <div className="history-info">
+                  <h3 className="history-title">Prioridad Crítica</h3>
+                  <p className="history-value">{ticketHistory.priority_breakdown.critical}</p>
+                  <p className="history-subtitle">Tickets urgentes</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="tickets-list">
-            {myTickets.filter(t => t.Status === 'Cerrado').map((ticket) => (
+            {myTickets.filter(t => t.Status === 'Cerrado').slice(0, 5).map((ticket) => (
               <div key={ticket.id} className="ticket-card closed">
                 <div className="ticket-header">
                   <div className="ticket-code">
@@ -500,8 +738,19 @@ const TechnicianDashboard: React.FC = () => {
 
                   <div className="ticket-meta">
                     <div className="meta-item">
-                      <span className="meta-label">Cerrado el:</span>
-                      <span className="meta-value">{new Date(ticket.Created_at).toLocaleDateString()}</span>
+                      <span className="meta-label">Resuelto el:</span>
+                      <span className="meta-value">
+                        {ticket.Resolved_at 
+                          ? new Date(ticket.Resolved_at).toLocaleDateString('es-VE')
+                          : new Date(ticket.Created_at).toLocaleDateString('es-VE')
+                        }
+                      </span>
+                    </div>
+                    <div className="meta-item">
+                      <span className="meta-label">Tiempo de resolución:</span>
+                      <span className="meta-value">
+                        {ticket.Resolution_Time ? `${ticket.Resolution_Time} horas` : 'N/A'}
+                      </span>
                     </div>
                     <div className="meta-item">
                       <span className="meta-label">Estado:</span>
@@ -620,35 +869,63 @@ const TechnicianDashboard: React.FC = () => {
 
                 <div className="detail-section">
                   <h3>Comentarios</h3>
-                  <div className="comments-list">
-                    {comments.length === 0 ? (
-                      <p className="no-comments">No hay comentarios</p>
-                    ) : (
-                      comments.map((comment: any) => (
-                        <div key={comment.ID_Comment} className="comment-item">
-                          <div className="comment-header">
-                            <span className="comment-user">{comment.user_name}</span>
-                            <span className="comment-date">
-                              {new Date(comment.Created_at).toLocaleString()}
-                            </span>
-                          </div>
-                          <p className="comment-text">{comment.Comment}</p>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                  <div className="comment-input-section">
-                    <textarea
-                      className="comment-input"
-                      placeholder="Escribe un comentario..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                    />
-                    <button className="action-btn primary" onClick={handleSendComment}>
-                      <Send size={18} />
-                      Enviar Comentario
-                    </button>
-                  </div>
+                  {selectedTicket.Status === 'Cerrado' ? (
+                    <div className="comments-disabled">
+                      <div className="disabled-message">
+                        <AlertCircle size={20} />
+                        <span>Este ticket está cerrado y no permite nuevos comentarios</span>
+                      </div>
+                      <div className="comments-list">
+                        {comments.length === 0 ? (
+                          <p className="no-comments">No hay comentarios</p>
+                        ) : (
+                          comments.map((comment: any) => (
+                            <div key={comment.ID_Comment} className="comment-item">
+                              <div className="comment-header">
+                                <span className="comment-user">{comment.user_name}</span>
+                                <span className="comment-date">
+                                  {new Date(comment.Created_at).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="comment-text">{comment.Comment}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="comments-list">
+                        {comments.length === 0 ? (
+                          <p className="no-comments">No hay comentarios</p>
+                        ) : (
+                          comments.map((comment: any) => (
+                            <div key={comment.ID_Comment} className="comment-item">
+                              <div className="comment-header">
+                                <span className="comment-user">{comment.user_name}</span>
+                                <span className="comment-date">
+                                  {new Date(comment.Created_at).toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="comment-text">{comment.Comment}</p>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="comment-input-section">
+                        <textarea
+                          className="comment-input"
+                          placeholder="Escribe un comentario..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                        />
+                        <button className="action-btn primary" onClick={handleSendComment}>
+                          <Send size={18} />
+                          Enviar Comentario
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {selectedTicket.Status !== 'Cerrado' && (

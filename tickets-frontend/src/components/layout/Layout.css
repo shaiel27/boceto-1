@@ -10,6 +10,12 @@
   flex: 1;
   padding: 0;
   background-color: var(--bg-secondary);
+  display: flex;
+  margin-top: 80px; /* Account for fixed header */
+}
+
+.main-content > * {
+  flex: 1;
 }
 
 .login-layout {

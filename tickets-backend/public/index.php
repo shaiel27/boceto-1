@@ -119,6 +119,13 @@ switch ($path) {
         require_once '../src/controllers/WeeklyReportController.php';
         break;
 
+    case '/api/technician-reports':
+    case '/api/technician-reports/':
+        $user = $authMiddleware->requireAuth();
+        $authMiddleware->setUserContext($user);
+        require_once '../src/controllers/TechnicianReportController.php';
+        break;
+
     default:
         http_response_code(404);
         echo json_encode([

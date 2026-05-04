@@ -178,9 +178,6 @@ const LoginForm: React.FC = () => {
                   Recordarme
                 </label>
               </div>
-              <a href="#" className="forgot-link">
-                ¿Olvidaste tu contraseña?
-              </a>
             </div>
 
             {/* Submit Button */}
@@ -204,12 +201,6 @@ const LoginForm: React.FC = () => {
           </form>
 
           {/* Footer */}
-          <div className="login-footer">
-            <p className="register-link">
-              ¿No tienes cuenta?{' '}
-              <a href="#">Regístrate aquí</a>
-            </p>
-          </div>
         </div>
 
         {/* Footer Info */}

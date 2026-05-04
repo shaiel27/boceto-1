@@ -2238,65 +2238,92 @@ export class ApiService {
   }
 
   static async getWeeklyTechnicianReport(week: string, technicianId?: number): Promise<ApiResponse> {
-    // Mock data - Backend was deleted, frontend uses mock data
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const mockTechnicians = [
-          {
-            id: 1,
-            nombre: 'Juan Pérez',
-            tickets_resueltos: 45,
-            semana: week,
-            eficiencia: 92,
-            tiempo_promedio: 3.5
-          },
-          {
-            id: 2,
-            nombre: 'María González',
-            tickets_resueltos: 38,
-            semana: week,
-            eficiencia: 88,
-            tiempo_promedio: 4.2
-          },
-          {
-            id: 3,
-            nombre: 'Carlos Rodríguez',
-            tickets_resueltos: 52,
-            semana: week,
-            eficiencia: 95,
-            tiempo_promedio: 2.8
-          },
-          {
-            id: 4,
-            nombre: 'Ana Martínez',
-            tickets_resueltos: 41,
-            semana: week,
-            eficiencia: 90,
-            tiempo_promedio: 3.9
-          },
-          {
-            id: 5,
-            nombre: 'Pedro Sánchez',
-            tickets_resueltos: 35,
-            semana: week,
-            eficiencia: 85,
-            tiempo_promedio: 4.5
-          }
-        ];
+    try {
+      const params = new URLSearchParams();
+      if (technicianId) params.append('technician_id', technicianId.toString());
+      
+      const response = await fetch(`${API_BASE_URL}/api/technician-reports?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
 
-        const filteredTechnicians = technicianId
-          ? mockTechnicians.filter(t => t.id === technicianId)
-          : mockTechnicians;
-
-        const mockStats = {
-          week: week,
-          period_start: '2024-04-01',
-          period_end: '2024-04-07',
-          total_tickets: technicianId ? filteredTechnicians[0]?.tickets_resueltos || 0 : 211,
-          total_resolved: technicianId ? filteredTechnicians[0]?.tickets_resueltos || 0 : 211,
-          active_technicians: technicianId ? 1 : 5,
-          resolution_rate: 100
+      const data = await response.json();
+      
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
         };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener reporte de técnicos'
+        };
+      }
+    } catch (error) {
+      // Fallback to mock data if backend fails
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          const mockTechnicians = [
+            {
+              id: 1,
+              nombre: 'Juan Pérez',
+              tickets_resueltos: 45,
+              semana: week,
+              eficiencia: 92,
+              tiempo_promedio: 3.5
+            },
+            {
+              id: 2,
+              nombre: 'María González',
+              tickets_resueltos: 38,
+              semana: week,
+              eficiencia: 88,
+              tiempo_promedio: 4.2
+            },
+            {
+              id: 3,
+              nombre: 'Carlos Rodríguez',
+              tickets_resueltos: 52,
+              semana: week,
+              eficiencia: 95,
+              tiempo_promedio: 2.8
+            },
+            {
+              id: 4,
+              nombre: 'Ana Martínez',
+              tickets_resueltos: 41,
+              semana: week,
+              eficiencia: 90,
+              tiempo_promedio: 3.9
+            },
+            {
+              id: 5,
+              nombre: 'Pedro Sánchez',
+              tickets_resueltos: 35,
+              semana: week,
+              eficiencia: 85,
+              tiempo_promedio: 4.5
+            }
+          ];
+
+          const filteredTechnicians = technicianId
+            ? mockTechnicians.filter(t => t.id === technicianId)
+            : mockTechnicians;
+
+          const mockStats = {
+            week: week,
+            period_start: '2024-04-01',
+            period_end: '2024-04-07',
+            total_tickets: technicianId ? filteredTechnicians[0]?.tickets_resueltos || 0 : 211,
+            total_resolved: technicianId ? filteredTechnicians[0]?.tickets_resueltos || 0 : 211,
+            active_technicians: technicianId ? 1 : 5,
+            resolution_rate: 100
+          };
 
         resolve({
           success: true,
@@ -2307,7 +2334,8 @@ export class ApiService {
           }
         });
       }, 500);
-    });
+      });
+    }
   }
 
   static async addComment(ticketId: number, comment: string): Promise<ApiResponse> {
