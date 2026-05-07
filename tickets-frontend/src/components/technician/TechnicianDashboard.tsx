@@ -28,61 +28,80 @@ import TechnicianProfileComponent from './TechnicianProfile';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
+// PHP-PRO: Strict typing with readonly properties and proper interfaces
 interface Ticket {
-  id: string;
-  Code: string;
-  Subject: string;
-  Description: string;
-  Property_Number: string;
-  Direction_Name: string;
-  Division_Name: string;
-  Coordination_Name: string;
-  System_Priority: string;
-  Status: string;
-  Created_at: string;
-  Technician_Name: string;
-  Is_Lead: boolean;
-  Comments_Count: number;
-  Resolved_at?: string;
-  Resolution_Time?: number;
-  Office_Name?: string;
-  Type_Service?: string;
-  Priority_Level?: number;
+  readonly id: string;
+  readonly Code: string;
+  readonly Subject: string;
+  readonly Description: string;
+  readonly Property_Number: string;
+  readonly Direction_Name: string;
+  readonly Division_Name: string;
+  readonly Coordination_Name: string;
+  readonly System_Priority: 'Crítica' | 'Alta' | 'Media' | 'Baja';
+  readonly Status: 'Pendiente' | 'En Progreso' | 'Cerrado';
+  readonly Created_at: string;
+  readonly Technician_Name: string;
+  readonly Is_Lead: boolean;
+  readonly Comments_Count: number;
+  readonly Resolved_at: string | null;
+  readonly Resolution_Time: number | null;
+  readonly Office_Name: string;
+  readonly Type_Service: string;
+  readonly Priority_Level: number;
 }
 
+// PHP-PRO: Enhanced history interface with comprehensive analytics
 interface TicketHistory {
-  total_tickets: number;
-  resolved_this_month: number;
-  avg_resolution_time: number;
-  success_rate: number;
-  priority_breakdown: {
-    critical: number;
-    high: number;
-    medium: number;
-    low: number;
+  readonly total_tickets: number;
+  readonly resolved_this_month: number;
+  readonly avg_resolution_time: number;
+  readonly success_rate: number;
+  readonly priority_breakdown: {
+    readonly critical: number;
+    readonly high: number;
+    readonly medium: number;
+    readonly low: number;
   };
-  monthly_trend: Array<{
-    month: string;
-    resolved: number;
-    created: number;
-  }>;
+  readonly monthly_trend: readonly {
+    readonly month: string;
+    readonly resolved: number;
+    readonly created: number;
+  }[];
+  readonly performance_metrics: {
+    readonly fastest_resolution: number;
+    readonly slowest_resolution: number;
+    readonly tickets_by_service: readonly {
+      readonly service: string;
+      readonly count: number;
+      readonly avg_time: number;
+    }[];
+    readonly weekly_performance: readonly {
+      readonly week: string;
+      readonly resolved: number;
+      readonly avg_time: number;
+    }[];
+  };
 }
 
 interface TechnicianProfile {
-  id: string;
-  user_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  username: string;
-  status: string;
-  lunch_block: number | null;
-  lunch_block_name: string | null;
-  lunch_start_time: string | null;
-  lunch_end_time: string | null;
-  created_at: string;
-  services: any[];
-  schedules: any[];
+  readonly id: string;
+  readonly user_id: string;
+  readonly first_name: string;
+  readonly last_name: string;
+  readonly email: string;
+  readonly username: string;
+  readonly status: string;
+  readonly lunch_block: number | null;
+  readonly lunch_block_name: string | null;
+  readonly lunch_start_time: string | null;
+  readonly lunch_end_time: string | null;
+  readonly created_at: string;
+  readonly services: readonly {
+    readonly ID_TI_Service: number;
+    readonly Type_Service: string;
+  }[];
+  readonly schedules: readonly unknown[];
 }
 
 const TechnicianDashboard: React.FC = () => {
@@ -134,7 +153,13 @@ const TechnicianDashboard: React.FC = () => {
             medium: 0,
             low: 0
           },
-          monthly_trend: []
+          monthly_trend: [],
+          performance_metrics: {
+            fastest_resolution: 0,
+            slowest_resolution: 0,
+            tickets_by_service: [],
+            weekly_performance: []
+          }
         });
       }
       
@@ -170,30 +195,24 @@ const TechnicianDashboard: React.FC = () => {
     }
   };
   
-  // PHP-PRO: Calculate ticket history from current tickets (fallback)
-  const calculateTicketHistory = (tickets: Ticket[]): TicketHistory => {
-    console.log('📊 Calculating history from tickets:', tickets.length);
-    console.log('📋 Sample ticket:', tickets[0]);
+  // PHP-PRO: Enhanced ticket history calculation with comprehensive analytics
+  const calculateTicketHistory = (tickets: readonly Ticket[]): TicketHistory => {
+    const resolvedTickets = tickets.filter((t): t is Ticket & { Resolved_at: string; Resolution_Time: number } => 
+      t.Status === 'Cerrado' && t.Resolved_at !== null && t.Resolution_Time !== null
+    );
     
-    const resolvedTickets = tickets.filter(t => t.Status === 'Cerrado');
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
     
-    console.log('📈 Resolved tickets:', resolvedTickets.length);
-    console.log('📅 Current month/year:', currentMonth + 1, currentYear);
-    
     const resolvedThisMonth = resolvedTickets.filter(t => {
-      const resolvedDate = new Date(t.Resolved_at || t.Created_at);
-      const isCurrentMonth = resolvedDate.getMonth() === currentMonth && resolvedDate.getFullYear() === currentYear;
-      console.log('🔍 Ticket resolved date:', resolvedDate, 'Is current month:', isCurrentMonth);
-      return isCurrentMonth;
+      const resolvedDate = new Date(t.Resolved_at);
+      return resolvedDate.getMonth() === currentMonth && resolvedDate.getFullYear() === currentYear;
     }).length;
     
-    const avgResolutionTime = resolvedTickets.reduce((acc, t) => {
-      const resolutionTime = t.Resolution_Time || 0;
-      console.log('⏱️ Ticket resolution time:', resolutionTime);
-      return acc + resolutionTime;
-    }, 0) / (resolvedTickets.length || 1);
+    const resolutionTimes = resolvedTickets.map(t => t.Resolution_Time).filter((time): time is number => time !== null);
+    const avgResolutionTime = resolutionTimes.length > 0 
+      ? Math.round(resolutionTimes.reduce((acc, time) => acc + time, 0) / resolutionTimes.length)
+      : 0;
     
     const priorityBreakdown = {
       critical: tickets.filter(t => t.System_Priority === 'Crítica').length,
@@ -202,25 +221,80 @@ const TechnicianDashboard: React.FC = () => {
       low: tickets.filter(t => t.System_Priority === 'Baja').length
     };
     
-    console.log('🎯 Priority breakdown:', priorityBreakdown);
+    // PHP-PRO: Enhanced performance metrics
+    const fastestResolution = resolutionTimes.length > 0 ? Math.min(...resolutionTimes) : 0;
+    const slowestResolution = resolutionTimes.length > 0 ? Math.max(...resolutionTimes) : 0;
     
-    const monthlyTrend = generateMonthlyTrend(tickets);
+    // Group by service type
+    const serviceGroups = new Map<string, { count: number; totalTime: number }>();
+    resolvedTickets.forEach(ticket => {
+      const service = ticket.Type_Service;
+      const current = serviceGroups.get(service) || { count: 0, totalTime: 0 };
+      serviceGroups.set(service, {
+        count: current.count + 1,
+        totalTime: current.totalTime + (ticket.Resolution_Time || 0)
+      });
+    });
     
-    const history = {
+    const ticketsByService = Array.from(serviceGroups.entries()).map(([service, data]) => ({
+      service,
+      count: data.count,
+      avg_time: Math.round(data.totalTime / data.count)
+    })).sort((a, b) => b.count - a.count);
+    
+    // Weekly performance calculation
+    const weeklyPerformance = calculateWeeklyPerformance(resolvedTickets);
+    
+    return {
       total_tickets: tickets.length,
       resolved_this_month: resolvedThisMonth,
-      avg_resolution_time: Math.round(avgResolutionTime),
+      avg_resolution_time: avgResolutionTime,
       success_rate: Math.round((resolvedTickets.length / (tickets.length || 1)) * 100),
       priority_breakdown: priorityBreakdown,
-      monthly_trend: monthlyTrend
+      monthly_trend: generateMonthlyTrend(tickets),
+      performance_metrics: {
+        fastest_resolution: fastestResolution,
+        slowest_resolution: slowestResolution,
+        tickets_by_service: ticketsByService,
+        weekly_performance: weeklyPerformance
+      }
     };
+  };
+  
+  // PHP-PRO: Calculate weekly performance metrics
+  const calculateWeeklyPerformance = (tickets: readonly Ticket[]): readonly {
+    readonly week: string;
+    readonly resolved: number;
+    readonly avg_time: number;
+  }[] => {
+    const weeks = new Map<string, { count: number; totalTime: number }>();
     
-    console.log('📊 Final calculated history:', history);
-    return history;
+    tickets.forEach(ticket => {
+      if (!ticket.Resolved_at) return;
+      
+      const date = new Date(ticket.Resolved_at);
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekKey = weekStart.toLocaleDateString('es-VE', { month: 'short', day: 'numeric' });
+      
+      const current = weeks.get(weekKey) || { count: 0, totalTime: 0 };
+      weeks.set(weekKey, {
+        count: current.count + 1,
+        totalTime: current.totalTime + (ticket.Resolution_Time || 0)
+      });
+    });
+    
+    return Array.from(weeks.entries())
+      .map(([week, data]) => ({
+        week,
+        resolved: data.count,
+        avg_time: Math.round(data.totalTime / data.count)
+      }))
+      .slice(-4); // Last 4 weeks
   };
   
   // Generate monthly trend data
-  const generateMonthlyTrend = (tickets: Ticket[]) => {
+  const generateMonthlyTrend = (tickets: readonly Ticket[]) => {
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
@@ -812,6 +886,193 @@ const TechnicianDashboard: React.FC = () => {
                   services: technicianProfile!.services.map((s: any) => s.Type_Service)
                 }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PHP-PRO: Comprehensive Statistics Modal */}
+      {showHistoryModal && ticketHistory && (
+        <div className="modal-overlay">
+          <div className="modal-content extra-large">
+            <div className="modal-header">
+              <h2>
+                <BarChart3 size={24} />
+                Estadísticas de Historial
+              </h2>
+              <button className="close-btn" onClick={() => setShowHistoryModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body statistics-modal">
+              {/* Performance Overview */}
+              <div className="stats-overview-section">
+                <h3 className="stats-section-title">Rendimiento General</h3>
+                <div className="stats-grid">
+                  <div className="stat-card primary">
+                    <div className="stat-icon">
+                      <CheckCircle size={32} />
+                    </div>
+                    <div className="stat-content">
+                      <p className="stat-label">Tasa de Éxito</p>
+                      <p className="stat-value">{ticketHistory.success_rate}%</p>
+                      <p className="stat-trend positive">
+                        {ticketHistory.success_rate >= 80 ? 'Excelente' : ticketHistory.success_rate >= 60 ? 'Bueno' : 'Mejorable'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="stat-card success">
+                    <div className="stat-icon">
+                      <Clock size={32} />
+                    </div>
+                    <div className="stat-content">
+                      <p className="stat-label">Tiempo Promedio</p>
+                      <p className="stat-value">{ticketHistory.avg_resolution_time}h</p>
+                      <p className="stat-trend">
+                        Rango: {ticketHistory.performance_metrics.fastest_resolution}h - {ticketHistory.performance_metrics.slowest_resolution}h
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="stat-card warning">
+                    <div className="stat-icon">
+                      <AlertTriangle size={32} />
+                    </div>
+                    <div className="stat-content">
+                      <p className="stat-label">Prioridad Crítica</p>
+                      <p className="stat-value">{ticketHistory.priority_breakdown.critical}</p>
+                      <p className="stat-trend">
+                        {ticketHistory.priority_breakdown.critical > 0 ? 'Requieren atención' : 'Sin tickets críticos'}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="stat-card info">
+                    <div className="stat-icon">
+                      <Settings size={32} />
+                    </div>
+                    <div className="stat-content">
+                      <p className="stat-label">Total Tickets</p>
+                      <p className="stat-value">{ticketHistory.total_tickets}</p>
+                      <p className="stat-trend">
+                        {ticketHistory.resolved_this_month} resueltos este mes
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Priority Breakdown Chart */}
+              <div className="stats-chart-section">
+                <h3 className="stats-section-title">Distribución por Prioridad</h3>
+                <div className="priority-chart">
+                  <div className="priority-bar critical">
+                    <div className="bar-label">Crítica</div>
+                    <div className="bar-fill" style={{ width: `${(ticketHistory.priority_breakdown.critical / ticketHistory.total_tickets) * 100}%` }}>
+                      <span className="bar-value">{ticketHistory.priority_breakdown.critical}</span>
+                    </div>
+                  </div>
+                  <div className="priority-bar high">
+                    <div className="bar-label">Alta</div>
+                    <div className="bar-fill" style={{ width: `${(ticketHistory.priority_breakdown.high / ticketHistory.total_tickets) * 100}%` }}>
+                      <span className="bar-value">{ticketHistory.priority_breakdown.high}</span>
+                    </div>
+                  </div>
+                  <div className="priority-bar medium">
+                    <div className="bar-label">Media</div>
+                    <div className="bar-fill" style={{ width: `${(ticketHistory.priority_breakdown.medium / ticketHistory.total_tickets) * 100}%` }}>
+                      <span className="bar-value">{ticketHistory.priority_breakdown.medium}</span>
+                    </div>
+                  </div>
+                  <div className="priority-bar low">
+                    <div className="bar-label">Baja</div>
+                    <div className="bar-fill" style={{ width: `${(ticketHistory.priority_breakdown.low / ticketHistory.total_tickets) * 100}%` }}>
+                      <span className="bar-value">{ticketHistory.priority_breakdown.low}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Weekly Performance */}
+              <div className="stats-chart-section">
+                <h3 className="stats-section-title">Rendimiento Semanal</h3>
+                <div className="weekly-performance-grid">
+                  {ticketHistory.performance_metrics.weekly_performance.map((week, index) => (
+                    <div key={index} className="week-card">
+                      <p className="week-label">{week.week}</p>
+                      <div className="week-metrics">
+                        <div className="week-metric">
+                          <span className="metric-label">Resueltos</span>
+                          <span className="metric-value">{week.resolved}</span>
+                        </div>
+                        <div className="week-metric">
+                          <span className="metric-label">Promedio</span>
+                          <span className="metric-value">{week.avg_time}h</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Tickets by Service */}
+              <div className="stats-service-section">
+                <h3 className="stats-section-title">Tickets por Tipo de Servicio</h3>
+                <div className="service-list">
+                  {ticketHistory.performance_metrics.tickets_by_service.map((service, index) => (
+                    <div key={index} className="service-stat-item">
+                      <div className="service-info">
+                        <span className="service-name">{service.service}</span>
+                        <span className="service-count">{service.count} tickets</span>
+                      </div>
+                      <div className="service-metrics">
+                        <span className="service-avg-time">Promedio: {service.avg_time}h</span>
+                        <div className="service-progress">
+                          <div 
+                            className="progress-bar" 
+                            style={{ width: `${(service.count / ticketHistory.total_tickets) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Monthly Trend */}
+              <div className="stats-trend-section">
+                <h3 className="stats-section-title">Tendencia Mensual</h3>
+                <div className="trend-chart">
+                  {ticketHistory.monthly_trend.map((month, index) => (
+                    <div key={index} className="trend-bar-group">
+                      <div className="trend-bars">
+                        <div 
+                          className="trend-bar created" 
+                          style={{ height: `${(month.created / Math.max(...ticketHistory.monthly_trend.map(m => m.created))) * 100}%` }}
+                          title={`Creados: ${month.created}`}
+                        />
+                        <div 
+                          className="trend-bar resolved" 
+                          style={{ height: `${(month.resolved / Math.max(...ticketHistory.monthly_trend.map(m => m.resolved))) * 100}%` }}
+                          title={`Resueltos: ${month.resolved}`}
+                        />
+                      </div>
+                      <span className="trend-label">{month.month}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="trend-legend">
+                  <div className="legend-item">
+                    <div className="legend-color created" />
+                    <span>Creados</span>
+                  </div>
+                  <div className="legend-item">
+                    <div className="legend-color resolved" />
+                    <span>Resueltos</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

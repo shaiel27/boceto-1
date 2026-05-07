@@ -123,6 +123,143 @@ final class AdminDashboardController
     }
 
     /**
+     * Get executive summary with strategic KPIs
+     * PHP-PRO: Optimized query for executive dashboard
+     */
+    public function getExecutiveSummary(): array
+    {
+        $query = "
+            SELECT 
+                -- Total tickets metrics
+                COUNT(*) as total_tickets,
+                COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_tickets,
+                COUNT(CASE WHEN sr.Status = 'Pendiente' THEN 1 END) as pending_tickets,
+                COUNT(CASE WHEN sr.Status = 'En Proceso' THEN 1 END) as in_progress_tickets,
+                
+                -- Priority distribution
+                COUNT(CASE WHEN sr.System_Priority = 'Crítica' THEN 1 END) as critical_priority,
+                COUNT(CASE WHEN sr.System_Priority = 'Alta' THEN 1 END) as high_priority,
+                COUNT(CASE WHEN sr.System_Priority = 'Media' THEN 1 END) as medium_priority,
+                COUNT(CASE WHEN sr.System_Priority = 'Baja' THEN 1 END) as low_priority,
+                
+                -- Time metrics
+                AVG(CASE WHEN sr.Resolved_at IS NOT NULL 
+                    THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) 
+                    ELSE NULL END) as avg_resolution_hours,
+                MIN(CASE WHEN sr.Resolved_at IS NOT NULL 
+                    THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) 
+                    ELSE NULL END) as min_resolution_hours,
+                MAX(CASE WHEN sr.Resolved_at IS NOT NULL 
+                    THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) 
+                    ELSE NULL END) as max_resolution_hours,
+                
+                -- Office metrics
+                COUNT(DISTINCT sr.Fk_Office) as active_offices,
+                COUNT(DISTINCT CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN sr.Fk_Office END) as offices_this_week,
+                
+                -- Technician metrics
+                COUNT(DISTINCT t.ID_Technicians) as active_technicians,
+                COUNT(DISTINCT CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN t.ID_Technicians END) as technicians_this_week,
+                
+                -- Service type metrics
+                COUNT(DISTINCT sr.Fk_TIService) as active_services,
+                
+                -- Trend metrics (comparisons with previous period)
+                COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 END) as tickets_today,
+                COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as tickets_this_week,
+                COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as tickets_this_month,
+                
+                -- Resolution rate
+                ROUND(
+                    COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) * 100.0 / 
+                    NULLIF(COUNT(*), 0), 2
+                ) as resolution_rate_percent,
+                
+                -- Critical tickets resolution rate
+                ROUND(
+                    COUNT(CASE WHEN sr.System_Priority = 'Crítica' AND sr.Status = 'Cerrado' THEN 1 END) * 100.0 / 
+                    NULLIF(COUNT(CASE WHEN sr.System_Priority = 'Crítica' THEN 1 END), 0), 2
+                ) as critical_resolution_rate_percent
+                
+            FROM Service_Request sr
+            LEFT JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request
+            LEFT JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
+            WHERE sr.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+        ";
+
+        $stmt = $this->db->prepare($query);
+        $stmt->execute();
+        $summary = $stmt->fetch(\PDO::FETCH_ASSOC);
+
+        // Calculate trends and additional metrics
+        $previousPeriodQuery = "
+            SELECT 
+                COUNT(*) as previous_month_tickets,
+                COUNT(CASE WHEN Status = 'Cerrado' THEN 1 END) as previous_resolved,
+                AVG(CASE WHEN Resolved_at IS NOT NULL 
+                    THEN TIMESTAMPDIFF(HOUR, Created_at, Resolved_at) 
+                    ELSE NULL END) as previous_avg_hours
+            FROM Service_Request 
+            WHERE Created_at >= DATE_SUB(NOW(), INTERVAL 60 DAY) 
+              AND Created_at < DATE_SUB(NOW(), INTERVAL 30 DAY)
+        ";
+
+        $prevStmt = $this->db->prepare($previousPeriodQuery);
+        $prevStmt->execute();
+        $previous = $prevStmt->fetch(\PDO::FETCH_ASSOC);
+
+        // Calculate trends
+        $ticketsTrend = $previous['previous_month_tickets'] > 0 
+            ? round((($summary['tickets_this_month'] - $previous['previous_month_tickets']) / $previous['previous_month_tickets']) * 100, 1)
+            : 0;
+
+        $resolutionTrend = $previous['previous_avg_hours'] > 0 
+            ? round((($summary['avg_resolution_hours'] - $previous['previous_avg_hours']) / $previous['previous_avg_hours']) * 100, 1)
+            : 0;
+
+        return [
+            'kpi_metrics' => [
+                'total_tickets' => (int)$summary['total_tickets'],
+                'resolved_tickets' => (int)$summary['resolved_tickets'],
+                'pending_tickets' => (int)$summary['pending_tickets'],
+                'in_progress_tickets' => (int)$summary['in_progress_tickets'],
+                'avg_resolution_hours' => round((float)$summary['avg_resolution_hours'], 1),
+                'resolution_rate_percent' => (float)$summary['resolution_rate_percent'],
+                'active_offices' => (int)$summary['active_offices'],
+                'active_technicians' => (int)$summary['active_technicians'],
+                'critical_tickets' => (int)$summary['critical_priority'],
+                'critical_resolution_rate_percent' => (float)$summary['critical_resolution_rate_percent']
+            ],
+            'trends' => [
+                'tickets_trend_percent' => $ticketsTrend,
+                'resolution_time_trend_percent' => $resolutionTrend,
+                'tickets_today' => (int)$summary['tickets_today'],
+                'tickets_this_week' => (int)$summary['tickets_this_week'],
+                'tickets_this_month' => (int)$summary['tickets_this_month']
+            ],
+            'priority_distribution' => [
+                'critical' => (int)$summary['critical_priority'],
+                'high' => (int)$summary['high_priority'],
+                'medium' => (int)$summary['medium_priority'],
+                'low' => (int)$summary['low_priority']
+            ],
+            'status_distribution' => [
+                'resolved' => (int)$summary['resolved_tickets'],
+                'in_progress' => (int)$summary['in_progress_tickets'],
+                'pending' => (int)$summary['pending_tickets']
+            ],
+            'performance_metrics' => [
+                'min_resolution_hours' => round((float)$summary['min_resolution_hours'], 1),
+                'max_resolution_hours' => round((float)$summary['max_resolution_hours'], 1),
+                'avg_resolution_hours' => round((float)$summary['avg_resolution_hours'], 1),
+                'offices_this_week' => (int)$summary['offices_this_week'],
+                'technicians_this_week' => (int)$summary['technicians_this_week'],
+                'active_services' => (int)$summary['active_services']
+            ]
+        ];
+    }
+
+    /**
      * Get technician performance metrics
      */
     public function getTechnicianPerformance(): array

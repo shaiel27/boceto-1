@@ -13,7 +13,6 @@ import ReportsPage from './pages/ReportsPage';
 import UserRegistrationPage from './pages/UserRegistrationPage';
 import { PDFTestReport } from './components/reports/PDFTestReport';
 import { TechnicianWeeklyReport } from './components/reports/TechnicianWeeklyReport';
-import TechnicianReport from './components/dashboard/TechnicianReport';
 import OfficeManagementPage from './pages/OfficeManagementPage';
 import AdminTicketManagementPage from './pages/AdminTicketManagementPage';
 import LoginPage from './pages/LoginPage';
@@ -42,7 +41,6 @@ function App() {
               <Route path="/requester" element={<ProtectedRoute allowedRoles={[3]}><RequesterDashboardPage /></ProtectedRoute>} />
               <Route path="/new-ticket" element={<ProtectedRoute allowedRoles={[1, 3]}><TicketForm /></ProtectedRoute>} />
               <Route path="/pdf-test" element={<PDFTestReport />} />
-              <Route path="/admin/technician-report" element={<ProtectedRoute allowedRoles={[1]}><TechnicianReport /></ProtectedRoute>} />
             </Routes>
           </Router>
         </div>

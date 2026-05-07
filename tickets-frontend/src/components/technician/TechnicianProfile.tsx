@@ -17,6 +17,7 @@ import {
   Award
 } from 'lucide-react';
 import './TechnicianProfile.css';
+import ApiService from '../../services/api';
 
 interface TechnicianProfileData {
   id: string;
@@ -60,12 +61,28 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
     setPasswordSuccess('');
   };
 
-  const validatePassword = (password: string): boolean => {
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
-    return passwordRegex.test(password);
+  const validatePassword = (password: string): { valid: boolean; message?: string } => {
+    // PHP-PRO: Strict validation matching backend requirements
+    if (password.length < 8) {
+      return { valid: false, message: 'La contraseña debe tener al menos 8 caracteres' };
+    }
+
+    if (!/[A-Z]/.test(password)) {
+      return { valid: false, message: 'La contraseña debe contener al menos una mayúscula' };
+    }
+
+    if (!/[a-z]/.test(password)) {
+      return { valid: false, message: 'La contraseña debe contener al menos una minúscula' };
+    }
+
+    if (!/[0-9]/.test(password)) {
+      return { valid: false, message: 'La contraseña debe contener al menos un número' };
+    }
+
+    return { valid: true };
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!passwordForm.currentPassword) {
@@ -78,8 +95,9 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
       return;
     }
 
-    if (!validatePassword(passwordForm.newPassword)) {
-      setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número');
+    const validation = validatePassword(passwordForm.newPassword);
+    if (!validation.valid) {
+      setPasswordError(validation.message || 'Contraseña inválida');
       return;
     }
 
@@ -88,19 +106,31 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
       return;
     }
 
-    console.log('Cambiando contraseña para técnico:', profile.id);
-    setPasswordSuccess('Contraseña cambiada exitosamente');
-    
-    setPasswordForm({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
+    // PHP-PRO: Call backend API to change password
+    try {
+      const response = await ApiService.changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
 
-    setTimeout(() => {
-      setShowPasswordModal(false);
-      setPasswordSuccess('');
-    }, 2000);
+      if (response.success) {
+        setPasswordSuccess(response.message || 'Contraseña cambiada exitosamente');
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: ''
+        });
+
+        setTimeout(() => {
+          setShowPasswordModal(false);
+          setPasswordSuccess('');
+        }, 2000);
+      } else {
+        setPasswordError(response.message || 'Error al cambiar contraseña');
+      }
+    } catch (error) {
+      setPasswordError('Error de conexión con el servidor');
+    }
   };
 
   const calculateTenure = (hireDate: string): string => {
@@ -292,7 +322,7 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                     name="newPassword"
                     value={passwordForm.newPassword}
                     onChange={handlePasswordChange}
-                    placeholder="Mínimo 8 caracteres, mayúscula, minúscula y número"
+                    placeholder="Mínimo 8 caracteres"
                     required
                   />
                   <button

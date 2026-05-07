@@ -10,6 +10,7 @@ C:\xampp\php\php.exe -S localhost:8000 -t public
 ### Desde el directorio del backend (si PHP está en PATH):
 ```powershell
 php -S localhost:8000 -t public
+php -S 0.0.0.0:8000 -t public
 ```
 
 ### Desde cualquier ubicación:

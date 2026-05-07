@@ -2,12 +2,9 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
-require_once __DIR__ . '/../models/TechnicianSchedule.php';
 
 $database = new Database();
 $db = $database->getConnection();
-
-$technician = new Technician($db);
 
 // Get authenticated user from middleware context
 $currentUserId = $_SERVER['AUTH_USER_ID'] ?? null;
@@ -18,18 +15,47 @@ $technicianId = $_GET['technician_id'] ?? '';
 
 switch ($method) {
     case 'GET':
-        if ($technicianId) {
-            $schedules = $technician->getSchedules($technicianId);
+        $action = $_GET['action'] ?? '';
+
+        if ($action === 'shifts-report') {
+            // PHP-PRO: Get technician shifts report - technicians working until 5 PM
+            $query = "SELECT
+                ts.Day_Of_Week AS 'Día',
+                t.First_Name AS 'Nombre',
+                t.Last_Name AS 'Apellido',
+                ts.Work_End_Time AS 'Hora Salida'
+            FROM
+                Technician_Schedules ts
+            JOIN
+                Technicians t ON ts.Fk_Technician = t.ID_Technicians
+            WHERE
+                ts.Work_End_Time = '17:00:00'
+            ORDER BY
+                CASE ts.Day_Of_Week
+                    WHEN 'Monday' THEN 1
+                    WHEN 'Tuesday' THEN 2
+                    WHEN 'Wednesday' THEN 3
+                    WHEN 'Thursday' THEN 4
+                    WHEN 'Friday' THEN 5
+                    ELSE 6
+                END,
+                t.Last_Name,
+                t.First_Name";
+
+            $stmt = $db->prepare($query);
+            $stmt->execute();
+            $shifts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
             echo json_encode([
                 'success' => true,
-                'message' => 'Horarios obtenidos exitosamente',
-                'data' => $schedules
+                'message' => 'Reporte de turnos de técnicos obtenido exitosamente',
+                'data' => $shifts
             ]);
         } else {
             http_response_code(400);
             echo json_encode([
                 'success' => false,
-                'message' => 'ID de técnico requerido'
+                'message' => 'Acción no válida'
             ]);
         }
         break;

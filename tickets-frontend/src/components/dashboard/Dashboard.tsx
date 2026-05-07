@@ -13,7 +13,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
-import ApiService from '../../services/api';
+import ApiService, { API_BASE_URL } from '../../services/api';
 import '../layout/ModernSidebar.css';
 import './Dashboard.css';
 
@@ -116,7 +116,7 @@ const Dashboard: React.FC = () => {
         console.log('🔍 Dashboard: Token value:', token ? token.substring(0, 20) + '...' : 'none');
         
         // Fetch optimized dashboard data from PHP-PRO AdminDashboardController
-        const response = await fetch('http://localhost:8000/api/dashboard-public-temp?action=full', {
+        const response = await fetch(`${API_BASE_URL}/api/dashboard-public-temp?action=full`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
@@ -210,7 +210,7 @@ const Dashboard: React.FC = () => {
         }
       } catch (error) {
         console.error('❌ Dashboard: Error fetching dashboard data from backend:', error);
-        console.warn('⚠️ Dashboard: Backend server not available. Please start PHP server with: cd tickets-backend && php -S localhost:8000 -t public');
+        console.warn('⚠️ Dashboard: Backend server not available. Please start PHP server with: cd tickets-backend && php -S 0.0.0.0:8000 -t public');
         
         // Fallback to mock data when backend is not available - PHP-PRO Structure
         const mockTickets: Ticket[] = [

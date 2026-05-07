@@ -1,6 +1,10 @@
 <?php
 // CORS headers - must be set before any output
-header("Access-Control-Allow-Origin: http://localhost:3000");
+$allowedOrigins = ['http://localhost:3000', 'http://192.168.100.8:3000', 'http://192.168.5.43:3000'];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins)) {
+    header("Access-Control-Allow-Origin: $origin");
+}
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Access-Control-Allow-Credentials: true");
@@ -49,52 +53,52 @@ $request_uri = $_SERVER['REQUEST_URI'];
 switch ($path) {
     case '/api/auth':
     case '/api/auth/':
-        require_once '../src/controllers/AuthController.php';
+        require_once __DIR__ . '/../src/controllers/AuthController.php';
         break;
 
     case '/api/tickets':
     case '/api/tickets/':
-        require_once '../src/controllers/TicketController.php';
+        require_once __DIR__ . '/../src/controllers/TicketController.php';
         break;
 
     case '/api/users':
     case '/api/users/':
-        require_once '../src/controllers/UserController.php';
+        require_once __DIR__ . '/../src/controllers/UserController.php';
         break;
 
     case '/api/technicians':
     case '/api/technicians/':
-        require_once '../src/controllers/TechnicianController.php';
+        require_once __DIR__ . '/../src/controllers/TechnicianController.php';
         break;
 
     case '/api/lunch-blocks':
     case '/api/lunch-blocks/':
-        require_once '../src/controllers/LunchBlockController.php';
+        require_once __DIR__ . '/../src/controllers/LunchBlockController.php';
         break;
 
     case '/api/technician-schedules':
     case '/api/technician-schedules/':
-        require_once '../src/controllers/TechnicianScheduleController.php';
+        require_once __DIR__ . '/../src/controllers/TechnicianScheduleController.php';
         break;
 
     case '/api/analytics':
     case '/api/analytics/':
-        require_once '../src/controllers/AnalyticsController.php';
+        require_once __DIR__ . '/../src/controllers/AnalyticsController.php';
         break;
 
     case '/api/service':
     case '/api/service/':
-        require_once '../src/controllers/ServiceController.php';
+        require_once __DIR__ . '/../src/controllers/ServiceController.php';
         break;
 
     case '/api/services':
     case '/api/services/':
-        require_once '../src/controllers/ServiceController.php';
+        require_once __DIR__ . '/../src/controllers/ServiceController.php';
         break;
 
     case '/api/assignments':
     case '/api/assignments/':
-        require_once '../src/controllers/AssignmentController.php';
+        require_once __DIR__ . '/../src/controllers/AssignmentController.php';
         break;
 
     case '/api/dashboard':
@@ -116,14 +120,28 @@ switch ($path) {
     case '/api/weekly-report/':
         $user = $authMiddleware->requireAuth();
         $authMiddleware->setUserContext($user);
-        require_once '../src/controllers/WeeklyReportController.php';
+        require_once __DIR__ . '/../src/controllers/WeeklyReportController.php';
         break;
 
     case '/api/technician-reports':
     case '/api/technician-reports/':
         $user = $authMiddleware->requireAuth();
         $authMiddleware->setUserContext($user);
-        require_once '../src/controllers/TechnicianReportController.php';
+        require_once __DIR__ . '/../src/controllers/TechnicianReportController.php';
+        break;
+
+    case '/api/office':
+    case '/api/office/':
+        require_once __DIR__ . '/../src/controllers/OfficeController.php';
+        $controller = new OfficeController();
+        $controller->handleRequest();
+        break;
+
+    case '/api/problem-report':
+    case '/api/problem-report/':
+        require_once __DIR__ . '/../src/controllers/ProblemReportController.php';
+        $controller = new ProblemReportController();
+        $controller->handleRequest();
         break;
 
     default:

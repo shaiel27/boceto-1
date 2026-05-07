@@ -59,6 +59,16 @@ try {
                     'success' => true,
                     'data' => $groupedTechnicians
                 ]);
+            } elseif ($action === 'performance') {
+                // Get technician performance metrics
+                $startDate = $_GET['start_date'] ?? null;
+                $endDate = $_GET['end_date'] ?? null;
+                
+                $performanceData = $technician->getTechnicianPerformanceMetrics($startDate, $endDate);
+                echo json_encode([
+                    'success' => true,
+                    'data' => $performanceData
+                ]);
             } else {
                 // Get all technicians
                 $technicians = $technician->getAll();

@@ -321,5 +321,92 @@ class User {
 
         return false;
     }
+
+    /**
+     * Change user password with validation
+     * @param int $userId User ID
+     * @param string $currentPassword Current password
+     * @param string $newPassword New password
+     * @return array{success: bool, message: string}
+     */
+    public function changePassword(int $userId, string $currentPassword, string $newPassword): array
+    {
+        // Validate password length (minimum 8 characters)
+        if (strlen($newPassword) < 8) {
+            return [
+                'success' => false,
+                'message' => 'La nueva contraseña debe tener al menos 8 caracteres'
+            ];
+        }
+
+        // Validate password complexity (at least one uppercase, one lowercase, one number)
+        if (!preg_match('/[A-Z]/', $newPassword) || !preg_match('/[a-z]/', $newPassword) || !preg_match('/[0-9]/', $newPassword)) {
+            return [
+                'success' => false,
+                'message' => 'La contraseña debe contener al menos una mayúscula, una minúscula y un número'
+            ];
+        }
+
+        // Prevent reusing the same password
+        if ($currentPassword === $newPassword) {
+            return [
+                'success' => false,
+                'message' => 'La nueva contraseña no puede ser igual a la actual'
+            ];
+        }
+
+        try {
+            // Get current user data
+            $query = "SELECT Password FROM " . $this->table_name . " WHERE ID_Users = :id LIMIT 1";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":id", $userId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                return [
+                    'success' => false,
+                    'message' => 'Usuario no encontrado'
+                ];
+            }
+
+            // Verify current password
+            if (!password_verify($currentPassword, $row['Password'])) {
+                return [
+                    'success' => false,
+                    'message' => 'La contraseña actual es incorrecta'
+                ];
+            }
+
+            // Hash new password
+            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+
+            // Update password
+            $updateQuery = "UPDATE " . $this->table_name . " SET Password = :password WHERE ID_Users = :id";
+            $updateStmt = $this->conn->prepare($updateQuery);
+            $updateStmt->bindParam(":password", $hashedPassword, PDO::PARAM_STR);
+            $updateStmt->bindParam(":id", $userId, PDO::PARAM_INT);
+
+            if ($updateStmt->execute()) {
+                return [
+                    'success' => true,
+                    'message' => 'Contraseña cambiada exitosamente'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Error al actualizar la contraseña'
+                ];
+            }
+
+        } catch(PDOException $exception) {
+            error_log("Password change error: " . $exception->getMessage());
+            return [
+                'success' => false,
+                'message' => 'Error al cambiar contraseña'
+            ];
+        }
+    }
 }
 ?>

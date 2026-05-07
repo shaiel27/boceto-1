@@ -1,7 +1,8 @@
 // API Configuration - Real backend
 
-const API_BASE_URL = 'http://localhost:8000';
-const DASHBOARD_API_BASE = 'http://localhost:8000/api/dashboard-public';
+//const API_BASE_URL = 'http://localhost:8000';
+export const API_BASE_URL = 'http://192.168.5.43:8000';
+const DASHBOARD_API_BASE = 'http://192.168.5.43:8000/api/dashboard-public';
 
 
 
@@ -245,6 +246,42 @@ export class ApiService {
 
     }
 
+  }
+
+  // PHP-PRO: Change password method with backend integration
+  static async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users?action=change-password`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message || 'Contraseña cambiada exitosamente'
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al cambiar contraseña'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
 
@@ -1215,6 +1252,7 @@ export class ApiService {
     }
   }
 
+  // PHP-PRO: Get all technicians grouped by service - Backend integration
   static async getAllTechniciansGroupedByService(): Promise<ApiResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/technicians?action=grouped`, {
@@ -1247,6 +1285,40 @@ export class ApiService {
     }
   }
 
+  // PHP-PRO: Get executive summary with strategic KPIs - Backend integration
+  static async getExecutiveSummary(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${DASHBOARD_API_BASE}?action=executive-summary`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener resumen ejecutivo'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  
 
 
   static async getLunchBlocks(): Promise<ApiResponse> {
@@ -1932,19 +2004,35 @@ export class ApiService {
 
 
   static async getOfficeReport(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/office?action=distribution`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 500));
+      const data = await response.json();
 
-    return {
-
-      success: true,
-
-      message: 'Reporte por oficina obtenido exitosamente',
-
-      data: {}
-
-    };
-
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener reporte por oficina'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
   }
 
 
@@ -2358,6 +2446,264 @@ export class ApiService {
       return {
         success: false,
         message: 'Error al agregar comentario'
+      };
+    }
+  }
+
+  // PHP-PRO: Get technician performance metrics - Backend integration
+  static async getTechnicianPerformanceMetrics(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technicians?action=performance`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener métricas de rendimiento'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  // PHP-PRO: Get mock technician performance metrics
+  static getMockTechnicianPerformanceMetrics(): ApiResponse {
+    return {
+      success: true,
+      message: 'Datos mock de rendimiento de técnicos',
+      data: {
+        'Redes': [
+          { name: 'Juan Pérez', resolved_tickets: 45, avg_resolution_time: 3.5 },
+          { name: 'María González', resolved_tickets: 38, avg_resolution_time: 4.2 },
+          { name: 'Carlos Rodríguez', resolved_tickets: 52, avg_resolution_time: 2.8 }
+        ],
+        'Soporte': [
+          { name: 'Ana Martínez', resolved_tickets: 41, avg_resolution_time: 3.9 },
+          { name: 'Pedro Sánchez', resolved_tickets: 35, avg_resolution_time: 4.5 }
+        ],
+        'Programación': [
+          { name: 'Luis Torres', resolved_tickets: 48, avg_resolution_time: 3.2 },
+          { name: 'Carmen Vega', resolved_tickets: 43, avg_resolution_time: 3.7 }
+        ]
+      }
+    };
+  }
+
+  // PHP-PRO: Get mock office report
+  static getMockOfficeReport(): ApiResponse {
+    return {
+      success: true,
+      message: 'Datos mock de reporte por oficina',
+      data: [
+        { office: 'Catastro', total_tickets: 320, resolved: 295, pending: 25, avg_time: 4.2 },
+        { office: 'Obras', total_tickets: 280, resolved: 260, pending: 20, avg_time: 3.8 },
+        { office: 'Bienestar', total_tickets: 250, resolved: 230, pending: 20, avg_time: 4.5 },
+        { office: 'Hacienda', total_tickets: 200, resolved: 185, pending: 15, avg_time: 3.5 },
+        { office: 'Educación', total_tickets: 200, resolved: 190, pending: 10, avg_time: 3.2 }
+      ]
+    };
+  }
+
+  // PHP-PRO: Get problem report - Backend integration
+  static async getProblemReport(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/problem-report?action=all`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener reporte de problemas'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  // PHP-PRO: Get monthly problem report - Backend integration
+  static async getMonthlyProblemReport(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/problem-report?action=monthly`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener reporte mensual de problemas'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  // PHP-PRO: Get mock problem report
+  static getMockProblemReport(): ApiResponse {
+    return {
+      success: true,
+      message: 'Datos mock de reporte de problemas',
+      data: [
+        { month: 'Enero', service: 'Redes', problem: 'Conexión lenta', count: 40, severity: 'Media' },
+        { month: 'Enero', service: 'Soporte', problem: 'Software obsoleto', count: 35, severity: 'Alta' },
+        { month: 'Enero', service: 'Programación', problem: 'Bug en aplicación', count: 45, severity: 'Alta' },
+        { month: 'Febrero', service: 'Redes', problem: 'Conexión lenta', count: 42, severity: 'Media' },
+        { month: 'Febrero', service: 'Soporte', problem: 'Software obsoleto', count: 38, severity: 'Alta' },
+        { month: 'Febrero', service: 'Programación', problem: 'Bug en aplicación', count: 48, severity: 'Alta' },
+        { month: 'Marzo', service: 'Redes', problem: 'Conexión lenta', count: 45, severity: 'Media' },
+        { month: 'Marzo', service: 'Soporte', problem: 'Software obsoleto', count: 36, severity: 'Alta' },
+        { month: 'Marzo', service: 'Programación', problem: 'Bug en aplicación', count: 50, severity: 'Alta' },
+        { month: 'Abril', service: 'Redes', problem: 'Conexión lenta', count: 38, severity: 'Media' },
+        { month: 'Abril', service: 'Soporte', problem: 'Software obsoleto', count: 32, severity: 'Alta' },
+        { month: 'Abril', service: 'Programación', problem: 'Bug en aplicación', count: 42, severity: 'Alta' }
+      ]
+    };
+  }
+
+  // PHP-PRO: Get systems and problems report - Backend integration
+  static async getSystemsAndProblems(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/problem-report?action=systems`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener reporte de sistemas y problemáticas'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  // PHP-PRO: Get technician shifts report - technicians working until 5 PM
+  static async getTechnicianShifts(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technician-schedules?action=shifts-report`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener reporte de turnos de técnicos'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
+  // PHP-PRO: Get general tickets report with monthly statistics
+  static async getGeneralTicketsReport(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=general-report`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al obtener reporte general de tickets'
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
       };
     }
   }

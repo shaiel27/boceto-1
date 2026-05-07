@@ -117,6 +117,14 @@ switch ($method) {
                 ]);
                 break;
 
+            case 'executive-summary':
+                $executiveSummary = $dashboardController->getExecutiveSummary();
+                echo json_encode([
+                    'success' => true,
+                    'data' => $executiveSummary
+                ]);
+                break;
+
             case 'priority':
                 $priorityData = $dashboardController->getTicketsByPriority();
                 echo json_encode([

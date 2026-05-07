@@ -192,10 +192,20 @@ switch ($method) {
         break;
         
     case 'POST':
-        $data = json_decode(file_get_contents("php://input"));
-        
-        if (isset($data->action)) {
-            switch ($data->action) {
+        $rawInput = file_get_contents("php://input");
+        $data = json_decode($rawInput);
+
+        error_log("=== POST Request Debug ===");
+        error_log("Raw Input: " . $rawInput);
+        error_log("Decoded Data: " . json_encode($data));
+        error_log("Query Action: " . ($_GET['action'] ?? 'not set'));
+
+        // PHP-PRO: Read action from query string for RESTful consistency
+        $action = $_GET['action'] ?? ($data->action ?? null);
+        error_log("Final Action: " . ($action ?? 'not set'));
+
+        if ($action) {
+            switch ($action) {
                 case 'register':
                     $user->Username = $data->username;
                     $user->Email = $data->email;
@@ -245,6 +255,56 @@ switch ($method) {
                         echo json_encode([
                             'success' => false,
                             'message' => 'Error al crear usuario: ' . $e->getMessage()
+                        ]);
+                    }
+                    break;
+
+                case 'change-password':
+                    error_log("=== Change Password Debug ===");
+                    error_log("Current User ID: " . ($currentUserId ?? 'NULL'));
+                    error_log("Current User Role: " . ($currentUserRole ?? 'NULL'));
+                    error_log("Data received: " . json_encode($data));
+
+                    // Validate required fields
+                    if (!isset($data->current_password) || !isset($data->new_password)) {
+                        error_log("Missing required fields");
+                        http_response_code(400);
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'Se requieren current_password y new_password'
+                        ]);
+                        break;
+                    }
+
+                    // Ensure user is authenticated
+                    if (!$currentUserId) {
+                        error_log("User not authenticated");
+                        http_response_code(401);
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'No autenticado'
+                        ]);
+                        break;
+                    }
+
+                    // Change password
+                    $result = $user->changePassword(
+                        $currentUserId,
+                        $data->current_password,
+                        $data->new_password
+                    );
+
+                    if ($result['success']) {
+                        http_response_code(200);
+                        echo json_encode([
+                            'success' => true,
+                            'message' => $result['message']
+                        ]);
+                    } else {
+                        http_response_code(400);
+                        echo json_encode([
+                            'success' => false,
+                            'message' => $result['message']
                         ]);
                     }
                     break;

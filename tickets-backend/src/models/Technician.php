@@ -1084,5 +1084,90 @@ final class Technician
             return [];
         }
     }
+/**
+     * Get technician performance metrics
+     * Returns performance data including average resolution time and resolved tickets count
+     *
+     * @param string|null $startDate Start date filter (YYYY-MM-DD format)
+     * @param string|null $endDate End date filter (YYYY-MM-DD format)
+     * @return array<array{id: int, name: string, service: string, avg_resolution_time: float, resolved_tickets: int}>
+     */
+    public function getTechnicianPerformanceMetrics(?string $startDate = null, ?string $endDate = null): array
+    {
+        try {
+            // Build date filter conditions
+            $dateCondition = "";
+            $params = [];
+            
+            if ($startDate) {
+                $dateCondition .= " AND sr.Created_at >= :startDate";
+                $params[':startDate'] = $startDate . ' 00:00:00';
+            }
+            
+            if ($endDate) {
+                $dateCondition .= " AND sr.Created_at <= :endDate";
+                $params[':endDate'] = $endDate . ' 23:59:59';
+            }
+
+            $query = "SELECT DISTINCT 
+                     t.ID_Technicians,
+                     CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
+                     s.Type_Service as service_type,
+                     COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_tickets,
+                     AVG(CASE 
+                         WHEN sr.Status = 'Cerrado' AND sr.Resolved_at IS NOT NULL 
+                         THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)
+                         ELSE NULL 
+                     END) as avg_resolution_hours
+                     FROM " . $this->table_name . " t
+                     INNER JOIN Users u ON t.Fk_Users = u.ID_Users
+                     INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                     INNER JOIN TI_Service s ON ts.Fk_TI_Service = s.ID_TI_Service
+                     LEFT JOIN Ticket_Technicians tt ON t.ID_Technicians = tt.Fk_Technician
+                     LEFT JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                     WHERE ts.Status = 'Activo'
+                     " . $dateCondition . "
+                     GROUP BY t.ID_Technicians, t.First_Name, t.Last_Name, s.Type_Service
+                     ORDER BY technician_name ASC, service_type ASC";
+
+            $stmt = $this->conn->prepare($query);
+            
+            // Bind parameters if they exist
+            foreach ($params as $key => $value) {
+                $stmt->bindValue($key, $value);
+            }
+            
+            $stmt->execute();
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Group results by service type
+            $groupedResults = [];
+            foreach ($results as $row) {
+                $serviceType = $row['service_type'];
+                
+                if (!isset($groupedResults[$serviceType])) {
+                    $groupedResults[$serviceType] = [];
+                }
+                
+                $groupedResults[$serviceType][] = [
+                    'id' => (int)$row['ID_Technicians'],
+                    'name' => $row['technician_name'],
+                    'service' => $row['service_type'],
+                    'resolved_tickets' => (int)$row['resolved_tickets'],
+                    'avg_resolution_time' => round((float)$row['avg_resolution_hours'], 2)
+                ];
+            }
+
+            error_log("getTechnicianPerformanceMetrics: Retrieved " . count($groupedResults) . " service groups with " . array_sum(array_map('count', $groupedResults)) . " total technicians");
+            return $groupedResults;
+
+        } catch (PDOException $e) {
+            error_log("PDOException in getTechnicianPerformanceMetrics: " . $e->getMessage());
+            return [];
+        } catch (Exception $e) {
+            error_log("Exception in getTechnicianPerformanceMetrics: " . $e->getMessage());
+            return [];
+        }
+    }
 }
 ?>

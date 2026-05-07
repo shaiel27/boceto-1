@@ -267,6 +267,40 @@ switch ($method) {
                 ]);
                 break;
 
+            case 'general-report':
+                // PHP-PRO: General tickets report with monthly statistics
+                if (!in_array($currentUserRole, ['Admin', 'Jefe'], true)) {
+                    http_response_code(403);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Permiso insuficiente'
+                    ]);
+                    break;
+                }
+
+                $query = "SELECT
+                    DATE_FORMAT(sr.Created_at, '%Y-%m') AS 'Mes',
+                    CAST(COUNT(*) AS UNSIGNED) AS 'Total Tickets',
+                    CAST(SUM(CASE WHEN sr.System_Priority = 'Alta' THEN 1 ELSE 0 END) AS UNSIGNED) AS 'Alta Prioridad',
+                    CAST(SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) AS UNSIGNED) AS 'Resueltos'
+                FROM
+                    Service_Request sr
+                GROUP BY
+                    DATE_FORMAT(sr.Created_at, '%Y-%m')
+                ORDER BY
+                    DATE_FORMAT(sr.Created_at, '%Y-%m') DESC";
+
+                $stmt = $db->prepare($query);
+                $stmt->execute();
+                $reportData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Reporte general de tickets obtenido exitosamente',
+                    'data' => $reportData
+                ]);
+                break;
+
             default:
                 // Admins and technicians can see all tickets
                 if (!in_array($currentUserRole, ['Admin', 'Tecnico', 'Jefe'], true)) {
