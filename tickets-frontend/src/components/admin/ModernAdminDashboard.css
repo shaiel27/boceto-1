@@ -431,8 +431,45 @@
 }
 
 /* Recent Tickets */
-.recent-tickets {
+.card.technician-performance {
+  grid-column: span 1;
+}
+
+.card.assistance-requests {
   grid-column: span 2;
+  grid-row: span 2;
+}
+
+.card.assistance-requests .admin-assistance-management {
+  height: 100%;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+.card.assistance-requests .admin-assistance-management .admin-assistance-header {
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+  background: transparent;
+}
+
+.card.assistance-requests .admin-assistance-management .admin-assistance-filters {
+  padding: 0 20px 16px 20px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
+}
+
+.card.assistance-requests .admin-assistance-management .assistance-requests-list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.card.assistance-requests .admin-assistance-management .assistance-request-card {
+  margin-bottom: 12px;
 }
 
 .tickets-list {

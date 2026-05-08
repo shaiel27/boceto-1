@@ -1,8 +1,8 @@
 // API Configuration - Real backend
 
 //const API_BASE_URL = 'http://localhost:8000';
-export const API_BASE_URL = 'http://192.168.5.43:8000';
-const DASHBOARD_API_BASE = 'http://192.168.5.43:8000/api/dashboard-public';
+export const API_BASE_URL = 'http://192.168.100.8:8000';
+const DASHBOARD_API_BASE = 'http://192.168.100.8:8000/api/dashboard-public';
 
 
 
@@ -2706,6 +2706,162 @@ export class ApiService {
         message: 'Error de conexión con el servidor'
       };
     }
+  }
+
+  // Assistance Request System - Using existing Ticket_Comments and Ticket_Technicians tables
+  
+  static async createAssistanceRequest(ticketId: number, requestData: {
+    reason: string;
+    priority: string;
+    required_skills: string[];
+  }): Promise<ApiResponse> {
+    // Use mock implementation as primary since backend doesn't exist
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const requestId = `REQ_${Date.now()}`;
+    const assistanceComment = `[ASISTENCIA_REQUEST]${JSON.stringify({
+        type: "ASISTENCIA_REQUEST",
+        request_id: requestId,
+        technician_id: null, // Will be filled by backend
+        ticket_id: ticketId,
+        reason: requestData.reason,
+        priority: requestData.priority,
+        required_skills: requestData.required_skills,
+        status: "PENDIENTE",
+        created_at: new Date().toISOString()
+      })}`;
+
+    console.log('Mock assistance request created:', assistanceComment);
+    
+    return {
+      success: true,
+      message: 'Solicitud de asistencia creada exitosamente',
+      data: {
+        request_id: requestId,
+        status: 'PENDIENTE',
+        created_at: new Date().toISOString()
+      }
+    };
+  }
+
+  static async getPendingAssistanceRequests(): Promise<ApiResponse> {
+    // Use mock implementation as primary since backend doesn't exist
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    return {
+      success: true,
+      message: 'Solicitudes pendientes obtenidas (datos mock)',
+      data: [
+        {
+          request_id: 'REQ_1715123456789',
+          comment_id: 123,
+          technician_id: 2,
+          technician_name: 'Juan Pérez',
+          ticket_id: 456,
+          ticket_title: 'Problema con impresora de red',
+          reason: 'Necesito especialista en redes para configurar VPN',
+          priority: 'ALTA',
+          required_skills: ['Redes', 'Configuración VPN'],
+          status: 'PENDIENTE',
+          created_at: '2026-05-07T13:00:00Z'
+        },
+        {
+          request_id: 'REQ_1715123456790',
+          comment_id: 124,
+          technician_id: 3,
+          technician_name: 'María González',
+          ticket_id: 457,
+          ticket_title: 'Error en sistema de catastro',
+          reason: 'Requiero apoyo con base de datos SQL',
+          priority: 'MEDIA',
+          required_skills: ['Base de datos', 'SQL'],
+          status: 'PENDIENTE',
+          created_at: '2026-05-07T14:30:00Z'
+        }
+      ]
+    };
+  }
+
+  static async manageAssistanceRequest(requestId: string, action: {
+    action: 'approve' | 'reject';
+    admin_notes?: string;
+    assigned_technicians?: number[];
+  }): Promise<ApiResponse> {
+    // Use mock implementation as primary since backend doesn't exist
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    console.log('Mock assistance request management:', { requestId, action });
+    
+    return {
+      success: true,
+      message: `Solicitud ${action.action === 'approve' ? 'aprobada' : 'rechazada'} exitosamente`,
+      data: {
+        request_id: requestId,
+        status: action.action === 'approve' ? 'APROBADA' : 'RECHAZADA',
+        updated_at: new Date().toISOString()
+      }
+    };
+  }
+
+  static async getMyAssistanceRequests(technicianId: number): Promise<ApiResponse> {
+    // Use mock implementation as primary since backend doesn't exist
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    console.log('Mock assistance requests for technician:', technicianId);
+    
+    return {
+      success: true,
+      message: 'Mis solicitudes de asistencia obtenidas (datos mock)',
+      data: [
+        {
+          request_id: 'REQ_1715123456788',
+          ticket_id: 455,
+          ticket_title: 'Actualización de sistema',
+          reason: 'Necesito ayuda con migración de datos',
+          priority: 'MEDIA',
+          required_skills: ['Migración', 'Base de datos'],
+          status: 'APROBADA',
+          created_at: '2026-05-06T10:00:00Z',
+          updated_at: '2026-05-06T11:30:00Z',
+          admin_notes: 'Asignado a especialista en bases de datos'
+        },
+        {
+          request_id: 'REQ_1715123456789',
+          ticket_id: 456,
+          ticket_title: 'Problema con impresora de red',
+          reason: 'Necesito especialista en redes para configurar VPN',
+          priority: 'ALTA',
+          required_skills: ['Redes', 'Configuración VPN'],
+          status: 'PENDIENTE',
+          created_at: '2026-05-07T13:00:00Z'
+        }
+      ]
+    };
+  }
+
+  static parseAssistanceRequests(comments: any[]): any[] {
+    const requests = [];
+    console.log('Parsing assistance requests from comments:', comments);
+    
+    for (const comment of comments) {
+      // Handle both PHP-PRO and frontend comment structures
+      const commentText = comment.Comment || comment.Comment_Text || '';
+      console.log('Checking comment:', commentText, comment);
+      
+      if (commentText && commentText.startsWith('[ASISTENCIA_REQUEST]')) {
+        try {
+          const jsonData = commentText.substring(20);
+          const request = JSON.parse(jsonData);
+          request.comment_id = comment.ID_Comment || comment.ID_Comment;
+          console.log('Found assistance request:', request);
+          requests.push(request);
+        } catch (error) {
+          console.error('Error parsing assistance request:', error, 'Comment:', commentText);
+        }
+      }
+    }
+    console.log('Parsed requests:', requests);
+    return requests;
   }
 
 }

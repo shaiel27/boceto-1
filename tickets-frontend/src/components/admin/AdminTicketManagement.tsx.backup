@@ -1,0 +1,514 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Search,
+  Filter, 
+  Plus, 
+  Eye, 
+  User, 
+  UserX,
+  Clock, 
+  MessageSquare, 
+  Paperclip, 
+  AlertCircle,
+  CheckCircle,
+  CheckCircle2,
+  XCircle,
+  Calendar,
+  FileText,
+  Settings,
+  BarChart3,
+  Users,
+  Zap,
+  Activity,
+  Archive,
+  RefreshCw,
+  Grid,
+  List,
+  CalendarDays,
+  FilterX,
+  SortAsc,
+  SortDesc
+  ArrowLeft,
+  MapPin,
+  Check,
+  Flag,
+  Star,
+  Wrench,
+  Lock,
+  AlertTriangle
+} from 'lucide-react';
+import './AdminTicketManagement.css';
+import ApiService from '../../services/api';
+
+interface TicketTechnician {
+  ID_Ticket_Technician: string;
+  Fk_Technician: string;
+  Is_Lead: boolean;
+  Assigned_At: string;
+  Technician_Name: string;
+  Technician_Email: string;
+  assignment_status: string;
+}
+
+interface Ticket {
+  ID_Service_Request: string;
+  Ticket_Code: string;
+  Subject: string;
+  Description: string;
+  Fk_Direction: string;
+  Fk_Division: string;
+  Fk_Coordination: string;
+  Fk_TI_Service: string;
+  System_Priority: 'Baja' | 'Media' | 'Alta' | 'Crítica';
+  Status: 'Pendiente' | 'En Proceso' | 'Cerrado';
+  Created_at: string;
+  Resolved_at: string | null;
+  Direction_Name?: string;
+  Division_Name?: string;
+  Coordination_Name?: string;
+  Service_Name?: string;
+  Software_System_Name?: string;
+  Technicians: TicketTechnician[];
+  Attachments_Count?: number;
+  Comments_Count?: number;
+}
+
+interface Technician {
+  ID_Technician: string;
+  Name: string;
+  Email: string;
+  Status: 'Disponible' | 'Ocupado';
+  Specialization: string;
+  TI_Services: Array<{ID_TI_Service: number; Type_Service: string}>;
+  Tickets_Resolved?: number;
+  Active_Tickets?: number;
+}
+
+interface TimelineEvent {
+  ID_Timeline: string;
+  Fk_Service_Request: string;
+  Fk_User_Actor: string;
+  Action_Description: string;
+  Old_Status: string | null;
+  New_Status: string | null;
+  Event_Date: string;
+  User_Name?: string;
+}
+
+interface Comment {
+  ID_Comment: string;
+  Fk_Service_Request: string;
+  Comment_Text: string;
+  Comment_Type: 'public' | 'internal';
+  Created_By: string;
+  Created_at: string;
+  User_Name?: string;
+  User_Role?: 'Admin' | 'Technician' | 'Coordinator';
+}
+
+interface Attachment {
+  ID_Attachment: string;
+  Fk_Service_Request: string;
+  File_Name: string;
+  File_Path: string;
+  File_Type: string;
+  File_Size: number;
+  Uploaded_By: string;
+  Uploaded_At: string;
+}
+
+interface AssistanceRequest {
+  request_id: string;
+  comment_id: number;
+  technician_id: number;
+  technician_name: string;
+  ticket_id: number;
+  ticket_title: string;
+  reason: string;
+  priority: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRÍTICA';
+  required_skills: string[];
+  status: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'ASIGNADA';
+  created_at: string;
+  updated_at?: string;
+  admin_notes?: string;
+}
+
+const AdminTicketManagement: React.FC = () => {
+  const navigate = useNavigate();
+  
+  // Estados principales
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Estados de filtros avanzados
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [serviceFilter, setServiceFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'date' | 'priority' | 'status'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Estados de modales
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showPriorityModal, setShowPriorityModal] = useState(false);
+
+  // Estados de asignación
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [groupedTechnicians, setGroupedTechnicians] = useState<any[]>([]);
+  const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
+  const [reassignmentReason, setReassignmentReason] = useState('');
+  const [technicianSearch, setTechnicianSearch] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('all');
+
+  // Assistance request state
+  const [ticketAssistanceRequests, setTicketAssistanceRequests] = useState<Map<number, AssistanceRequest[]>>(new Map());
+  const [loadingAssistance, setLoadingAssistance] = useState(false);
+
+  // Estados de comentarios y timeline
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentType, setCommentType] = useState<'public' | 'internal'>('public');
+
+  // Estado de prioridad
+  const [newPriority, setNewPriority] = useState<'Baja' | 'Media' | 'Alta' | 'Crítica'>('Media');
+
+  // Estado de notificaciones
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  // Mostrar notificación
+  const showNotification = (type: 'success' | 'error', message: string) => {
+    setNotification({ type, message });
+    setTimeout(() => setNotification(null), 3000);
+  };
+
+  // Click outside to close modal
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        setShowDetailModal(false);
+      }
+    };
+
+    if (showDetailModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showDetailModal]);
+
+  // Datos mock para demostración
+  useEffect(() => {
+    loadTickets();
+  }, []);
+
+  const loadTickets = async () => {
+    setLoading(true);
+
+    try {
+      console.log('Cargando tickets...');
+      const response = await ApiService.getTickets();
+      console.log('Respuesta del API:', response);
+
+      if (response.success && response.data) {
+        console.log('Tickets recibidos:', response.data);
+        const formattedTickets = response.data.map((ticket: any) => ({
+          ID_Service_Request: ticket.ID_Service_Request.toString(),
+          Ticket_Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
+          Subject: ticket.Subject || 'Sin asunto',
+          Description: ticket.Description || 'Sin descripción',
+          Fk_Direction: ticket.Fk_Office || '',
+          Fk_Division: '',
+          Fk_Coordination: '',
+          Fk_TI_Service: ticket.Fk_TI_Service?.toString() || '',
+          System_Priority: ticket.System_Priority || 'Media',
+          Status: ticket.Status || 'Pendiente',
+          Created_at: ticket.Created_at || new Date().toISOString(),
+          Resolved_at: ticket.Resolved_at || null,
+          Direction_Name: ticket.office_name || 'No asignado',
+          Division_Name: ticket.office_type || 'No asignado',
+          Coordination_Name: ticket.service_type_name || 'No asignado',
+          Service_Name: ticket.service_type_name || 'No asignado',
+          Software_System_Name: ticket.software_system_name || null,
+      filtered = filtered.filter(ticket =>
+        ticket.Subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ticket.Ticket_Code.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(ticket => ticket.Status === statusFilter);
+    }
+
+    if (serviceFilter !== 'all') {
+      filtered = filtered.filter(ticket => ticket.Fk_TI_Service === serviceFilter);
+    }
+
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter(ticket => ticket.System_Priority === priorityFilter);
+    }
+
+    // Filtro por fecha
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const ticketDate = (dateStr: string) => new Date(dateStr);
+
+      if (dateFilter === 'today') {
+        filtered = filtered.filter(ticket => {
+          const ticketDateObj = ticketDate(ticket.Created_at);
+          return ticketDateObj.toDateString() === today.toDateString();
+        });
+      } else if (dateFilter === 'week') {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        filtered = filtered.filter(ticket => {
+          const ticketDateObj = ticketDate(ticket.Created_at);
+          return ticketDateObj >= weekAgo && ticketDateObj <= now;
+        });
+      } else if (dateFilter === 'custom' && customStartDate && customEndDate) {
+        const startDate = new Date(customStartDate);
+        const endDate = new Date(customEndDate);
+        endDate.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(ticket => {
+          const ticketDateObj = ticketDate(ticket.Created_at);
+          return ticketDateObj >= startDate && ticketDateObj <= endDate;
+        });
+      }
+    }
+
+    setFilteredTickets(filtered);
+  }, [tickets, searchTerm, statusFilter, serviceFilter, priorityFilter, dateFilter, customStartDate, customEndDate]);
+
+  // Cargar técnicos disponibles cuando se abre el modal de asignación
+  const loadAvailableTechnicians = async (serviceId: string) => {
+    try {
+      console.log('=== LOAD GROUPED TECHNICIANS ===');
+      console.log('Ticket Service ID:', serviceId);
+      
+      // Load all technicians grouped by service type (para asignación manual mostrar todos los servicios)
+      const response = await ApiService.getAllTechniciansGroupedByService();
+      console.log('API Response:', response);
+      
+      if (response.success && response.data) {
+        console.log('Grouped technicians data:', response.data);
+        console.log('Number of service groups:', response.data.length);
+        
+        // Para asignación manual: mostrar TODOS los técnicos de TODAS las áreas
+        // El usuario puede navegar entre pestañas para ver diferentes servicios
+        const allGroups = response.data;
+        
+        console.log('All service groups for manual assignment:', allGroups);
+        
+        // Log each service group and its technicians
+        allGroups.forEach((group: any) => {
+          console.log(`Service: ${group.service_name}, Technicians: ${group.technicians.length}`);
+          group.technicians.forEach((tech: any) => {
+            console.log(`  - ${tech.First_Name} ${tech.Last_Name} (${tech.Status})`);
+          });
+        });
+        
+        setGroupedTechnicians(allGroups);
+      } else {
+        console.log('No technicians found or error, using mock data:', response.message);
+        // Use mock data as fallback - mostrar todos los servicios
+        const mockGroupedTechnicians = [
+          {
+            service_id: 1,
+            service_name: 'Redes',
+            service_details: 'Infraestructura de red y conectividad',
+            count: 2,
+            technicians: [
+              { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
+              { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
+            ]
+          },
+          {
+            service_id: 2,
+            service_name: 'Soporte',
+            service_details: 'Soporte técnico general',
+            count: 2,
+            technicians: [
+              { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Disponible', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 0 },
+              { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 0 }
+            ]
+          },
+          {
+            service_id: 3,
+            service_name: 'Programación',
+            service_details: 'Desarrollo de software',
+            count: 2,
+            technicians: [
+              { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Disponible', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 0 },
+              { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
+            ]
+          }
+        ];
+        
+        setGroupedTechnicians(mockGroupedTechnicians);
+      }
+    } catch (error) {
+      console.error('Error loading technicians, using mock data:', error);
+      // Use mock data as fallback - mostrar todos los servicios
+      const mockGroupedTechnicians = [
+        {
+          service_id: 1,
+          service_name: 'Redes',
+          service_details: 'Infraestructura de red y conectividad',
+          count: 2,
+          technicians: [
+            { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
+            { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
+          ]
+        },
+        {
+          service_id: 2,
+          service_name: 'Soporte',
+          service_details: 'Soporte técnico general',
+          count: 2,
+          technicians: [
+            { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Disponible', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 0 },
+            { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 0 }
+          ]
+        },
+        {
+          service_id: 3,
+          service_name: 'Programación',
+          service_details: 'Desarrollo de software',
+          count: 2,
+          technicians: [
+            { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Disponible', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 0 },
+            { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
+          ]
+        }
+      ];
+      
+      setGroupedTechnicians(mockGroupedTechnicians);
+    }
+  };
+
+  // Cargar solicitudes de asistencia para un ticket
+  const loadTicketAssistanceRequests = async (ticketId: number) => {
+    setLoadingAssistance(true);
+    try {
+      console.log('=== LOADING ASSISTANCE REQUESTS ===');
+      console.log('Ticket ID:', ticketId);
+      
+      const response = await ApiService.getPendingAssistanceRequests();
+      console.log('Assistance Requests API Response:', response);
+      
+      if (response.success && response.data) {
+        const ticketRequests = response.data.filter((req: any) => 
+          parseInt(req.Fk_Ticket) === ticketId
+        );
+        console.log('Filtered assistance requests for this ticket:', ticketRequests);
+        
+        setTicketAssistanceRequests(prev => {
+          const newMap = new Map(prev);
+          newMap.set(ticketId, ticketRequests);
+          return newMap;
+        });
+      } else {
+        console.log('No assistance requests or error:', response.message);
+        setTicketAssistanceRequests(prev => {
+          const newMap = new Map(prev);
+          newMap.set(ticketId, []);
+          return newMap;
+        });
+      }
+    } catch (error) {
+      console.error('Error loading assistance requests:', error);
+      setTicketAssistanceRequests(prev => {
+        const newMap = new Map(prev);
+        newMap.set(ticketId, []);
+        return newMap;
+      });
+    } finally {
+      setLoadingAssistance(false);
+    }
+  };
+
+  // Cargar detalles del ticket
+  const loadTicketDetails = async (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+
+    // Cargar solicitudes de asistencia
+    await loadTicketAssistanceRequests(parseInt(ticket.ID_Service_Request));
+
+    // Cargar comentarios reales del backend
+    try {
+      console.log('=== LOADING COMMENTS ===');
+      console.log('Ticket ID:', ticket.ID_Service_Request);
+      
+      const commentsResponse = await ApiService.getTicketComments(parseInt(ticket.ID_Service_Request));
+      console.log('Comments API Response:', commentsResponse);
+      
+      if (commentsResponse.success && commentsResponse.data) {
+        const formattedComments = commentsResponse.data.map((comment: any) => ({
+          ID_Comment: comment.ID_Comment,
+          Fk_Service_Request: comment.Fk_Service_Request,
+          Comment_Text: comment.Comment,
+          Comment_Type: comment.Comment_Type || 'public',
+          Created_By: comment.Created_By,
+          Created_at: comment.Created_at,
+          User_Name: comment.User_Name || 'Usuario'
+        }));
+        setComments(formattedComments);
+      } else {
+        console.log('No comments or error:', commentsResponse.message);
+        setComments([]);
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      setComments([]);
+    }
+
+    // Cargar timeline del backend real usando PHP-PRO
+    try {
+      console.log('=== LOADING TIMELINE ===');
+      console.log('Ticket ID:', ticket.ID_Service_Request);
+      
+      const timelineResponse = await ApiService.getTicketTimeline(parseInt(ticket.ID_Service_Request));
+      console.log('Timeline API Response:', timelineResponse);
+      
+      if (timelineResponse.success && timelineResponse.data) {
+        const formattedTimeline = timelineResponse.data.map((event: any) => ({
+          ID_Timeline: event.ID_Timeline,
+          Fk_Service_Request: event.Fk_Service_Request,
+          Fk_User_Actor: event.Fk_User_Actor,
+          Action_Description: event.Action_Description,
+          Old_Status: event.Old_Status,
+          New_Status: event.New_Status,
+          Event_Date: event.Event_Date,
+          User_Name: event.User_Name || 'Usuario'
+        }));
+        setTimeline(formattedTimeline);
+      } else {
+        console.log('No timeline or error:', timelineResponse.message);
+        setTimeline([]);
+      }
+    } catch (error) {
+      console.error('Error loading timeline:', error);
+      setTimeline([]);
+    }
+
+    // Attachments mock (por ahora)
+    setAttachments([]);
+  };
+
+  // Manejar asignación de técnicos
+  const handleAssignTechnician = async () => {
+    if (!selectedTicket || selectedTechnicians.length === 0) return;
+
+    setLoading(true);
+
+};

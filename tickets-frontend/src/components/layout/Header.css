@@ -6,7 +6,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
   position: fixed;
   top: 0;
   left: 0;
@@ -14,18 +14,33 @@
   z-index: 1000;
   border-bottom: 3px solid var(--alcaldia-emphasis);
   height: 80px;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(20px);
+  border-bottom: 2px solid rgba(59, 130, 246, 0.3);
+  background: linear-gradient(145deg, #1a365d 0%, #1e3a8a 50%, #2563eb 100%);
 }
 
 .header-left {
   display: flex;
   align-items: center;
+  gap: 1.5rem;
 }
 
 .header-left-logo {
-  height: 60px;
+  height: 65px;
   width: auto;
   object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.header-left-logo:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .header-logo {
@@ -78,9 +93,21 @@
 }
 
 .header-right-logo {
-  height: 50px;
+  height: 55px;
   width: auto;
   object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.header-right-logo:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.4));
+  background: rgba(255, 255, 255, 0.15);
 }
 
 .user-info {
@@ -129,51 +156,56 @@
   transform: rotate(180deg);
 }
 
-/* Theme Switch adjustments */
-.header-right .theme-switch {
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
+/* Remove old user info and theme switch styles */
 
-.header-right .theme-switch:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Venezuela Clock Styles */
-.venezuela-clock {
+/* Ultra Minimal Clock Styles */
+.ultra-minimal-clock {
   display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-sm) var(--spacing-md);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: var(--radius-lg);
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.08) 100%);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 8px;
+  backdrop-filter: blur(15px);
   transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
 }
 
-.venezuela-clock:hover {
-  background: rgba(255, 255, 255, 0.2);
+.ultra-minimal-clock:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(37, 99, 235, 0.12) 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.15), 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-color: rgba(59, 130, 246, 0.35);
 }
 
-.clock-time {
-  font-size: 0.875rem;
+.time-zone-label {
+  font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  font-family: 'Courier New', monospace;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
-}
-
-.clock-label {
-  font-size: 0.7rem;
-  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  opacity: 0.85;
+  margin-bottom: 0.125rem;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.time-display {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #ffffff;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  letter-spacing: 0.025em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  line-height: 1;
+  margin-bottom: 0.125rem;
+}
+
+.date-display {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: capitalize;
+  letter-spacing: 0.025em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  line-height: 1;
 }

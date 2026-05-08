@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import './TechnicianDashboard.css';
 import TechnicianProfileComponent from './TechnicianProfile';
+import AssistanceRequestModal from '../assistance/AssistanceRequestModal';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -126,6 +127,10 @@ const TechnicianDashboard: React.FC = () => {
   const [lunchTimeRemaining, setLunchTimeRemaining] = useState<number>(0);
   const [workTimeRemaining, setWorkTimeRemaining] = useState<number>(0);
   const [showProfile, setShowProfile] = useState(false);
+  
+  // Assistance request state
+  const [showAssistanceModal, setShowAssistanceModal] = useState(false);
+  const [selectedTicketForAssistance, setSelectedTicketForAssistance] = useState<Ticket | null>(null);
 
   // PHP-PRO: Load ticket history with enhanced analytics
   const loadTicketHistory = async () => {
@@ -474,6 +479,16 @@ const TechnicianDashboard: React.FC = () => {
     });
   };
 
+  const handleAssistanceRequest = (ticket: Ticket) => {
+    setSelectedTicketForAssistance(ticket);
+    setShowAssistanceModal(true);
+  };
+
+  const handleAssistanceSuccess = (requestId: string) => {
+    console.log('Assistance request created:', requestId);
+    // Optionally refresh tickets or show success message
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'Alta':
@@ -697,10 +712,20 @@ const TechnicianDashboard: React.FC = () => {
                       Ver Detalles
                     </button>
                     {ticket.Status !== 'Cerrado' && (
-                      <button className="action-btn primary" onClick={() => handleViewDetails(ticket)}>
-                        <RefreshCw size={18} />
-                        Gestionar
-                      </button>
+                      <>
+                        <button 
+                          className="action-btn assistance" 
+                          onClick={() => handleAssistanceRequest(ticket)}
+                          title="Solicitar asistencia técnica"
+                        >
+                          <AlertTriangle size={18} />
+                          Solicitar Asistencia
+                        </button>
+                        <button className="action-btn primary" onClick={() => handleViewDetails(ticket)}>
+                          <RefreshCw size={18} />
+                          Gestionar
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -1202,6 +1227,20 @@ const TechnicianDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Assistance Request Modal */}
+      {showAssistanceModal && selectedTicketForAssistance && (
+        <AssistanceRequestModal
+          isOpen={showAssistanceModal}
+          onClose={() => {
+            setShowAssistanceModal(false);
+            setSelectedTicketForAssistance(null);
+          }}
+          ticketId={parseInt(selectedTicketForAssistance.id)}
+          ticketTitle={selectedTicketForAssistance.Subject}
+          onSuccess={handleAssistanceSuccess}
+        />
       )}
     </div>
   );

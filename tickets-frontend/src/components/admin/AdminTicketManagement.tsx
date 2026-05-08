@@ -240,7 +240,7 @@ const AdminTicketManagement: React.FC = () => {
 
   // Filtrar tickets
   useEffect(() => {
-    let filtered = tickets;
+    let filtered = [...tickets];
 
     if (searchTerm) {
       filtered = filtered.filter(ticket =>

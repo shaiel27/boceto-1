@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import './ModernAdminDashboard.css';
 import ApiService from '../../services/api';
+import AdminAssistanceManagement from '../assistance/AdminAssistanceManagement';
 
 interface DashboardStats {
   pending_count: number;
@@ -490,6 +491,14 @@ const ModernAdminDashboard: React.FC = () => {
                 ))}
               </div>
             </div>
+          </section>
+
+          {/* Assistance Requests Management */}
+          <section className="card assistance-requests">
+            <AdminAssistanceManagement onRequestsUpdate={(count) => {
+              // Optionally update stats or show notification
+              console.log('Pending assistance requests:', count);
+            }} />
           </section>
 
           {/* Office Distribution */}
