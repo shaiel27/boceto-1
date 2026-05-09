@@ -36,7 +36,6 @@ import {
   Play
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
-import '../layout/ModernSidebar.css';
 import './Dashboard.css';
 import './Reports.css';
 

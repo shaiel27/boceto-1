@@ -26,7 +26,7 @@ import {
 import './TechnicianDashboard.css';
 import TechnicianProfileComponent from './TechnicianProfile';
 import AssistanceRequestModal from '../assistance/AssistanceRequestModal';
-import ApiService from '../../services/api';
+import ApiService, { API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 // PHP-PRO: Strict typing with readonly properties and proper interfaces
@@ -170,7 +170,7 @@ const TechnicianDashboard: React.FC = () => {
       
       // Try backend API (optional)
       try {
-        const response = await fetch('http://localhost:8000/api-technician-history.php?action=ticket-history', {
+        const response = await fetch(`${API_BASE_URL}/api-technician-history.php?action=ticket-history`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',

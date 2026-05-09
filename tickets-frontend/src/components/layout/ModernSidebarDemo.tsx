@@ -1,14 +1,13 @@
 import React from 'react';
 import ModernSidebar from './ModernSidebar';
-import './ModernSidebar.css';
 
 const ModernSidebarDemo: React.FC = () => {
   return (
     <div style={{ display: 'flex', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <ModernSidebar />
+      <ModernSidebar fullViewport />
       
       {/* Main Content Area */}
-      <main style={{ flex: 1, padding: '2rem', background: '#f8fafc' }}>
+      <main style={{ flex: 1, padding: '2rem', paddingLeft: 'calc(288px + 2rem)', background: '#f8fafc' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: '700', color: '#1e293b', marginBottom: '1rem' }}>
             Nuevo Diseño de Barra de Navegación

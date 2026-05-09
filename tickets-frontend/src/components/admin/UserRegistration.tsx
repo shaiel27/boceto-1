@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { User, Building, Save, ArrowLeft, Plus, Check, X, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ModernSidebar from '../layout/ModernSidebar';
-import '../layout/ModernSidebar.css';
 import './UserRegistration.css';
 import ApiService from '../../services/api';
 

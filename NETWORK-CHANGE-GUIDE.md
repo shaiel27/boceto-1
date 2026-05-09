@@ -65,6 +65,7 @@ $allowedOrigins = [
 ```bash
 cd c:\xampp\htdocs\boceto-1\tickets-backend
 php -S 0.0.0.0:8000 -t public
+C:\xampp\php\php.exe -S 0.0.0.0:8000 -t public
 ```
 
 **Reiniciar Frontend:**

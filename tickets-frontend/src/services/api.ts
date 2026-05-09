@@ -1,10 +1,17 @@
-// API Configuration - Real backend
+// API Configuration - Real backend (CRA: reiniciar `npm start` tras cambiar .env)
 
-//const API_BASE_URL = 'http://localhost:8000';
-//export const API_BASE_URL = 'http://192.168.100.8:8000';
-export const API_BASE_URL = 'http://10.2.0.2:8000';
-//const DASHBOARD_API_BASE = 'http://192.168.100.8:8000/api/dashboard-public';
-const DASHBOARD_API_BASE = 'http://192.168.100.8:8000/api/dashboard-public';
+function resolveApiBase(): string {
+  const explicit = process.env.REACT_APP_API_BASE?.trim().replace(/\/$/, '');
+  if (explicit) return explicit;
+  const fromApiUrl = process.env.REACT_APP_API_URL?.trim().replace(/\/$/, '');
+  if (fromApiUrl) {
+    return fromApiUrl.endsWith('/api') ? fromApiUrl.slice(0, -4) : fromApiUrl;
+  }
+  return 'http://192.168.1.5:8000';
+}
+
+export const API_BASE_URL = resolveApiBase();
+const DASHBOARD_API_BASE = `${API_BASE_URL}/api/dashboard-public`;
 
 
 

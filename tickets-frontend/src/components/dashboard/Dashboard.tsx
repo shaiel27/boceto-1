@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
 import ApiService, { API_BASE_URL } from '../../services/api';
-import '../layout/ModernSidebar.css';
 import './Dashboard.css';
 
 // Types for PHP-PRO integration

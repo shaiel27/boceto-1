@@ -1,18 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import './InstitutionalBar.css';
-import { 
-  BarChart3, 
-  FileText, 
-  Users, 
-  Building, 
-  TrendingUp,
+import {
   UserPlus,
   ChevronDown,
-  ChevronRight,
-  Home,
-  Settings,
   LogOut,
   Menu,
   X,
@@ -20,14 +12,14 @@ import {
   MapPin,
   Database,
   Shield,
-  Bell,
   Flag,
   Archive,
   ClipboardList,
   FileCheck,
   Users2,
   Building2,
-  ChevronUp
+  PanelLeftClose,
+  PanelLeft,
 } from 'lucide-react';
 
 interface NavItem {
@@ -35,99 +27,132 @@ interface NavItem {
   label: string;
   icon: React.ReactNode;
   path?: string;
-  badge?: number;
   children?: NavItem[];
   department?: string;
 }
 
-const InstitutionalBar: React.FC = () => {
+export interface ModernSidebarProps {
+  /** Sin header global (p. ej. demo a pantalla completa): la barra va de borde a borde en altura */
+  fullViewport?: boolean;
+}
+
+const ModernSidebar: React.FC<ModernSidebarProps> = ({ fullViewport = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { logout, user } = useAuth();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('admin-sidebar-collapsed') === '1';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('admin-sidebar-collapsed', collapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+    document.documentElement.style.setProperty(
+      '--admin-sidebar-width',
+      collapsed ? '72px' : '288px'
+    );
+  }, [collapsed]);
+
+  useEffect(() => {
+    document.body.classList.add('with-admin-sidebar');
+    return () => {
+      document.body.classList.remove('with-admin-sidebar');
+      document.documentElement.style.removeProperty('--admin-sidebar-width');
+    };
+  }, []);
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [location.pathname, location.search]);
 
   const navItems: NavItem[] = [
     {
       id: 'dashboard',
-      label: 'GOBIERNO',
-      icon: <Flag size={18} />,
+      label: 'Gobierno / Inicio',
+      icon: <Flag size={20} strokeWidth={1.75} />,
       path: '/',
-      department: 'executive'
+      department: 'executive',
     },
     {
       id: 'tickets',
-      label: 'SERVICIOS',
-      icon: <ClipboardList size={18} />,
+      label: 'Servicios y tickets',
+      icon: <ClipboardList size={20} strokeWidth={1.75} />,
       path: '/admin/tickets',
-      badge: 12,
-      department: 'services'
+      department: 'services',
     },
     {
       id: 'technical',
-      label: 'PERSONAL',
-      icon: <Users2 size={18} />,
+      label: 'Personal técnico',
+      icon: <Users2 size={20} strokeWidth={1.75} />,
       path: '/admin/technicians',
-      department: 'human-resources'
+      department: 'human-resources',
     },
     {
       id: 'structure',
-      label: 'ORGANIZACIÓN',
-      icon: <Building2 size={18} />,
+      label: 'Organización municipal',
+      icon: <Building2 size={20} strokeWidth={1.75} />,
       path: '/admin/offices',
       department: 'administrative',
       children: [
         {
           id: 'directions',
-          label: 'Direcciones Municipales',
-          icon: <MapPin size={16} />,
-          path: '/admin/offices?type=Direction'
+          label: 'Direcciones',
+          icon: <MapPin size={16} strokeWidth={1.75} />,
+          path: '/admin/offices?type=Direction',
         },
         {
           id: 'divisions',
-          label: 'Divisiones Operativas',
-          icon: <Database size={16} />,
-          path: '/admin/offices?type=Division'
+          label: 'Divisiones',
+          icon: <Database size={16} strokeWidth={1.75} />,
+          path: '/admin/offices?type=Division',
         },
         {
           id: 'coordinations',
-          label: 'Coordinaciones Sectoriales',
-          icon: <Activity size={16} />,
-          path: '/admin/offices?type=Coordination'
-        }
-      ]
+          label: 'Coordinaciones',
+          icon: <Activity size={16} strokeWidth={1.75} />,
+          path: '/admin/offices?type=Coordination',
+        },
+      ],
     },
     {
       id: 'reports',
-      label: 'INFORMES',
-      icon: <FileCheck size={18} />,
+      label: 'Informes',
+      icon: <FileCheck size={20} strokeWidth={1.75} />,
       path: '/admin/reports',
-      department: 'oversight'
+      department: 'oversight',
     },
     {
       id: 'archive',
-      label: 'ARCHIVO',
-      icon: <Archive size={18} />,
+      label: 'Archivo',
+      icon: <Archive size={20} strokeWidth={1.75} />,
       path: '/admin/archive',
-      department: 'records'
+      department: 'records',
     },
     {
       id: 'users',
-      label: 'SISTEMA',
-      icon: <UserPlus size={18} />,
+      label: 'Registro de usuarios',
+      icon: <UserPlus size={20} strokeWidth={1.75} />,
       path: '/admin/register-user',
-      department: 'it'
-    }
+      department: 'it',
+    },
   ];
 
   const toggleExpanded = (itemId: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(itemId)) {
-      newExpanded.delete(itemId);
-    } else {
-      newExpanded.add(itemId);
-    }
-    setExpandedItems(newExpanded);
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
   };
 
   const handleNavigation = (path: string) => {
@@ -139,130 +164,180 @@ const InstitutionalBar: React.FC = () => {
     navigate('/login');
   };
 
-  const isActive = (path?: string) => {
-    if (!path) return false;
-    if (path === '/') {
-      return location.pathname === '/' || location.pathname === '/admin';
-    }
-    return location.pathname === path;
-  };
+  const pathMatches = useCallback(
+    (path?: string) => {
+      if (!path) return false;
+      if (path === '/') {
+        return location.pathname === '/' || location.pathname === '/admin';
+      }
+      const [pathname, query] = path.split('?');
+      if (location.pathname !== pathname) return false;
+      if (!query) return true;
+      const params = new URLSearchParams(query);
+      const current = new URLSearchParams(location.search);
+      for (const [key, value] of Array.from(params.entries())) {
+        if (current.get(key) !== value) return false;
+      }
+      return true;
+    },
+    [location.pathname, location.search]
+  );
+
+  const topOffsetClass = fullViewport ? 'admin-institutional-nav--full' : 'admin-institutional-nav--below-header';
 
   return (
-    <div className="institutional-bar-container">
-      {/* Main Institutional Bar */}
-      <header className="institutional-bar">
-        <div className="bar-left">
-          <div className="institutional-seal">
-            <img 
-              src="/nombre_alcaldia_izquierda.png" 
-              alt="Alcaldía San Cristóbal" 
-              className="seal-image"
+    <>
+      <button
+        type="button"
+        className="admin-nav__mobile-fab"
+        aria-label={mobileOpen ? 'Cerrar menú de navegación' : 'Abrir menú de navegación'}
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen((o) => !o)}
+      >
+        {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+      </button>
+
+      {mobileOpen && (
+        <div
+          className="admin-nav__backdrop"
+          aria-hidden="true"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`admin-institutional-nav ${topOffsetClass} ${collapsed ? 'admin-institutional-nav--collapsed' : ''} ${mobileOpen ? 'admin-institutional-nav--mobile-open' : ''}`}
+        aria-label="Navegación administrativa municipal"
+      >
+        <div className="admin-nav__brand">
+          <div className="admin-nav__seal">
+            <img
+              src="/nombre_alcaldia_izquierda.png"
+              alt=""
+              width={48}
+              height={48}
+              decoding="async"
             />
           </div>
-          <div className="institutional-title">
-            <h1 className="main-title">MUNICIPIO DE SAN CRISTÓBAL</h1>
-            <div className="subtitle-bar">SISTEMA DE GESTIÓN MUNICIPAL</div>
-          </div>
+          {!collapsed && (
+            <div className="admin-nav__titles">
+              <p className="admin-nav__kicker">Alcaldía de San Cristóbal</p>
+              <p className="admin-nav__title">Gestión municipal</p>
+              <p className="admin-nav__subtitle">Panel administrativo</p>
+            </div>
+          )}
         </div>
 
-        <div className="bar-right">
-          <div className="user-credentials">
-            <div className="credential-badge">
-              <Shield size={16} />
-              <span>{user?.full_name || user?.email || 'FUNCIONARIO'}</span>
-            </div>
-            <div className="department-badge">
-              <Flag size={14} />
-              <span>{user?.role_name || 'ADMINISTRACIÓN'}</span>
-            </div>
-          </div>
-          <button className="mobile-menu-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-      </header>
+        <button
+          type="button"
+          className="admin-nav__collapse desktop-only"
+          onClick={() => setCollapsed((c) => !c)}
+          aria-pressed={collapsed}
+          title={collapsed ? 'Expandir menú' : 'Contraer menú'}
+        >
+          {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+        </button>
 
-      {/* Navigation Departments */}
-      <nav className={`department-nav ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-        <div className="nav-grid">
-          {navItems.map((item) => (
-            <div key={item.id} className="department-item">
-              <button
-                className={`department-btn ${isActive(item.path) ? 'active' : ''}`}
-                onClick={() => {
-                  if (item.children) {
-                    toggleExpanded(item.id);
-                  } else if (item.path) {
-                    handleNavigation(item.path);
-                    setMobileMenuOpen(false);
-                  }
-                }}
-              >
-                <div className="btn-content">
-                  <span className="btn-icon">{item.icon}</span>
-                  <span className="btn-label">{item.label}</span>
-                  {item.badge && (
-                    <span className="btn-badge">{item.badge}</span>
-                  )}
-                </div>
-                {item.children && (
-                  <span className={`btn-arrow ${expandedItems.has(item.id) ? 'expanded' : ''}`}>
-                    <ChevronDown size={14} />
+        <nav className="admin-nav__scroll" aria-label="Módulos del sistema">
+          <p className="admin-nav__section-label">Módulos</p>
+          <ul className="admin-nav__list">
+            {navItems.map((item) => (
+              <li key={item.id} className="admin-nav__item">
+                <button
+                  type="button"
+                  className={`admin-nav__link ${pathMatches(item.path) && !item.children ? 'is-active' : ''}`}
+                  onClick={() => {
+                    if (item.children) {
+                      if (collapsed) {
+                        setCollapsed(false);
+                      }
+                      toggleExpanded(item.id);
+                    } else if (item.path) {
+                      handleNavigation(item.path);
+                    }
+                  }}
+                  aria-expanded={item.children ? expandedItems.has(item.id) : undefined}
+                >
+                  <span className="admin-nav__link-icon" aria-hidden>
+                    {item.icon}
                   </span>
-                )}
-              </button>
+                  {!collapsed && (
+                    <>
+                      <span className="admin-nav__link-text">{item.label}</span>
+                      {item.children && (
+                        <ChevronDown
+                          size={16}
+                          className={`admin-nav__chevron ${expandedItems.has(item.id) ? 'is-open' : ''}`}
+                          aria-hidden
+                        />
+                      )}
+                    </>
+                  )}
+                </button>
 
-              {/* Submenu */}
-              {item.children && expandedItems.has(item.id) && (
-                <div className="submenu-panel">
-                  <div className="submenu-header">
-                    <Building2 size={16} />
-                    <span>{item.label}</span>
-                  </div>
-                  <div className="submenu-grid">
+                {item.children && expandedItems.has(item.id) && !collapsed && (
+                  <ul className="admin-nav__sublist">
                     {item.children.map((child) => (
-                      <button
-                        key={child.id}
-                        className={`submenu-btn ${isActive(child.path) ? 'active' : ''}`}
-                        onClick={() => {
-                          child.path && handleNavigation(child.path);
-                          setMobileMenuOpen(false);
-                        }}
-                      >
-                        <span className="submenu-icon">{child.icon}</span>
-                        <span className="submenu-label">{child.label}</span>
-                      </button>
+                      <li key={child.id}>
+                        <button
+                          type="button"
+                          className={`admin-nav__sublink ${pathMatches(child.path) ? 'is-active' : ''}`}
+                          onClick={() => child.path && handleNavigation(child.path)}
+                        >
+                          <span className="admin-nav__sublink-icon" aria-hidden>
+                            {child.icon}
+                          </span>
+                          <span>{child.label}</span>
+                        </button>
+                      </li>
                     ))}
-                  </div>
-                </div>
-              )}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="admin-nav__footer">
+          <div className="admin-nav__user" title={user?.email ?? ''}>
+            <div className="admin-nav__user-avatar" aria-hidden>
+              <Shield size={18} />
             </div>
-          ))}
+            {!collapsed && (
+              <div className="admin-nav__user-meta">
+                <span className="admin-nav__user-name">
+                  {user?.full_name || user?.email || 'Usuario'}
+                </span>
+                <span className="admin-nav__user-role">{user?.role_name || 'Administración'}</span>
+              </div>
+            )}
+          </div>
+          <div className="admin-nav__actions">
+            <button
+              type="button"
+              className="admin-nav__btn admin-nav__btn--ghost"
+              onClick={() => navigate('/admin/tickets')}
+            >
+              <ClipboardList size={18} />
+              {!collapsed && <span>Ver tickets</span>}
+            </button>
+            <button
+              type="button"
+              className="admin-nav__btn admin-nav__btn--ghost"
+              onClick={() => navigate('/admin/reports')}
+            >
+              <FileCheck size={18} />
+              {!collapsed && <span>Informes</span>}
+            </button>
+            <button type="button" className="admin-nav__btn admin-nav__btn--danger" onClick={handleLogout}>
+              <LogOut size={18} />
+              {!collapsed && <span>Cerrar sesión</span>}
+            </button>
+          </div>
         </div>
-
-        {/* Action Bar */}
-        <div className="action-bar">
-          <button className="action-btn primary" onClick={() => navigate('/admin/tickets')}>
-            <ClipboardList size={16} />
-            <span>NUEVO SERVICIO</span>
-          </button>
-          <button className="action-btn secondary" onClick={() => navigate('/admin/reports')}>
-            <FileCheck size={16} />
-            <span>GENERAR INFORME</span>
-          </button>
-          <button className="action-btn logout" onClick={handleLogout}>
-            <LogOut size={16} />
-            <span>CERRAR SESIÓN</span>
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile Overlay */}
-      {mobileMenuOpen && (
-        <div className="mobile-overlay" onClick={() => setMobileMenuOpen(false)} />
-      )}
-    </div>
+      </aside>
+    </>
   );
 };
 
-export default InstitutionalBar;
+export default ModernSidebar;

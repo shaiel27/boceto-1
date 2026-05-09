@@ -1,6 +1,19 @@
 /* Variables CSS para sistema de temas Light/Dark */
 
 :root {
+  /* Identidad institucional (header, navegación admin, acentos) */
+  --institution-navy-deep: #1a365d;
+  --institution-navy: #1e3a8a;
+  --institution-blue: #2563eb;
+  --institution-gold: #c9a961;
+  --institution-gold-bright: #e8d5a3;
+  --alcaldia-primary: #1e3a8a;
+  --alcaldia-primary-dark: #1a365d;
+  --alcaldia-primary-light: #3b82f6;
+  --alcaldia-emphasis: var(--institution-gold);
+  --alcaldia-emphasis-light: var(--institution-gold-bright);
+  --alcaldia-emphasis-dark: #a6854a;
+
   /* Light Mode Colors - Modern & Pleasant */
   --bg-primary: #fafafa;
   --bg-secondary: #f1f5f9;

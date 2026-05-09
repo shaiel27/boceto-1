@@ -19,7 +19,6 @@ import {
   Clock
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
-import '../layout/ModernSidebar.css';
 import './UserManagement.css';
 import ApiService from '../../services/api';
 

@@ -17,7 +17,6 @@ import {
   ChevronDown
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
-import '../layout/ModernSidebar.css';
 import './InstitutionalStructure.css';
 
 interface Direction {

@@ -26,8 +26,6 @@ import {
   Send,
   X
 } from 'lucide-react';
-import ModernSidebar from '../layout/ModernSidebar';
-import '../layout/ModernSidebar.css';
 import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
 import ApiService from '../../services/api';

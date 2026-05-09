@@ -1,6 +1,13 @@
 <?php
 // CORS headers - must be set before any output
-$allowedOrigins = ['http://localhost:3000', 'http://192.168.100.8:3000', 'http://192.168.5.43:3000', 'http://10.2.0.2:3000'];
+$allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://192.168.100.8:3000',
+    'http://192.168.5.43:3000',
+    'http://10.2.0.2:3000',
+    'http://192.168.1.5:3000',
+];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins)) {
     header("Access-Control-Allow-Origin: $origin");
