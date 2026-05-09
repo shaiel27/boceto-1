@@ -63,7 +63,7 @@ const LoginForm: React.FC = () => {
   return (
     <div className="login-page">
       {/* Left Side - Branding */}
-      <div className="login-branding">
+      <div className="login-branding" style={{backgroundImage: 'url(/Gemini_Generated_Image_3gq6dw3gq6dw3gq6.png)'}}>
         <div className="branding-content">
           <div className="branding-logo">
             <Building size={48} color="white" />
@@ -71,7 +71,7 @@ const LoginForm: React.FC = () => {
           <h1 className="branding-title">Alcaldía del Municipio</h1>
           <h2 className="branding-subtitle">San Cristóbal</h2>
           <p className="branding-description">Sistema de Gestión de Tickets</p>
-          <div className="branding-features">
+          {/* <div className="branding-features">
             <div className="feature-item">
               <div className="feature-icon">📋</div>
               <span>Gestión Eficiente</span>
@@ -84,7 +84,7 @@ const LoginForm: React.FC = () => {
               <div className="feature-icon">🔒</div>
               <span>Seguridad Garantizada</span>
             </div>
-          </div>
+          </div> */}
         </div>
         <div className="branding-overlay"></div>
       </div>
