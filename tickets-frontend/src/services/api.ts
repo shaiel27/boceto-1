@@ -1,7 +1,9 @@
 // API Configuration - Real backend
 
 //const API_BASE_URL = 'http://localhost:8000';
-export const API_BASE_URL = 'http://192.168.100.8:8000';
+//export const API_BASE_URL = 'http://192.168.100.8:8000';
+export const API_BASE_URL = 'http://10.2.0.2:8000';
+//const DASHBOARD_API_BASE = 'http://192.168.100.8:8000/api/dashboard-public';
 const DASHBOARD_API_BASE = 'http://192.168.100.8:8000/api/dashboard-public';
 
 
