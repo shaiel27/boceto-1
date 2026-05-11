@@ -7,7 +7,7 @@ function resolveApiBase(): string {
   if (fromApiUrl) {
     return fromApiUrl.endsWith('/api') ? fromApiUrl.slice(0, -4) : fromApiUrl;
   }
-  return 'http://192.168.1.5:8000';
+  return 'http://192.168.2.4:8000';
 }
 
 export const API_BASE_URL = resolveApiBase();

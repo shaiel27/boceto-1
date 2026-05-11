@@ -1,6 +1,9 @@
 <?php
 declare(strict_types=1);
 
+// PHP-PRO: Define global constant for default ticket limit
+define('DEFAULT_TICKET_LIMIT', 1000);
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/ServiceRequest.php';
 require_once __DIR__ . '/../models/TicketComment.php';
@@ -112,7 +115,7 @@ switch ($method) {
                     break;
                 }
                 
-                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : DEFAULT_TICKET_LIMIT;
                 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
                 
                 $tickets = $ticket->getByUser($currentUserId, $limit, $offset);
@@ -144,7 +147,7 @@ switch ($method) {
                     break;
                 }
                 
-                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : DEFAULT_TICKET_LIMIT;
                 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
                 
                 $tickets = $ticket->getByTechnician($techData['ID_Technicians'], $limit, $offset);
@@ -257,7 +260,7 @@ switch ($method) {
                 $status = $_GET['status'] ?? null;
                 $serviceId = $_GET['service_id'] ?? null;
                 $priority = $_GET['priority'] ?? null;
-                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : DEFAULT_TICKET_LIMIT;
                 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 
                 $tickets = $ticket->getFiltered($status, $serviceId, $priority, $limit, $offset);
@@ -312,7 +315,7 @@ switch ($method) {
                     break;
                 }
                 
-                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 50;
+                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : DEFAULT_TICKET_LIMIT;
                 $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
                 
                 $tickets = $ticket->getAll($limit, $offset);

@@ -17,25 +17,32 @@ npm start
 ```
 Busca la línea "On Your Network" para ver tu nueva IP, ejemplo:
 ```
-On Your Network:  http://192.168.5.43:3000
+On Your Network:  http://192.168.2.4:3000
 ```
 
-### 2. Actualizar Frontend (api.ts)
+### 2. Actualizar Frontend (.env y api.ts)
+
+**Primero, actualiza el archivo .env:**
+Edita el archivo: `tickets-frontend/.env`
+
+```bash
+# Cambia la línea:
+REACT_APP_API_BASE=http://TU_NUEVA_IP:8000
+```
+
+**Luego, actualiza api.ts (opcional, como respaldo):**
 Edita el archivo: `tickets-frontend/src/services/api.ts`
 
 **Cambia estas líneas:**
 ```typescript
-// Línea 4 - Reemplaza con tu nueva IP
-export const API_BASE_URL = 'http://TU_NUEVA_IP:8000';
-
-// Línea 5 - Reemplaza con tu nueva IP  
-const DASHBOARD_API_BASE = 'http://TU_NUEVA_IP:8000/api/dashboard-public';
+// Línea 10 - Reemplaza con tu nueva IP
+return 'http://TU_NUEVA_IP:8000';
 ```
 
-**Ejemplo con IP 192.168.5.43:**
+**Ejemplo con IP 192.168.2.4:**
 ```typescript
-export const API_BASE_URL = 'http://192.168.5.43:8000';
-const DASHBOARD_API_BASE = 'http://192.168.5.43:8000/api/dashboard-public';
+export const API_BASE_URL = 'http://192.168.2.4:8000';
+const DASHBOARD_API_BASE = 'http://192.168.2.4:8000/api/dashboard-public';
 ```
 
 ### 3. Actualizar Backend (index.php)
@@ -44,18 +51,26 @@ Edita el archivo: `tickets-backend/public/index.php`
 **Línea 3 - Agrega tu nueva IP al array:**
 ```php
 $allowedOrigins = [
-    'http://localhost:3000', 
-    'http://192.168.100.8:3000', 
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://192.168.100.8:3000',
+    'http://192.168.5.43:3000',
+    'http://10.2.0.2:3000',
+    'http://192.168.1.5:3000',
     'http://TU_NUEVA_IP:3000'  // <-- Agrega esta línea
 ];
 ```
 
-**Ejemplo con IP 192.168.5.43:**
+**Ejemplo con IP 192.168.2.4:**
 ```php
 $allowedOrigins = [
-    'http://localhost:3000', 
-    'http://192.168.100.8:3000', 
-    'http://192.168.5.43:3000'
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://192.168.100.8:3000',
+    'http://192.168.5.43:3000',
+    'http://10.2.0.2:3000',
+    'http://192.168.1.5:3000',
+    'http://192.168.2.4:3000'
 ];
 ```
 
@@ -75,9 +90,11 @@ npm start
 ```
 
 ### 5. Probar Conexión
-- Abre http://localhost:3000 en tu navegador
+- Abre http://192.168.2.4:3000 en tu navegador
 - Intenta hacer login con: `admin@alcaldia.gob` / `password123`
 - Debería funcionar sin errores de conexión
+
+**Nota:** También puedes usar http://localhost:3000 si estás en la misma máquina
 
 ## Alternativa: Usar localhost (Recomendado)
 
@@ -115,7 +132,10 @@ Para confirmar que todo funciona:
 - **Backend siempre en puerto 8000**
 - **Frontend siempre en puerto 3000**
 - **IP cambia, puertos no**
-- **Actualiza ambos archivos (api.ts y index.php)**
+- **Actualiza tres archivos: .env, api.ts y index.php**
+- **Reinicia `npm start` después de cambiar el .env**
+- **Dirección actual del proyecto: http://192.168.2.4:3000**
 
 ---
 *Última actualización: Mayo 2026*
+*Dirección actual: http://192.168.2.4:3000*

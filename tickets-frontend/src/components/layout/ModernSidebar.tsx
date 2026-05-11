@@ -131,13 +131,6 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ fullViewport = false }) =
       department: 'oversight',
     },
     {
-      id: 'archive',
-      label: 'Archivo',
-      icon: <Archive size={20} strokeWidth={1.75} />,
-      path: '/admin/archive',
-      department: 'records',
-    },
-    {
       id: 'users',
       label: 'Registro de usuarios',
       icon: <UserPlus size={20} strokeWidth={1.75} />,

@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
+import {
   Search,
-  Filter, 
-  Plus, 
-  Eye, 
-  User, 
+  Filter,
+  Plus,
+  Eye,
+  User,
   UserX,
-  Clock, 
-  MessageSquare, 
-  Paperclip, 
+  Clock,
+  MessageSquare,
+  Paperclip,
   AlertCircle,
   CheckCircle,
   CheckCircle2,
@@ -32,70 +32,73 @@ import {
   Flag,
   Star,
   Wrench,
-  Lock
+  Lock,
+  Network,
+  Code
 } from 'lucide-react';
 import './AdminTicketManagement.css';
 import ApiService from '../../services/api';
 
+// PHP-PRO: Strict TypeScript interfaces with proper typing
 interface TicketTechnician {
-  ID_Ticket_Technician: string;
-  Fk_Technician: string;
-  Is_Lead: boolean;
-  Assigned_At: string;
-  Technician_Name: string;
-  Technician_Email: string;
-  assignment_status: string;
+  readonly ID_Ticket_Technician: string;
+  readonly Fk_Technician: string;
+  readonly Is_Lead: boolean;
+  readonly Assigned_At: string;
+  readonly Technician_Name: string;
+  readonly Technician_Email: string;
+  readonly assignment_status: string;
 }
 
 interface Ticket {
-  ID_Service_Request: string;
-  Ticket_Code: string;
-  Subject: string;
-  Description: string;
-  Fk_Direction: string;
-  Fk_Division: string;
-  Fk_Coordination: string;
-  Fk_TI_Service: string;
-  System_Priority: 'Baja' | 'Media' | 'Alta' | 'Crítica';
-  Status: 'Pendiente' | 'En Proceso' | 'Cerrado';
-  Created_at: string;
-  Resolved_at: string | null;
-  Direction_Name?: string;
-  Division_Name?: string;
-  Coordination_Name?: string;
-  Service_Name?: string;
-  Software_System_Name?: string;
-  Technicians: TicketTechnician[];
-  Attachments_Count?: number;
-  Comments_Count?: number;
+  readonly ID_Service_Request: string;
+  readonly Ticket_Code: string;
+  readonly Subject: string;
+  readonly Description: string;
+  readonly Fk_Direction: string;
+  readonly Fk_Division: string;
+  readonly Fk_Coordination: string;
+  readonly Fk_TI_Service: string;
+  readonly System_Priority: 'Baja' | 'Media' | 'Alta' | 'Crítica';
+  readonly Status: 'Pendiente' | 'En Proceso' | 'Cerrado';
+  readonly Created_at: string;
+  readonly Resolved_at: string | null;
+  readonly Direction_Name?: string;
+  readonly Division_Name?: string;
+  readonly Coordination_Name?: string;
+  readonly Service_Name?: string;
+  readonly Software_System_Name?: string;
+  readonly Technicians: readonly TicketTechnician[];
+  readonly Attachments_Count?: number;
+  readonly Comments_Count?: number;
 }
 
 interface Technician {
-  ID_Technician: string;
-  Name: string;
-  Email: string;
-  Status: 'Disponible' | 'Ocupado';
-  Specialization: string;
-  TI_Services: Array<{ID_TI_Service: number; Type_Service: string}>;
-  Tickets_Resolved?: number;
-  Active_Tickets?: number;
+  readonly ID_Technician: string;
+  readonly Name: string;
+  readonly Email: string;
+  readonly Status: 'Disponible' | 'Ocupado';
+  readonly Specialization: string;
+  readonly TI_Services: readonly {readonly ID_TI_Service: number; readonly Type_Service: string}[];
+  readonly Tickets_Resolved?: number;
+  readonly Active_Tickets?: number;
 }
 
 interface TimelineEvent {
-  ID_Timeline: string;
-  Fk_Service_Request: string;
-  Fk_User_Actor: string;
-  Action_Description: string;
-  Old_Status: string | null;
-  New_Status: string | null;
-  Event_Date: string;
-  User_Name?: string;
+  readonly ID_Timeline: string;
+  readonly Fk_Service_Request: string;
+  readonly Fk_User_Actor: string;
+  readonly Action_Description: string;
+  readonly Old_Status: string | null;
+  readonly New_Status: string | null;
+  readonly Event_Date: string;
+  readonly User_Name?: string;
 }
 
 interface Comment {
-  ID_Comment: string;
-  Fk_Service_Request: string;
-  Comment_Text: string;
+  readonly ID_Comment: string;
+  readonly Fk_Service_Request: string;
+  readonly Comment_Text: string;
   Comment_Type: 'public' | 'internal';
   Created_By: string;
   Created_at: string;
@@ -761,8 +764,8 @@ const AdminTicketManagement: React.FC = () => {
           </div>
         </div>
 
-        {/* Tickets Cards - New Design */}
-        <div className="tickets-container">
+        {/* Tickets Table - Institutional Professional Design */}
+        <div className="tickets-table-container">
           {loading ? (
             <div className="loading-state">
               <RefreshCw className="spinner" size={32} />
@@ -774,110 +777,122 @@ const AdminTicketManagement: React.FC = () => {
               <p>{error}</p>
             </div>
           ) : (
-            <div className="tickets-grid-new">
-              {filteredTickets.map((ticket) => (
-                <div key={ticket.ID_Service_Request} className="ticket-card-minimal">
-                  {/* Top Row: Code and Status */}
-                  <div className="ticket-top-row">
-                    <div className="ticket-code-minimal">
-                      <FileText size={16} />
-                      <span>{ticket.Ticket_Code}</span>
-                    </div>
-                    <div className="ticket-status-minimal">
-                      <span className={`status-dot-minimal ${getStatusColor(ticket.Status)}`}></span>
-                      <span className="status-text">{ticket.Status}</span>
-                    </div>
-                  </div>
-
-                  {/* Subject */}
-                  <h3 className="ticket-subject-minimal">{ticket.Subject}</h3>
-
-                  {/* Description Preview */}
-                  <p className="ticket-desc-minimal">
-                    {ticket.Description.length > 60 
-                      ? `${ticket.Description.substring(0, 60)}...`
-                      : ticket.Description
-                    }
-                  </p>
-
-                  {/* Info Row */}
-                  <div className="ticket-info-row">
-                    <div className="info-item">
-                      <MapPin size={14} />
-                      <span>{ticket.Direction_Name || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <Settings size={14} />
-                      <span>{ticket.Service_Name || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <Clock size={14} />
-                      <span>{new Date(ticket.Created_at).toLocaleString('es-ES', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}</span>
-                    </div>
-                  </div>
-
-                  {/* Bottom Row: Priority and Actions */}
-                  <div className="ticket-bottom-row">
-                    <div className={`priority-minimal ${getPriorityColor(ticket.System_Priority)}`}>
-                      <Flag size={12} />
-                      <span>{ticket.System_Priority}</span>
-                    </div>
-                    <div className="ticket-actions-minimal">
-                      <button
-                        className="action-icon-btn"
-                        onClick={() => {
-                          loadTicketDetails(ticket);
-                          setShowDetailModal(true);
-                        }}
-                        title="Ver detalles"
-                      >
-                        <Eye size={18} />
-                      </button>
-                      {ticket.Status !== 'Cerrado' && (
-                        <>
-                          <button
-                            className="action-icon-btn"
-                            onClick={async () => {
-                              await loadTicketDetails(ticket);
-                              await loadAvailableTechnicians(ticket.Fk_TI_Service);
-                              setShowAssignModal(true);
-                            }}
-                            title="Asignar técnico"
-                          >
-                            <User size={18} />
-                          </button>
-                          <button
-                            className="action-icon-btn"
-                            onClick={() => {
-                              loadTicketDetails(ticket);
-                              setNewPriority(ticket.System_Priority);
-                              setShowPriorityModal(true);
-                            }}
-                            title="Cambiar prioridad"
-                          >
-                            <Flag size={18} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <>
+              <div className="table-header-info">
+                <span className="table-count">{filteredTickets.length} TICKETS REGISTRADOS</span>
+              </div>
+              <div className="institutional-table-wrapper">
+                <table className="institutional-ticket-table">
+                  <thead>
+                    <tr>
+                      <th className="col-code">CÓDIGO</th>
+                      <th className="col-subject">ASUNTO</th>
+                      <th className="col-location">UBICACIÓN</th>
+                      <th className="col-service">SERVICIO</th>
+                      <th className="col-priority">PRIORIDAD</th>
+                      <th className="col-status">ESTADO</th>
+                      <th className="col-date">FECHA</th>
+                      <th className="col-actions">ACCIONES</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTickets.map((ticket) => (
+                      <tr key={ticket.ID_Service_Request}>
+                        <td className="col-code">
+                          <div className="code-cell">
+                            <FileText size={14} />
+                            <span>{ticket.Ticket_Code}</span>
+                          </div>
+                        </td>
+                        <td className="col-subject">
+                          <div className="subject-cell">
+                            <span className="subject-text">{ticket.Subject}</span>
+                          </div>
+                        </td>
+                        <td className="col-location">
+                          <span className="location-text">
+                            {ticket.Direction_Name && ticket.Direction_Name.length > 25
+                              ? `${ticket.Direction_Name.substring(0, 25)}...`
+                              : ticket.Direction_Name || 'N/A'}
+                          </span>
+                        </td>
+                        <td className="col-service">
+                          <span className="service-text">{ticket.Service_Name || 'N/A'}</span>
+                        </td>
+                        <td className="col-priority">
+                          <span className={`priority-badge-institutional ${getPriorityColor(ticket.System_Priority)}`}>
+                            {ticket.System_Priority}
+                          </span>
+                        </td>
+                        <td className="col-status">
+                          <span className={`status-badge-institutional ${getStatusColor(ticket.Status)}`}>
+                            {ticket.Status}
+                          </span>
+                        </td>
+                        <td className="col-date">
+                          <span className="date-text">
+                            {new Date(ticket.Created_at).toLocaleString('es-ES', {
+                              day: '2-digit',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </span>
+                        </td>
+                        <td className="col-actions">
+                          <div className="actions-cell">
+                            <button
+                              className="institutional-action-btn"
+                              onClick={() => {
+                                loadTicketDetails(ticket);
+                                setShowDetailModal(true);
+                              }}
+                              title="Ver detalles"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            {ticket.Status !== 'Cerrado' && (
+                              <>
+                                <button
+                                  className="institutional-action-btn"
+                                  onClick={async () => {
+                                    await loadTicketDetails(ticket);
+                                    await loadAvailableTechnicians(ticket.Fk_TI_Service);
+                                    setShowAssignModal(true);
+                                  }}
+                                  title="Asignar técnico"
+                                >
+                                  <User size={16} />
+                                </button>
+                                <button
+                                  className="institutional-action-btn"
+                                  onClick={() => {
+                                    loadTicketDetails(ticket);
+                                    setNewPriority(ticket.System_Priority);
+                                    setShowPriorityModal(true);
+                                  }}
+                                  title="Cambiar prioridad"
+                                >
+                                  <Flag size={16} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
       </div>
 
-      {/* Modal de Asignación de Técnico */}
+      {/* Modal de Asignación de Técnico - Diseño Ligero */}
       {showAssignModal && selectedTicket && (
-        <div className="modal-overlay">
-          <div className="modal-content modal-wide">
+        <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
+          <div className="modal-content modal-wide" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>Asignar Técnicos</h2>
               <button
@@ -887,17 +902,17 @@ const AdminTicketManagement: React.FC = () => {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="modal-body">
               <div className="ticket-info">
                 <p><strong>Ticket:</strong> {selectedTicket.Ticket_Code}</p>
                 <p><strong>Asunto:</strong> {selectedTicket.Subject}</p>
                 <p><strong>Técnicos Asignados:</strong> {selectedTicket.Technicians.length > 0 ? selectedTicket.Technicians.map(t => t.Technician_Name).join(', ') : 'Sin asignar'}</p>
               </div>
-              
+
               <div className="form-group">
                 <label className="form-label">Seleccionar Técnicos</label>
-                
+
                 {groupedTechnicians.length === 0 ? (
                   <div className="empty-state-professional">
                     <div className="empty-icon">
@@ -909,23 +924,23 @@ const AdminTicketManagement: React.FC = () => {
                 ) : (
                   <div className="tabbed-assignment-container">
                     <div className="tabs-header">
-                      <button 
+                      <button
                         className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
                         onClick={() => setActiveTab('all')}
                       >
                         Todos
                         <span className="tab-count">
-                          {groupedTechnicians.reduce((acc: number, group: any) => 
+                          {groupedTechnicians.reduce((acc: number, group: any) =>
                             acc + group.technicians.filter((t: any) => t.Status === 'Disponible').length, 0)}
                         </span>
                       </button>
                       {groupedTechnicians.map((serviceGroup) => {
-                        const availableCount = serviceGroup.technicians.filter((t: any) => 
+                        const availableCount = serviceGroup.technicians.filter((t: any) =>
                           t.Status === 'Disponible'
                         ).length;
-                        
+
                         if (availableCount === 0) return null;
-                        
+
                         const getTabIcon = (serviceName: string) => {
                           switch (serviceName.toLowerCase()) {
                             case 'redes': return '🌐';
@@ -948,7 +963,7 @@ const AdminTicketManagement: React.FC = () => {
                         );
                       }).filter(Boolean)}
                     </div>
-                    
+
                     <div className="tab-content">
                       <div className="tab-search">
                         <Search size={16} className="search-icon" />
@@ -960,14 +975,14 @@ const AdminTicketManagement: React.FC = () => {
                           className="tab-search-input"
                         />
                       </div>
-                      
+
                       <div className="technicians-grid-new">
                         {(() => {
                           let techniciansToShow: any[] = [];
-                          
+
                           if (activeTab === 'all') {
                             groupedTechnicians.forEach((group: any) => {
-                              const availableTechs = group.technicians.filter((t: any) => 
+                              const availableTechs = group.technicians.filter((t: any) =>
                                 t.Status === 'Disponible'
                               );
                               techniciansToShow = [...techniciansToShow, ...availableTechs];
@@ -975,12 +990,12 @@ const AdminTicketManagement: React.FC = () => {
                           } else {
                             const activeGroup = groupedTechnicians.find((g: any) => g.service_name === activeTab);
                             if (activeGroup) {
-                              techniciansToShow = activeGroup.technicians.filter((t: any) => 
+                              techniciansToShow = activeGroup.technicians.filter((t: any) =>
                                 t.Status === 'Disponible'
                               );
                             }
                           }
-                          
+
                           const filteredTechs = techniciansToShow.filter((t: any) =>
                             technicianSearch === '' ||
                             `${t.First_Name} ${t.Last_Name}`.toLowerCase().includes(technicianSearch.toLowerCase())
@@ -997,10 +1012,10 @@ const AdminTicketManagement: React.FC = () => {
                           return filteredTechs.map((tech: any) => {
                             const techId = tech.ID_Technicians?.toString();
                             const isSelected = selectedTechnicians.includes(techId);
-                            
+
                             return (
-                              <div 
-                                key={techId} 
+                              <div
+                                key={techId}
                                 className={`tech-card-new ${isSelected ? 'selected' : ''}`}
                                 onClick={() => {
                                   if (isSelected) {
@@ -1046,7 +1061,7 @@ const AdminTicketManagement: React.FC = () => {
                 )}
               </div>
             </div>
-            
+
             <div className="modal-footer">
               <button
                 className="btn btn-secondary"
@@ -1123,7 +1138,7 @@ const AdminTicketManagement: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de Detalles del Ticket */}
+      {/* Modal de Detalles del Ticket - Diseño Ligero */}
       {showDetailModal && selectedTicket && (
         <div className="modal-overlay modal-large">
           <div className="modal-large-content" ref={modalRef}>
@@ -1259,8 +1274,8 @@ const AdminTicketManagement: React.FC = () => {
                               // Solo mostrar: creación, asignación de técnicos, y cierre
                               const desc = (event.Action_Description || '').toLowerCase();
                               return (
-                                desc.includes('creado') || 
-                                desc.includes('asign') || 
+                                desc.includes('creado') ||
+                                desc.includes('asign') ||
                                 desc.includes('cerrado') ||
                                 desc.includes('closed')
                               );
