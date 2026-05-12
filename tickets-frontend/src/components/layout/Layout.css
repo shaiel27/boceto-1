@@ -11,10 +11,10 @@
   padding: 0;
   background-color: var(--bg-secondary);
   display: flex;
-  margin-top: 100px; /* Increased spacing from header */
+  margin-top: 56px; /* Spacing from header */
   position: relative;
   z-index: 1;
-  min-height: calc(100vh - 100px); /* Adjust for increased margin */
+  min-height: calc(100vh - 56px); /* Adjust for margin */
 }
 
 .main-content > * {
@@ -34,8 +34,8 @@
   align-items: center;
   justify-content: center;
   padding: var(--spacing-xl);
-  margin-top: 100px; /* Increased spacing from header */
+  margin-top: 56px; /* Spacing from header */
   position: relative;
   z-index: 1;
-  min-height: calc(100vh - 100px); /* Adjust for increased margin */
+  min-height: calc(100vh - 56px); /* Adjust for margin */
 }

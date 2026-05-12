@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { sileo } from 'sileo';
 import TechnicianAnalytics from './TechnicianAnalytics';
 import {
   User,

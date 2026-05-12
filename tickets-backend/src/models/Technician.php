@@ -385,70 +385,62 @@ final class Technician
         return false;
     }
 
-    public function getAvailableTechniciansByService($serviceId) {
-        // Get current day and time
-        $currentDay = date('l'); // Monday, Tuesday, etc.
-        $currentTime = date('H:i:s');
-        $yesterday = date('Y-m-d H:i:s', strtotime('-24 hours'));
-
-        // Map English day names to Spanish
-        $dayMap = [
-            'Monday' => 'Lunes',
-            'Tuesday' => 'Martes',
-            'Wednesday' => 'Miercoles',
-            'Thursday' => 'Jueves',
-            'Friday' => 'Viernes',
-            'Saturday' => 'Sabado',
-            'Sunday' => 'Domingo'
-        ];
-        $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
-
-        // Actualizar estado de técnicos basado en horario laboral, almuerzo y tickets
-        $this->updateTechniciansStatus($currentDaySpanish, $currentTime);
-
-        // Estrategia Round-Robin Ponderado:
-        // Puntaje = (Tickets Activos × 2) + (Asignaciones Recientes × 1)
-        // Esto garantiza rotación equitativa mientras respeta la carga de trabajo actual
-        $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
-                         (SELECT COUNT(*)
-                          FROM Ticket_Technicians tt
-                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                          WHERE tt.Fk_Technician = t.ID_Technicians
-                          AND tt.Status = 'Activo'
-                          AND sr.Status != 'Cerrado') as Active_Tickets_Count,
-                         (SELECT COUNT(*)
-                          FROM Ticket_Technicians tt
-                          WHERE tt.Fk_Technician = t.ID_Technicians
-                          AND tt.Assigned_At >= '{$yesterday}') as Recent_Assignments_Count,
-                         1 as priority_score
-                  FROM " . $this->table_name . " t
-                  INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
-                  LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician
-                  LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
-                  WHERE ts.Fk_TI_Service = :serviceId
-                    AND ts.Status = 'Activo'
-                    AND t.Status = 'Disponible'
-                    AND sched.Day_Of_Week = :currentDay
-                    AND sched.Work_Start_Time <= :currentTime1
-                    AND sched.Work_End_Time >= :currentTime2
-                    AND (lb.Start_Time IS NULL OR lb.Start_Time > :currentTime3 OR lb.End_Time <= :currentTime4)
-                  ORDER BY (Active_Tickets_Count * 2 + Recent_Assignments_Count) ASC, t.First_Name, t.Last_Name";
-
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":serviceId", $serviceId);
-        $stmt->bindParam(":currentDay", $currentDaySpanish);
-        $stmt->bindParam(":currentTime1", $currentTime);
-        $stmt->bindParam(":currentTime2", $currentTime);
-        $stmt->bindParam(":currentTime3", $currentTime);
-        $stmt->bindParam(":currentTime4", $currentTime);
-
+    /**
+     * Get available technicians for a specific service
+     * PHP-PRO: Uses capacity-based selection instead of strict status filtering
+     * Allows technicians with active tickets to receive more if under capacity threshold
+     */
+    public function getAvailableTechniciansByService($serviceId): array
+    {
         try {
-            $stmt->execute();
-            $technicians = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            // Get current day and time
+            $currentDay = date('l'); // Monday, Tuesday, etc.
+            $currentTime = date('H:i:s');
+            $yesterday = date('Y-m-d H:i:s', strtotime('-24 hours'));
 
-            // Si no hay técnicos en horario, obtener todos los disponibles sin restricción de tiempo
+            // Map English day names to Spanish
+            $dayMap = [
+                'Monday' => 'Lunes',
+                'Tuesday' => 'Martes',
+                'Wednesday' => 'Miercoles',
+                'Thursday' => 'Jueves',
+                'Friday' => 'Viernes',
+                'Saturday' => 'Sabado',
+                'Sunday' => 'Domingo'
+            ];
+            $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
+
+            // Update technician status based on schedule, lunch, and active tickets
+            $this->updateTechniciansStatus($currentDaySpanish, $currentTime);
+
+            // PHP-PRO: Simplified capacity-based selection - no time/schedule restrictions
+            // Priority score = (Active Tickets × 2) + (Recent Assignments × 1)
+            $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                             (SELECT COUNT(*)
+                              FROM Ticket_Technicians tt
+                              INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                              WHERE tt.Fk_Technician = t.ID_Technicians
+                              AND tt.Status = 'Activo'
+                              AND sr.Status != 'Cerrado') as Active_Tickets_Count,
+                             (SELECT COUNT(*)
+                              FROM Ticket_Technicians tt
+                              WHERE tt.Fk_Technician = t.ID_Technicians
+                              AND tt.Assigned_At >= '{$yesterday}') as Recent_Assignments_Count
+                      FROM " . $this->table_name . " t
+                      INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                      WHERE ts.Fk_TI_Service = :serviceId
+                        AND ts.Status = 'Activo'
+                      HAVING Active_Tickets_Count < 5
+                      ORDER BY (Active_Tickets_Count * 2 + Recent_Assignments_Count) ASC, t.First_Name, t.Last_Name";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":serviceId", $serviceId, \PDO::PARAM_INT);
+            $stmt->execute();
+            $technicians = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            // PHP-PRO: Fallback - remove all restrictions except capacity
             if (empty($technicians)) {
-                error_log("No technicians available in working hours, getting all available technicians for service {$serviceId}");
+                error_log("No technicians in primary query, trying simplified fallback for service {$serviceId}");
 
                 $fallbackQuery = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
                                          (SELECT COUNT(*)
@@ -466,25 +458,28 @@ final class Technician
                                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
                                   WHERE ts.Fk_TI_Service = :serviceId
                                     AND ts.Status = 'Activo'
-                                    AND t.Status = 'Disponible'
+                                  HAVING Active_Tickets_Count < 10
                                   ORDER BY (Active_Tickets_Count * 2 + Recent_Assignments_Count) ASC, priority_score, t.First_Name, t.Last_Name";
 
                 $fallbackStmt = $this->conn->prepare($fallbackQuery);
-                $fallbackStmt->bindParam(":serviceId", $serviceId);
+                $fallbackStmt->bindParam(":serviceId", $serviceId, \PDO::PARAM_INT);
                 $fallbackStmt->execute();
-                $technicians = $fallbackStmt->fetchAll(PDO::FETCH_ASSOC);
+                $technicians = $fallbackStmt->fetchAll(\PDO::FETCH_ASSOC);
             }
+
 
             error_log("Available technicians for service {$serviceId} at {$currentDaySpanish} {$currentTime}: " . count($technicians));
             foreach ($technicians as $tech) {
                 $score = ($tech['Active_Tickets_Count'] * 2) + $tech['Recent_Assignments_Count'];
-                error_log("  - {$tech['First_Name']} {$tech['Last_Name']} " .
-                          "(Active: {$tech['Active_Tickets_Count']}, Recent: {$tech['Recent_Assignments_Count']}, Score: {$score})");
+                error_log("  - {$tech['First_Name']} {$tech['Last_Name']} (Status: {$tech['Status']}, Active: {$tech['Active_Tickets_Count']}, Recent: {$tech['Recent_Assignments_Count']}, Score: {$score})");
             }
 
             return $technicians;
-        } catch(PDOException $exception) {
-            error_log("Error getting available technicians: " . $exception->getMessage());
+        } catch (\PDOException $exception) {
+            error_log("PDOException in getAvailableTechniciansByService: " . $exception->getMessage());
+            return [];
+        } catch (\Exception $exception) {
+            error_log("Exception in getAvailableTechniciansByService: " . $exception->getMessage());
             return [];
         }
     }

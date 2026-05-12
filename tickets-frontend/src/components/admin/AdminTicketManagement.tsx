@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
@@ -23,6 +23,8 @@ import {
   Download,
   RefreshCw,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X,
   Send,
   History,
@@ -163,6 +165,14 @@ const AdminTicketManagement: React.FC = () => {
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // Estado de actualización automática (silenciosa)
+  const [previousTickets, setPreviousTickets] = useState<Ticket[]>([]);
+  const [refreshInterval] = useState(15000); // 15 segundos por defecto
+
+  // Estado de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+
   // Mostrar notificación
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -186,7 +196,84 @@ const AdminTicketManagement: React.FC = () => {
   // Datos mock para demostración
   useEffect(() => {
     loadTickets();
-  }, []);
+
+    // Configurar polling para actualización automática silenciosa
+    const interval = setInterval(() => {
+      checkForUpdates();
+    }, refreshInterval);
+
+    return () => clearInterval(interval);
+  }, [refreshInterval]);
+
+  // Función para comparar si hay cambios en los tickets
+  const hasTicketChanges = (newTickets: Ticket[], oldTickets: Ticket[]): boolean => {
+    if (newTickets.length !== oldTickets.length) return true;
+
+    // Comparar cada ticket por ID y estado
+    for (const newTicket of newTickets) {
+      const oldTicket = oldTickets.find(t => t.ID_Service_Request === newTicket.ID_Service_Request);
+      if (!oldTicket) return true; // Nuevo ticket encontrado
+
+      // Comparar campos clave que pueden cambiar
+      if (
+        newTicket.Status !== oldTicket.Status ||
+        newTicket.System_Priority !== oldTicket.System_Priority ||
+        newTicket.Technicians.length !== oldTicket.Technicians.length ||
+        newTicket.Subject !== oldTicket.Subject
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Verificar actualizaciones sin mostrar loading (completamente silencioso)
+  const checkForUpdates = async () => {
+    try {
+      const response = await ApiService.getTickets();
+
+      if (response.success && response.data) {
+        const formattedTickets = response.data.map((ticket: any) => ({
+          ID_Service_Request: ticket.ID_Service_Request.toString(),
+          Ticket_Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
+          Subject: ticket.Subject || 'Sin asunto',
+          Description: ticket.Description || 'Sin descripción',
+          Fk_Direction: ticket.Fk_Office || '',
+          Fk_Division: '',
+          Fk_Coordination: '',
+          Fk_TI_Service: ticket.Fk_TI_Service?.toString() || '',
+          System_Priority: ticket.System_Priority || 'Media',
+          Status: ticket.Status || 'Pendiente',
+          Created_at: ticket.Created_at || new Date().toISOString(),
+          Resolved_at: ticket.Resolved_at || null,
+          Direction_Name: ticket.office_name || 'No asignado',
+          Division_Name: ticket.office_type || 'No asignado',
+          Coordination_Name: ticket.service_type_name || 'No asignado',
+          Service_Name: ticket.service_type_name || 'No asignado',
+          Software_System_Name: ticket.software_system_name || null,
+          Technicians: ticket.technicians?.map((t: any) => ({
+            ID_Ticket_Technician: t.id?.toString() || '',
+            Fk_Technician: t.id?.toString() || '',
+            Is_Lead: t.is_lead || false,
+            Assigned_At: t.assigned_at || '',
+            Technician_Name: t.name || 'No asignado',
+            Technician_Email: ''
+          })) || [],
+          Attachments_Count: 0,
+          Comments_Count: 0
+        }));
+
+        // Solo actualizar si hay cambios
+        if (hasTicketChanges(formattedTickets, previousTickets)) {
+          setPreviousTickets([...tickets]);
+          setTickets(formattedTickets);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for updates:', error);
+    }
+  };
 
   const loadTickets = async () => {
     setLoading(true);
@@ -228,6 +315,7 @@ const AdminTicketManagement: React.FC = () => {
           Comments_Count: 0
         }));
         console.log('Tickets formateados:', formattedTickets);
+        setPreviousTickets([...formattedTickets]);
         setTickets(formattedTickets);
       } else {
         console.error('Error en respuesta:', response.message);
@@ -294,7 +382,37 @@ const AdminTicketManagement: React.FC = () => {
     }
 
     setFilteredTickets(filtered);
+    setCurrentPage(1); // Resetear a la primera página cuando cambian los filtros
   }, [tickets, searchTerm, statusFilter, serviceFilter, priorityFilter, dateFilter, customStartDate, customEndDate]);
+
+  // Calcular tickets para la página actual
+  const paginatedTickets = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredTickets.slice(startIndex, endIndex);
+  }, [filteredTickets, currentPage, itemsPerPage]);
+
+  // Calcular total de páginas
+  const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
+
+  // Cambiar de página
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Ir a la página anterior
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  // Ir a la siguiente página
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   // Cargar técnicos disponibles cuando se abre el modal de asignación
   const loadAvailableTechnicians = async (serviceId: string) => {
@@ -635,8 +753,12 @@ const AdminTicketManagement: React.FC = () => {
               <ArrowLeft size={18} />
               Volver al Dashboard
             </button>
-            <button className="btn btn-primary" onClick={() => window.location.reload()}>
-              <RefreshCw size={18} />
+            <button 
+              className="btn btn-primary" 
+              onClick={() => loadTickets()}
+              disabled={loading}
+            >
+              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
               Actualizar
             </button>
           </div>
@@ -780,6 +902,9 @@ const AdminTicketManagement: React.FC = () => {
             <>
               <div className="table-header-info">
                 <span className="table-count">{filteredTickets.length} TICKETS REGISTRADOS</span>
+                <span className="table-pagination-info">
+                  Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTickets.length)} de {filteredTickets.length}
+                </span>
               </div>
               <div className="institutional-table-wrapper">
                 <table className="institutional-ticket-table">
@@ -796,7 +921,7 @@ const AdminTicketManagement: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredTickets.map((ticket) => (
+                    {paginatedTickets.map((ticket: Ticket) => (
                       <tr key={ticket.ID_Service_Request}>
                         <td className="col-code">
                           <div className="code-cell">
@@ -884,6 +1009,58 @@ const AdminTicketManagement: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination Controls */}
+              {filteredTickets.length > itemsPerPage && (
+                <div className="pagination-container">
+                  <div className="pagination-info">
+                    <span>Página {currentPage} de {totalPages}</span>
+                  </div>
+                  <div className="pagination-controls">
+                    <button
+                      className="pagination-btn"
+                      onClick={handlePreviousPage}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft size={16} />
+                      Anterior
+                    </button>
+                    
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                      if (
+                        page === 1 ||
+                        page === totalPages ||
+                        (page >= currentPage - 1 && page <= currentPage + 1)
+                      ) {
+                        return (
+                          <button
+                            key={page}
+                            className={`pagination-page-btn ${currentPage === page ? 'active' : ''}`}
+                            onClick={() => handlePageChange(page)}
+                          >
+                            {page}
+                          </button>
+                        );
+                      } else if (
+                        page === currentPage - 2 ||
+                        page === currentPage + 2
+                      ) {
+                        return <span key={page} className="pagination-ellipsis">...</span>;
+                      }
+                      return null;
+                    })}
+                    
+                    <button
+                      className="pagination-btn"
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                    >
+                      Siguiente
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>

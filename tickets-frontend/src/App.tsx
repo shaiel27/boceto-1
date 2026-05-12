@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { Toaster } from 'sileo';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import DashboardPage from './pages/DashboardPage';
 import AdminManagementPage from './pages/AdminManagementPage';
@@ -25,6 +26,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <div className="App">
+          <Toaster position="top-right" />
           <Router>
             <Routes>
               <Route path="/" element={<ProtectedRoute allowedRoles={[1]}><DashboardPage /></ProtectedRoute>} />

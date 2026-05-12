@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Lock, Mail, Building, AlertCircle, User } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Building, AlertCircle, User, Sparkles, ShieldCheck } from 'lucide-react';
 import Layout from '../layout/Layout';
 import ApiService, { RegisterResponse } from '../../services/api';
 import './RegisterForm.css';
@@ -77,7 +77,7 @@ const RegisterForm: React.FC = () => {
       } else {
         const errorMessage = response.errors 
           ? Object.values(response.errors).flat().join(', ')
-          : response.message || 'Error al registrar usuario';
+          : response.message || 'Error desconocido';
         setError(errorMessage);
       }
     } catch (error) {
@@ -94,12 +94,21 @@ const RegisterForm: React.FC = () => {
         <div className="register-card">
         {/* Logo y Header */}
         <div className="register-header">
-          <div className="register-logo">
-            <Building size={32} color="white" />
+          <div className="register-logo-wrapper">
+            <div className="register-logo">
+              <Building size={36} color="white" />
+            </div>
+            <div className="logo-sparkle">
+              <Sparkles size={16} color="white" />
+            </div>
           </div>
-          <h1 className="register-title">Registro de Usuario</h1>
+          <h1 className="register-title">Crear Cuenta</h1>
           <h2 className="register-subtitle">Alcaldía San Cristóbal</h2>
           <p className="register-description">Sistema de Gestión de Tickets</p>
+          <div className="register-badge">
+            <ShieldCheck size={14} />
+            <span>Registro Seguro</span>
+          </div>
         </div>
 
         {/* Error Display */}
@@ -228,15 +237,18 @@ const RegisterForm: React.FC = () => {
             className="submit-button"
           >
             {isLoading ? (
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span className="button-content">
                 <svg className="loading-spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3.738l3-2.647z"></path>
                 </svg>
                 Registrando...
               </span>
             ) : (
-              'Registrarse'
+              <span className="button-content">
+                <Sparkles size={18} />
+                Crear Cuenta
+              </span>
             )}
           </button>
         </form>

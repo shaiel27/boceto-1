@@ -7,7 +7,7 @@ function resolveApiBase(): string {
   if (fromApiUrl) {
     return fromApiUrl.endsWith('/api') ? fromApiUrl.slice(0, -4) : fromApiUrl;
   }
-  return 'http://192.168.2.4:8000';
+  return 'http://localhost:8000';
 }
 
 export const API_BASE_URL = resolveApiBase();
@@ -68,6 +68,18 @@ export interface RegisterResponse {
   role_name: string;
 
   created_at: string;
+
+}
+
+
+
+export interface CreateTicketResponse {
+
+  ticket_id: number;
+
+  technician_assigned: boolean;
+
+  technician_name: string | null;
 
 }
 
@@ -722,7 +734,7 @@ export class ApiService {
 
 
 
-  static async createTicket(ticketData: any): Promise<ApiResponse> {
+  static async createTicket(ticketData: any): Promise<ApiResponse<CreateTicketResponse>> {
 
     try {
 
@@ -756,7 +768,15 @@ export class ApiService {
 
           message: data.message,
 
-          data: data.data
+          data: {
+
+            ticket_id: data.ticket_id,
+
+            technician_assigned: data.technician_assigned || false,
+
+            technician_name: data.technician_name || null
+
+          }
 
         };
 

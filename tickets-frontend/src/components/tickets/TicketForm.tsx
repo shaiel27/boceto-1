@@ -17,6 +17,7 @@ import {
   Layers,
   AlertTriangle
 } from 'lucide-react';
+import { sileo } from 'sileo';
 import './TicketForm.css';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -281,6 +282,10 @@ const TicketForm: React.FC = () => {
         const serviceName = tiServices.find(s => s.id === formData.fkTiService)?.name || 'No asignado';
         const problemName = problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.name || 'No asignado';
 
+        // Get technician info from backend response
+        const technicianAssigned = response.data?.technician_assigned || false;
+        const technicianName = response.data?.technician_name || null;
+
         setCreatedTicket({
           subject: formData.subject,
           description: formData.description,
@@ -289,8 +294,19 @@ const TicketForm: React.FC = () => {
           serviceName: serviceName,
           problemName: problemName,
           priority: systemPriority,
-          technicianAssigned: false,
-          technicianName: null
+          technicianAssigned: technicianAssigned,
+          technicianName: technicianName
+        });
+
+        // Show Sileo notification with ticket details including technician
+        const notificationDescription = technicianAssigned
+          ? `Técnico: ${technicianName}\nServicio: ${serviceName}\nOficina: ${officeName}\nPrioridad: ${systemPriority}`
+          : `Servicio: ${serviceName}\nOficina: ${officeName}\nPrioridad: ${systemPriority}\n\nPendiente de asignación de técnico`;
+
+        sileo.success({
+          title: technicianAssigned ? '¡Ticket Creado y Técnico Asignado!' : '¡Ticket Creado Exitosamente!',
+          description: notificationDescription,
+          duration: 6000,
         });
 
         setTimeout(() => {

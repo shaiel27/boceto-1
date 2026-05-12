@@ -9,8 +9,13 @@ require_once __DIR__ . '/../models/ServiceRequest.php';
 require_once __DIR__ . '/../models/TicketComment.php';
 require_once __DIR__ . '/../models/TicketTimeline.php';
 require_once __DIR__ . '/../models/Technician.php';
+require_once __DIR__ . '/../models/Notification.php';
+
+use App\Models\Notification;
 require_once __DIR__ . '/../DTO/CreateTicketDTO.php';
+require_once __DIR__ . '/../DTO/NotificationDTO.php';
 require_once __DIR__ . '/../Services/TicketService.php';
+require_once __DIR__ . '/../Services/NotificationService.php';
 
 try {
     $database = new Database();
@@ -29,7 +34,9 @@ try {
     $comment = new TicketComment($db);
     $timeline = new TicketTimeline($db);
     $technician = new Technician($db);
-    $ticketService = new TicketService($db, $ticket, $technician);
+    $notification = new Notification($db);
+    $notificationService = new NotificationService($db, $notification);
+    $ticketService = new TicketService($db, $ticket, $technician, $notificationService);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([

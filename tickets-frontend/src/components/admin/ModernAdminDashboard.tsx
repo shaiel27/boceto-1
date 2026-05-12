@@ -32,6 +32,7 @@ import {
 import './ModernAdminDashboard.css';
 import ApiService from '../../services/api';
 import AdminAssistanceManagement from '../assistance/AdminAssistanceManagement';
+import CenteredNotification, { NotificationData } from '../notifications/CenteredNotification';
 
 interface DashboardStats {
   pending_count: number;
@@ -104,11 +105,98 @@ const ModernAdminDashboard: React.FC = () => {
   const [trends, setTrends] = useState<TrendData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string>('');
-  const [autoRefresh, setAutoRefresh] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
+  const [notification, setNotification] = useState<NotificationData | null>(null);
+  const [lastNotificationCount, setLastNotificationCount] = useState(0);
+  const [previousStats, setPreviousStats] = useState<DashboardStats | null>(null);
+  const [refreshInterval] = useState(15000);
+
+  // Show notification function
+  const showNotification = (type: NotificationData['type'], title: string, message: string) => {
+    setNotification({
+      type,
+      title,
+      message,
+      duration: 6000,
+      showSound: true
+    });
+  };
+
+  // Check for new notifications
+  const checkNotifications = async () => {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_BASE || 'http://192.168.2.4:8000'}/api/notifications?action=my-notifications`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const currentCount = data.data.length;
+        
+        // If we have new notifications
+        if (currentCount > lastNotificationCount && lastNotificationCount > 0) {
+          const newNotifications = data.data.slice(0, currentCount - lastNotificationCount);
+          
+          // Show notification for each new ticket
+          newNotifications.forEach((notif: any) => {
+            if (notif.Type === 'ticket_created_admin') {
+              const metadata = JSON.parse(notif.Metadata || '{}');
+              showNotification(
+                'info',
+                notif.Title,
+                notif.Message
+              );
+            }
+          });
+        }
+        
+        setLastNotificationCount(currentCount);
+      }
+    } catch (error) {
+      console.error('Error checking notifications:', error);
+    }
+  };
+
+  // Función para comparar si hay cambios en los datos del dashboard
+  const hasDashboardChanges = (newStats: DashboardStats, oldStats: DashboardStats | null): boolean => {
+    if (!oldStats) return true;
+    
+    return (
+      newStats.pending_count !== oldStats.pending_count ||
+      newStats.in_progress_count !== oldStats.in_progress_count ||
+      newStats.resolved_count !== oldStats.resolved_count ||
+      newStats.critical_count !== oldStats.critical_count ||
+      newStats.total_tickets !== oldStats.total_tickets
+    );
+  };
+
+  // Verificar actualizaciones sin mostrar loading (completamente silencioso)
+  const checkForDashboardUpdates = async () => {
+    try {
+      const response = await ApiService.getDashboardData();
+      
+      if (response.success && response.data) {
+        // Solo actualizar si hay cambios en las estadísticas principales
+        if (hasDashboardChanges(response.data.stats, previousStats)) {
+          setPreviousStats(response.data.stats);
+          setStats(response.data.stats);
+          setRecentTickets(response.data.recent_tickets || []);
+          setPriorityDistribution(response.data.priority_distribution || []);
+          setOfficeDistribution(response.data.office_distribution || []);
+          setTechnicianPerformance(response.data.technician_performance || []);
+          setTrends(response.data.trends || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for dashboard updates:', error);
+    }
+  };
 
   // Load dashboard data
   const loadDashboardData = async () => {
@@ -119,13 +207,13 @@ const ModernAdminDashboard: React.FC = () => {
       const response = await ApiService.getDashboardData();
       
       if (response.success && response.data) {
+        setPreviousStats(response.data.stats);
         setStats(response.data.stats);
         setRecentTickets(response.data.recent_tickets || []);
         setPriorityDistribution(response.data.priority_distribution || []);
         setOfficeDistribution(response.data.office_distribution || []);
         setTechnicianPerformance(response.data.technician_performance || []);
         setTrends(response.data.trends || []);
-        setLastUpdated(response.data.last_updated || new Date().toISOString());
       } else {
         setError(response.message || 'Error al cargar datos del dashboard');
       }
@@ -137,15 +225,19 @@ const ModernAdminDashboard: React.FC = () => {
     }
   };
 
-  // Auto-refresh effect
+  // Auto-refresh effect (silencioso)
   useEffect(() => {
     loadDashboardData();
+    checkNotifications();
 
-    if (autoRefresh) {
-      const interval = setInterval(loadDashboardData, 30000); // Refresh every 30 seconds
-      return () => clearInterval(interval);
-    }
-  }, [autoRefresh]);
+    // Configurar polling para actualización automática silenciosa
+    const interval = setInterval(() => {
+      checkForDashboardUpdates();
+      checkNotifications();
+    }, refreshInterval);
+
+    return () => clearInterval(interval);
+  }, [refreshInterval, lastNotificationCount]);
 
   // Filtered data based on search
   const filteredTickets = useMemo(() => {
@@ -230,11 +322,6 @@ const ModernAdminDashboard: React.FC = () => {
               </h1>
               <p>
                 Gestión eficiente de tickets y métricas en tiempo real
-                {lastUpdated && (
-                  <span className="last-updated">
-                    Actualizado: {new Date(lastUpdated).toLocaleTimeString()}
-                  </span>
-                )}
               </p>
             </div>
           </div>
@@ -250,15 +337,6 @@ const ModernAdminDashboard: React.FC = () => {
                 className="search-input"
               />
             </div>
-            
-            <button 
-              className={`btn ${autoRefresh ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              title={autoRefresh ? 'Desactivar auto-refresh' : 'Activar auto-refresh'}
-            >
-              <RefreshCw size={18} className={autoRefresh ? 'animate-spin' : ''} />
-              Auto-refresh
-            </button>
             
             <button className="btn btn-secondary" onClick={loadDashboardData}>
               <RefreshCw size={18} />
@@ -538,6 +616,12 @@ const ModernAdminDashboard: React.FC = () => {
           </section>
         </div>
       </main>
+
+      {/* Centered Notification */}
+      <CenteredNotification
+        notification={notification}
+        onClose={() => setNotification(null)}
+      />
     </div>
   );
 };

@@ -54,10 +54,8 @@ const Header: React.FC<HeaderProps> = ({
       </div>
       
       <div className="header-right">
-        <div className="ultra-minimal-clock">
-          <div className="time-zone-label">Venezuela</div>
-          <div className="time-display">{venezuelaTime}</div>
-          <div className="date-display">{currentDate}</div>
+        <div className="compact-clock">
+          <span className="time-text">{venezuelaTime}</span>
         </div>
         <img 
           src="/Logo SC Ciudad Ecologica.jpeg" 

@@ -152,6 +152,13 @@ switch ($path) {
         $controller->handleRequest();
         break;
 
+    case '/api/notifications':
+    case '/api/notifications/':
+        $user = $authMiddleware->requireAuth();
+        $authMiddleware->setUserContext($user);
+        require_once __DIR__ . '/../src/controllers/NotificationController.php';
+        break;
+
     default:
         http_response_code(404);
         echo json_encode([

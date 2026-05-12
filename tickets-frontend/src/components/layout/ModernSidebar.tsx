@@ -202,37 +202,8 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ fullViewport = false }) =
         className={`admin-institutional-nav ${topOffsetClass} ${collapsed ? 'admin-institutional-nav--collapsed' : ''} ${mobileOpen ? 'admin-institutional-nav--mobile-open' : ''}`}
         aria-label="Navegación administrativa municipal"
       >
-        <div className="admin-nav__brand">
-          <div className="admin-nav__seal">
-            <img
-              src="/nombre_alcaldia_izquierda.png"
-              alt=""
-              width={48}
-              height={48}
-              decoding="async"
-            />
-          </div>
-          {!collapsed && (
-            <div className="admin-nav__titles">
-              <p className="admin-nav__kicker">Alcaldía de San Cristóbal</p>
-              <p className="admin-nav__title">Gestión municipal</p>
-              <p className="admin-nav__subtitle">Panel administrativo</p>
-            </div>
-          )}
-        </div>
-
-        <button
-          type="button"
-          className="admin-nav__collapse desktop-only"
-          onClick={() => setCollapsed((c) => !c)}
-          aria-pressed={collapsed}
-          title={collapsed ? 'Expandir menú' : 'Contraer menú'}
-        >
-          {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
-        </button>
-
         <nav className="admin-nav__scroll" aria-label="Módulos del sistema">
-          <p className="admin-nav__section-label">Módulos</p>
+          {collapsed && <p className="admin-nav__section-label">Módulos</p>}
           <ul className="admin-nav__list">
             {navItems.map((item) => (
               <li key={item.id} className="admin-nav__item">
@@ -308,19 +279,13 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ fullViewport = false }) =
           <div className="admin-nav__actions">
             <button
               type="button"
-              className="admin-nav__btn admin-nav__btn--ghost"
-              onClick={() => navigate('/admin/tickets')}
+              className="admin-nav__btn admin-nav__btn--collapse desktop-only"
+              onClick={() => setCollapsed((c) => !c)}
+              aria-pressed={collapsed}
+              title={collapsed ? 'Expandir menú' : 'Contraer menú'}
             >
-              <ClipboardList size={18} />
-              {!collapsed && <span>Ver tickets</span>}
-            </button>
-            <button
-              type="button"
-              className="admin-nav__btn admin-nav__btn--ghost"
-              onClick={() => navigate('/admin/reports')}
-            >
-              <FileCheck size={18} />
-              {!collapsed && <span>Informes</span>}
+              {collapsed ? <PanelLeft size={18} /> : <PanelLeftClose size={18} />}
+              {!collapsed && <span>Contraer</span>}
             </button>
             <button type="button" className="admin-nav__btn admin-nav__btn--danger" onClick={handleLogout}>
               <LogOut size={18} />
