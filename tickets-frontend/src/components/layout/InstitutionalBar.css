@@ -12,7 +12,7 @@
 body.with-admin-sidebar .minimal-dashboard .minimal-main,
 body.with-admin-sidebar .dashboard-container.reports-enterprise .main-content-area,
 body.with-admin-sidebar .institutional-structure > .page-container,
-body.with-admin-sidebar .user-registration-container .registration-content,
+body.with-admin-sidebar .user-registration-container,
 body.with-admin-sidebar .main-content > .page-container {
   padding-left: var(--admin-sidebar-width);
   box-sizing: border-box;
@@ -23,7 +23,7 @@ body.with-admin-sidebar .main-content > .page-container {
   body.with-admin-sidebar .minimal-dashboard .minimal-main,
   body.with-admin-sidebar .dashboard-container.reports-enterprise .main-content-area,
   body.with-admin-sidebar .institutional-structure > .page-container,
-  body.with-admin-sidebar .user-registration-container .registration-content,
+  body.with-admin-sidebar .user-registration-container,
   body.with-admin-sidebar .main-content > .page-container {
     padding-left: 0;
   }
