@@ -120,7 +120,10 @@ const UserRegistration = () => {
       }
     } catch (error) {
       console.error('Error al cargar oficinas:', error);
-      sileo.error('Error al cargar las oficinas desde el servidor');
+      sileo.error({
+        title: 'Error',
+        description: 'Error al cargar las oficinas desde el servidor'
+      });
     }
   };
 
@@ -166,7 +169,10 @@ const UserRegistration = () => {
     if (validateStep(currentStep)) {
       setCurrentStep(prev => Math.min(prev + 1, 5));
     } else {
-      sileo.error('Por favor completa todos los campos requeridos correctamente');
+      sileo.error({
+        title: 'Validación',
+        description: 'Por favor completa todos los campos requeridos correctamente'
+      });
     }
   };
 
@@ -178,7 +184,10 @@ const UserRegistration = () => {
     e.preventDefault();
     
     if (!isFormValid) {
-      sileo.error('Por favor completa todos los campos requeridos correctamente');
+      sileo.error({
+        title: 'Validación',
+        description: 'Por favor completa todos los campos requeridos correctamente'
+      });
       return;
     }
     
@@ -196,7 +205,10 @@ const UserRegistration = () => {
       });
 
       if (response.success) {
-        sileo.success('Usuario creado exitosamente');
+        sileo.success({
+          title: '¡Éxito!',
+          description: 'Usuario creado exitosamente'
+        });
         setShowSuccess(true);
 
         setTimeout(() => {
@@ -214,11 +226,17 @@ const UserRegistration = () => {
           setCurrentStep(1);
         }, 3000);
       } else {
-        sileo.error('Error al crear usuario: ' + (response.message || 'Error desconocido'));
+        sileo.error({
+          title: 'Error',
+          description: 'Error al crear usuario: ' + (response.message || 'Error desconocido')
+        });
       }
     } catch (error) {
       console.error('Error al crear usuario:', error);
-      sileo.error('Error de conexión con el servidor');
+      sileo.error({
+        title: 'Error',
+        description: 'Error de conexión con el servidor'
+      });
     } finally {
       setLoading(false);
     }

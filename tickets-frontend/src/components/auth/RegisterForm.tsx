@@ -8,8 +8,6 @@ import Layout from '../layout/Layout';
 
 import ApiService, { RegisterResponse } from '../../services/api';
 
-import './RegisterForm.css';
-
 
 
 interface RegisterFormData {
