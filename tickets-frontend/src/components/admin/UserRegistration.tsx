@@ -33,6 +33,7 @@ interface FormData {
   confirmPassword: string;
   fk_role: string;
   name_boss: string;
+  username: string;
   pronoun: string;
   fk_office: string;
 }
@@ -43,6 +44,7 @@ interface FormErrors {
   confirmPassword?: string;
   fk_role?: string;
   name_boss?: string;
+  username?: string;
   fk_office?: string;
 }
 
@@ -67,6 +69,7 @@ const UserRegistration = () => {
     confirmPassword: '',
     fk_role: '3',
     name_boss: '',
+    username: '',
     pronoun: 'Sr.',
     fk_office: ''
   });
@@ -97,6 +100,7 @@ const UserRegistration = () => {
       formData.password &&
       formData.confirmPassword &&
       formData.name_boss &&
+      formData.username &&
       formData.fk_office &&
       formData.password.length >= 6 &&
       formData.password === formData.confirmPassword &&
@@ -153,7 +157,7 @@ const UserRegistration = () => {
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
-        return Boolean(formData.name_boss && formData.pronoun);
+        return Boolean(formData.name_boss && formData.username && formData.pronoun);
       case 2:
         return Boolean(formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email));
       case 3:
@@ -196,7 +200,7 @@ const UserRegistration = () => {
       const response = await ApiService.createUserWithOffice({
         email: formData.email,
         password: formData.password,
-        username: formData.email.split('@')[0],
+        username: formData.username,
         full_name: `${formData.pronoun} ${formData.name_boss}`,
         role: parseInt(formData.fk_role),
         name_boss: formData.name_boss,
@@ -219,6 +223,7 @@ const UserRegistration = () => {
             confirmPassword: '',
             fk_role: '3',
             name_boss: '',
+            username: '',
             pronoun: 'Sr.',
             fk_office: ''
           });
@@ -289,6 +294,25 @@ const UserRegistration = () => {
                 />
               </div>
               
+              <div className="form-group">
+                <label htmlFor="username" className="form-label">
+                  <User size={16} />
+                  Nombre de Usuario
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  className="form-input"
+                  placeholder="juan.perez"
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
                 <label htmlFor="pronoun" className="form-label">
                   <GraduationCap size={16} />
