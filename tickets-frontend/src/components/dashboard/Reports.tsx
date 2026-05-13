@@ -143,73 +143,58 @@ const Reports: React.FC = () => {
   // PHP-PRO: Executive summary state from backend
   const [executiveSummary, setExecutiveSummary] = useState<any>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [officeData, setOfficeData] = useState<ChartData[]>([]);
 
-  // Mock data for statistics (fallback)
+  // Real data for statistics from backend
   const statsData: StatCard[] = [
     {
       title: 'Total Tickets',
-      value: executiveSummary?.kpi_metrics?.total_tickets || '1,250',
-      trend: `${executiveSummary?.trends?.tickets_trend_percent > 0 ? '+' : ''}${executiveSummary?.trends?.tickets_trend_percent || 30}%`,
-      trendUp: (executiveSummary?.trends?.tickets_trend_percent || 30) >= 0,
+      value: executiveSummary?.kpi_metrics?.total_tickets ?? '—',
+      trend: `${executiveSummary?.trends?.tickets_trend_percent > 0 ? '+' : ''}${executiveSummary?.trends?.tickets_trend_percent ?? 0}%`,
+      trendUp: (executiveSummary?.trends?.tickets_trend_percent ?? 0) >= 0,
       icon: FileText,
       color: 'blue'
     },
     {
       title: 'Tiempo Promedio',
-      value: `${executiveSummary?.kpi_metrics?.avg_resolution_hours || 4.5}h`,
-      trend: `${executiveSummary?.trends?.resolution_time_trend_percent < 0 ? '-' : '+'}${Math.abs(executiveSummary?.trends?.resolution_time_trend_percent || 15)}%`,
-      trendUp: (executiveSummary?.trends?.resolution_time_trend_percent || -15) <= 0,
+      value: `${executiveSummary?.kpi_metrics?.avg_resolution_hours ?? 0}h`,
+      trend: `${executiveSummary?.trends?.resolution_time_trend_percent < 0 ? '-' : '+'}${Math.abs(executiveSummary?.trends?.resolution_time_trend_percent ?? 0)}%`,
+      trendUp: (executiveSummary?.trends?.resolution_time_trend_percent ?? 0) <= 0,
       icon: Clock,
       color: 'green'
     },
     {
       title: 'Tickets Resueltos',
-      value: executiveSummary?.kpi_metrics?.resolved_tickets || '1,180',
-      trend: '+25%',
+      value: executiveSummary?.kpi_metrics?.resolved_tickets ?? '—',
+      trend: `${((executiveSummary?.kpi_metrics?.resolved_tickets / executiveSummary?.kpi_metrics?.total_tickets) * 100 || 0).toFixed(0)}%`,
       trendUp: true,
       icon: CheckCircle,
       color: 'purple'
     },
     {
       title: 'Oficinas Activas',
-      value: executiveSummary?.kpi_metrics?.active_offices || '12',
-      trend: '+2',
+      value: executiveSummary?.kpi_metrics?.active_offices ?? '—',
+      trend: `${executiveSummary?.kpi_metrics?.active_technicians ?? 0} técnicos`,
       trendUp: true,
       icon: Building,
       color: 'orange'
     }
   ];
 
-  // PHP-PRO: Priority data from backend
+  // Real Priority data from backend
   const priorityData: ChartData[] = executiveSummary?.priority_distribution ? [
-    { label: 'Crítica', value: executiveSummary.priority_distribution.critical, color: '#dc2626' },
-    { label: 'Alta', value: executiveSummary.priority_distribution.high, color: '#f59e0b' },
-    { label: 'Media', value: executiveSummary.priority_distribution.medium, color: '#22c55e' },
-    { label: 'Baja', value: executiveSummary.priority_distribution.low, color: '#3b82f6' }
-  ] : [
-    { label: 'Alta', value: 150, color: '#ef4444' },
-    { label: 'Media', value: 450, color: '#f59e0b' },
-    { label: 'Baja', value: 650, color: '#22c55e' }
-  ];
+    { label: 'Crítica', value: executiveSummary.priority_distribution.critical || 0, color: '#dc2626' },
+    { label: 'Alta', value: executiveSummary.priority_distribution.high || 0, color: '#f59e0b' },
+    { label: 'Media', value: executiveSummary.priority_distribution.medium || 0, color: '#22c55e' },
+    { label: 'Baja', value: executiveSummary.priority_distribution.low || 0, color: '#3b82f6' }
+  ] : [];
 
+  // Real Status data from backend
   const statusData: ChartData[] = executiveSummary?.status_distribution ? [
-    { label: 'Pendientes', value: executiveSummary.status_distribution.pending, color: '#ef4444' },
-    { label: 'En Proceso', value: executiveSummary.status_distribution.in_progress, color: '#f59e0b' },
-    { label: 'Resueltos', value: executiveSummary.status_distribution.resolved, color: '#22c55e' }
-  ] : [
-    { label: 'Pendientes', value: 70, color: '#ef4444' },
-    { label: 'En Proceso', value: 180, color: '#f59e0b' },
-    { label: 'Resueltos', value: 1000, color: '#22c55e' }
-  ];
-
-  // Office data - mock data for now (can be connected to backend later)
-  const officeData: ChartData[] = [
-    { label: 'Catastro', value: 320, color: '#3b82f6' },
-    { label: 'Obras', value: 280, color: '#8b5cf6' },
-    { label: 'Bienestar', value: 250, color: '#ec4899' },
-    { label: 'Hacienda', value: 200, color: '#14b8a6' },
-    { label: 'Educación', value: 200, color: '#f97316' }
-  ];
+    { label: 'Pendientes', value: executiveSummary.status_distribution.pending || 0, color: '#ef4444' },
+    { label: 'En Proceso', value: executiveSummary.status_distribution.in_progress || 0, color: '#f59e0b' },
+    { label: 'Resueltos', value: executiveSummary.status_distribution.resolved || 0, color: '#22c55e' }
+  ] : [];
 
   // Mock reports data
   const [reports, setReports] = useState<Report[]>([
@@ -329,21 +314,41 @@ const Reports: React.FC = () => {
       const response = await ApiService.getExecutiveSummary();
       if (response.success && response.data) {
         setExecutiveSummary(response.data);
-        console.log('Executive summary loaded:', response.data);
+        console.log('[v0] Executive summary loaded from backend:', response.data);
       } else {
-        console.error('Error loading executive summary:', response.message);
+        console.error('[v0] Error loading executive summary:', response.message);
       }
     } catch (error) {
-      console.error('Error loading executive summary:', error);
+      console.error('[v0] Error loading executive summary:', error);
     } finally {
       setLoadingSummary(false);
     }
   };
 
-  // Load executive summary on component mount and tab change
+  // Load office data from backend
+  const loadOfficeData = async () => {
+    try {
+      const response = await ApiService.getTicketsByOffice();
+      if (response.success && response.data && Array.isArray(response.data)) {
+        const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#f43f5e'];
+        const mappedData = response.data.map((office: any, index: number) => ({
+          label: office.Name_Office || office.name_office || 'Sin nombre',
+          value: office.ticket_count || 0,
+          color: colors[index % colors.length]
+        }));
+        setOfficeData(mappedData);
+        console.log('[v0] Office data loaded from backend:', mappedData);
+      }
+    } catch (error) {
+      console.error('[v0] Error loading office data:', error);
+    }
+  };
+
+  // Load executive summary and office data on component mount and tab change
   React.useEffect(() => {
     if (activeTab === 'overview') {
       loadExecutiveSummary();
+      loadOfficeData();
     }
   }, [activeTab]);
 
