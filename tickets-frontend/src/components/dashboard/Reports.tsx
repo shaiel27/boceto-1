@@ -328,12 +328,12 @@ const Reports: React.FC = () => {
   // Load office data from backend
   const loadOfficeData = async () => {
     try {
-      const response = await ApiService.getTicketsByOffice();
+      const response = await ApiService.getOffices();
       if (response.success && response.data && Array.isArray(response.data)) {
         const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#f43f5e'];
         const mappedData = response.data.map((office: any, index: number) => ({
           label: office.Name_Office || office.name_office || 'Sin nombre',
-          value: office.ticket_count || 0,
+          value: office.ticket_count || office.total_tickets || 0,
           color: colors[index % colors.length]
         }));
         setOfficeData(mappedData);
