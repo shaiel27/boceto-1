@@ -330,14 +330,14 @@ const Reports: React.FC = () => {
     try {
       const response = await ApiService.getOffices();
       if (response.success && response.data && Array.isArray(response.data)) {
-        const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#f43f5e'];
-        const mappedData = response.data.map((office: any, index: number) => ({
-          label: office.Name_Office || office.name_office || 'Sin nombre',
-          value: office.ticket_count || office.total_tickets || 0,
+        const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+        const mappedData = response.data.slice(0, 5).map((office: any, index: number) => ({
+          label: office.display_name || office.Name_Office || office.name_office || 'Sin nombre',
+          value: parseInt(office.ticket_count) || 0,
           color: colors[index % colors.length]
         }));
         setOfficeData(mappedData);
-        console.log('[v0] Office data loaded from backend:', mappedData);
+        console.log('[v0] Top 5 office data loaded from backend:', mappedData);
       }
     } catch (error) {
       console.error('[v0] Error loading office data:', error);
@@ -2698,6 +2698,18 @@ const Reports: React.FC = () => {
     }
   };
 
+  // Derived calculations for charts (data-driven, no hardcoded values)
+  const totalPriority = priorityData.reduce((sum, item) => sum + item.value, 0) || 1;
+  const maxPriority = Math.max(...priorityData.map(item => item.value), 1);
+  const totalOffice = officeData.reduce((sum, item) => sum + item.value, 0) || 1;
+  const maxOffice = Math.max(...officeData.map(item => item.value), 1);
+  const totalStatus = statusData.reduce((sum, item) => sum + item.value, 0) || 1;
+  const maxStatus = Math.max(...statusData.map(item => item.value), 1);
+  const resolvedCount = statusData.find(s => s.label === 'Resueltos')?.value || 0;
+  const resolutionRate = totalStatus > 0 ? Math.round((resolvedCount / totalStatus) * 100) : 0;
+  const pendingCount = statusData.find(s => s.label === 'Pendientes')?.value || 0;
+  const inProgressCount = statusData.find(s => s.label === 'En Proceso')?.value || 0;
+
   return (
     <div className="dashboard-container reports-enterprise">
       {/* Modern Sidebar */}
@@ -2756,7 +2768,39 @@ const Reports: React.FC = () => {
         <div className="reports-content enterprise-content">
         {activeTab === 'overview' && (
           <div className="overview-view">
-            {/* Statistics Cards */}
+            {/* Executive Summary Hero Bar */}
+            <div className="executive-hero-bar">
+              <div className="hero-bar-left">
+                <div className="hero-bar-icon">
+                  <Activity size={28} />
+                </div>
+                <div className="hero-bar-text">
+                  <h2 className="hero-bar-title">Resumen Ejecutivo</h2>
+                  <p className="hero-bar-subtitle">
+                    {new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })} 
+                    {' · '}Actualizado en tiempo real
+                  </p>
+                </div>
+              </div>
+              <div className="hero-bar-stats">
+                <div className="hero-bar-stat">
+                  <span className="hero-bar-stat-value">{totalPriority}</span>
+                  <span className="hero-bar-stat-label">Total Tickets</span>
+                </div>
+                <div className="hero-bar-divider" />
+                <div className="hero-bar-stat">
+                  <span className="hero-bar-stat-value">{resolutionRate}%</span>
+                  <span className="hero-bar-stat-label">Resolución</span>
+                </div>
+                <div className="hero-bar-divider" />
+                <div className="hero-bar-stat">
+                  <span className="hero-bar-stat-value">{officeData.length}</span>
+                  <span className="hero-bar-stat-label">Oficinas</span>
+                </div>
+              </div>
+            </div>
+
+            {/* KPI Cards */}
             <div className="enterprise-section">
               <div className="section-header-wrapper">
                 <div className="section-header-content">
@@ -2764,8 +2808,8 @@ const Reports: React.FC = () => {
                     <Target size={24} />
                   </div>
                   <div>
-                    <h3 className="section-title">KPIs Estratégicos</h3>
-                    <p className="section-description">Métricas clave de rendimiento en tiempo real</p>
+                    <h3 className="section-title">Indicadores Clave</h3>
+                    <p className="section-description">Métricas de rendimiento del período actual</p>
                   </div>
                 </div>
                 <button 
@@ -2777,24 +2821,36 @@ const Reports: React.FC = () => {
               </div>
             </div>
             {expandedSections.stats && (
-              <div className="enterprise-stats-grid">
+              <div className="kpi-grid">
                 {statsData.map((stat, index) => (
-                  <div key={index} className={`enterprise-stat-card stat-${stat.color}`}>
-                    <div className="stat-background-icon">
-                      <stat.icon size={80} />
-                    </div>
-                    <div className="stat-content">
-                      <div className="stat-icon-wrapper">
-                        <stat.icon size={28} />
+                  <div 
+                    key={index} 
+                    className={`kpi-card kpi-${stat.color}`}
+                    style={{ animationDelay: `${index * 0.08}s` }}
+                  >
+                    <div className="kpi-card-glow" />
+                    <div className="kpi-card-bg-pattern" />
+                    <div className="kpi-card-inner">
+                      <div className="kpi-top-row">
+                        <div className={`kpi-icon-wrapper kpi-icon-${stat.color}`}>
+                          <stat.icon size={22} />
+                        </div>
+                        <div className={`kpi-trend-badge ${stat.trendUp ? 'trend-up' : 'trend-down'}`}>
+                          <TrendingUp size={12} />
+                          <span>{stat.trend}</span>
+                        </div>
                       </div>
-                      <div className="stat-info">
-                        <h4 className="stat-title">{stat.title}</h4>
-                        <p className="stat-value">{stat.value}</p>
+                      <div className="kpi-value-row">
+                        <span className="kpi-value">{stat.value}</span>
                       </div>
-                      <div className={`stat-trend ${stat.trendUp ? 'trend-up' : 'trend-down'}`}>
-                        <TrendingUp size={14} />
-                        <span>{stat.trend}</span>
-                        <span className="trend-label">vs mes anterior</span>
+                      <div className="kpi-label-row">
+                        <span className="kpi-label">{stat.title}</span>
+                      </div>
+                      <div className="kpi-footer">
+                        <div className={`kpi-mini-bar ${stat.trendUp ? 'bar-up' : 'bar-down'}`}>
+                          <div className="kpi-mini-bar-fill" style={{ width: `${Math.min(Math.abs(parseInt(stat.trend) || 0) * 5, 100)}%` }} />
+                        </div>
+                        <span className="kpi-footer-label">vs período anterior</span>
                       </div>
                     </div>
                   </div>
@@ -2810,8 +2866,8 @@ const Reports: React.FC = () => {
                     <BarChart size={24} />
                   </div>
                   <div>
-                    <h3 className="section-title">Visualizaciones de Datos</h3>
-                    <p className="section-description">Análisis gráfico de tendencias y patrones</p>
+                    <h3 className="section-title">Analítica Visual</h3>
+                    <p className="section-description">Distribución y tendencias de tickets</p>
                   </div>
                 </div>
                 <button 
@@ -2823,34 +2879,37 @@ const Reports: React.FC = () => {
               </div>
             </div>
             {expandedSections.charts && (
-              <div className="enterprise-charts-grid">
+              <div className="charts-enhanced-grid">
                 {/* Priority Chart */}
-                <div className="enterprise-chart-card">
-                  <div className="chart-header">
-                    <div className="chart-title-wrapper">
-                      <div className="chart-icon">
-                        <AlertTriangle size={20} />
+                <div className="chart-card-enhanced">
+                  <div className="chart-card-header">
+                    <div className="chart-card-title-row">
+                      <div className="chart-card-icon">
+                        <AlertTriangle size={18} />
                       </div>
-                      <h4 className="chart-title">Distribución por Prioridad</h4>
+                      <h4 className="chart-card-title">Distribución por Prioridad</h4>
                     </div>
-                    <div className="chart-badge">Total: 1,250</div>
+                    <div className="chart-card-badge">{totalPriority} tickets</div>
                   </div>
-                  <div className="chart-content">
+                  <div className="chart-card-body">
                     {priorityData.map((item, index) => (
-                      <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label-row">
-                          <span className="chart-bar-label">{item.label}</span>
-                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                      <div key={index} className="chart-row">
+                        <div className="chart-row-label">
+                          <span className="chart-row-dot" style={{ backgroundColor: item.color }} />
+                          <span className="chart-row-text">{item.label}</span>
                         </div>
-                        <div className="chart-bar-wrapper">
+                        <div className="chart-row-bar-track">
                           <div
-                            className="chart-bar"
+                            className="chart-row-bar-fill"
                             style={{
-                              width: `${(item.value / 650) * 100}%`,
+                              width: `${(item.value / maxPriority) * 100}%`,
                               backgroundColor: item.color
                             }}
-                          ></div>
-                          <span className="chart-bar-value">{item.value}</span>
+                          />
+                        </div>
+                        <div className="chart-row-stats">
+                          <span className="chart-row-value">{item.value}</span>
+                          <span className="chart-row-pct">{Math.round((item.value / totalPriority) * 100)}%</span>
                         </div>
                       </div>
                     ))}
@@ -2858,32 +2917,35 @@ const Reports: React.FC = () => {
                 </div>
 
                 {/* Office Chart */}
-                <div className="enterprise-chart-card">
-                  <div className="chart-header">
-                    <div className="chart-title-wrapper">
-                      <div className="chart-icon">
-                        <Building size={20} />
+                <div className="chart-card-enhanced">
+                  <div className="chart-card-header">
+                    <div className="chart-card-title-row">
+                      <div className="chart-card-icon">
+                        <Building size={18} />
                       </div>
-                      <h4 className="chart-title">Tickets por Oficina</h4>
+                      <h4 className="chart-card-title">Tickets por Oficina</h4>
                     </div>
-                    <div className="chart-badge">Top 5</div>
+                    <div className="chart-card-badge">{officeData.length} oficinas</div>
                   </div>
-                  <div className="chart-content">
+                  <div className="chart-card-body">
                     {officeData.map((item, index) => (
-                      <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label-row">
-                          <span className="chart-bar-label">{item.label}</span>
-                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                      <div key={index} className="chart-row">
+                        <div className="chart-row-label">
+                          <span className="chart-row-dot" style={{ backgroundColor: item.color }} />
+                          <span className="chart-row-text">{item.label}</span>
                         </div>
-                        <div className="chart-bar-wrapper">
+                        <div className="chart-row-bar-track">
                           <div
-                            className="chart-bar"
+                            className="chart-row-bar-fill"
                             style={{
-                              width: `${(item.value / 320) * 100}%`,
+                              width: `${(item.value / maxOffice) * 100}%`,
                               backgroundColor: item.color
                             }}
-                          ></div>
-                          <span className="chart-bar-value">{item.value}</span>
+                          />
+                        </div>
+                        <div className="chart-row-stats">
+                          <span className="chart-row-value">{item.value}</span>
+                          <span className="chart-row-pct">{Math.round((item.value / totalOffice) * 100)}%</span>
                         </div>
                       </div>
                     ))}
@@ -2891,35 +2953,73 @@ const Reports: React.FC = () => {
                 </div>
 
                 {/* Status Chart */}
-                <div className="enterprise-chart-card">
-                  <div className="chart-header">
-                    <div className="chart-title-wrapper">
-                      <div className="chart-icon">
-                        <CheckCircle size={20} />
+                <div className="chart-card-enhanced chart-card-wide">
+                  <div className="chart-card-header">
+                    <div className="chart-card-title-row">
+                      <div className="chart-card-icon">
+                        <CheckCircle size={18} />
                       </div>
-                      <h4 className="chart-title">Estado de Tickets</h4>
+                      <h4 className="chart-card-title">Estado de Tickets</h4>
                     </div>
-                    <div className="chart-badge">Tasa de resolución: 80%</div>
+                    <div className="chart-card-badge">{resolutionRate}% resueltos</div>
                   </div>
-                  <div className="chart-content">
-                    {statusData.map((item, index) => (
-                      <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label-row">
-                          <span className="chart-bar-label">{item.label}</span>
-                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                  <div className="chart-card-body chart-card-body-split">
+                    <div className="status-donut-section">
+                      <svg className="status-donut" viewBox="0 0 120 120">
+                        {statusData.map((item, index) => {
+                          const pct = item.value / totalStatus;
+                          const circumference = 2 * Math.PI * 45;
+                          let dashArray = '';
+                          let dashOffset = 0;
+                          let prevPct = 0;
+                          for (let i = 0; i < index; i++) {
+                            prevPct += statusData[i].value / totalStatus;
+                          }
+                          dashOffset = circumference * (1 - prevPct);
+                          dashArray = `${circumference * pct} ${circumference * (1 - pct)}`;
+                          return (
+                            <circle
+                              key={index}
+                              className="status-donut-segment"
+                              cx="60"
+                              cy="60"
+                              r="45"
+                              fill="none"
+                              stroke={item.color}
+                              strokeWidth="12"
+                              strokeDasharray={dashArray}
+                              strokeDashoffset={-dashOffset}
+                              transform="rotate(-90 60 60)"
+                            />
+                          );
+                        })}
+                        <text x="60" y="56" textAnchor="middle" className="donut-center-value">{resolutionRate}%</text>
+                        <text x="60" y="70" textAnchor="middle" className="donut-center-label">Resueltos</text>
+                      </svg>
+                    </div>
+                    <div className="status-legend-section">
+                      {statusData.map((item, index) => (
+                        <div key={index} className="status-legend-item">
+                          <div className="status-legend-dot" style={{ backgroundColor: item.color }} />
+                          <div className="status-legend-info">
+                            <span className="status-legend-label">{item.label}</span>
+                            <div className="status-legend-bar-track">
+                              <div
+                                className="status-legend-bar-fill"
+                                style={{
+                                  width: `${(item.value / maxStatus) * 100}%`,
+                                  backgroundColor: item.color
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="status-legend-stats">
+                            <span className="status-legend-value">{item.value}</span>
+                            <span className="status-legend-pct">{Math.round((item.value / totalStatus) * 100)}%</span>
+                          </div>
                         </div>
-                        <div className="chart-bar-wrapper">
-                          <div
-                            className="chart-bar"
-                            style={{
-                              width: `${(item.value / 1000) * 100}%`,
-                              backgroundColor: item.color
-                            }}
-                          ></div>
-                          <span className="chart-bar-value">{item.value}</span>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
