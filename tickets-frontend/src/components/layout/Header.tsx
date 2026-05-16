@@ -58,7 +58,7 @@ const Header: React.FC<HeaderProps> = ({
           <span className="time-text">{venezuelaTime}</span>
         </div>
         <img 
-          src="/Logo SC Ciudad Ecologica.jpeg" 
+          src="/SC-Ciudad-Ecológica-Derecha.png"
           alt="Ciudad Ecológica" 
           className="header-right-logo"
         />
