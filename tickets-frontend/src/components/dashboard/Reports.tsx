@@ -2737,33 +2737,15 @@ const Reports: React.FC = () => {
         <div className="reports-content enterprise-content">
         {activeTab === 'overview' && (
           <div className="overview-view">
-            {/* Statistics Cards */}
-            <div className="enterprise-section">
-              <div className="section-header-wrapper">
-                <div className="section-header-content">
-                  <div className="section-icon">
-                    <Target size={24} />
-                  </div>
-                  <div>
-                    <h3 className="section-title">KPIs Estratégicos</h3>
-                    <p className="section-description">Métricas clave de rendimiento en tiempo real</p>
-                  </div>
-                </div>
-                <button 
-                  className="collapse-btn"
-                  onClick={() => toggleSection('stats')}
-                >
-                  {expandedSections.stats ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                </button>
+            {/* KPI Hero Section */}
+            <div className="kpi-hero-section">
+              <div className="kpi-intro">
+                <h2 className="kpi-hero-title">Dashboard Operacional</h2>
+                <p className="kpi-hero-subtitle">Indicadores clave de rendimiento en tiempo real</p>
               </div>
-            </div>
-            {expandedSections.stats && (
               <div className="enterprise-stats-grid">
                 {statsData.map((stat, index) => (
                   <div key={index} className={`enterprise-stat-card stat-${stat.color}`}>
-                    <div className="stat-background-icon">
-                      <stat.icon size={80} />
-                    </div>
                     <div className="stat-content">
                       <div className="stat-icon-wrapper">
                         <stat.icon size={28} />
@@ -2775,13 +2757,12 @@ const Reports: React.FC = () => {
                       <div className={`stat-trend ${stat.trendUp ? 'trend-up' : 'trend-down'}`}>
                         <TrendingUp size={14} />
                         <span>{stat.trend}</span>
-                        <span className="trend-label">vs mes anterior</span>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
+            </div>
 
             {/* Charts Section */}
             <div className="enterprise-section">
