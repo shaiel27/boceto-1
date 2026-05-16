@@ -320,19 +320,28 @@ const Reports: React.FC = () => {
     }
   };
 
-  // Load office data from backend
+  // Load office data from backend - Limited to top 5 offices with most tickets
   const loadOfficeData = async () => {
     try {
       const response = await ApiService.getOffices();
       if (response.success && response.data && Array.isArray(response.data)) {
-        const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#f43f5e'];
-        const mappedData = response.data.map((office: any, index: number) => ({
+        const colors = ['#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+        // Sort by ticket count and take top 5
+        const sortedOffices = [...response.data]
+          .sort((a: any, b: any) => {
+            const aTickets = a.ticket_count || a.total_tickets || 0;
+            const bTickets = b.ticket_count || b.total_tickets || 0;
+            return bTickets - aTickets;
+          })
+          .slice(0, 5);
+        
+        const mappedData = sortedOffices.map((office: any, index: number) => ({
           label: office.Name_Office || office.name_office || 'Sin nombre',
           value: office.ticket_count || office.total_tickets || 0,
           color: colors[index % colors.length]
         }));
         setOfficeData(mappedData);
-        console.log('[v0] Office data loaded from backend:', mappedData);
+        console.log('[v0] Office data loaded from backend (top 5):', mappedData);
       }
     } catch (error) {
       console.error('[v0] Error loading office data:', error);
