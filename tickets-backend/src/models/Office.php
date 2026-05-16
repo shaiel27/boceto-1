@@ -125,46 +125,6 @@ class Office {
     }
 
     /**
-     * Get top 5 offices by total ticket count for executive summary
-     */
-    public function getTopOffices(): array
-    {
-        try {
-            $query = "SELECT 
-                     o.ID_Office,
-                     o.Name_Office,
-                     o.Office_Type,
-                     COUNT(sr.ID_Service_Request) as ticket_count,
-                     COUNT(CASE WHEN sr.Status = 'Pendiente' THEN 1 END) as pending_count,
-                     COUNT(CASE WHEN sr.Status = 'En Proceso' THEN 1 END) as in_progress_count,
-                     COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_count
-                     FROM " . $this->table_name . " o
-                     LEFT JOIN Service_Request sr ON o.ID_Office = sr.Fk_Office
-                     GROUP BY o.ID_Office, o.Name_Office, o.Office_Type
-                     HAVING ticket_count > 0
-                     ORDER BY ticket_count DESC
-                     LIMIT 5";
-
-            $stmt = $this->conn->prepare($query);
-            $stmt->execute();
-            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            foreach ($results as &$office) {
-                $office['display_name'] = $this->abbreviateName($office['Name_Office']);
-            }
-            unset($office);
-
-            return $results;
-        } catch (PDOException $e) {
-            error_log("PDOException in getTopOffices: " . $e->getMessage());
-            return [];
-        } catch (Exception $e) {
-            error_log("Exception in getTopOffices: " . $e->getMessage());
-            return [];
-        }
-    }
-
-    /**
      * PHP-PRO: Abreviar nombre de oficina de forma inteligente
      * - Mantiene primeras 3 palabras completas
      * - Abrevia palabras largas después de las primeras 3

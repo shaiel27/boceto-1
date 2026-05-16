@@ -26,9 +26,6 @@ class OfficeController {
 
         try {
             switch ($action) {
-                case 'top':
-                    $this->getTopOffices();
-                    break;
                 case 'distribution':
                     $startDate = $_GET['start_date'] ?? null;
                     $endDate = $_GET['end_date'] ?? null;
@@ -63,17 +60,6 @@ class OfficeController {
             'success' => true,
             'message' => 'Oficinas obtenidas exitosamente',
             'data' => $offices
-        ]);
-    }
-
-    private function getTopOffices() {
-        $office = new Office($this->conn);
-        $officeData = $office->getTopOffices();
-
-        echo json_encode([
-            'success' => true,
-            'message' => 'Top 5 oficinas por cantidad de tickets obtenidas exitosamente',
-            'data' => $officeData
         ]);
     }
 

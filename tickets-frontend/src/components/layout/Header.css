@@ -29,17 +29,12 @@
   width: auto;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-  transition: all 0.3s ease;
-  border-radius: 6px;
-  padding: 2px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
+  transition: filter 0.3s ease, transform 0.3s ease;
 }
 
 .header-left-logo:hover {
   transform: scale(1.03);
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
-  background: rgba(255, 255, 255, 0.12);
 }
 
 .header-logo {
@@ -96,17 +91,12 @@
   width: auto;
   object-fit: contain;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
-  transition: all 0.3s ease;
-  border-radius: 6px;
-  padding: 2px;
-  background: rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
+  transition: filter 0.3s ease, transform 0.3s ease;
 }
 
 .header-right-logo:hover {
   transform: scale(1.03);
   filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4));
-  background: rgba(255, 255, 255, 0.12);
 }
 
 .user-info {
