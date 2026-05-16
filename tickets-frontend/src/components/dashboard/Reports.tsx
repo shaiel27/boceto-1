@@ -140,39 +140,39 @@ const Reports: React.FC = () => {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [officeData, setOfficeData] = useState<ChartData[]>([]);
 
-  // Real data for statistics from backend
+  // Real data for statistics from backend - Key metrics for ticket system
   const statsData: StatCard[] = [
     {
-      title: 'Total Tickets',
-      value: executiveSummary?.kpi_metrics?.total_tickets ?? '—',
+      title: 'Tickets Totales',
+      value: executiveSummary?.kpi_metrics?.total_tickets ?? '0',
       trend: `${executiveSummary?.trends?.tickets_trend_percent > 0 ? '+' : ''}${executiveSummary?.trends?.tickets_trend_percent ?? 0}%`,
       trendUp: (executiveSummary?.trends?.tickets_trend_percent ?? 0) >= 0,
       icon: FileText,
       color: 'blue'
     },
     {
-      title: 'Tiempo Promedio',
+      title: 'Resolución Promedio',
       value: `${executiveSummary?.kpi_metrics?.avg_resolution_hours ?? 0}h`,
-      trend: `${executiveSummary?.trends?.resolution_time_trend_percent < 0 ? '-' : '+'}${Math.abs(executiveSummary?.trends?.resolution_time_trend_percent ?? 0)}%`,
+      trend: `${executiveSummary?.trends?.resolution_time_trend_percent < 0 ? 'Mejora' : 'Aumento'} ${Math.abs(executiveSummary?.trends?.resolution_time_trend_percent ?? 0)}%`,
       trendUp: (executiveSummary?.trends?.resolution_time_trend_percent ?? 0) <= 0,
       icon: Clock,
       color: 'green'
     },
     {
-      title: 'Tickets Resueltos',
-      value: executiveSummary?.kpi_metrics?.resolved_tickets ?? '—',
-      trend: `${((executiveSummary?.kpi_metrics?.resolved_tickets / executiveSummary?.kpi_metrics?.total_tickets) * 100 || 0).toFixed(0)}%`,
+      title: 'Tasa de Resolución',
+      value: `${((executiveSummary?.kpi_metrics?.resolved_tickets / Math.max(executiveSummary?.kpi_metrics?.total_tickets, 1)) * 100 || 0).toFixed(1)}%`,
+      trend: `${executiveSummary?.kpi_metrics?.resolved_tickets ?? 0} resueltos`,
       trendUp: true,
       icon: CheckCircle,
       color: 'purple'
     },
     {
-      title: 'Oficinas Activas',
-      value: executiveSummary?.kpi_metrics?.active_offices ?? '—',
-      trend: `${executiveSummary?.kpi_metrics?.active_technicians ?? 0} técnicos`,
-      trendUp: true,
-      icon: Building,
-      color: 'orange'
+      title: 'Tickets Críticos',
+      value: executiveSummary?.priority_distribution?.critical ?? '0',
+      trend: `Requieren atención`,
+      trendUp: false,
+      icon: AlertTriangle,
+      color: 'red'
     }
   ];
 
