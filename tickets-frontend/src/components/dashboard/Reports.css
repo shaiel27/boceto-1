@@ -496,81 +496,44 @@
 
 /* Report Footer */
 .report-footer {
-  padding: 16px;
-  background: var(--reports-bg-secondary);
-  border-top: 1px solid var(--reports-border);
+  padding: 16px 20px;
+  background: linear-gradient(135deg, var(--reports-bg-secondary) 0%, #ffffff 100%);
+  border-top: 2px solid var(--reports-border);
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   gap: 12px;
 }
 
-.report-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.action-btn {
+.download-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  font-size: 0.875rem;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
   border: none;
+  width: 100%;
 }
 
-.action-btn.primary {
-  background: linear-gradient(135deg, var(--reports-primary) 0%, var(--reports-primary-light) 100%);
+.download-btn.primary {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
   color: white;
-  box-shadow: var(--reports-shadow);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 }
 
-.action-btn.primary:hover {
+.download-btn.primary:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
   transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.4);
 }
 
-.action-btn.secondary {
-  background: var(--reports-bg-primary);
-  color: var(--reports-text-primary);
-  border: 2px solid var(--reports-border);
-}
-
-.action-btn.secondary:hover {
-  background: var(--reports-bg-secondary);
-  border-color: var(--reports-primary);
-  color: var(--reports-primary);
-}
-
-.export-quick {
-  display: flex;
-  gap: 4px;
-}
-
-.export-quick-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s ease;
-  background: var(--reports-bg-primary);
-  color: var(--reports-text-muted);
-  border: 1px solid var(--reports-border);
-}
-
-.export-quick-btn:hover {
-  background: var(--reports-primary);
-  color: white;
-  border-color: var(--reports-primary);
-  transform: translateY(-2px);
+.download-btn.primary:active {
+  transform: translateY(0);
 }
 
 /* Empty State */

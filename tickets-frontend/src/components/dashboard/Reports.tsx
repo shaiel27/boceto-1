@@ -19,21 +19,16 @@ import {
   ChevronDown,
   ChevronRight,
   Settings,
-  Plus,
-  Eye,
   Edit,
   Filter,
   MoreVertical,
-  Sparkles,
   Activity,
-  Zap,
   Target,
   BarChart,
   Grid,
   List,
   X,
-  Star,
-  Play
+  Star
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
 import './Dashboard.css';
@@ -126,7 +121,7 @@ interface ChartData {
 
 const Reports: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'overview' | 'reports' | 'generator'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'reports'>('overview');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -2647,9 +2642,7 @@ const Reports: React.FC = () => {
   
   
   
-  const handleCreateReport = () => {
-    setActiveTab('generator');
-  };
+
 
   const filteredReports = reports.filter(report => {
     const matchesSearch = report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -2717,13 +2710,7 @@ const Reports: React.FC = () => {
             </div>
           </div>
           <div className="header-right">
-            <button 
-              className="enterprise-btn primary"
-              onClick={handleCreateReport}
-            >
-              <Plus size={18} />
-              Crear Reporte
-            </button>
+            {/* No actions needed here */}
           </div>
         </div>
 
@@ -2743,13 +2730,7 @@ const Reports: React.FC = () => {
             <FileText size={18} />
             <span>Biblioteca de Reportes</span>
           </button>
-          <button
-            className={`enterprise-tab ${activeTab === 'generator' ? 'active' : ''}`}
-            onClick={() => setActiveTab('generator')}
-          >
-            <Sparkles size={18} />
-            <span>Generador Avanzado</span>
-          </button>
+
         </div>
 
         {/* Content */}
@@ -3123,45 +3104,14 @@ const Reports: React.FC = () => {
                       </div>
                       
                       <div className="report-footer">
-                        <div className="report-actions">
-                          <button
-                            className="action-btn primary"
-                            onClick={() => handleRunReport(report.id)}
-                          >
-                            <Play size={16} />
-                            <span>Ejecutar</span>
-                          </button>
-                          <button
-                            className="action-btn secondary"
-                            onClick={() => setSelectedReport(report)}
-                          >
-                            <Eye size={16} />
-                            <span>Ver</span>
-                          </button>
-                        </div>
-                        <div className="export-quick">
-                          <button
-                            className="export-quick-btn"
-                            onClick={() => handleExportReport(report.id, 'pdf')}
-                            title="Exportar PDF"
-                          >
-                            <Download size={16} />
-                          </button>
-                          <button
-                            className="export-quick-btn"
-                            onClick={() => handleExportReport(report.id, 'excel')}
-                            title="Exportar Excel"
-                          >
-                            <Download size={16} />
-                          </button>
-                          <button
-                            className="export-quick-btn"
-                            onClick={() => handleExportReport(report.id, 'csv')}
-                            title="Exportar CSV"
-                          >
-                            <Download size={16} />
-                          </button>
-                        </div>
+                        <button
+                          className="download-btn primary"
+                          onClick={() => handleExportReport(report.id, 'pdf')}
+                          title="Descargar PDF"
+                        >
+                          <Download size={18} />
+                          <span>Descargar PDF</span>
+                        </button>
                       </div>
                     </div>
                   );
@@ -3171,122 +3121,7 @@ const Reports: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'generator' && (
-          <div className="generator-view">
-            <div className="generator-header">
-              <div className="generator-icon-wrapper">
-                <Sparkles size={48} />
-              </div>
-              <h2 className="generator-title">Generador de Reportes Personalizados</h2>
-              <p className="generator-subtitle">Crea reportes a medida con filtros avanzados y parámetros dinámicos</p>
-            </div>
 
-            <div className="generator-form">
-              <div className="form-section">
-                <h3 className="form-section-title">Información del Reporte</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Nombre del Reporte</label>
-                    <input type="text" className="form-input" placeholder="Ej: Reporte Mensual de Tickets" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Tipo de Reporte</label>
-                    <select className="form-input">
-                      <option value="general">General</option>
-                      <option value="performance">Desempeño</option>
-                      <option value="office">Por Oficina</option>
-                      <option value="timeline">Timeline</option>
-                      <option value="priority">Prioridades</option>
-                      <option value="service">Tipo de Servicio</option>
-                    </select>
-                  </div>
-                  <div className="form-group full-width">
-                    <label className="form-label">Descripción</label>
-                    <textarea className="form-textarea" placeholder="Describe el propósito de este reporte..." rows={3} />
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-section">
-                <h3 className="form-section-title">Parámetros del Reporte</h3>
-                <div className="form-grid">
-                  <div className="form-group">
-                    <label className="form-label">Fecha Inicio</label>
-                    <input type="date" className="form-input" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Fecha Fin</label>
-                    <input type="date" className="form-input" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Oficina</label>
-                    <select className="form-input">
-                      <option value="all">Todas las oficinas</option>
-                      <option value="catastro">Catastro</option>
-                      <option value="obras">Obras</option>
-                      <option value="bienestar">Bienestar</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Estado</label>
-                    <select className="form-input">
-                      <option value="all">Todos los estados</option>
-                      <option value="pending">Pendientes</option>
-                      <option value="in_progress">En Proceso</option>
-                      <option value="resolved">Resueltos</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Prioridad</label>
-                    <select className="form-input">
-                      <option value="all">Todas las prioridades</option>
-                      <option value="high">Alta</option>
-                      <option value="medium">Media</option>
-                      <option value="low">Baja</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Técnico</label>
-                    <select className="form-input">
-                      <option value="all">Todos los técnicos</option>
-                      <option value="tech1">Amna Verez</option>
-                      <option value="tech2">Carlos Diaz</option>
-                      <option value="tech3">Lavila Kavrvn</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-section">
-                <h3 className="form-section-title">Formato de Exportación</h3>
-                <div className="format-options">
-                  <label className="format-option">
-                    <input type="checkbox" defaultChecked />
-                    <span>PDF</span>
-                  </label>
-                  <label className="format-option">
-                    <input type="checkbox" defaultChecked />
-                    <span>Excel</span>
-                  </label>
-                  <label className="format-option">
-                    <input type="checkbox" />
-                    <span>CSV</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="generator-actions">
-                <button className="enterprise-btn secondary" onClick={() => setActiveTab('reports')}>
-                  Cancelar
-                </button>
-                <button className="enterprise-btn primary">
-                  <Zap size={18} />
-                  Generar Reporte
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         </div>
       </main>
