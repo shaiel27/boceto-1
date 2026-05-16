@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 
-import ApiService, { LoginResponse } from '../services/api';
+import ApiService from '../services/api';
 
 
 

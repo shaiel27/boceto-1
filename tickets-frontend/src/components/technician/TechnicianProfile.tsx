@@ -2,19 +2,16 @@ import { useState } from 'react';
 import {
   User,
   Mail,
-  Phone,
   Lock,
   Eye,
   EyeOff,
   Save,
   X,
   Shield,
-  Edit2,
   Clock,
   Calendar,
   Briefcase,
-  Settings,
-  Award
+  Settings
 } from 'lucide-react';
 import './TechnicianProfile.css';
 import ApiService from '../../services/api';

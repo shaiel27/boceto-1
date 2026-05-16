@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Send,
   AlertCircle,
@@ -10,10 +10,6 @@ import {
   Settings,
   Upload,
   ArrowRight,
-  ChevronDown,
-  MapPin,
-  Clock,
-  Shield,
   Layers,
   AlertTriangle
 } from 'lucide-react';
