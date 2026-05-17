@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/api';
 import {
@@ -2746,12 +2746,14 @@ const Reports: React.FC = () => {
         <div className="reports-content enterprise-content">
         {activeTab === 'overview' && (
           <div className="overview-view">
-            {/* KPI Hero Section */}
+            {/* PHP-PRO: KPI Hero Section - Backend Integrated */}
             <div className="kpi-hero-section">
               <div className="kpi-intro">
                 <h2 className="kpi-hero-title">Dashboard Operacional</h2>
                 <p className="kpi-hero-subtitle">Indicadores clave de rendimiento en tiempo real</p>
               </div>
+              
+              {/* PHP-PRO: Dynamic Stats from Backend */}
               <div className="enterprise-stats-grid">
                 {statsData.map((stat, index) => (
                   <div key={index} className={`enterprise-stat-card stat-${stat.color}`}>
@@ -2793,9 +2795,10 @@ const Reports: React.FC = () => {
                 </button>
               </div>
             </div>
+            
             {expandedSections.charts && (
               <div className="enterprise-charts-grid">
-                {/* Priority Chart */}
+                {/* Priority Chart - PHP-PRO Backend Integration */}
                 <div className="enterprise-chart-card">
                   <div className="chart-header">
                     <div className="chart-title-wrapper">
@@ -2804,31 +2807,38 @@ const Reports: React.FC = () => {
                       </div>
                       <h4 className="chart-title">Distribución por Prioridad</h4>
                     </div>
-                    <div className="chart-badge">Total: 1,250</div>
+                    <div className="chart-badge">
+                      Total: {priorityData.reduce((sum, item) => sum + item.value, 0)}
+                    </div>
                   </div>
                   <div className="chart-content">
-                    {priorityData.map((item, index) => (
-                      <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label-row">
-                          <span className="chart-bar-label">{item.label}</span>
-                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                    {priorityData.map((item, index) => {
+                      const total = priorityData.reduce((sum, i) => sum + i.value, 0);
+                      return (
+                        <div key={index} className="chart-bar-container">
+                          <div className="chart-bar-label-row">
+                            <span className="chart-bar-label">{item.label}</span>
+                            <span className="chart-bar-percentage">
+                              {total > 0 ? Math.round((item.value / total) * 100) : 0}%
+                            </span>
+                          </div>
+                          <div className="chart-bar-wrapper">
+                            <div
+                              className="chart-bar"
+                              style={{
+                                width: `${total > 0 ? (item.value / total) * 100 : 0}%`,
+                                backgroundColor: item.color
+                              }}
+                            ></div>
+                            <span className="chart-bar-value">{item.value}</span>
+                          </div>
                         </div>
-                        <div className="chart-bar-wrapper">
-                          <div
-                            className="chart-bar"
-                            style={{
-                              width: `${(item.value / 650) * 100}%`,
-                              backgroundColor: item.color
-                            }}
-                          ></div>
-                          <span className="chart-bar-value">{item.value}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Office Chart */}
+                {/* Office Chart - PHP-PRO Backend Integration */}
                 <div className="enterprise-chart-card">
                   <div className="chart-header">
                     <div className="chart-title-wrapper">
@@ -2840,28 +2850,33 @@ const Reports: React.FC = () => {
                     <div className="chart-badge">Top 5</div>
                   </div>
                   <div className="chart-content">
-                    {officeData.map((item, index) => (
-                      <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label-row">
-                          <span className="chart-bar-label">{item.label}</span>
-                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                    {(() => {
+                      const maxValue = Math.max(...officeData.map(o => o.value), 1);
+                      return officeData.map((item, index) => (
+                        <div key={index} className="chart-bar-container">
+                          <div className="chart-bar-label-row">
+                            <span className="chart-bar-label">{item.label}</span>
+                            <span className="chart-bar-percentage">
+                              {maxValue > 0 ? Math.round((item.value / maxValue) * 100) : 0}%
+                            </span>
+                          </div>
+                          <div className="chart-bar-wrapper">
+                            <div
+                              className="chart-bar"
+                              style={{
+                                width: `${(item.value / maxValue) * 100}%`,
+                                backgroundColor: item.color
+                              }}
+                            ></div>
+                            <span className="chart-bar-value">{item.value}</span>
+                          </div>
                         </div>
-                        <div className="chart-bar-wrapper">
-                          <div
-                            className="chart-bar"
-                            style={{
-                              width: `${(item.value / 320) * 100}%`,
-                              backgroundColor: item.color
-                            }}
-                          ></div>
-                          <span className="chart-bar-value">{item.value}</span>
-                        </div>
-                      </div>
-                    ))}
+                      ));
+                    })()}
                   </div>
                 </div>
 
-                {/* Status Chart */}
+                {/* Status Chart - PHP-PRO Backend Integration */}
                 <div className="enterprise-chart-card">
                   <div className="chart-header">
                     <div className="chart-title-wrapper">
@@ -2870,27 +2885,34 @@ const Reports: React.FC = () => {
                       </div>
                       <h4 className="chart-title">Estado de Tickets</h4>
                     </div>
-                    <div className="chart-badge">Tasa de resolución: 80%</div>
+                    <div className="chart-badge">
+                      Tasa: {executiveSummary?.kpi_metrics?.resolution_rate_percent?.toFixed(1) ?? 0}%
+                    </div>
                   </div>
                   <div className="chart-content">
-                    {statusData.map((item, index) => (
-                      <div key={index} className="chart-bar-container">
-                        <div className="chart-bar-label-row">
-                          <span className="chart-bar-label">{item.label}</span>
-                          <span className="chart-bar-percentage">{Math.round((item.value / 1250) * 100)}%</span>
+                    {statusData.map((item, index) => {
+                      const total = statusData.reduce((sum, i) => sum + i.value, 0);
+                      return (
+                        <div key={index} className="chart-bar-container">
+                          <div className="chart-bar-label-row">
+                            <span className="chart-bar-label">{item.label}</span>
+                            <span className="chart-bar-percentage">
+                              {total > 0 ? Math.round((item.value / total) * 100) : 0}%
+                            </span>
+                          </div>
+                          <div className="chart-bar-wrapper">
+                            <div
+                              className="chart-bar"
+                              style={{
+                                width: `${total > 0 ? (item.value / total) * 100 : 0}%`,
+                                backgroundColor: item.color
+                              }}
+                            ></div>
+                            <span className="chart-bar-value">{item.value}</span>
+                          </div>
                         </div>
-                        <div className="chart-bar-wrapper">
-                          <div
-                            className="chart-bar"
-                            style={{
-                              width: `${(item.value / 1000) * 100}%`,
-                              backgroundColor: item.color
-                            }}
-                          ></div>
-                          <span className="chart-bar-value">{item.value}</span>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

@@ -5,48 +5,44 @@ import { useAuth } from '../../contexts/AuthContext';
 import { sileo } from 'sileo';
 import TechnicianAnalytics from './TechnicianAnalytics';
 import {
-  User,
+  BadgeCheck,
   Users,
+  ArrowLeft,
   UserPlus,
   Search,
   Filter,
-  MapPin,
-  Mail,
-  Phone,
-  Calendar,
-  Award,
-  Lock,
-  TrendingUp,
-  Activity,
-  Download,
+  Grid,
+  List,
   Edit,
   Trash2,
   Eye,
-  UserCheck,
-  UserX,
   Clock,
-  Star,
-  Briefcase,
-  GraduationCap,
-  Shield,
-  ChevronDown,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
   X,
+  Calendar,
+  MapPin,
+  Mail,
+  Phone,
+  Wrench,
+  ChevronDown,
   Plus,
+  Activity,
+  ExternalLink,
+  RefreshCw,
+  BarChart3,
+  Ticket,
   Network,
   Headphones,
   Code,
+  TrendingUp,
+  UserCheck,
   Coffee,
-  ArrowLeft,
-  BarChart3,
-  Wrench,
-  Building,
-  Heart,
-  Ticket,
-  BadgeCheck,
-  CheckCircle,
-  AlertCircle,
-  XCircle,
-  ClipboardList
+  User,
+  Lock,
+  Briefcase,
+  UserX
 } from 'lucide-react';
 import './TechnicianManagement.css';
 
@@ -684,69 +680,112 @@ const TechnicianManagement: React.FC = () => {
     }
   };
 
-  return (
+return (
     <div className="technician-management">
       <div className="page-container">
-        {/* Header */}
-        <header className="page-header">
-          <div className="header-content">
-            <div className="title-section">
-              <h1 className="page-title">
-                <BadgeCheck size={28} />
-                {isTechnician() ? 'Mi Perfil Técnico' : 'Equipo Técnico Municipal'}
-              </h1>
-              <p className="page-description">
-                {isTechnician() ? 'Gestiona tu información personal y horarios' : 'Conoce y gestiona a los profesionales que mantienen nuestra ciudad funcionando'}
-              </p>
+        {/* Header Premium */}
+        <header className="page-header-premium">
+          {/* Floating Back Button */}
+          <button 
+            className="floating-back-btn"
+            onClick={() => navigate('/')}
+            title="Volver al Dashboard"
+          >
+            <ArrowLeft size={20} />
+          </button>
+
+          <div className="header-premium-content">
+            <div className="header-premium-left">
+              <div className="header-icon-wrapper">
+                <div className="header-icon-bg">
+                  <BadgeCheck size={32} />
+                </div>
+              </div>
+              <div className="header-premium-info">
+                <h1 className="header-premium-title">
+                  {isTechnician() ? 'Mi Perfil Técnico' : 'Equipo Técnico Municipal'}
+                </h1>
+                <p className="header-premium-subtitle">
+                  {isTechnician() ? 'Gestiona tu información personal y horarios' : 'Conoce y gestiona a los profesionales que mantienen nuestra ciudad funcionando'}
+                </p>
+              </div>
             </div>
-            
-            <div className="header-stats">
+
+            <div className="header-premium-stats">
               {isTechnician() && currentUserTechnician ? (
                 <>
-                  <div className="stat-item">
-                    <span className="stat-number">{currentUserTechnician.Tickets_Assigned || 0}</span>
-                    <span className="stat-label">Tickets Asignados</span>
+                  <div className="stat-pill">
+                    <div className="stat-pill-icon assigned">
+                      <Ticket size={18} />
+                    </div>
+                    <div className="stat-pill-info">
+                      <span className="stat-pill-value">{currentUserTechnician.Tickets_Assigned || 0}</span>
+                      <span className="stat-pill-label">Asignados</span>
+                    </div>
                   </div>
-                  <div className="stat-item">
-                    <span className="stat-number">{currentUserTechnician.Tickets_Resolved || 0}</span>
-                    <span className="stat-label">Tickets Resueltos</span>
+                  <div className="stat-pill">
+                    <div className="stat-pill-icon resolved">
+                      <CheckCircle size={18} />
+                    </div>
+                    <div className="stat-pill-info">
+                      <span className="stat-pill-value">{currentUserTechnician.Tickets_Resolved || 0}</span>
+                      <span className="stat-pill-label">Resueltos</span>
+                    </div>
                   </div>
-                  <div className="stat-item">
-                    <span className="stat-number">{currentUserTechnician.Schedules?.length || 0}</span>
-                    <span className="stat-label">Días Laborales</span>
+                  <div className="stat-pill">
+                    <div className="stat-pill-icon schedule">
+                      <Calendar size={18} />
+                    </div>
+                    <div className="stat-pill-info">
+                      <span className="stat-pill-value">{currentUserTechnician.Schedules?.length || 0}</span>
+                      <span className="stat-pill-label">Días</span>
+                    </div>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="stat-item">
-                    <span className="stat-number">{stats.total}</span>
-                    <span className="stat-label">Profesionales</span>
+                  <div className="stat-pill">
+                    <div className="stat-pill-icon total">
+                      <Users size={18} />
+                    </div>
+                    <div className="stat-pill-info">
+                      <span className="stat-pill-value">{stats.total}</span>
+                      <span className="stat-pill-label">Total</span>
+                    </div>
                   </div>
-                  <div className="stat-item">
-                    <span className="stat-number">{stats.available}</span>
-                    <span className="stat-label">Disponibles</span>
+                  <div className="stat-pill">
+                    <div className="stat-pill-icon available">
+                      <CheckCircle size={18} />
+                    </div>
+                    <div className="stat-pill-info">
+                      <span className="stat-pill-value">{stats.available}</span>
+                      <span className="stat-pill-label">Disponibles</span>
+                    </div>
                   </div>
-                  <div className="stat-item">
-                    <span className="stat-number">{stats.busy}</span>
-                    <span className="stat-label">Ocupados</span>
+                  <div className="stat-pill">
+                    <div className="stat-pill-icon busy">
+                      <Clock size={18} />
+                    </div>
+                    <div className="stat-pill-info">
+                      <span className="stat-pill-value">{stats.busy}</span>
+                      <span className="stat-pill-label">Ocupados</span>
+                    </div>
                   </div>
                 </>
               )}
             </div>
           </div>
-          
-          <div className="header-actions">
-            <button className="action-btn secondary" onClick={() => navigate('/')}>
-              <ArrowLeft size={18} />
-              Volver al Panel
+
+          {/* FAB Add Technician */}
+          {!isTechnician() && (
+            <button 
+              className="fab-add-technician" 
+              onClick={() => setShowAddModal(true)}
+              title="Agregar nuevo técnico"
+            >
+              <UserPlus size={24} />
             </button>
-            {!isTechnician() && (
-              <button className="action-btn primary" onClick={() => setShowAddModal(true)}>
-                <UserPlus size={18} />
-                Nuevo Profesional
-              </button>
-            )}
-          </div>
+          )}
         </header>
 
         {/* Stats Bar - Compact Design */}
