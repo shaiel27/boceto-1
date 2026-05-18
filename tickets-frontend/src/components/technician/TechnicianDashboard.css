@@ -2119,6 +2119,137 @@
   background: linear-gradient(180deg, #10b981 0%, #059669 100%);
 }
 
+/* PHP-PRO: Tickets Filters */
+.tickets-filters {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-md);
+  flex-wrap: wrap;
+  border: 1px solid var(--alcaldia-border-light);
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.filter-input.search {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--alcaldia-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  min-width: 200px;
+  background: var(--alcaldia-surface);
+  color: var(--alcaldia-text-primary);
+  transition: all 0.2s ease;
+}
+
+.filter-input.search:focus {
+  outline: none;
+  border-color: var(--alcaldia-primary);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+}
+
+.filter-select {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border: 1px solid var(--alcaldia-border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  background: var(--alcaldia-surface);
+  color: var(--alcaldia-text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--alcaldia-primary);
+  box-shadow: 0 0 0 3px rgba(30, 64, 175, 0.1);
+}
+
+/* PHP-PRO: Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg) 0;
+  margin-top: var(--spacing-md);
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: linear-gradient(135deg, var(--alcaldia-primary) 0%, var(--alcaldia-primary-dark) 100%);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--alcaldia-primary-light) 0%, var(--alcaldia-primary) 100%);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.pagination-btn:disabled {
+  background: var(--alcaldia-border);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.pagination-info {
+  font-size: 0.875rem;
+  color: var(--alcaldia-text-secondary);
+  font-weight: 500;
+}
+
+/* PHP-PRO: Auto Status Display */
+.time-card.work.status-auto {
+  position: relative;
+}
+
+.status-reason {
+  font-size: 0.75rem;
+  color: var(--alcaldia-text-muted);
+  margin-top: var(--spacing-xs);
+  font-style: italic;
+}
+
+.time-value.auto-status {
+  margin-top: var(--spacing-xs);
+}
+
+/* PHP-PRO: Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl);
+  color: var(--alcaldia-text-muted);
+  text-align: center;
+}
+
+.empty-state svg {
+  margin-bottom: var(--spacing-md);
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: 0.875rem;
+}
+
 /* Responsive Design for Statistics Modal */
 @media (max-width: 1024px) {
   .stats-grid {

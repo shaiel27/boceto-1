@@ -132,6 +132,16 @@ const TechnicianDashboard: React.FC = () => {
   const [showAssistanceModal, setShowAssistanceModal] = useState(false);
   const [selectedTicketForAssistance, setSelectedTicketForAssistance] = useState<Ticket | null>(null);
 
+  // PHP-PRO: Pagination state (5 tickets per page)
+  const [activeTicketsPage, setActiveTicketsPage] = useState(1);
+  const [closedTicketsPage, setClosedTicketsPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
+
+  // PHP-PRO: Filter state
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
+
   // PHP-PRO: Load ticket history with enhanced analytics
   const loadTicketHistory = async () => {
     try {
@@ -469,16 +479,6 @@ const TechnicianDashboard: React.FC = () => {
     setWorkTimeRemaining(Math.max(0, Math.floor(workDiff / 1000 / 60)));
   }, []);
 
-  const toggleStatus = () => {
-    setTechnicianProfile(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        status: prev.status === 'available' ? 'busy' : 'available'
-      };
-    });
-  };
-
   const handleAssistanceRequest = (ticket: Ticket) => {
     setSelectedTicketForAssistance(ticket);
     setShowAssistanceModal(true);
@@ -529,6 +529,80 @@ const TechnicianDashboard: React.FC = () => {
     }
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Disponible':
+        return 'available';
+      case 'Ocupado':
+        return 'busy';
+      case 'Inactivo':
+        return 'inactive';
+      default:
+        return 'inactive';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'Disponible':
+        return 'Disponible';
+      case 'Ocupado':
+        return 'Ocupado';
+      case 'Inactivo':
+        return 'Fuera de horario';
+      default:
+        return status;
+    }
+  };
+
+  const getStatusReason = (): string => {
+    const status = technicianProfile?.status;
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeMinutes = currentHour * 60 + currentMinute;
+    
+    const lunchStart = technicianProfile?.lunch_start_time ? 
+      parseInt(technicianProfile.lunch_start_time.split(':')[0]) * 60 + parseInt(technicianProfile.lunch_start_time.split(':')[1]) : 0;
+    const lunchEnd = technicianProfile?.lunch_end_time ? 
+      parseInt(technicianProfile.lunch_end_time.split(':')[0]) * 60 + parseInt(technicianProfile.lunch_end_time.split(':')[1]) : 0;
+
+    if (status === 'Inactivo') {
+      return 'Fuera de horario laboral';
+    } else if (status === 'Ocupado' && currentTimeMinutes >= lunchStart && currentTimeMinutes <= lunchEnd) {
+      return 'En bloque de almuerzo';
+    } else if (status === 'Ocupado') {
+      return 'Atendiendo ticket(s) activo(s)';
+    }
+    return 'Disponible para atender';
+  };
+
+  // PHP-PRO: Filter and pagination logic
+  const filteredActiveTickets = myTickets.filter(ticket => {
+    const matchesPriority = priorityFilter === 'all' || ticket.System_Priority === priorityFilter;
+    const matchesStatus = statusFilter === 'all' || ticket.Status === statusFilter;
+    const matchesSearch = searchTerm === '' || 
+      ticket.Code.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.Subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.Description.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesPriority && matchesStatus && matchesSearch && ticket.Status !== 'Cerrado';
+  });
+
+  const filteredClosedTickets = myTickets.filter(ticket => ticket.Status === 'Cerrado');
+
+  const paginatedActiveTickets = filteredActiveTickets.slice(
+    (activeTicketsPage - 1) * ITEMS_PER_PAGE,
+    activeTicketsPage * ITEMS_PER_PAGE
+  );
+
+  const paginatedClosedTickets = filteredClosedTickets.slice(
+    (closedTicketsPage - 1) * ITEMS_PER_PAGE,
+    closedTicketsPage * ITEMS_PER_PAGE
+  );
+
+  const totalActivePages = Math.ceil(filteredActiveTickets.length / ITEMS_PER_PAGE);
+  const totalClosedPages = Math.ceil(filteredClosedTickets.length / ITEMS_PER_PAGE);
+
   if (loading) {
     return (
       <div className="technician-dashboard">
@@ -577,7 +651,7 @@ const TechnicianDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Control de Tiempo y Jornada */}
+        {/* Control de Tiempo y Jornada - Estado Automático */}
         <div className="time-control-section">
           <div className="time-card lunch">
             <div className="time-icon">
@@ -597,19 +671,19 @@ const TechnicianDashboard: React.FC = () => {
             </div>
           </div>
           
-          <div className="time-card work">
+          <div className="time-card work status-auto">
             <div className="time-icon">
-              <LogOut size={28} />
+              <Settings size={28} />
             </div>
             <div className="time-info">
-              <h3 className="time-title">Estado</h3>
-              <p className="time-subtitle">Disponibilidad</p>
-              <div className="time-value">
-                {technicianProfile?.status === 'Activo' || technicianProfile?.status === 'Disponible' 
-                  ? 'Disponible' 
-                  : technicianProfile?.status || 'Desconocido'
-                }
+              <h3 className="time-title">Estado del Sistema</h3>
+              <p className="time-subtitle">Calculado automáticamente</p>
+              <div className="time-value auto-status">
+                <span className={`status-badge ${getStatusColor(technicianProfile?.status || '')}`}>
+                  {getStatusLabel(technicianProfile?.status || '')}
+                </span>
               </div>
+              <p className="status-reason">{getStatusReason()}</p>
             </div>
           </div>
 
@@ -636,11 +710,63 @@ const TechnicianDashboard: React.FC = () => {
               <Settings size={24} />
               Mis Tickets Activos
             </h2>
-            <span className="ticket-count">{myTickets.filter(t => t.Status !== 'Cerrado').length} activos</span>
+            <span className="ticket-count">{filteredActiveTickets.length} activos</span>
+          </div>
+
+          {/* PHP-PRO: Filters */}
+          <div className="tickets-filters">
+            <div className="filter-group">
+              <input
+                type="text"
+                placeholder="Buscar por código o asunto..."
+                className="filter-input search"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setActiveTicketsPage(1);
+                }}
+              />
+            </div>
+            <div className="filter-group">
+              <select
+                className="filter-select"
+                value={priorityFilter}
+                onChange={(e) => {
+                  setPriorityFilter(e.target.value);
+                  setActiveTicketsPage(1);
+                }}
+              >
+                <option value="all">Todas las prioridades</option>
+                <option value="Crítica">Crítica</option>
+                <option value="Alta">Alta</option>
+                <option value="Media">Media</option>
+                <option value="Baja">Baja</option>
+              </select>
+            </div>
+            <div className="filter-group">
+              <select
+                className="filter-select"
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setActiveTicketsPage(1);
+                }}
+              >
+                <option value="all">Todos los estados</option>
+                <option value="Pendiente">Pendiente</option>
+                <option value="En Progreso">En Progreso</option>
+              </select>
+            </div>
           </div>
 
           <div className="tickets-list">
-            {myTickets.filter(t => t.Status !== 'Cerrado').map((ticket) => (
+            {paginatedActiveTickets.length === 0 ? (
+              <div className="empty-state">
+                <Settings size={48} />
+                <p>No hay tickets activos que coincidan con los filtros</p>
+              </div>
+            ) : (
+              paginatedActiveTickets.map((ticket) => (
               <div key={ticket.id} className="ticket-card">
                 <div className="ticket-header">
                   <div className="ticket-code">
@@ -730,8 +856,34 @@ const TechnicianDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
+
+          {/* PHP-PRO: Pagination */}
+          {totalActivePages > 1 && (
+            <div className="pagination">
+              <button
+                className="pagination-btn"
+                onClick={() => setActiveTicketsPage(p => Math.max(1, p - 1))}
+                disabled={activeTicketsPage === 1}
+              >
+                <ChevronDown size={16} style={{ transform: 'rotate(90deg)' }} />
+                Anterior
+              </button>
+              <span className="pagination-info">
+                Página {activeTicketsPage} de {totalActivePages}
+              </span>
+              <button
+                className="pagination-btn"
+                onClick={() => setActiveTicketsPage(p => Math.min(totalActivePages, p + 1))}
+                disabled={activeTicketsPage === totalActivePages}
+              >
+                Siguiente
+                <ChevronDown size={16} style={{ transform: 'rotate(-90deg)' }} />
+              </button>
+            </div>
+          )}
         </section>
 
         {/* PHP-PRO: Exclusive Ticket History Section */}
@@ -751,16 +903,16 @@ const TechnicianDashboard: React.FC = () => {
                 {historyLoading ? 'Cargando...' : 'Ver Estadísticas'}
               </button>
               <span className="ticket-count">
-                {myTickets.filter(t => t.Status === 'Cerrado').length} resueltos
+                {filteredClosedTickets.length} resueltos
               </span>
             </div>
           </div>
 
-          {/* History Summary Cards */}
+          {/* PHP-PRO: History Summary Cards with system colors */}
           {ticketHistory && (
             <div className="history-summary-grid">
               <div className="history-card total">
-                <div className="history-icon">
+                <div className="history-icon" style={{ background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)' }}>
                   <Settings size={28} />
                 </div>
                 <div className="history-info">
@@ -771,7 +923,7 @@ const TechnicianDashboard: React.FC = () => {
               </div>
               
               <div className="history-card resolved">
-                <div className="history-icon">
+                <div className="history-icon" style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
                   <CheckCircle size={28} />
                 </div>
                 <div className="history-info">
@@ -782,7 +934,7 @@ const TechnicianDashboard: React.FC = () => {
               </div>
               
               <div className="history-card time">
-                <div className="history-icon">
+                <div className="history-icon" style={{ background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' }}>
                   <Clock size={28} />
                 </div>
                 <div className="history-info">
@@ -793,7 +945,7 @@ const TechnicianDashboard: React.FC = () => {
               </div>
               
               <div className="history-card priority">
-                <div className="history-icon">
+                <div className="history-icon" style={{ background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' }}>
                   <AlertTriangle size={28} />
                 </div>
                 <div className="history-info">
@@ -806,7 +958,13 @@ const TechnicianDashboard: React.FC = () => {
           )}
 
           <div className="tickets-list">
-            {myTickets.filter(t => t.Status === 'Cerrado').slice(0, 5).map((ticket) => (
+            {paginatedClosedTickets.length === 0 ? (
+              <div className="empty-state">
+                <History size={48} />
+                <p>No hay tickets resueltos</p>
+              </div>
+            ) : (
+              paginatedClosedTickets.map((ticket) => (
               <div key={ticket.id} className="ticket-card closed">
                 <div className="ticket-header">
                   <div className="ticket-code">
@@ -881,8 +1039,34 @@ const TechnicianDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
+
+          {/* PHP-PRO: Closed tickets pagination */}
+          {totalClosedPages > 1 && (
+            <div className="pagination">
+              <button
+                className="pagination-btn"
+                onClick={() => setClosedTicketsPage(p => Math.max(1, p - 1))}
+                disabled={closedTicketsPage === 1}
+              >
+                <ChevronDown size={16} style={{ transform: 'rotate(90deg)' }} />
+                Anterior
+              </button>
+              <span className="pagination-info">
+                Página {closedTicketsPage} de {totalClosedPages}
+              </span>
+              <button
+                className="pagination-btn"
+                onClick={() => setClosedTicketsPage(p => Math.min(totalClosedPages, p + 1))}
+                disabled={closedTicketsPage === totalClosedPages}
+              >
+                Siguiente
+                <ChevronDown size={16} style={{ transform: 'rotate(-90deg)' }} />
+              </button>
+            </div>
+          )}
         </section>
       </main>
 

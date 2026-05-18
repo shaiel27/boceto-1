@@ -385,20 +385,18 @@ final class Technician
         return false;
     }
 
-    /**
+/**
      * Get available technicians for a specific service
-     * PHP-PRO: Uses capacity-based selection instead of strict status filtering
-     * Allows technicians with active tickets to receive more if under capacity threshold
+     * PHP-PRO: Uses capacity-based selection WITH strict schedule filtering
+     * Filters by: work hours, lunch block, capacity limit, status, and ticket priority
      */
-    public function getAvailableTechniciansByService($serviceId): array
+    public function getAvailableTechniciansByService(int $serviceId, int $ticketPriorityWeight = 0): array
     {
         try {
-            // Get current day and time
-            $currentDay = date('l'); // Monday, Tuesday, etc.
+            $currentDay = date('l');
             $currentTime = date('H:i:s');
             $yesterday = date('Y-m-d H:i:s', strtotime('-24 hours'));
 
-            // Map English day names to Spanish
             $dayMap = [
                 'Monday' => 'Lunes',
                 'Tuesday' => 'Martes',
@@ -410,68 +408,139 @@ final class Technician
             ];
             $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
 
-            // Update technician status based on schedule, lunch, and active tickets
             $this->updateTechniciansStatus($currentDaySpanish, $currentTime);
 
-            // PHP-PRO: Simplified capacity-based selection - no time/schedule restrictions
-            // Priority score = (Active Tickets × 2) + (Recent Assignments × 1)
+            $capacityLimit = 5;
+            $priorityAdjustment = $ticketPriorityWeight > 0 ? (10 - $ticketPriorityWeight) : 5;
+
             $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                             lb.Start_Time as Lunch_Start, lb.End_Time as Lunch_End,
+                             sched.Work_Start_Time, sched.Work_End_Time,
                              (SELECT COUNT(*)
-                              FROM Ticket_Technicians tt
-                              INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                              WHERE tt.Fk_Technician = t.ID_Technicians
-                              AND tt.Status = 'Activo'
-                              AND sr.Status != 'Cerrado') as Active_Tickets_Count,
+                             FROM Ticket_Technicians tt
+                             INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                             WHERE tt.Fk_Technician = t.ID_Technicians
+                             AND tt.Status = 'Activo'
+                             AND sr.Status != 'Cerrado') as Active_Tickets_Count,
                              (SELECT COUNT(*)
-                              FROM Ticket_Technicians tt
-                              WHERE tt.Fk_Technician = t.ID_Technicians
-                              AND tt.Assigned_At >= '{$yesterday}') as Recent_Assignments_Count
-                      FROM " . $this->table_name . " t
-                      INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
-                      WHERE ts.Fk_TI_Service = :serviceId
+                             FROM Ticket_Technicians tt
+                             WHERE tt.Fk_Technician = t.ID_Technicians
+                             AND tt.Assigned_At >= ?) as Recent_Assignments_Count,
+                             (SELECT AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at))
+                             FROM Ticket_Technicians tt
+                             INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                             WHERE tt.Fk_Technician = t.ID_Technicians
+                             AND sr.Status = 'Cerrado'
+                             AND sr.Resolved_at IS NOT NULL) as Avg_Resolution_Hours
+                    FROM " . $this->table_name . " t
+                    INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                    LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
+                    LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = ?
+                    WHERE ts.Fk_TI_Service = ?
                         AND ts.Status = 'Activo'
-                      HAVING Active_Tickets_Count < 5
-                      ORDER BY (Active_Tickets_Count * 2 + Recent_Assignments_Count) ASC, t.First_Name, t.Last_Name";
+                        AND t.Status IN ('Disponible', 'Ocupado')
+                        AND (
+                            (sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
+                            AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time)
+                            OR (sched.Work_Start_Time IS NULL)
+                        )
+                        AND (
+                            (lb.Start_Time IS NOT NULL AND lb.End_Time IS NOT NULL 
+                            AND NOT (TIME(?) >= lb.Start_Time AND TIME(?) <= lb.End_Time))
+                            OR (lb.Start_Time IS NULL)
+                        )
+                    HAVING Active_Tickets_Count < ?
+                    ORDER BY 
+                        CASE 
+                            WHEN sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
+                            AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time 
+                            THEN 0 
+                            ELSE 1 
+                        END,
+                        (Active_Tickets_Count * ?) ASC,
+                        Avg_Resolution_Hours ASC,
+                        Recent_Assignments_Count ASC,
+                        t.First_Name, t.Last_Name";
 
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":serviceId", $serviceId, \PDO::PARAM_INT);
+            $stmt->bindValue(1, $yesterday, \PDO::PARAM_STR);
+            $stmt->bindValue(2, $currentDaySpanish, \PDO::PARAM_STR);
+            $stmt->bindValue(3, $serviceId, \PDO::PARAM_INT);
+            $stmt->bindValue(4, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(5, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(6, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(7, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(8, $capacityLimit, \PDO::PARAM_INT);
+            $stmt->bindValue(9, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(10, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(11, $priorityAdjustment, \PDO::PARAM_INT);
             $stmt->execute();
             $technicians = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
-            // PHP-PRO: Fallback - remove all restrictions except capacity
             if (empty($technicians)) {
-                error_log("No technicians in primary query, trying simplified fallback for service {$serviceId}");
+                error_log("No technicians in primary query, trying fallback for service {$serviceId}");
 
                 $fallbackQuery = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                                         lb.Start_Time as Lunch_Start, lb.End_Time as Lunch_End,
+                                         sched.Work_Start_Time, sched.Work_End_Time,
                                          (SELECT COUNT(*)
-                                          FROM Ticket_Technicians tt
-                                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                                          WHERE tt.Fk_Technician = t.ID_Technicians
-                                          AND tt.Status = 'Activo'
-                                          AND sr.Status != 'Cerrado') as Active_Tickets_Count,
+                                         FROM Ticket_Technicians tt
+                                         INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                                         WHERE tt.Fk_Technician = t.ID_Technicians
+                                         AND tt.Status = 'Activo'
+                                         AND sr.Status != 'Cerrado') as Active_Tickets_Count,
                                          (SELECT COUNT(*)
-                                          FROM Ticket_Technicians tt
-                                          WHERE tt.Fk_Technician = t.ID_Technicians
-                                          AND tt.Assigned_At >= '{$yesterday}') as Recent_Assignments_Count,
-                                         2 as priority_score
-                                  FROM " . $this->table_name . " t
-                                  INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
-                                  WHERE ts.Fk_TI_Service = :serviceId
+                                         FROM Ticket_Technicians tt
+                                         WHERE tt.Fk_Technician = t.ID_Technicians
+                                         AND tt.Assigned_At >= ?) as Recent_Assignments_Count,
+                                         2 as fallback_priority
+                                 FROM " . $this->table_name . " t
+                                 INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                                 LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
+                                 LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = ?
+                                 WHERE ts.Fk_TI_Service = ?
                                     AND ts.Status = 'Activo'
-                                  HAVING Active_Tickets_Count < 10
-                                  ORDER BY (Active_Tickets_Count * 2 + Recent_Assignments_Count) ASC, priority_score, t.First_Name, t.Last_Name";
+                                    AND (
+                                        (sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
+                                        AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time)
+                                        OR (sched.Work_Start_Time IS NULL)
+                                    )
+                                    AND (
+                                        (lb.Start_Time IS NOT NULL AND lb.End_Time IS NOT NULL 
+                                        AND NOT (TIME(?) >= lb.Start_Time AND TIME(?) <= lb.End_Time))
+                                        OR (lb.Start_Time IS NULL)
+                                    )
+                                 HAVING Active_Tickets_Count < ?
+                                 ORDER BY 
+                                    CASE 
+                                        WHEN sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
+                                        AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time 
+                                        THEN 0 
+                                        ELSE 1 
+                                    END,
+                                    Active_Tickets_Count ASC, 
+                                    Recent_Assignments_Count ASC, 
+                                    t.First_Name, t.Last_Name";
 
                 $fallbackStmt = $this->conn->prepare($fallbackQuery);
-                $fallbackStmt->bindParam(":serviceId", $serviceId, \PDO::PARAM_INT);
+                $fallbackStmt->bindValue(1, $yesterday, \PDO::PARAM_STR);
+                $fallbackStmt->bindValue(2, $currentDaySpanish, \PDO::PARAM_STR);
+                $fallbackStmt->bindValue(3, $serviceId, \PDO::PARAM_INT);
+                $fallbackStmt->bindValue(4, $currentTime, \PDO::PARAM_STR);
+                $fallbackStmt->bindValue(5, $currentTime, \PDO::PARAM_STR);
+                $fallbackStmt->bindValue(6, $currentTime, \PDO::PARAM_STR);
+                $fallbackStmt->bindValue(7, $currentTime, \PDO::PARAM_STR);
+                $fallbackStmt->bindValue(8, $capacityLimit, \PDO::PARAM_INT);
+                $fallbackStmt->bindValue(9, $currentTime, \PDO::PARAM_STR);
+                $fallbackStmt->bindValue(10, $currentTime, \PDO::PARAM_STR);
                 $fallbackStmt->execute();
                 $technicians = $fallbackStmt->fetchAll(\PDO::FETCH_ASSOC);
             }
 
-
-            error_log("Available technicians for service {$serviceId} at {$currentDaySpanish} {$currentTime}: " . count($technicians));
+            error_log("Available technicians for service {$serviceId} at {$currentDaySpanish} {$currentTime} (priority weight: {$ticketPriorityWeight}): " . count($technicians));
             foreach ($technicians as $tech) {
-                $score = ($tech['Active_Tickets_Count'] * 2) + $tech['Recent_Assignments_Count'];
-                error_log("  - {$tech['First_Name']} {$tech['Last_Name']} (Status: {$tech['Status']}, Active: {$tech['Active_Tickets_Count']}, Recent: {$tech['Recent_Assignments_Count']}, Score: {$score})");
+                $score = ($tech['Active_Tickets_Count'] * 2) + ($tech['Recent_Assignments_Count'] ?? 0);
+                error_log("  - {$tech['First_Name']} {$tech['Last_Name']} (Status: {$tech['Status']}, Active: {$tech['Active_Tickets_Count']}, Recent: " . ($tech['Recent_Assignments_Count'] ?? 0) . ", Score: {$score})");
             }
 
             return $technicians;
@@ -482,6 +551,191 @@ final class Technician
             error_log("Exception in getAvailableTechniciansByService: " . $exception->getMessage());
             return [];
         }
+    }
+
+    /**
+     * Get technicians from related services (for escalation)
+     * Returns technicians from services that are related/similar to the requested service
+     * Filters by work hours and lunch block
+     *
+     * @param int $serviceId The original service ID
+     * @return array<int, array<string, mixed>>
+     */
+    public function getTechniciansFromRelatedServices(int $serviceId): array
+    {
+        $relatedServices = $this->getRelatedServiceIds($serviceId);
+        
+        if (empty($relatedServices)) {
+            return [];
+        }
+
+        try {
+            $currentDay = date('l');
+            $currentTime = date('H:i:s');
+            $yesterday = date('Y-m-d H:i:s', strtotime('-24 hours'));
+
+            $dayMap = [
+                'Monday' => 'Lunes', 'Tuesday' => 'Martes', 'Wednesday' => 'Miercoles',
+                'Thursday' => 'Jueves', 'Friday' => 'Viernes', 'Saturday' => 'Sabado', 'Sunday' => 'Domingo'
+            ];
+            $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
+
+            $placeholders = implode(',', array_fill(0, count($relatedServices), '?'));
+
+            $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
+                             ts.Fk_TI_Service,
+                             lb.Start_Time as Lunch_Start, lb.End_Time as Lunch_End,
+                             sched.Work_Start_Time, sched.Work_End_Time,
+                             (SELECT COUNT(*)
+                             FROM Ticket_Technicians tt
+                             INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                             WHERE tt.Fk_Technician = t.ID_Technicians
+                             AND tt.Status = 'Activo'
+                             AND sr.Status != 'Cerrado') as Active_Tickets_Count
+                    FROM " . $this->table_name . " t
+                    INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                    LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
+                    LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = ?
+                    WHERE ts.Fk_TI_Service IN ({$placeholders})
+                        AND ts.Status = 'Activo'
+                        AND t.Status IN ('Disponible', 'Ocupado')
+                        AND (
+                            (sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
+                            AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time)
+                            OR (sched.Work_Start_Time IS NULL)
+                        )
+                        AND (
+                            (lb.Start_Time IS NOT NULL AND lb.End_Time IS NOT NULL 
+                            AND NOT (TIME(?) >= lb.Start_Time AND TIME(?) <= lb.End_Time))
+                            OR (lb.Start_Time IS NULL)
+                        )
+                    HAVING Active_Tickets_Count < 5
+                    ORDER BY 
+                        CASE 
+                            WHEN sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
+                            AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time 
+                            THEN 0 
+                            ELSE 1 
+                        END,
+                        Active_Tickets_Count ASC, 
+                        t.First_Name, t.Last_Name";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(1, $currentDaySpanish, \PDO::PARAM_STR);
+            foreach ($relatedServices as $index => $relatedServiceId) {
+                $stmt->bindValue($index + 2, $relatedServiceId, \PDO::PARAM_INT);
+            }
+            $stmt->bindValue(count($relatedServices) + 2, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(count($relatedServices) + 3, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(count($relatedServices) + 4, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(count($relatedServices) + 5, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(count($relatedServices) + 6, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue(count($relatedServices) + 7, $currentTime, \PDO::PARAM_STR);
+            $stmt->execute();
+
+            $technicians = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            error_log("Found " . count($technicians) . " technicians from related services for escalation (service {$serviceId})");
+            return $technicians;
+        } catch (\PDOException $exception) {
+            error_log("PDOException in getTechniciansFromRelatedServices: " . $exception->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get related service IDs for escalation
+     * Returns services that can handle tickets from the given service
+     * Uses a smarter logic to find truly related services
+     *
+     * @param int $serviceId The original service ID
+     * @return array<int, int>
+     */
+    private function getRelatedServiceIds(int $serviceId): array
+    {
+        try {
+            $query = "SELECT ID_TI_Service, Type_Service FROM TI_Service WHERE ID_TI_Service != ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(1, $serviceId, \PDO::PARAM_INT);
+            $stmt->execute();
+            $services = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            if (empty($services)) {
+                return [];
+            }
+
+            $relatedIds = [];
+            $currentServiceName = '';
+            
+            foreach ($services as $service) {
+                if ((int)$service['ID_TI_Service'] === $serviceId) {
+                    $currentServiceName = strtolower($service['Type_Service'] ?? '');
+                    continue;
+                }
+                $relatedIds[] = (int)$service['ID_TI_Service'];
+            }
+
+            usort($relatedIds, function($a, $b) use ($services, $currentServiceName) {
+                $serviceA = $this->findServiceById($services, $a);
+                $serviceB = $this->findServiceById($services, $b);
+                
+                $nameA = strtolower($serviceA['Type_Service'] ?? '');
+                $nameB = strtolower($serviceB['Type_Service'] ?? '');
+                
+                $priorityA = $this->calculateServicePriority($nameA, $currentServiceName);
+                $priorityB = $this->calculateServicePriority($nameB, $currentServiceName);
+                
+                return $priorityB - $priorityA;
+            });
+
+            return array_slice($relatedIds, 0, 5);
+        } catch (\PDOException $exception) {
+            error_log("PDOException in getRelatedServiceIds: " . $exception->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Find a service by ID from the services array
+     */
+    private function findServiceById(array $services, int $serviceId): array
+    {
+        foreach ($services as $service) {
+            if ((int)$service['ID_TI_Service'] === $serviceId) {
+                return $service;
+            }
+        }
+        return [];
+    }
+
+    /**
+     * Calculate priority for service relationship
+     * Higher priority means more related
+     */
+    private function calculateServicePriority(string $serviceName, string $currentServiceName): int
+    {
+        $keywords = [
+            'soporte' => ['soporte', 'ayuda', 'asistencia', 'helpdesk'],
+            'redes' => ['red', 'network', 'wifi', 'internet', 'conectividad'],
+            'programacion' => ['program', 'desarrollo', 'software', 'app', 'sistema'],
+            'hardware' => ['hardware', 'equipo', 'computadora', 'impresora'],
+            'seguridad' => ['seguridad', 'security', 'acesso', 'password'],
+            'base de datos' => ['database', 'datos', 'sql', 'mysql'],
+        ];
+
+        foreach ($keywords as $category => $terms) {
+            foreach ($terms as $term) {
+                if (str_contains($currentServiceName, $term)) {
+                    foreach ($terms as $relatedTerm) {
+                        if (str_contains($serviceName, $relatedTerm)) {
+                            return 10;
+                        }
+                    }
+                }
+            }
+        }
+
+        return 1;
     }
 
     /**
@@ -865,24 +1119,31 @@ final class Technician
 
     /**
      * Assign pending tickets to available technicians
-     * This method should be called periodically or when a technician becomes available
-     */
-    /**
-     * Assign pending tickets to available technicians
-     * Uses intelligent selection based on workload, schedule, and availability
+     * Uses intelligent selection based on workload, schedule, priority, and availability
+     * Includes escalation logic for when no technicians are available in the original service
+     *
      * @return array Assignment results with count and details
      */
     public function assignPendingTickets(): array
     {
         $assignedCount = 0;
+        $escalatedCount = 0;
         $results = [];
+        $escalations = [];
 
         try {
-            // Get all pending tickets
-            $pendingQuery = "SELECT ID_Service_Request, Fk_TI_Service
+            $pendingQuery = "SELECT ID_Service_Request, Fk_TI_Service, System_Priority, Created_at
                              FROM Service_Request
                              WHERE Status = 'Pendiente'
-                             ORDER BY Created_at ASC";
+                             ORDER BY 
+                                CASE System_Priority
+                                    WHEN 'Critica' THEN 1
+                                    WHEN 'Alta' THEN 2
+                                    WHEN 'Media' THEN 3
+                                    WHEN 'Baja' THEN 4
+                                    ELSE 3
+                                END,
+                                Created_at ASC";
 
             $pendingStmt = $this->conn->prepare($pendingQuery);
             $pendingStmt->execute();
@@ -893,19 +1154,21 @@ final class Technician
             foreach ($pendingTickets as $ticket) {
                 $ticketId = $ticket['ID_Service_Request'];
                 $serviceId = (int)$ticket['Fk_TI_Service'];
+                $priority = $ticket['System_Priority'] ?? 'Media';
+                $priorityWeight = $this->getPriorityWeight($priority);
 
-                // Get available technicians for this service (with time restrictions)
-                // This method already filters by: work schedule, lunch block, and status = 'Disponible'
-                $availableTechs = $this->getAvailableTechniciansByService($serviceId);
+                $assigned = false;
+                $escalated = false;
 
-                error_log("Found " . count($availableTechs) . " available technicians for service {$serviceId}");
+                $availableTechs = $this->getAvailableTechniciansByService($serviceId, $priorityWeight);
+
+                error_log("Found " . count($availableTechs) . " available technicians for service {$serviceId}, ticket priority: {$priority}");
 
                 if (!empty($availableTechs)) {
-                    // Select technician with lowest workload (already ordered by priority score)
                     $selectedTech = $availableTechs[0];
-                    
+
                     error_log("Selecting technician: {$selectedTech['First_Name']} {$selectedTech['Last_Name']} " .
-                              "(Active Tickets: {$selectedTech['Active_Tickets_Count']}, Priority: {$selectedTech['priority_score']})");
+                              "(Active Tickets: {$selectedTech['Active_Tickets_Count']})");
 
                     $assigned = $this->assignToTicket($ticketId, $selectedTech['ID_Technicians'], null, true);
 
@@ -914,7 +1177,9 @@ final class Technician
                         $results[] = [
                             'ticket_id' => $ticketId,
                             'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
-                            'service_id' => $serviceId
+                            'service_id' => $serviceId,
+                            'priority' => $priority,
+                            'escalated' => false
                         ];
 
                         error_log("Successfully assigned technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
@@ -922,17 +1187,131 @@ final class Technician
                         error_log("Failed to assign technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
                     }
                 } else {
-                    error_log("No available technicians found for service {$serviceId} and ticket {$ticketId}");
+                    error_log("No available technicians found for service {$serviceId}, attempting escalation for ticket {$ticketId}");
+
+                    $relatedTechs = $this->getTechniciansFromRelatedServices($serviceId);
+
+                    if (!empty($relatedTechs)) {
+                        $selectedTech = $relatedTechs[0];
+
+                        error_log("Escalating: assigning technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} from related service");
+
+                        $assigned = $this->assignToTicket($ticketId, $selectedTech['ID_Technicians'], null, true, true);
+
+                        if ($assigned) {
+                            $assignedCount++;
+                            $escalatedCount++;
+                            $escalated = true;
+                            $results[] = [
+                                'ticket_id' => $ticketId,
+                                'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
+                                'service_id' => $serviceId,
+                                'related_service_id' => (int)$selectedTech['Fk_TI_Service'],
+                                'priority' => $priority,
+                                'escalated' => true
+                            ];
+
+                            $this->recordEscalation($ticketId, $serviceId, (int)$selectedTech['Fk_TI_Service']);
+
+                            error_log("Successfully escalated assignment to technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} for ticket {$ticketId}");
+                        }
+                    } else {
+                        $escalations[] = [
+                            'ticket_id' => $ticketId,
+                            'service_id' => $serviceId,
+                            'priority' => $priority,
+                            'created_at' => $ticket['Created_at']
+                        ];
+                        error_log("No technicians available even after escalation for ticket {$ticketId}");
+                    }
                 }
             }
+
+            if (!empty($escalations)) {
+                $this->notifyUnassignedTickets($escalations);
+            }
+
         } catch (PDOException $e) {
             error_log("Error assigning pending tickets: " . $e->getMessage());
         }
 
         return [
             'assigned_count' => $assignedCount,
-            'assignments' => $results
+            'escalated_count' => $escalatedCount,
+            'unassigned_count' => count($escalations),
+            'assignments' => $results,
+            'unassigned' => $escalations
         ];
+    }
+
+    /**
+     * Get numeric weight for priority
+     *
+     * @param string $priority Priority string
+     * @return int Weight value
+     */
+    private function getPriorityWeight(string $priority): int
+    {
+        return match (strtolower($priority)) {
+            'critica', 'critical' => 10,
+            'alta', 'high' => 5,
+            'media', 'medium' => 2,
+            'baja', 'low' => 1,
+            default => 2,
+        };
+    }
+
+    /**
+     * Record escalation in database for audit trail
+     *
+     * @param int $ticketId Ticket ID
+     * @param int $originalServiceId Original service ID
+     * @param int $escalatedServiceId Service ID where escalation happened
+     */
+    private function recordEscalation(int $ticketId, int $originalServiceId, int $escalatedServiceId): void
+    {
+        try {
+            $query = "INSERT INTO Ticket_Escalations (Fk_Service_Request, Original_Service_ID, Escalated_Service_ID, Escalated_At)
+                      VALUES (?, ?, ?, NOW())";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(1, $ticketId, \PDO::PARAM_INT);
+            $stmt->bindValue(2, $originalServiceId, \PDO::PARAM_INT);
+            $stmt->bindValue(3, $escalatedServiceId, \PDO::PARAM_INT);
+            $stmt->execute();
+
+            error_log("Recorded escalation for ticket {$ticketId}: {$originalServiceId} -> {$escalatedServiceId}");
+        } catch (\PDOException $exception) {
+            error_log("Failed to record escalation: " . $exception->getMessage());
+        }
+    }
+
+    /**
+     * Notify about unassigned tickets (for escalation monitoring)
+     *
+     * @param array<int, array<string, mixed>> $unassignedTickets List of unassigned tickets
+     */
+    private function notifyUnassignedTickets(array $unassignedTickets): void
+    {
+        try {
+            $query = "INSERT INTO Pending_Ticket_Alerts (Fk_Service_Request, Alert_Type, Created_At)
+                      VALUES (?, 'auto_assignment_failed', NOW())";
+
+            $stmt = $this->conn->prepare($query);
+
+            foreach ($unassignedTickets as $ticket) {
+                try {
+                    $stmt->bindValue(1, $ticket['ticket_id'], \PDO::PARAM_INT);
+                    $stmt->execute();
+                } catch (\PDOException $e) {
+                    error_log("Failed to create alert for ticket {$ticket['ticket_id']}: " . $e->getMessage());
+                }
+            }
+
+            error_log("Created " . count($unassignedTickets) . " pending ticket alerts");
+        } catch (\PDOException $exception) {
+            error_log("Failed to notify unassigned tickets: " . $exception->getMessage());
+        }
     }
 
     /**

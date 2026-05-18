@@ -91,7 +91,7 @@ switch ($method) {
                 'count' => count($technicians)
             ]);
         } elseif ($action === 'technician-profile') {
-            // Get current technician's profile
+            // Get current technician's profile with AUTO-AVAILABILITY calculation
             if (!$currentUserId) {
                 http_response_code(401);
                 echo json_encode([
@@ -111,6 +111,104 @@ switch ($method) {
             }
             
             $technicianModel = new Technician($db);
+            
+            // PHP-PRO: Execute automatic availability update BEFORE getting profile
+            // This ensures technician always sees their real-time status based on:
+            // - Work schedule (Inactivo if outside work hours)
+            // - Lunch block (Ocupado during lunch)
+            // - Active tickets (Ocupado if handling tickets)
+            $currentDaySpanish = date('l');
+            $dayMap = [
+                'Monday' => 'Lunes',
+                'Tuesday' => 'Martes',
+                'Wednesday' => 'Miercoles',
+                'Thursday' => 'Jueves',
+                'Friday' => 'Viernes',
+                'Saturday' => 'Sabado',
+                'Sunday' => 'Domingo'
+            ];
+            $currentDaySpanish = $dayMap[$currentDaySpanish] ?? $currentDaySpanish;
+            $currentTime = date('H:i:s');
+            
+            // Get technician ID first
+            $techData = $technicianModel->getByUserId($currentUserId);
+            
+            if (!$techData) {
+                http_response_code(404);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Técnico no encontrado'
+                ]);
+                break;
+            }
+            
+            // Update status based on work schedule, lunch block, and active tickets
+            $techId = $techData['ID_Technicians'];
+            
+            // Get current schedule and lunch info
+            $scheduleQuery = "SELECT sched.Work_Start_Time, sched.Work_End_Time,
+                                    lb.Start_Time as Lunch_Start, lb.End_Time as Lunch_End
+                             FROM Technicians t
+                             LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
+                             LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician 
+                                AND sched.Day_Of_Week = :currentDay
+                             WHERE t.ID_Technicians = :techId";
+            
+            $scheduleStmt = $db->prepare($scheduleQuery);
+            $scheduleStmt->bindParam(":currentDay", $currentDaySpanish);
+            $scheduleStmt->bindParam(":techId", $techId);
+            $scheduleStmt->execute();
+            $scheduleData = $scheduleStmt->fetch(PDO::FETCH_ASSOC);
+            
+            // Get active tickets count
+            $ticketsQuery = "SELECT COUNT(*) as Active_Tickets
+                            FROM Ticket_Technicians tt
+                            INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                            WHERE tt.Fk_Technician = :techId
+                            AND tt.Status = 'Activo'
+                            AND sr.Status != 'Cerrado'";
+            
+            $ticketsStmt = $db->prepare($ticketsQuery);
+            $ticketsStmt->bindParam(":techId", $techId);
+            $ticketsStmt->execute();
+            $ticketsData = $ticketsStmt->fetch(PDO::FETCH_ASSOC);
+            
+            $currentSeconds = strtotime($currentTime);
+            $isInWorkHours = false;
+            $isInLunchBlock = false;
+            $hasActiveTickets = ($ticketsData['Active_Tickets'] > 0);
+            
+            if ($scheduleData['Work_Start_Time'] && $scheduleData['Work_End_Time']) {
+                $workStartSeconds = strtotime($scheduleData['Work_Start_Time']);
+                $workEndSeconds = strtotime($scheduleData['Work_End_Time']);
+                $isInWorkHours = ($currentSeconds >= $workStartSeconds && $currentSeconds <= $workEndSeconds);
+            }
+            
+            if ($scheduleData['Lunch_Start'] && $scheduleData['Lunch_End']) {
+                $lunchStartSeconds = strtotime($scheduleData['Lunch_Start']);
+                $lunchEndSeconds = strtotime($scheduleData['Lunch_End']);
+                $isInLunchBlock = ($currentSeconds >= $lunchStartSeconds && $currentSeconds <= $lunchEndSeconds);
+            }
+            
+            // Calculate new status
+            if (!$isInWorkHours) {
+                $newStatus = 'Inactivo';
+            } elseif ($isInLunchBlock) {
+                $newStatus = 'Ocupado';
+            } elseif ($hasActiveTickets) {
+                $newStatus = 'Ocupado';
+            } else {
+                $newStatus = 'Disponible';
+            }
+            
+            // Update status in database
+            $updateQuery = "UPDATE Technicians SET Status = :newStatus WHERE ID_Technicians = :techId";
+            $updateStmt = $db->prepare($updateQuery);
+            $updateStmt->bindParam(":newStatus", $newStatus);
+            $updateStmt->bindParam(":techId", $techId);
+            $updateStmt->execute();
+            
+            // Refresh tech data after status update
             $techData = $technicianModel->getByUserId($currentUserId);
             
             if (!$techData) {

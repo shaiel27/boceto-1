@@ -159,6 +159,13 @@ switch ($path) {
         require_once __DIR__ . '/../src/controllers/NotificationController.php';
         break;
 
+    case '/api/escalation':
+    case '/api/escalation/':
+        $user = $authMiddleware->requireAuth();
+        $authMiddleware->setUserContext($user);
+        require_once __DIR__ . '/../src/controllers/EscalationController.php';
+        break;
+
     default:
         http_response_code(404);
         echo json_encode([
