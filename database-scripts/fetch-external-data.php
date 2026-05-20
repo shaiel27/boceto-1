@@ -81,4 +81,5 @@ function executeQuery($pdo, $query, $params = []) {
 
 // Ejemplo de uso:
 // $data = executeQuery($pdo, "SELECT * FROM tabla WHERE campo = :valor", ['valor' => 'dato']);
+    // C:\xampp\php\php.exe c:\Users\Shaiel\Desktop\shaiel\boceto-1\database-scripts\fetch-external-data.php
 ?>
