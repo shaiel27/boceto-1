@@ -36,14 +36,6 @@ final class DashboardStatsDTO
      */
     public static function fromDatabaseRow(array $row): self
     {
-        $total = ($row['pending_count'] ?? 0) + 
-                ($row['in_progress_count'] ?? 0) + 
-                ($row['resolved_count'] ?? 0);
-        
-        $resolutionRate = $total > 0 
-            ? round((($row['resolved_count'] ?? 0) / $total) * 100, 2)
-            : 0.0;
-
         return new self(
             pendingCount: (int) ($row['pending_count'] ?? 0),
             inProgressCount: (int) ($row['in_progress_count'] ?? 0),
@@ -56,8 +48,8 @@ final class DashboardStatsDTO
                 : null,
             activeOffices: (int) ($row['active_offices'] ?? 0),
             activeTechnicians: (int) ($row['active_technicians'] ?? 0),
-            totalTickets: $total,
-            resolutionRate: $resolutionRate
+            totalTickets: (int) ($row['total_tickets'] ?? 0),
+            resolutionRate: (float) ($row['resolution_rate'] ?? 0.0)
         );
     }
 

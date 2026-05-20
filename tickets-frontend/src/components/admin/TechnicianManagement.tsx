@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { sileo } from 'sileo';
 import TechnicianAnalytics from './TechnicianAnalytics';
 import {
   BadgeCheck,
@@ -10,11 +9,9 @@ import {
   ArrowLeft,
   UserPlus,
   Search,
-  Filter,
-  Grid,
-  List,
   Edit,
   Trash2,
+  BarChart3,
   Eye,
   Clock,
   CheckCircle,
@@ -22,16 +19,9 @@ import {
   AlertCircle,
   X,
   Calendar,
-  MapPin,
   Mail,
-  Phone,
   Wrench,
-  ChevronDown,
   Plus,
-  Activity,
-  ExternalLink,
-  RefreshCw,
-  BarChart3,
   Ticket,
   Network,
   Headphones,
@@ -115,18 +105,18 @@ const TechnicianManagement: React.FC = () => {
   const [lunchBlocks, setLunchBlocks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [serviceFilter, setServiceFilter] = useState<string>('all');
-  
+
   // Estados de modales
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
+
   // Estados de formulario
   const [formData, setFormData] = useState({
     first_name: '',
@@ -147,18 +137,16 @@ const TechnicianManagement: React.FC = () => {
       Domingo: { start: '', end: '' }
     }
   });
-  
+
   // Vista actual
   const [currentView, setCurrentView] = useState<'list' | 'analytics'>('list');
 
   // Cargar datos del API
   useEffect(() => {
-    loadData(true); // Carga inicial con loading state
+    loadData(true);
 
-    // Actualizar datos cada 30 segundos para reflejar cambios de estado (almuerzo, tickets)
-    // Intervalo más largo para evitar sensación de recarga constante
     const interval = setInterval(() => {
-      loadData(false); // Polling sin loading state
+      loadData(false);
     }, 30000);
 
     return () => clearInterval(interval);
@@ -177,8 +165,7 @@ const TechnicianManagement: React.FC = () => {
       if (techResponse.success && techResponse.data) {
         console.log('Datos recibidos:', techResponse.data);
         console.log('Número de técnicos:', techResponse.data.length);
-        
-        // Map backend data to frontend format
+
         const mappedTechnicians = techResponse.data.map((tech: any) => {
           const mappedTechnician = {
             ID_Technicians: parseInt(tech.ID_Technicians),
@@ -186,8 +173,8 @@ const TechnicianManagement: React.FC = () => {
             First_Name: tech.First_Name,
             Last_Name: tech.Last_Name,
             Email: tech.Email,
-            Status: tech.Status, // Usar el estado del backend (actualizado por lógica completa)
-            Status_Reason: tech.Status_Reason as 'ticket' | 'lunch' | 'schedule' | null, // Usar el motivo del backend
+            Status: tech.Status,
+            Status_Reason: tech.Status_Reason as 'ticket' | 'lunch' | 'schedule' | null,
             Fk_Lunch_Block: tech.Fk_Lunch_Block ? parseInt(tech.Fk_Lunch_Block) : undefined,
             Lunch_Block: tech.Lunch_Block || null,
             Lunch_Block_Hours: tech.Lunch_Block?.hours || null,
@@ -205,13 +192,11 @@ const TechnicianManagement: React.FC = () => {
           return mappedTechnician;
         });
 
-        // Solo actualizar estado si hay cambios reales para evitar re-renders innecesarios
         const hasChanges = JSON.stringify(mappedTechnicians) !== JSON.stringify(technicians);
-        
+
         if (hasChanges || technicians.length === 0) {
           console.log('Datos han cambiado, actualizando estado...');
-          
-          // Filter technicians based on user role
+
           if (isTechnician() && user) {
             const ownProfile = mappedTechnicians.find((t: Technician) => t.Fk_Users === user.id);
 
@@ -232,12 +217,10 @@ const TechnicianManagement: React.FC = () => {
         setError(techResponse.message || 'Error al cargar técnicos');
       }
 
-      // Load lunch blocks from backend
       const lunchBlocksResponse = await ApiService.getLunchBlocks();
       if (lunchBlocksResponse.success && lunchBlocksResponse.data) {
         setLunchBlocks(lunchBlocksResponse.data);
       } else {
-        // Use default lunch blocks if backend fails
         setLunchBlocks([
           { ID_Lunch_Block: 1, Block_Name: 'Bloque 1', Start_Time: '11:30', End_Time: '12:10' },
           { ID_Lunch_Block: 2, Block_Name: 'Bloque 2', Start_Time: '12:10', End_Time: '12:50' },
@@ -246,7 +229,6 @@ const TechnicianManagement: React.FC = () => {
         ]);
       }
 
-      // Mock TI Services for now - should come from backend
       setTiServices([
         { ID_TI_Service: 1, Type_Service: 'Redes', Details: 'Configuración y mantenimiento de redes' },
         { ID_TI_Service: 2, Type_Service: 'Soporte', Details: 'Soporte técnico general' },
@@ -265,7 +247,7 @@ const TechnicianManagement: React.FC = () => {
       const fullName = `${technician.First_Name} ${technician.Last_Name}`.toLowerCase();
       const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
                            technician.Email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (technician.TI_Services && technician.TI_Services.length > 0 && 
+                           (technician.TI_Services && technician.TI_Services.length > 0 &&
                             technician.TI_Services.some(s => s.Type_Service.toLowerCase().includes(searchTerm.toLowerCase())));
       const matchesStatus = statusFilter === 'all' || technician.Status === statusFilter;
       const matchesService = serviceFilter === 'all' ||
@@ -279,24 +261,22 @@ const TechnicianManagement: React.FC = () => {
   // Agrupar técnicos por servicio TI
   const groupedTechnicians = useMemo(() => {
     const groups: Record<string, Technician[]> = {};
-    
+
     filteredTechnicians.forEach((tech: Technician) => {
       if (tech.TI_Services && tech.TI_Services.length > 0) {
-        // Usar el primer servicio como categoría principal
         const primaryService = tech.TI_Services[0].Type_Service;
         if (!groups[primaryService]) {
           groups[primaryService] = [];
         }
         groups[primaryService].push(tech);
       } else {
-        // Técnicos sin servicio asignado
         if (!groups['Sin Asignar']) {
           groups['Sin Asignar'] = [];
         }
         groups['Sin Asignar'].push(tech);
       }
     });
-    
+
     return groups;
   }, [filteredTechnicians]);
 
@@ -344,8 +324,7 @@ const TechnicianManagement: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validar contraseña
+
     if (formData.password.length < 6) {
       alert('La contraseña debe tener al menos 6 caracteres');
       return;
@@ -354,18 +333,15 @@ const TechnicianManagement: React.FC = () => {
       alert('Las contraseñas no coinciden');
       return;
     }
-    
-    // Validar que al menos un servicio esté seleccionado
+
     if (formData.ti_services.length === 0) {
       alert('Debe seleccionar al menos un servicio TI');
       return;
     }
 
-    // Preparar datos según estructura de database.sql
     const username = `${formData.first_name.toLowerCase()}.${formData.last_name.toLowerCase()}`;
     const full_name = `${formData.first_name} ${formData.last_name}`;
-    
-    // Preparar horarios según Technician_Schedules - formato esperado por backend PHP-PRO
+
     const schedulesObject: Record<string, { start: string; end: string }> = {};
     Object.entries(formData.schedules).forEach(([day, times]) => {
       if (times.start && times.end) {
@@ -377,27 +353,23 @@ const TechnicianManagement: React.FC = () => {
     });
 
     console.log('Creating technician with data:', {
-      // Users table
       user: {
-        Fk_Role: 2, // Role: Tecnico
+        Fk_Role: 2,
         Email: formData.email,
         Password: formData.password,
         Username: username,
         Full_Name: full_name
       },
-      // Technicians table
       technician: {
         First_Name: formData.first_name,
         Last_Name: formData.last_name,
         Fk_Lunch_Block: formData.fk_lunch_block ? parseInt(formData.fk_lunch_block) : null,
         Status: formData.status
       },
-      // Technicians_Service table
       services: formData.ti_services.map(serviceId => ({
         Fk_TI_Service: serviceId,
         Status: 'Activo'
       })),
-      // Technician_Schedules table
       schedules: schedulesObject
     });
 
@@ -409,7 +381,7 @@ const TechnicianManagement: React.FC = () => {
         first_name: formData.first_name,
         last_name: formData.last_name,
         full_name: full_name,
-        role_id: 2, // Tecnico
+        role_id: 2,
         lunch_block: formData.fk_lunch_block ? parseInt(formData.fk_lunch_block) : null,
         status: formData.status,
         services: formData.ti_services,
@@ -473,7 +445,6 @@ const TechnicianManagement: React.FC = () => {
   const handleEdit = async (technician: Technician) => {
     setSelectedTechnician(technician);
 
-    // Initialize schedules with empty values
     const schedules = {
       Lunes: { start: '', end: '' },
       Martes: { start: '', end: '' },
@@ -484,7 +455,6 @@ const TechnicianManagement: React.FC = () => {
       Domingo: { start: '', end: '' }
     };
 
-    // Load existing schedules
     if (technician.Schedules && Array.isArray(technician.Schedules)) {
       technician.Schedules.forEach((schedule: any) => {
         const dayKey = schedule.Day_Of_Week;
@@ -497,12 +467,10 @@ const TechnicianManagement: React.FC = () => {
       });
     }
 
-    // Load existing services - ensure they are numbers
     const currentServices = technician.TI_Services && Array.isArray(technician.TI_Services)
       ? technician.TI_Services.map((s: any) => Number(s.ID_TI_Service))
       : [];
 
-    // Set form data with proper types
     setFormData({
       first_name: technician.First_Name || '',
       last_name: technician.Last_Name || '',
@@ -523,7 +491,6 @@ const TechnicianManagement: React.FC = () => {
 
     if (!selectedTechnician) return;
 
-    // Validar contraseña si se está cambiando
     if (formData.password && formData.password.length < 6) {
       alert('La contraseña debe tener al menos 6 caracteres');
       return;
@@ -539,11 +506,10 @@ const TechnicianManagement: React.FC = () => {
         last_name: formData.last_name,
         email: formData.email,
         lunch_block: formData.fk_lunch_block || null,
-        services: Array.from(new Set(formData.ti_services.map(Number))), // Remove duplicates and convert to numbers
+        services: Array.from(new Set(formData.ti_services.map(Number))),
         schedules: formData.schedules
       };
 
-      // Solo enviar contraseña si se proporcionó
       if (formData.password) {
         updateData.password = formData.password;
       }
@@ -569,7 +535,6 @@ const TechnicianManagement: React.FC = () => {
   };
 
   const generatePDFReport = () => {
-    // Placeholder para generación de PDF
     alert('Generando reporte PDF... (Función se implementará con el backend)');
   };
 
@@ -589,13 +554,13 @@ const TechnicianManagement: React.FC = () => {
   const getServiceColor = (serviceName: string) => {
     switch (serviceName.toLowerCase()) {
       case 'redes':
-        return '#2563eb'; // Azul institucional
+        return '#2563eb';
       case 'soporte':
-        return '#059669'; // Verde institucional
+        return '#059669';
       case 'programación':
-        return '#7c3aed'; // Púrpura institucional
+        return '#7c3aed';
       default:
-        return '#64748b'; // Gris
+        return '#64748b';
     }
   };
 
@@ -615,56 +580,49 @@ const TechnicianManagement: React.FC = () => {
     return 'poor';
   };
 
-  // Función para normalizar texto (eliminar acentos)
   const normalizeText = (text: string): string => {
     return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   };
 
-  // Obtener el nombre del día actual en español (sin acentos para coincidir con BD)
   const getCurrentDayName = (): string => {
     const days = ['Domingo', 'Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes', 'Sabado'];
     return days[new Date().getDay()];
   };
 
-  // Obtener el horario del día actual para un técnico
   const getTodaySchedule = (schedules: Technician_Schedule[] | undefined) => {
     if (!schedules || schedules.length === 0) {
       return null;
     }
     const currentDay = getCurrentDayName();
     const normalizedCurrentDay = normalizeText(currentDay);
-    
-    // Buscar el horario comparando con y sin normalizar
-    const todaySchedule = schedules.find(s => 
-      s.Day_Of_Week === currentDay || 
+
+    const todaySchedule = schedules.find(s =>
+      s.Day_Of_Week === currentDay ||
       normalizeText(s.Day_Of_Week) === normalizedCurrentDay
     );
-    
+
     return todaySchedule;
   };
 
-  // Obtener hora actual en Venezuela (UTC-4)
   const getVenezuelaTime = (): Date => {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const venezuelaOffset = -4; // UTC-4
+    const venezuelaOffset = -4;
     return new Date(utc + (venezuelaOffset * 3600000));
   };
 
-  // Verificar si la hora actual está dentro de un rango
   const isTimeInRange = (currentTime: string, startTime: string, endTime: string): boolean => {
     const current = currentTime.split(':').map(Number);
     const start = startTime.split(':').map(Number);
     const end = endTime.split(':').map(Number);
-    
+
     const currentMinutes = current[0] * 60 + current[1];
     const startMinutes = start[0] * 60 + start[1];
     const endMinutes = end[0] * 60 + end[1];
-    
+
     return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
   };
 
-  // Obtener etiqueta descriptiva del motivo del estado
   const getStatusReasonLabel = (reason: 'ticket' | 'lunch' | 'schedule' | null): string => {
     switch (reason) {
       case 'ticket':
@@ -680,252 +638,230 @@ const TechnicianManagement: React.FC = () => {
     }
   };
 
-return (
-    <div className="technician-management">
-      <div className="page-container">
-        {/* Header Premium */}
-        <header className="page-header-premium">
-          {/* Floating Back Button */}
-          <button 
-            className="floating-back-btn"
-            onClick={() => navigate('/')}
-            title="Volver al Dashboard"
-          >
-            <ArrowLeft size={20} />
-          </button>
+  const selectedServiceIds = formData.ti_services;
 
-          <div className="header-premium-content">
-            <div className="header-premium-left">
-              <div className="header-icon-wrapper">
-                <div className="header-icon-bg">
-                  <BadgeCheck size={32} />
-                </div>
+  return (
+    <div className="tm-page">
+      <div className="tm-container">
+        {/* ─── Header ─── */}
+        <header className="tm-header">
+          <div className="tm-header-row">
+            <div className="tm-header-left">
+              <button className="tm-back-btn" onClick={() => navigate('/')} title="Volver al Dashboard">
+                <ArrowLeft size={18} />
+              </button>
+              <div className="tm-header-icon-wrap">
+                <BadgeCheck size={22} />
               </div>
-              <div className="header-premium-info">
-                <h1 className="header-premium-title">
+              <div className="tm-header-info">
+                <h1 className="tm-header-title">
                   {isTechnician() ? 'Mi Perfil Técnico' : 'Equipo Técnico Municipal'}
                 </h1>
-                <p className="header-premium-subtitle">
+                <p className="tm-header-subtitle">
                   {isTechnician() ? 'Gestiona tu información personal y horarios' : 'Conoce y gestiona a los profesionales que mantienen nuestra ciudad funcionando'}
                 </p>
               </div>
             </div>
 
-            <div className="header-premium-stats">
+            <div className="tm-header-pills">
               {isTechnician() && currentUserTechnician ? (
                 <>
-                  <div className="stat-pill">
-                    <div className="stat-pill-icon assigned">
-                      <Ticket size={18} />
+                  <div className="tm-pill">
+                    <div className="tm-pill-icon assigned">
+                      <Ticket size={14} />
                     </div>
-                    <div className="stat-pill-info">
-                      <span className="stat-pill-value">{currentUserTechnician.Tickets_Assigned || 0}</span>
-                      <span className="stat-pill-label">Asignados</span>
-                    </div>
-                  </div>
-                  <div className="stat-pill">
-                    <div className="stat-pill-icon resolved">
-                      <CheckCircle size={18} />
-                    </div>
-                    <div className="stat-pill-info">
-                      <span className="stat-pill-value">{currentUserTechnician.Tickets_Resolved || 0}</span>
-                      <span className="stat-pill-label">Resueltos</span>
+                    <div className="tm-pill-info">
+                      <span className="tm-pill-value">{currentUserTechnician.Tickets_Assigned || 0}</span>
+                      <span className="tm-pill-label">Asignados</span>
                     </div>
                   </div>
-                  <div className="stat-pill">
-                    <div className="stat-pill-icon schedule">
-                      <Calendar size={18} />
+                  <div className="tm-pill">
+                    <div className="tm-pill-icon resolved">
+                      <CheckCircle size={14} />
                     </div>
-                    <div className="stat-pill-info">
-                      <span className="stat-pill-value">{currentUserTechnician.Schedules?.length || 0}</span>
-                      <span className="stat-pill-label">Días</span>
+                    <div className="tm-pill-info">
+                      <span className="tm-pill-value">{currentUserTechnician.Tickets_Resolved || 0}</span>
+                      <span className="tm-pill-label">Resueltos</span>
+                    </div>
+                  </div>
+                  <div className="tm-pill">
+                    <div className="tm-pill-icon schedule">
+                      <Calendar size={14} />
+                    </div>
+                    <div className="tm-pill-info">
+                      <span className="tm-pill-value">{currentUserTechnician.Schedules?.length || 0}</span>
+                      <span className="tm-pill-label">Días</span>
                     </div>
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="stat-pill">
-                    <div className="stat-pill-icon total">
-                      <Users size={18} />
+                  <div className="tm-pill">
+                    <div className="tm-pill-icon total">
+                      <Users size={14} />
                     </div>
-                    <div className="stat-pill-info">
-                      <span className="stat-pill-value">{stats.total}</span>
-                      <span className="stat-pill-label">Total</span>
-                    </div>
-                  </div>
-                  <div className="stat-pill">
-                    <div className="stat-pill-icon available">
-                      <CheckCircle size={18} />
-                    </div>
-                    <div className="stat-pill-info">
-                      <span className="stat-pill-value">{stats.available}</span>
-                      <span className="stat-pill-label">Disponibles</span>
+                    <div className="tm-pill-info">
+                      <span className="tm-pill-value">{stats.total}</span>
+                      <span className="tm-pill-label">Total</span>
                     </div>
                   </div>
-                  <div className="stat-pill">
-                    <div className="stat-pill-icon busy">
-                      <Clock size={18} />
+                  <div className="tm-pill">
+                    <div className="tm-pill-icon available">
+                      <CheckCircle size={14} />
                     </div>
-                    <div className="stat-pill-info">
-                      <span className="stat-pill-value">{stats.busy}</span>
-                      <span className="stat-pill-label">Ocupados</span>
+                    <div className="tm-pill-info">
+                      <span className="tm-pill-value">{stats.available}</span>
+                      <span className="tm-pill-label">Disponibles</span>
+                    </div>
+                  </div>
+                  <div className="tm-pill">
+                    <div className="tm-pill-icon busy">
+                      <Clock size={14} />
+                    </div>
+                    <div className="tm-pill-info">
+                      <span className="tm-pill-value">{stats.busy}</span>
+                      <span className="tm-pill-label">Ocupados</span>
                     </div>
                   </div>
                 </>
               )}
             </div>
           </div>
-
-          {/* FAB Add Technician */}
-          {!isTechnician() && (
-            <button 
-              className="fab-add-technician" 
-              onClick={() => setShowAddModal(true)}
-              title="Agregar nuevo técnico"
-            >
-              <UserPlus size={24} />
-            </button>
-          )}
         </header>
 
-        {/* Stats Bar - Compact Design */}
-        <div className="stats-bar">
-          <div className="stat-item">
-            <span className="stat-label">Total Técnicos</span>
-            <span className="stat-value">{stats.total}</span>
+        {/* ─── Stats Bar ─── */}
+        <div className="tm-stats">
+          <div className="tm-stat">
+            <span className="tm-stat-label">Total Técnicos</span>
+            <span className="tm-stat-value">{stats.total}</span>
           </div>
-          <div className="stat-separator"></div>
-          <div className="stat-item success">
-            <span className="stat-label">Disponibles</span>
-            <span className="stat-value">{stats.available}</span>
+          <div className="tm-stat-sep" />
+          <div className="tm-stat success">
+            <span className="tm-stat-label">Disponibles</span>
+            <span className="tm-stat-value">{stats.available}</span>
           </div>
-          <div className="stat-separator"></div>
-          <div className="stat-item warning">
-            <span className="stat-label">Ocupados</span>
-            <span className="stat-value">{stats.busy}</span>
+          <div className="tm-stat-sep" />
+          <div className="tm-stat warning">
+            <span className="tm-stat-label">Ocupados</span>
+            <span className="tm-stat-value">{stats.busy}</span>
           </div>
-          <div className="stat-separator"></div>
-          <div className="stat-item danger">
-            <span className="stat-label">Inactivos</span>
-            <span className="stat-value">{stats.inactive}</span>
+          <div className="tm-stat-sep" />
+          <div className="tm-stat danger">
+            <span className="tm-stat-label">Inactivos</span>
+            <span className="tm-stat-value">{stats.inactive}</span>
           </div>
-          <div className="stat-separator"></div>
-          <div className="stat-item info">
-            <span className="stat-label">Tickets Asignados</span>
-            <span className="stat-value">{stats.totalTickets}</span>
+          <div className="tm-stat-sep" />
+          <div className="tm-stat info">
+            <span className="tm-stat-label">Tickets Asignados</span>
+            <span className="tm-stat-value">{stats.totalTickets}</span>
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <section className="search-filters">
-          <div className="search-bar">
-            <div className="search-input-wrapper">
-              <Search size={18} className="search-icon" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, especialidad o área..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-            </div>
+        {/* ─── Toolbar ─── */}
+        <div className="tm-toolbar">
+          <div className="tm-toolbar-search">
+            <Search size={16} className="tm-search-icon" />
+            <input
+              type="text"
+              placeholder="Buscar por nombre, especialidad o área..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="tm-search-input"
+            />
           </div>
-          
-          <div className="filter-options">
-            <div className="filter-group">
-              <label>Estado</label>
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Todos</option>
-                <option value="Disponible">Disponibles</option>
-                <option value="Ocupado">Ocupados</option>
-                <option value="Inactivo">Inactivos</option>
-              </select>
-            </div>
-            
-            <div className="filter-group">
-              <label>Servicio TI</label>
-              <select
-                value={serviceFilter}
-                onChange={(e) => setServiceFilter(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Todos los servicios</option>
-                {tiServices.map(service => (
-                  <option key={service.ID_TI_Service} value={service.ID_TI_Service.toString()}>
-                    {service.Type_Service}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="tm-toolbar-filters">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="tm-filter-select"
+            >
+              <option value="all">Todos los estados</option>
+              <option value="Disponible">Disponibles</option>
+              <option value="Ocupado">Ocupados</option>
+              <option value="Inactivo">Inactivos</option>
+            </select>
+            <select
+              value={serviceFilter}
+              onChange={(e) => setServiceFilter(e.target.value)}
+              className="tm-filter-select"
+            >
+              <option value="all">Todos los servicios</option>
+              {tiServices.map(service => (
+                <option key={service.ID_TI_Service} value={service.ID_TI_Service.toString()}>
+                  {service.Type_Service}
+                </option>
+              ))}
+            </select>
           </div>
-        </section>
+          <div className="tm-toolbar-actions">
+            {!isTechnician() && (
+              <button className="tm-btn tm-btn-primary" onClick={() => setShowAddModal(true)}>
+                <UserPlus size={16} />
+                Nuevo Técnico
+              </button>
+            )}
+          </div>
+        </div>
 
-        {/* View Options */}
-        <div className="view-options">
-          <div className="view-tabs">
+        {/* ─── View Tabs ─── */}
+        <div className="tm-view-bar">
+          <div className="tm-view-tabs">
             <button
-              className={`tab-btn ${currentView === 'list' ? 'active' : ''}`}
+              className={`tm-tab-btn ${currentView === 'list' ? 'active' : ''}`}
               onClick={() => setCurrentView('list')}
             >
-              <BarChart3 size={16} />
+              <BarChart3 size={14} />
               <span>Lista Agrupada</span>
             </button>
             <button
-              className={`tab-btn ${currentView === 'analytics' ? 'active' : ''}`}
+              className={`tm-tab-btn ${currentView === 'analytics' ? 'active' : ''}`}
               onClick={() => setCurrentView('analytics')}
             >
-              <TrendingUp size={16} />
+              <TrendingUp size={14} />
               <span>Análisis</span>
             </button>
           </div>
-          
-          <div className="results-info">
-            <span className="results-count">{filteredTechnicians.length} profesionales encontrados</span>
-          </div>
+          <span className="tm-results-count">{filteredTechnicians.length} profesionales encontrados</span>
         </div>
 
-        {/* Content */}
-        <div className="technicians-content">
+        {/* ─── Content ─── */}
+        <div className="tm-content">
           {loading ? (
-            <div className="loading-state">
-              <div className="spinner"></div>
+            <div className="tm-loading">
+              <div className="tm-spinner" />
               <p>Cargando técnicos...</p>
             </div>
           ) : filteredTechnicians.length === 0 ? (
-            <div className="empty-state">
-              <BadgeCheck size={48} className="empty-icon" />
+            <div className="tm-empty">
+              <BadgeCheck size={40} className="tm-empty-icon" />
               <h3>No se encontraron técnicos</h3>
               <p>Intenta ajustar los filtros de búsqueda</p>
             </div>
           ) : currentView === 'list' ? (
-            <div className="technicians-grouped-container">
+            <div className="tm-groups">
               {Object.entries(groupedTechnicians).map(([serviceName, techs]: [string, Technician[]]) => (
-                <div key={serviceName} className="service-group">
-                  <div className="service-group-header">
-                    <div className="service-group-info">
-                      <div className="service-group-icon" style={{ background: getServiceColor(serviceName) }}>
+                <div key={serviceName} className="tm-group">
+                  <div className="tm-group-header">
+                    <div className="tm-group-info">
+                      <div className="tm-group-icon" style={{ background: getServiceColor(serviceName) }}>
                         {getServiceIcon(serviceName)}
                       </div>
-                      <h3 className="service-group-title">{serviceName}</h3>
-                      <span className="service-group-count">{techs.length} técnicos</span>
+                      <h3 className="tm-group-title">{serviceName}</h3>
+                      <span className="tm-group-count">{techs.length} técnicos</span>
                     </div>
-                    <div className="service-group-stats">
-                      <span className="group-stat">
-                        <UserCheck size={14} />
+                    <div className="tm-group-stats">
+                      <span className="tm-group-stat">
+                        <UserCheck size={13} />
                         {techs.filter((t: Technician) => t.Status === 'Disponible').length} disponibles
                       </span>
-                      <span className="group-stat">
-                        <Clock size={14} />
+                      <span className="tm-group-stat">
+                        <Clock size={13} />
                         {techs.reduce((acc: number, t: Technician) => acc + (t.Tickets_Assigned || 0), 0)} tickets
                       </span>
                     </div>
                   </div>
-                  <div className="technicians-table-container">
-                    <table className="technicians-table">
+                  <div className="tm-table-wrap">
+                    <table className="tm-table">
                       <thead>
                         <tr>
                           <th>Técnico</th>
@@ -942,102 +878,100 @@ return (
                           const todayScheduleText = todaySchedule
                             ? `${todaySchedule.Work_Start_Time} - ${todaySchedule.Work_End_Time}`
                             : 'No trabaja';
-                          
+
                           return (
                             <tr key={technician.ID_Technicians}>
-                              <td className="technician-name-cell">
-                                <div className="technician-mini-profile">
-                                  <div className="technician-avatar-small">
+                              <td className="tm-cell-name">
+                                <div className="tm-profile">
+                                  <div className="tm-avatar">
                                     {technician.Avatar || `${technician.First_Name[0]}${technician.Last_Name[0]}`}
                                   </div>
-                                  <div className="technician-name-info">
-                                    <div className="technician-name">
+                                  <div className="tm-name-info">
+                                    <div className="tm-name">
                                       {technician.First_Name} {technician.Last_Name}
                                     </div>
-                                    <div className="technician-experience">
-                                      ID: {technician.ID_Technicians}
-                                    </div>
+                                    <div className="tm-id">ID: {technician.ID_Technicians}</div>
                                   </div>
                                 </div>
                               </td>
-                              <td className="lunch-block-cell">
+                              <td className="tm-cell-lunch">
                                 {technician.Lunch_Block ? (
-                                  <div className="lunch-block-info">
-                                    <Coffee size={14} className="lunch-icon" />
-                                    <span className="lunch-block-name">{technician.Lunch_Block.name}</span>
-                                    <span className="lunch-block-hours">{technician.Lunch_Block.hours}</span>
+                                  <div className="tm-lunch-info">
+                                    <span className="tm-lunch-name">
+                                      <Coffee size={12} style={{ marginRight: '0.25rem', verticalAlign: 'middle', color: '#f59e0b' }} />
+                                      {technician.Lunch_Block.name}
+                                    </span>
+                                    <span className="tm-lunch-hours">{technician.Lunch_Block.hours}</span>
                                   </div>
                                 ) : (
-                                  <span className="text-secondary">Sin asignar</span>
+                                  <span className="tm-lunch-none">Sin asignar</span>
                                 )}
                               </td>
-                              <td className="schedule-cell">
-                                <div className="schedule-info">
-                                  <Clock size={14} className="schedule-icon" />
+                              <td className="tm-cell-schedule">
+                                <div className="tm-schedule-info">
+                                  <Clock size={13} className="tm-schedule-icon" />
                                   <span>{todayScheduleText}</span>
                                 </div>
                               </td>
-                              <td className="status-cell">
-                                <div className="status-wrapper">
-                                  <span className={`status-badge status-${technician.Status.toLowerCase()}`}>
-                                    {technician.Status === 'Disponible' && <CheckCircle size={14} />}
-                                    {technician.Status === 'Ocupado' && <AlertCircle size={14} />}
-                                    {technician.Status === 'Inactivo' && <XCircle size={14} />}
-                                    <span style={{ marginLeft: '0.5rem' }}>{technician.Status}</span>
+                              <td className="tm-cell-status">
+                                <div className="tm-status-wrap">
+                                  <span className={`tm-badge ${technician.Status.toLowerCase()}`}>
+                                    {technician.Status === 'Disponible' && <CheckCircle size={12} />}
+                                    {technician.Status === 'Ocupado' && <AlertCircle size={12} />}
+                                    {technician.Status === 'Inactivo' && <XCircle size={12} />}
+                                    <span>{technician.Status}</span>
                                   </span>
                                   {technician.Status_Reason && (
-                                    <div className="status-reason-container">
-                                      <span className={`status-reason status-reason-${technician.Status_Reason}`}>
-                                        {technician.Status_Reason === 'ticket' && <Ticket size={12} />}
-                                        {technician.Status_Reason === 'lunch' && <Coffee size={12} />}
-                                        {technician.Status_Reason === 'schedule' && <Clock size={12} />}
+                                    <div className="tm-reason">
+                                      <span className={`tm-reason-icon ${technician.Status_Reason}`}>
+                                        {technician.Status_Reason === 'ticket' && <Ticket size={10} />}
+                                        {technician.Status_Reason === 'lunch' && <Coffee size={10} />}
+                                        {technician.Status_Reason === 'schedule' && <Clock size={10} />}
                                       </span>
-                                      <span className="status-reason-text">
+                                      <span className="tm-reason-text">
                                         {getStatusReasonLabel(technician.Status_Reason)}
                                       </span>
                                     </div>
                                   )}
                                 </div>
                               </td>
-                              <td className="tickets-cell">
-                                <div className="tickets-info">
-                                  <span className="tickets-assigned">{technician.Tickets_Assigned || 0}</span>
-                                  <span className="tickets-resolved">
-                                    {technician.Tickets_Resolved || 0} resueltos
-                                  </span>
+                              <td className="tm-cell-tickets">
+                                <div className="tm-tickets-info">
+                                  <span className="tm-tickets-val">{technician.Tickets_Assigned || 0}</span>
+                                  <span className="tm-tickets-label">{technician.Tickets_Resolved || 0} resueltos</span>
                                 </div>
                               </td>
-                              <td className="actions-cell">
-                                <div className="technician-actions">
+                              <td className="tm-cell-actions">
+                                <div className="tm-actions">
                                   <button
-                                    className="action-btn-small"
+                                    className="tm-action-btn"
                                     onClick={() => {
                                       setSelectedTechnician(technician);
                                       setShowDetailModal(true);
                                     }}
                                     title="Ver detalles"
                                   >
-                                    <Eye size={16} />
+                                    <Eye size={15} />
                                   </button>
                                   {!isTechnician() || technician.Fk_Users === user?.id ? (
                                     <>
                                       <button
-                                        className="action-btn-small"
+                                        className="tm-action-btn"
                                         onClick={() => handleEdit(technician)}
                                         title="Editar"
                                       >
-                                        <Edit size={16} />
+                                        <Edit size={15} />
                                       </button>
                                       {!isTechnician() && (
                                         <button
-                                          className="action-btn-small danger"
+                                          className="tm-action-btn danger"
                                           onClick={() => {
                                             setSelectedTechnician(technician);
                                             setShowDeleteModal(true);
                                           }}
                                           title="Eliminar"
                                         >
-                                          <Trash2 size={16} />
+                                          <Trash2 size={15} />
                                         </button>
                                       )}
                                     </>
@@ -1059,30 +993,30 @@ return (
         </div>
       </div>
 
-      {/* Modal Agregar Técnico - Nuevo Diseño */}
+      {/* ─── Modal: Agregar Técnico ─── */}
       {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content-full">
-            <div className="modal-header-full">
-              <div className="modal-title-section-full">
+        <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}>
+          <div className="tm-panel">
+            <div className="tm-panel-header">
+              <div className="tm-panel-title">
                 <h2>Agregar Nuevo Técnico</h2>
-                <p className="modal-subtitle-full">Complete la información para registrar un nuevo profesional en el sistema</p>
+                <p className="tm-panel-subtitle">Complete la información para registrar un nuevo profesional en el sistema</p>
               </div>
-              <button className="close-btn-full" onClick={() => setShowAddModal(false)}>
-                <X size={24} />
+              <button className="tm-close-btn" onClick={() => setShowAddModal(false)}>
+                <X size={20} />
               </button>
             </div>
-            
-            <form onSubmit={handleSubmit} className="technician-form-full">
-              <div className="form-sections-container">
+
+            <form onSubmit={handleSubmit} className="tm-form">
+              <div className="tm-form-sections">
                 {/* Información Personal */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <User size={20} />
-                    <h3>Información Personal</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <User size={16} />
+                    <span>Información Personal</span>
                   </div>
-                  <div className="form-grid-full">
-                    <div className="form-group-full">
+                  <div className="tm-form-grid">
+                    <div className="tm-field">
                       <label>Primer Nombre</label>
                       <input
                         type="text"
@@ -1094,7 +1028,7 @@ return (
                         placeholder="Ej: Juan"
                       />
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Apellido</label>
                       <input
                         type="text"
@@ -1106,7 +1040,7 @@ return (
                         placeholder="Ej: Pérez"
                       />
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Email</label>
                       <input
                         type="email"
@@ -1117,7 +1051,7 @@ return (
                         placeholder="correo@ejemplo.com"
                       />
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Nombre de Usuario</label>
                       <input
                         type="text"
@@ -1130,13 +1064,13 @@ return (
                 </div>
 
                 {/* Credenciales de Acceso */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <Lock size={20} />
-                    <h3>Credenciales de Acceso</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <Lock size={16} />
+                    <span>Credenciales de Acceso</span>
                   </div>
-                  <div className="form-grid-full">
-                    <div className="form-group-full">
+                  <div className="tm-form-grid">
+                    <div className="tm-field">
                       <label>Contraseña</label>
                       <input
                         type="password"
@@ -1147,7 +1081,7 @@ return (
                         placeholder="Mínimo 6 caracteres"
                       />
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Confirmar Contraseña</label>
                       <input
                         type="password"
@@ -1162,31 +1096,22 @@ return (
                 </div>
 
                 {/* Información del Técnico */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <Briefcase size={20} />
-                    <h3>Información del Técnico</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <Briefcase size={16} />
+                    <span>Información del Técnico</span>
                   </div>
-                  <div className="form-grid-full">
-                    <div className="form-group-full">
+                  <div className="tm-form-grid">
+                    <div className="tm-field">
                       <label>Estado Inicial</label>
-                      <select
-                        name="status"
-                        value={formData.status}
-                        onChange={handleInputChange}
-                        required
-                      >
+                      <select name="status" value={formData.status} onChange={handleInputChange} required>
                         <option value="Disponible">Disponible</option>
                         <option value="Inactivo">Inactivo</option>
                       </select>
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Bloque de Almuerzo (Opcional)</label>
-                      <select
-                        name="fk_lunch_block"
-                        value={formData.fk_lunch_block}
-                        onChange={handleInputChange}
-                      >
+                      <select name="fk_lunch_block" value={formData.fk_lunch_block} onChange={handleInputChange}>
                         <option value="">Sin bloque de almuerzo</option>
                         {lunchBlocks.map(block => (
                           <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
@@ -1199,28 +1124,27 @@ return (
                 </div>
 
                 {/* Servicios TI */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <Wrench size={20} />
-                    <h3>Servicios TI</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <Wrench size={16} />
+                    <span>Servicios TI</span>
+                    <span className="tm-service-count">{selectedServiceIds.length} seleccionados</span>
                   </div>
-                  <div className="services-grid-full">
+                  <div className="tm-services-grid">
                     {tiServices.map(service => (
-                      <label 
-                        key={service.ID_TI_Service} 
-                        className={`service-card-full ${formData.ti_services.includes(service.ID_TI_Service) ? 'selected' : ''}`}
+                      <label
+                        key={service.ID_TI_Service}
+                        className={`tm-service-card ${selectedServiceIds.includes(service.ID_TI_Service) ? 'selected' : ''}`}
                       >
                         <input
                           type="checkbox"
-                          checked={formData.ti_services.includes(service.ID_TI_Service)}
+                          checked={selectedServiceIds.includes(service.ID_TI_Service)}
                           onChange={() => handleServiceToggle(service.ID_TI_Service)}
                         />
-                        <div className="service-content-full">
-                          <span className="service-icon-full">{getServiceIcon(service.Type_Service)}</span>
-                          <div className="service-text-full">
-                            <span className="service-name-full">{service.Type_Service}</span>
-                            <span className="service-desc-full">{service.Details}</span>
-                          </div>
+                        <div className="tm-service-icon">{getServiceIcon(service.Type_Service)}</div>
+                        <div className="tm-service-text">
+                          <span className="tm-service-name">{service.Type_Service}</span>
+                          <span className="tm-service-desc">{service.Details}</span>
                         </div>
                       </label>
                     ))}
@@ -1228,22 +1152,22 @@ return (
                 </div>
 
                 {/* Horario de Trabajo */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <Calendar size={20} />
-                    <h3>Horario de Trabajo</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <Calendar size={16} />
+                    <span>Horario de Trabajo</span>
                   </div>
-                  <div className="schedule-grid-full">
+                  <div className="tm-schedule-grid">
                     {Object.keys(formData.schedules).map(day => (
-                      <div key={day} className="schedule-row-full">
-                        <div className="schedule-day-full">{day}</div>
-                        <div className="schedule-times-full">
+                      <div key={day} className="tm-schedule-row">
+                        <div className="tm-schedule-day">{day}</div>
+                        <div className="tm-schedule-times">
                           <input
                             type="time"
                             value={formData.schedules[day as keyof typeof formData.schedules].start}
                             onChange={(e) => handleScheduleChange(day, 'start', e.target.value)}
                           />
-                          <span className="schedule-separator-full">-</span>
+                          <span className="tm-schedule-sep">-</span>
                           <input
                             type="time"
                             value={formData.schedules[day as keyof typeof formData.schedules].end}
@@ -1255,13 +1179,13 @@ return (
                   </div>
                 </div>
               </div>
-              
-              <div className="form-actions-full">
-                <button type="button" className="btn-full btn-secondary-full" onClick={() => setShowAddModal(false)}>
+
+              <div className="tm-form-actions">
+                <button type="button" className="tm-btn tm-btn-ghost" onClick={() => setShowAddModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-full btn-primary-full">
-                  <Plus size={18} />
+                <button type="submit" className="tm-btn tm-btn-primary">
+                  <Plus size={16} />
                   Crear Técnico
                 </button>
               </div>
@@ -1270,30 +1194,30 @@ return (
         </div>
       )}
 
-      {/* Modal Editar Técnico - Nuevo Diseño Full-Screen */}
+      {/* ─── Modal: Editar Técnico ─── */}
       {showEditModal && selectedTechnician && (
-        <div className="modal-overlay">
-          <div className="modal-content-full">
-            <div className="modal-header-full">
-              <div className="modal-title-section-full">
+        <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowEditModal(false); }}>
+          <div className="tm-panel">
+            <div className="tm-panel-header">
+              <div className="tm-panel-title">
                 <h2>Editar Técnico</h2>
-                <p className="modal-subtitle-full">Modifica la información del técnico seleccionado</p>
+                <p className="tm-panel-subtitle">Modifica la información del técnico seleccionado</p>
               </div>
-              <button className="close-btn-full" onClick={() => setShowEditModal(false)}>
-                <X size={24} />
+              <button className="tm-close-btn" onClick={() => setShowEditModal(false)}>
+                <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleUpdate} className="technician-form-full">
-              <div className="form-sections-container">
+            <form onSubmit={handleUpdate} className="tm-form">
+              <div className="tm-form-sections">
                 {/* Información Personal */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <User size={20} />
-                    <h3>Información Personal</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <User size={16} />
+                    <span>Información Personal</span>
                   </div>
-                  <div className="form-grid-full">
-                    <div className="form-group-full">
+                  <div className="tm-form-grid">
+                    <div className="tm-field">
                       <label>Primer Nombre</label>
                       <input
                         type="text"
@@ -1305,7 +1229,7 @@ return (
                         placeholder="Ej: Juan"
                       />
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Apellido</label>
                       <input
                         type="text"
@@ -1317,7 +1241,7 @@ return (
                         placeholder="Ej: Pérez"
                       />
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Email</label>
                       <input
                         type="email"
@@ -1328,7 +1252,7 @@ return (
                         placeholder="correo@ejemplo.com"
                       />
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Nombre de Usuario</label>
                       <input
                         type="text"
@@ -1341,13 +1265,13 @@ return (
                 </div>
 
                 {/* Credenciales de Acceso */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <Lock size={20} />
-                    <h3>Credenciales de Acceso</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <Lock size={16} />
+                    <span>Credenciales de Acceso</span>
                   </div>
-                  <div className="form-grid-full">
-                    <div className="form-group-full">
+                  <div className="tm-form-grid">
+                    <div className="tm-field">
                       <label>Nueva Contraseña (Opcional)</label>
                       <input
                         type="password"
@@ -1358,7 +1282,7 @@ return (
                         minLength={6}
                       />
                     </div>
-                    <div className="form-group-full">
+                    <div className="tm-field">
                       <label>Confirmar Contraseña</label>
                       <input
                         type="password"
@@ -1373,19 +1297,15 @@ return (
                 </div>
 
                 {/* Información del Técnico */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <Briefcase size={20} />
-                    <h3>Información del Técnico</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <Briefcase size={16} />
+                    <span>Información del Técnico</span>
                   </div>
-                  <div className="form-grid-full">
-                    <div className="form-group-full">
+                  <div className="tm-form-grid">
+                    <div className="tm-field">
                       <label>Bloque de Almuerzo (Opcional)</label>
-                      <select
-                        name="fk_lunch_block"
-                        value={formData.fk_lunch_block}
-                        onChange={handleInputChange}
-                      >
+                      <select name="fk_lunch_block" value={formData.fk_lunch_block} onChange={handleInputChange}>
                         <option value="">Sin bloque de almuerzo</option>
                         {lunchBlocks.map(block => (
                           <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
@@ -1398,29 +1318,27 @@ return (
                 </div>
 
                 {/* Servicios TI */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <Wrench size={20} />
-                    <h3>Servicios TI</h3>
-                    <span className="service-count-badge">{formData.ti_services.length} seleccionados</span>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <Wrench size={16} />
+                    <span>Servicios TI</span>
+                    <span className="tm-service-count">{selectedServiceIds.length} seleccionados</span>
                   </div>
-                  <div className="services-grid-full">
+                  <div className="tm-services-grid">
                     {tiServices.map(service => (
-                      <label 
-                        key={service.ID_TI_Service} 
-                        className={`service-card-full ${formData.ti_services.includes(service.ID_TI_Service) ? 'selected' : ''}`}
+                      <label
+                        key={service.ID_TI_Service}
+                        className={`tm-service-card ${selectedServiceIds.includes(service.ID_TI_Service) ? 'selected' : ''}`}
                       >
                         <input
                           type="checkbox"
-                          checked={formData.ti_services.includes(service.ID_TI_Service)}
+                          checked={selectedServiceIds.includes(service.ID_TI_Service)}
                           onChange={() => handleServiceToggle(service.ID_TI_Service)}
                         />
-                        <div className="service-content-full">
-                          <span className="service-icon-full">{getServiceIcon(service.Type_Service)}</span>
-                          <div className="service-text-full">
-                            <span className="service-name-full">{service.Type_Service}</span>
-                            <span className="service-desc-full">{service.Details}</span>
-                          </div>
+                        <div className="tm-service-icon">{getServiceIcon(service.Type_Service)}</div>
+                        <div className="tm-service-text">
+                          <span className="tm-service-name">{service.Type_Service}</span>
+                          <span className="tm-service-desc">{service.Details}</span>
                         </div>
                       </label>
                     ))}
@@ -1428,22 +1346,22 @@ return (
                 </div>
 
                 {/* Horario de Trabajo */}
-                <div className="form-section-full">
-                  <div className="section-header-full">
-                    <Calendar size={20} />
-                    <h3>Horario de Trabajo</h3>
+                <div className="tm-form-section">
+                  <div className="tm-section-title">
+                    <Calendar size={16} />
+                    <span>Horario de Trabajo</span>
                   </div>
-                  <div className="schedule-grid-full">
+                  <div className="tm-schedule-grid">
                     {Object.keys(formData.schedules).map(day => (
-                      <div key={day} className="schedule-row-full">
-                        <div className="schedule-day-full">{day}</div>
-                        <div className="schedule-times-full">
+                      <div key={day} className="tm-schedule-row">
+                        <div className="tm-schedule-day">{day}</div>
+                        <div className="tm-schedule-times">
                           <input
                             type="time"
                             value={formData.schedules[day as keyof typeof formData.schedules].start}
                             onChange={(e) => handleScheduleChange(day, 'start', e.target.value)}
                           />
-                          <span className="schedule-separator-full">-</span>
+                          <span className="tm-schedule-sep">-</span>
                           <input
                             type="time"
                             value={formData.schedules[day as keyof typeof formData.schedules].end}
@@ -1455,13 +1373,13 @@ return (
                   </div>
                 </div>
               </div>
-              
-              <div className="form-actions-full">
-                <button type="button" className="btn-full btn-secondary-full" onClick={() => setShowEditModal(false)}>
+
+              <div className="tm-form-actions">
+                <button type="button" className="tm-btn tm-btn-ghost" onClick={() => setShowEditModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn-full btn-primary-full">
-                  <Edit size={18} />
+                <button type="submit" className="tm-btn tm-btn-primary">
+                  <Edit size={16} />
                   Guardar Cambios
                 </button>
               </div>
@@ -1470,69 +1388,65 @@ return (
         </div>
       )}
 
-      {/* Modal Detalles */}
+      {/* ─── Modal: Detalles ─── */}
       {showDetailModal && selectedTechnician && (
-        <div className="modal-overlay">
-          <div className="modal-content large">
-            <div className="modal-header">
+        <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowDetailModal(false); }}>
+          <div className="tm-modal">
+            <div className="tm-modal-header">
               <h2>Detalles del Técnico</h2>
-              <button className="close-btn" onClick={() => setShowDetailModal(false)}>
+              <button className="tm-close-btn" onClick={() => setShowDetailModal(false)}>
                 <X size={20} />
               </button>
             </div>
-            
-            <div className="technician-detail">
-              <div className="detail-header">
-                <div className="technician-avatar large">
+
+            <div className="tm-detail">
+              <div className="tm-detail-top">
+                <div className="tm-detail-avatar">
                   {selectedTechnician.Avatar}
                 </div>
-                <div className="technician-summary">
+                <div className="tm-detail-summary">
                   <h3>{selectedTechnician.First_Name} {selectedTechnician.Last_Name}</h3>
-                  <span className={`status-badge ${getStatusColor(selectedTechnician.Status)}`}>
-                    {selectedTechnician.Status}
-                  </span>
                   <p>ID Usuario: {selectedTechnician.Fk_Users}</p>
                 </div>
               </div>
-              
-              <div className="detail-grid">
-                <div className="detail-section">
+
+              <div className="tm-detail-grid">
+                <div className="tm-detail-section">
                   <h4>Información Personal</h4>
-                  <div className="detail-list">
-                    <div className="detail-item">
-                      <Mail size={16} />
+                  <div className="tm-detail-list">
+                    <div className="tm-detail-item">
+                      <Mail size={15} />
                       <span>{selectedTechnician.Email}</span>
                     </div>
-                    <div className="detail-item">
-                      <Calendar size={16} />
+                    <div className="tm-detail-item">
+                      <Calendar size={15} />
                       <span>Creado: {new Date(selectedTechnician.created_at).toLocaleDateString()}</span>
                     </div>
                     {selectedTechnician.Lunch_Block_Hours && (
-                      <div className="detail-item">
-                        <Coffee size={16} />
+                      <div className="tm-detail-item">
+                        <Coffee size={15} />
                         <span>Bloque de Almuerzo: {selectedTechnician.Lunch_Block_Hours}</span>
                       </div>
                     )}
                   </div>
                 </div>
-                
-                <div className="detail-section">
+
+                <div className="tm-detail-section">
                   <h4>Servicios TI</h4>
-                  <div className="services-grid">
+                  <div className="tm-detail-services">
                     {selectedTechnician.TI_Services.map(service => (
-                      <span key={service.ID_TI_Service} className="service-badge large">
+                      <span key={service.ID_TI_Service} className="tm-detail-badge">
                         {service.Type_Service}
                       </span>
                     ))}
                   </div>
                 </div>
-                
-                <div className="detail-section">
+
+                <div className="tm-detail-section">
                   <h4>Horario de Trabajo</h4>
                   {selectedTechnician.Schedules && selectedTechnician.Schedules.length > 0 ? (
-                    <div className="schedule-display">
+                    <div className="tm-detail-schedule">
                       {(() => {
-                        // Group schedules by day to avoid duplicates
                         const scheduleMap = new Map();
                         selectedTechnician.Schedules.forEach(schedule => {
                           const day = schedule.Day_Of_Week;
@@ -1541,9 +1455,9 @@ return (
                           }
                         });
                         return Array.from(scheduleMap.values()).map(schedule => (
-                          <div key={schedule.ID_Schedule} className="schedule-day-display">
-                            <span className="day-label">{schedule.Day_Of_Week}:</span>
-                            <span className="time-range">
+                          <div key={schedule.ID_Schedule} className="tm-detail-day">
+                            <span className="tm-day-label">{schedule.Day_Of_Week}:</span>
+                            <span className="tm-time-range">
                               {schedule.Work_Start_Time.substring(0, 5)} - {schedule.Work_End_Time.substring(0, 5)}
                             </span>
                           </div>
@@ -1551,20 +1465,20 @@ return (
                       })()}
                     </div>
                   ) : (
-                    <p className="no-schedule">Sin horario definido</p>
+                    <p className="tm-no-schedule">Sin horario definido</p>
                   )}
                 </div>
-                
-                <div className="detail-section">
+
+                <div className="tm-detail-section">
                   <h4>Rendimiento</h4>
-                  <div className="performance-metrics">
-                    <div className="metric">
-                      <span className="metric-value">{selectedTechnician.Tickets_Assigned || 0}</span>
-                      <span className="metric-label">Tickets Asignados</span>
+                  <div className="tm-performance">
+                    <div className="tm-metric">
+                      <span className="tm-metric-value">{selectedTechnician.Tickets_Assigned || 0}</span>
+                      <span className="tm-metric-label">Tickets Asignados</span>
                     </div>
-                    <div className="metric">
-                      <span className="metric-value">{selectedTechnician.Tickets_Resolved || 0}</span>
-                      <span className="metric-label">Tickets Resueltos</span>
+                    <div className="tm-metric">
+                      <span className="tm-metric-value">{selectedTechnician.Tickets_Resolved || 0}</span>
+                      <span className="tm-metric-label">Tickets Resueltos</span>
                     </div>
                   </div>
                 </div>
@@ -1574,31 +1488,31 @@ return (
         </div>
       )}
 
-      {/* Modal Eliminar */}
+      {/* ─── Modal: Eliminar ─── */}
       {showDeleteModal && selectedTechnician && (
-        <div className="modal-overlay">
-          <div className="modal-content small">
-            <div className="modal-header">
+        <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}>
+          <div className="tm-modal tm-modal-sm">
+            <div className="tm-modal-header">
               <h2>Eliminar Técnico</h2>
-              <button className="close-btn" onClick={() => setShowDeleteModal(false)}>
+              <button className="tm-close-btn" onClick={() => setShowDeleteModal(false)}>
                 <X size={20} />
               </button>
             </div>
-            
-            <div className="delete-confirmation">
-              <div className="warning-icon">
+
+            <div className="tm-delete-confirm">
+              <div className="tm-warning-icon">
                 <UserX size={48} />
               </div>
               <p>¿Estás seguro de que deseas eliminar al técnico <strong>{selectedTechnician.First_Name} {selectedTechnician.Last_Name}</strong>?</p>
-              <p className="warning-text">Esta acción no se puede deshacer.</p>
+              <p className="tm-warning-text">Esta acción no se puede deshacer.</p>
             </div>
-            
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
+
+            <div className="tm-modal-actions">
+              <button className="tm-modal-btn tm-modal-btn-secondary" onClick={() => setShowDeleteModal(false)}>
                 Cancelar
               </button>
-              <button className="btn btn-danger" onClick={handleDelete}>
-                <Trash2 size={16} />
+              <button className="tm-modal-btn tm-modal-btn-danger" onClick={handleDelete}>
+                <Trash2 size={15} />
                 Eliminar
               </button>
             </div>

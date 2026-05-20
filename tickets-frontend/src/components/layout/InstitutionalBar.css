@@ -10,18 +10,22 @@
 
 /* Contenido principal: deja hueco a la izquierda cuando existe la barra admin */
 body.with-admin-sidebar .minimal-dashboard .minimal-main,
+body.with-admin-sidebar .dash-layout .dash-main,
 body.with-admin-sidebar .dashboard-container.reports-enterprise .main-content-area,
+body.with-admin-sidebar .reports-page .reports-main,
 body.with-admin-sidebar .institutional-structure > .page-container,
 body.with-admin-sidebar .user-registration-container,
 body.with-admin-sidebar .main-content > .page-container {
-  padding-left: var(--admin-sidebar-width);
+  padding-left: calc(var(--admin-sidebar-width) + 28px);
   box-sizing: border-box;
   transition: padding-left 0.22s ease;
 }
 
 @media (max-width: 1023px) {
   body.with-admin-sidebar .minimal-dashboard .minimal-main,
+  body.with-admin-sidebar .dash-layout .dash-main,
   body.with-admin-sidebar .dashboard-container.reports-enterprise .main-content-area,
+  body.with-admin-sidebar .reports-page .reports-main,
   body.with-admin-sidebar .institutional-structure > .page-container,
   body.with-admin-sidebar .user-registration-container,
   body.with-admin-sidebar .main-content > .page-container {
@@ -777,7 +781,9 @@ body.with-admin-sidebar .main-content > .page-container {
     display: none !important;
   }
   body.with-admin-sidebar .minimal-dashboard .minimal-main,
+  body.with-admin-sidebar .dash-layout .dash-main,
   body.with-admin-sidebar .dashboard-container.reports-enterprise .main-content-area,
+  body.with-admin-sidebar .reports-page .reports-main,
   body.with-admin-sidebar .institutional-structure > .page-container,
   body.with-admin-sidebar .user-registration-container .registration-content,
   body.with-admin-sidebar .main-content > .page-container {

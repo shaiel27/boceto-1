@@ -1,6 +1,19 @@
 <?php
 declare(strict_types=1);
 
+// Error handling — convert PHP errors to JSON
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+set_error_handler(function (int $errno, string $errstr): void {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error interno del servidor',
+        'detail' => $errstr
+    ]);
+    exit;
+});
+
 // CORS headers - Allow both localhost and network IP
 $allowedOrigins = ['http://localhost:3000', 'http://192.168.100.8:3000'];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
@@ -48,90 +61,106 @@ try {
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
-switch ($method) {
-    case 'GET':
-        switch ($action) {
-            case 'stats':
-                $stats = $dashboardController->getDashboardStats();
-                echo json_encode([
-                    'success' => true,
-                    'data' => $stats
-                ]);
-                break;
+try {
+    switch ($method) {
+        case 'GET':
+            switch ($action) {
+                case 'stats':
+                    $stats = $dashboardController->getDashboardStats();
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $stats
+                    ]);
+                    break;
 
-            case 'priority':
-                $priorityData = $dashboardController->getTicketsByPriority();
-                echo json_encode([
-                    'success' => true,
-                    'data' => $priorityData
-                ]);
-                break;
+                case 'priority':
+                    $priorityData = $dashboardController->getTicketsByPriority();
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $priorityData
+                    ]);
+                    break;
 
-            case 'offices':
-                $officeData = $dashboardController->getTicketsByOffice();
-                echo json_encode([
-                    'success' => true,
-                    'data' => $officeData
-                ]);
-                break;
+                case 'offices':
+                    $officeData = $dashboardController->getTicketsByOffice();
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $officeData
+                    ]);
+                    break;
 
-            case 'technicians':
-                $technicianData = $dashboardController->getTechnicianPerformance();
-                echo json_encode([
-                    'success' => true,
-                    'data' => $technicianData
-                ]);
-                break;
+                case 'technicians':
+                    $technicianData = $dashboardController->getTechnicianPerformance();
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $technicianData
+                    ]);
+                    break;
 
-            case 'recent':
-                $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 10;
-                $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
-                $recentTickets = $dashboardController->getRecentTickets($limit, $offset);
-                echo json_encode([
-                    'success' => true,
-                    'data' => $recentTickets
-                ]);
-                break;
+                case 'recent':
+                    $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 10;
+                    $offset = isset($_GET['offset']) ? max(0, (int)$_GET['offset']) : 0;
+                    $recentTickets = $dashboardController->getRecentTickets($limit, $offset);
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $recentTickets
+                    ]);
+                    break;
 
-            case 'trends':
-                $trends = $dashboardController->getTicketTrends();
-                echo json_encode([
-                    'success' => true,
-                    'data' => $trends
-                ]);
-                break;
+                case 'trends':
+                    $trends = $dashboardController->getTicketTrends();
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $trends
+                    ]);
+                    break;
 
-            case 'services':
-                $serviceData = $dashboardController->getServiceDistribution();
-                echo json_encode([
-                    'success' => true,
-                    'data' => $serviceData
-                ]);
-                break;
+                case 'executive-summary':
+                    $execSummary = $dashboardController->getExecutiveSummary();
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $execSummary
+                    ]);
+                    break;
 
-            case 'full':
-                // Comprehensive dashboard data in single call
-                $fullData = $dashboardController->getFullDashboardData();
-                echo json_encode([
-                    'success' => true,
-                    'data' => $fullData
-                ]);
-                break;
+                case 'services':
+                    $serviceData = $dashboardController->getServiceDistribution();
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $serviceData
+                    ]);
+                    break;
 
-            default:
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Acción no válida'
-                ]);
-        }
-        break;
+                case 'full':
+                    $fullData = $dashboardController->getFullDashboardData();
+                    echo json_encode([
+                        'success' => true,
+                        'data' => $fullData
+                    ]);
+                    break;
 
-    default:
-        http_response_code(405);
-        echo json_encode([
-            'success' => false,
-            'message' => 'Método no permitido'
-        ]);
+                default:
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Acción no válida'
+                    ]);
+            }
+            break;
+
+        default:
+            http_response_code(405);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Método no permitido'
+            ]);
+    }
+} catch (\Throwable $e) {
+    http_response_code(500);
+    echo json_encode([
+        'success' => false,
+        'message' => 'Error interno del servidor',
+        'detail' => $e->getMessage()
+    ]);
 }
 ?>
