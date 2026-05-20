@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { sileo } from 'sileo';
 import TechnicianAnalytics from './TechnicianAnalytics';
 import {
   BadgeCheck,
@@ -326,16 +327,16 @@ const TechnicianManagement: React.FC = () => {
     e.preventDefault();
 
     if (formData.password.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres');
+      sileo.error({ title: 'Error de validación', description: 'La contraseña debe tener al menos 6 caracteres' });
       return;
     }
     if (formData.password !== formData.confirmPassword) {
-      alert('Las contraseñas no coinciden');
+      sileo.error({ title: 'Error de validación', description: 'Las contraseñas no coinciden' });
       return;
     }
 
     if (formData.ti_services.length === 0) {
-      alert('Debe seleccionar al menos un servicio TI');
+      sileo.error({ title: 'Error de validación', description: 'Debe seleccionar al menos un servicio TI' });
       return;
     }
 
@@ -389,16 +390,16 @@ const TechnicianManagement: React.FC = () => {
       });
 
       if (response.success) {
-        alert('Técnico creado exitosamente');
+        sileo.success({ title: 'Técnico creado', description: `${formData.first_name} ${formData.last_name} se ha registrado exitosamente` });
         loadData();
         setShowAddModal(false);
         resetForm();
       } else {
-        alert(response.message || 'Error al crear técnico');
+        sileo.error({ title: 'Error al crear', description: response.message || 'No se pudo crear el técnico' });
       }
     } catch (error) {
       console.error('Error al crear técnico:', error);
-      alert('Error de conexión al crear técnico');
+      sileo.error({ title: 'Error de conexión', description: 'No se pudo conectar con el servidor al crear el técnico' });
     }
   };
 
@@ -429,15 +430,15 @@ const TechnicianManagement: React.FC = () => {
       try {
         const response = await ApiService.deleteTechnician(selectedTechnician.ID_Technicians);
         if (response.success) {
-          alert('Técnico eliminado exitosamente');
+          sileo.success({ title: 'Técnico eliminado', description: `${selectedTechnician.First_Name} ${selectedTechnician.Last_Name} ha sido eliminado del sistema` });
           loadData();
           setShowDeleteModal(false);
           setSelectedTechnician(null);
         } else {
-          alert(response.message || 'Error al eliminar técnico');
+          sileo.error({ title: 'Error al eliminar', description: response.message || 'No se pudo eliminar el técnico' });
         }
       } catch (error) {
-        alert('Error de conexión al eliminar técnico');
+        sileo.error({ title: 'Error de conexión', description: 'No se pudo conectar con el servidor al eliminar el técnico' });
       }
     }
   };
@@ -492,11 +493,11 @@ const TechnicianManagement: React.FC = () => {
     if (!selectedTechnician) return;
 
     if (formData.password && formData.password.length < 6) {
-      alert('La contraseña debe tener al menos 6 caracteres');
+      sileo.error({ title: 'Error de validación', description: 'La contraseña debe tener al menos 6 caracteres' });
       return;
     }
     if (formData.password && formData.password !== formData.confirmPassword) {
-      alert('Las contraseñas no coinciden');
+      sileo.error({ title: 'Error de validación', description: 'Las contraseñas no coinciden' });
       return;
     }
 
@@ -520,22 +521,22 @@ const TechnicianManagement: React.FC = () => {
       const response = await ApiService.updateTechnician(selectedTechnician.ID_Technicians, updateData);
 
       if (response.success) {
-        alert('Técnico actualizado exitosamente');
+        sileo.success({ title: 'Técnico actualizado', description: `Los datos de ${selectedTechnician.First_Name} ${selectedTechnician.Last_Name} se han actualizado correctamente` });
         loadData();
         setShowEditModal(false);
         setSelectedTechnician(null);
         resetForm();
       } else {
-        alert(response.message || 'Error al actualizar técnico');
+        sileo.error({ title: 'Error al actualizar', description: response.message || 'No se pudo actualizar el técnico' });
       }
     } catch (error) {
       console.error('Error al actualizar técnico:', error);
-      alert('Error de conexión al actualizar técnico');
+      sileo.error({ title: 'Error de conexión', description: 'No se pudo conectar con el servidor al actualizar el técnico' });
     }
   };
 
   const generatePDFReport = () => {
-    alert('Generando reporte PDF... (Función se implementará con el backend)');
+    sileo.success({ title: 'Reporte PDF', description: 'Generando reporte PDF... (Función se implementará con el backend)' });
   };
 
   const getServiceIcon = (serviceName: string) => {
@@ -914,25 +915,19 @@ const TechnicianManagement: React.FC = () => {
                                 </div>
                               </td>
                               <td className="tm-cell-status">
-                                <div className="tm-status-wrap">
-                                  <span className={`tm-badge ${technician.Status.toLowerCase()}`}>
-                                    {technician.Status === 'Disponible' && <CheckCircle size={12} />}
-                                    {technician.Status === 'Ocupado' && <AlertCircle size={12} />}
-                                    {technician.Status === 'Inactivo' && <XCircle size={12} />}
-                                    <span>{technician.Status}</span>
+                                <div className={`tm-status-orb ${technician.Status.toLowerCase()}`} title={technician.Status}>
+                                  <span className="tm-status-orb-icon">
+                                    {technician.Status === 'Disponible' && <CheckCircle size={16} />}
+                                    {technician.Status === 'Ocupado' && !technician.Status_Reason && <AlertCircle size={16} />}
+                                    {technician.Status === 'Ocupado' && technician.Status_Reason === 'ticket' && <Ticket size={16} />}
+                                    {technician.Status === 'Ocupado' && technician.Status_Reason === 'lunch' && <Coffee size={16} />}
+                                    {technician.Status === 'Ocupado' && technician.Status_Reason === 'schedule' && <Clock size={16} />}
+                                    {technician.Status === 'Inactivo' && <XCircle size={16} />}
                                   </span>
-                                  {technician.Status_Reason && (
-                                    <div className="tm-reason">
-                                      <span className={`tm-reason-icon ${technician.Status_Reason}`}>
-                                        {technician.Status_Reason === 'ticket' && <Ticket size={10} />}
-                                        {technician.Status_Reason === 'lunch' && <Coffee size={10} />}
-                                        {technician.Status_Reason === 'schedule' && <Clock size={10} />}
-                                      </span>
-                                      <span className="tm-reason-text">
-                                        {getStatusReasonLabel(technician.Status_Reason)}
-                                      </span>
-                                    </div>
-                                  )}
+                                  <span className="tm-orb-tooltip">
+                                    {technician.Status}
+                                    {technician.Status_Reason ? ` — ${getStatusReasonLabel(technician.Status_Reason)}` : ''}
+                                  </span>
                                 </div>
                               </td>
                               <td className="tm-cell-tickets">
