@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS Users (
     FOREIGN KEY (Fk_Role) REFERENCES Role(ID_Role)
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_system ON Users(is_system_user, Email);
-CREATE INDEX IF NOT EXISTS idx_users_active ON Users(is_system_user, Full_Name);
+CREATE INDEX idx_users_system ON Users(is_system_user, Email);
+CREATE INDEX idx_users_active ON Users(is_system_user, Full_Name);
 
 CREATE TABLE IF NOT EXISTS Boss (
     ID_Boss INT AUTO_INCREMENT PRIMARY KEY,
@@ -203,7 +203,28 @@ CREATE TABLE IF NOT EXISTS Ticket_Timeline (
     FOREIGN KEY (Fk_User_Actor) REFERENCES Users(ID_Users)
 );
 
--- 6. Notifications
+-- 6. Audit logs
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    email VARCHAR(100) NULL,
+    action VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50) NULL,
+    entity_id INT NULL,
+    description TEXT NULL,
+    data JSON NULL,
+    severity ENUM('info','warning','critical') DEFAULT 'info',
+    success TINYINT(1) DEFAULT 1,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(500) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_action (action),
+    INDEX idx_audit_user (user_id),
+    INDEX idx_audit_entity (entity_type, entity_id),
+    INDEX idx_audit_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7. Notifications
 CREATE TABLE IF NOT EXISTS Notifications (
     ID_Notification INT AUTO_INCREMENT PRIMARY KEY,
     Fk_User INT NOT NULL,
@@ -219,7 +240,7 @@ CREATE TABLE IF NOT EXISTS Notifications (
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE SET NULL
 );
 
--- 7. Escalation/Aux tables
+-- 8. Escalation/Aux tables
 CREATE TABLE IF NOT EXISTS Ticket_Escalations (
     ID_Escalation INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Service_Request INT NOT NULL,

@@ -24,6 +24,8 @@ export interface User {
 
   office_id?: number | null;
 
+  last_login_at?: string | null;
+
 }
 
 

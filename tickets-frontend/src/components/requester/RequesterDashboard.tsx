@@ -31,6 +31,7 @@ import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import PasswordChangeRequired from '../common/PasswordChangeRequired';
 
 interface Ticket {
   id: string;
@@ -64,8 +65,9 @@ interface RequesterProfile {
 
 const RequesterDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [firstLogin, setFirstLogin] = useState(false);
   const [requesterProfile, setRequesterProfile] = useState<RequesterProfile>({
     id: '',
     name: '',
@@ -101,21 +103,23 @@ const RequesterDashboard: React.FC = () => {
         return;
       }
 
-      console.log('Loading dashboard data...');
       const userResponse = await ApiService.getMe();
-      console.log('getMe response:', userResponse);
       
       if (userResponse.success && userResponse.data) {
         const userId = userResponse.data.id;
-        console.log('User ID:', userId);
+
+        // Detectar primer inicio de sesión
+        if (!userResponse.data.last_login_at) {
+          setFirstLogin(true);
+          setLoading(false);
+          return;
+        }
         
         try {
           const profileResponse = await ApiService.getUserProfile(userId);
-          console.log('getUserProfile response:', profileResponse);
           
           if (profileResponse.success && profileResponse.data) {
             const profileData = profileResponse.data;
-            console.log('Profile data:', profileData);
             
             setRequesterProfile({
               id: userId.toString(),
@@ -128,7 +132,7 @@ const RequesterDashboard: React.FC = () => {
               supervisor: profileData.supervisor || 'No asignado'
             });
           } else {
-            console.error('Profile response not successful:', profileResponse);
+            console.error('Profile response not successful');
             // Use basic user data as fallback
             setRequesterProfile({
               id: userId.toString(),
@@ -186,7 +190,7 @@ const RequesterDashboard: React.FC = () => {
           setMyTickets([]);
         }
       } else {
-        console.error('User authentication failed:', userResponse);
+        console.error('User authentication failed');
         setRequesterProfile({
           id: '',
           name: '',
@@ -331,6 +335,10 @@ const RequesterDashboard: React.FC = () => {
       }
     }
   };
+
+  if (firstLogin) {
+    return <PasswordChangeRequired onComplete={() => setFirstLogin(false)} />;
+  }
 
   return (
     <div className="requester-dashboard">

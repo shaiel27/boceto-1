@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   User,
   Mail,
@@ -11,7 +11,9 @@ import {
   Clock,
   Calendar,
   Briefcase,
-  Settings
+  Settings,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import './TechnicianProfile.css';
 import ApiService from '../../services/api';
@@ -34,12 +36,19 @@ interface TechnicianProfileProps {
   onUpdate?: (updatedProfile: TechnicianProfileData) => void;
 }
 
+const PASSWORD_RULES = [
+  { label: 'Mínimo 8 caracteres', test: (p: string) => p.length >= 8 },
+  { label: 'Una mayúscula', test: (p: string) => /[A-Z]/.test(p) },
+  { label: 'Una minúscula', test: (p: string) => /[a-z]/.test(p) },
+  { label: 'Un número', test: (p: string) => /[0-9]/.test(p) },
+] as const;
+
 const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate }) => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -58,52 +67,53 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
     setPasswordSuccess('');
   };
 
+  const passwordChecks = useMemo(() =>
+    PASSWORD_RULES.map(rule => ({
+      ...rule,
+      passed: rule.test(passwordForm.newPassword)
+    })),
+    [passwordForm.newPassword]
+  );
+
+  const allPassed = passwordChecks.every(c => c.passed);
+
   const validatePassword = (password: string): { valid: boolean; message?: string } => {
-    // PHP-PRO: Strict validation matching backend requirements
     if (password.length < 8) {
       return { valid: false, message: 'La contraseña debe tener al menos 8 caracteres' };
     }
-
     if (!/[A-Z]/.test(password)) {
       return { valid: false, message: 'La contraseña debe contener al menos una mayúscula' };
     }
-
     if (!/[a-z]/.test(password)) {
       return { valid: false, message: 'La contraseña debe contener al menos una minúscula' };
     }
-
     if (!/[0-9]/.test(password)) {
       return { valid: false, message: 'La contraseña debe contener al menos un número' };
     }
-
     return { valid: true };
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!passwordForm.currentPassword) {
       setPasswordError('Debe ingresar la contraseña actual');
       return;
     }
-
     if (!passwordForm.newPassword) {
       setPasswordError('Debe ingresar una nueva contraseña');
       return;
     }
-
     const validation = validatePassword(passwordForm.newPassword);
     if (!validation.valid) {
       setPasswordError(validation.message || 'Contraseña inválida');
       return;
     }
-
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       setPasswordError('Las contraseñas nuevas no coinciden');
       return;
     }
 
-    // PHP-PRO: Call backend API to change password
     try {
       const response = await ApiService.changePassword(
         passwordForm.currentPassword,
@@ -112,12 +122,7 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
 
       if (response.success) {
         setPasswordSuccess(response.message || 'Contraseña cambiada exitosamente');
-        setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setTimeout(() => {
           setShowPasswordModal(false);
           setPasswordSuccess('');
@@ -146,7 +151,7 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
       <div className="profile-header">
         <div className="profile-avatar-section">
           <div className="avatar-circle">
-            <User size={32} />
+            <User size={28} />
           </div>
           <div className="profile-identity">
             <h2 className="profile-title">{profile.firstName} {profile.lastName}</h2>
@@ -156,25 +161,24 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
       </div>
 
       <div className="profile-content">
-        {/* Información Personal */}
         <div className="profile-card">
           <div className="card-header">
             <div className="card-icon personal">
-              <Shield size={20} />
+              <Shield size={18} />
             </div>
             <h3 className="card-title">Información Personal</h3>
           </div>
           <div className="info-grid">
             <div className="info-item">
               <label className="info-label">
-                <User size={14} />
+                <User size={13} />
                 Nombre Completo
               </label>
               <p className="info-value">{profile.firstName} {profile.lastName}</p>
             </div>
             <div className="info-item">
               <label className="info-label">
-                <Mail size={14} />
+                <Mail size={13} />
                 Correo Electrónico
               </label>
               <p className="info-value">{profile.email}</p>
@@ -182,18 +186,17 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
           </div>
         </div>
 
-        {/* Información Laboral */}
         <div className="profile-card">
           <div className="card-header">
             <div className="card-icon work">
-              <Briefcase size={20} />
+              <Briefcase size={18} />
             </div>
             <h3 className="card-title">Información Laboral</h3>
           </div>
           <div className="info-grid">
             <div className="info-item">
               <label className="info-label">
-                <Settings size={14} />
+                <Settings size={13} />
                 Estado
               </label>
               <p className="info-value">
@@ -204,7 +207,7 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
             </div>
             <div className="info-item">
               <label className="info-label">
-                <Calendar size={14} />
+                <Calendar size={13} />
                 Fecha de Ingreso
               </label>
               <p className="info-value">
@@ -217,28 +220,28 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
             </div>
             <div className="info-item">
               <label className="info-label">
-                <Calendar size={14} />
+                <Calendar size={13} />
                 Antigüedad
               </label>
               <p className="info-value">{calculateTenure(profile.hireDate)}</p>
             </div>
             <div className="info-item">
               <label className="info-label">
-                <Clock size={14} />
+                <Clock size={13} />
                 Horario de Trabajo
               </label>
               <p className="info-value">{profile.workStartTime} - {profile.workEndTime}</p>
             </div>
             <div className="info-item">
               <label className="info-label">
-                <Clock size={14} />
+                <Clock size={13} />
                 Bloque de Almuerzo
               </label>
               <p className="info-value">{profile.lunchBlock}</p>
             </div>
             <div className="info-item full-width">
               <label className="info-label">
-                <Settings size={14} />
+                <Settings size={13} />
                 Servicios Asignados
               </label>
               <div className="services-list">
@@ -252,31 +255,29 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
           </div>
         </div>
 
-        {/* Seguridad */}
         <div className="profile-card security-card">
           <div className="card-header">
             <div className="card-icon security">
-              <Lock size={20} />
+              <Lock size={18} />
             </div>
             <h3 className="card-title">Seguridad</h3>
           </div>
-          <button 
+          <button
             className="change-password-btn"
             onClick={() => setShowPasswordModal(true)}
           >
-            <Lock size={16} />
+            <Lock size={15} />
             Cambiar Contraseña
           </button>
         </div>
       </div>
 
-      {/* Modal de Cambio de Contraseña */}
       {showPasswordModal && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
               <h3>Cambiar Contraseña</h3>
-              <button 
+              <button
                 className="close-btn"
                 onClick={() => {
                   setShowPasswordModal(false);
@@ -288,7 +289,7 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                 <X size={20} />
               </button>
             </div>
-            
+
             <form onSubmit={handlePasswordSubmit} className="password-form">
               <div className="form-group">
                 <label>Contraseña Actual</label>
@@ -305,6 +306,7 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                     type="button"
                     className="toggle-password"
                     onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    tabIndex={-1}
                   >
                     {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
@@ -326,10 +328,34 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                     type="button"
                     className="toggle-password"
                     onClick={() => setShowNewPassword(!showNewPassword)}
+                    tabIndex={-1}
                   >
                     {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+                {passwordForm.newPassword && (
+                  <div className="password-requirements" style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {passwordChecks.map((check, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          fontSize: 12,
+                          color: check.passed ? '#16a34a' : '#9ca3af',
+                          transition: 'color 0.15s'
+                        }}
+                      >
+                        {check.passed
+                          ? <CheckCircle size={12} />
+                          : <AlertCircle size={12} />
+                        }
+                        {check.label}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -347,10 +373,17 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                     type="button"
                     className="toggle-password"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    tabIndex={-1}
                   >
                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+                {passwordForm.confirmPassword && passwordForm.newPassword !== passwordForm.confirmPassword && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#dc2626', marginTop: 4 }}>
+                    <AlertCircle size={12} />
+                    Las contraseñas no coinciden
+                  </span>
+                )}
               </div>
 
               {passwordError && (
@@ -360,7 +393,8 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
               )}
 
               {passwordSuccess && (
-                <div className="success-message">
+                <div className="success-message" style={{ animation: 'pfFadeIn 0.2s ease' }}>
+                  <CheckCircle size={16} />
                   {passwordSuccess}
                 </div>
               )}
@@ -378,8 +412,13 @@ const TechnicianProfile: React.FC<TechnicianProfileProps> = ({ profile, onUpdate
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  <Save size={16} />
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={!allPassed && !!passwordForm.newPassword}
+                  style={!allPassed && passwordForm.newPassword ? { opacity: 0.5, cursor: 'default' } : {}}
+                >
+                  <Save size={15} />
                   Cambiar Contraseña
                 </button>
               </div>

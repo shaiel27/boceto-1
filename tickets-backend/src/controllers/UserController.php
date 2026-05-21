@@ -5,6 +5,8 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Office.php';
 require_once __DIR__ . '/../models/Technician.php';
+require_once __DIR__ . '/../models/AuditLog.php';
+require_once __DIR__ . '/../Services/AuditService.php';
 
 try {
     $database = new Database();
@@ -21,6 +23,7 @@ try {
 
     $user = new User($db);
     $office = new Office($db);
+    $auditService = new AuditService(new AuditLog($db));
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
@@ -254,7 +257,7 @@ switch ($method) {
                 'timestamp' => date('Y-m-d H:i:s')
             ]);
         } elseif ($action === 'profile' && isset($_GET['id'])) {
-            $profile = $user->getById($_GET['id']);
+            $profile = $user->getById((int)$_GET['id']);
             if ($profile) {
                 echo json_encode([
                     'success' => true,
@@ -312,6 +315,8 @@ switch ($method) {
                     $user->Fk_Role = $data->role_id ?? 3; // Default to Jefe role
                     
                     if ($user->create()) {
+                        $newId = $db->lastInsertId();
+                        $auditService->logUserAction('create_user', (int) $newId, "Usuario creado: {$data->email}", 'warning');
                         http_response_code(201);
                         echo json_encode([
                             'success' => true,
@@ -342,6 +347,7 @@ switch ($method) {
                     
                     try {
                         $userId = $user->createWithOffice($userData);
+                        $auditService->logUserAction('create_user', (int) $userId, "Usuario creado con oficina: {$data->email}", 'warning');
                         http_response_code(201);
                         echo json_encode([
                             'success' => true,
@@ -393,6 +399,7 @@ switch ($method) {
                     );
 
                     if ($result['success']) {
+                        $auditService->logUserAction('change_password', (int) $currentUserId, "Contraseña cambiada por el usuario", 'warning');
                         http_response_code(200);
                         echo json_encode([
                             'success' => true,

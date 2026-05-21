@@ -51,7 +51,7 @@ switch ($method) {
             case 'problems':
                 // Obtener problemas por tipo de servicio
                 if (isset($_GET['service_id'])) {
-                    $problems = $problemsCatalog->getByServiceId($_GET['service_id']);
+                    $problems = $problemsCatalog->getByServiceId((int)$_GET['service_id']);
                     if ($problems !== false) {
                         echo json_encode([
                             'success' => true,

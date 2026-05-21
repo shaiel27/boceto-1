@@ -93,7 +93,6 @@ interface Coordination {
 }
 
 const TechnicianManagement: React.FC = () => {
-  console.log('TechnicianManagement montado');
   const navigate = useNavigate();
   const { user, isAdmin, isTechnician } = useAuth();
 
@@ -159,13 +158,9 @@ const TechnicianManagement: React.FC = () => {
     }
     setError(null);
     try {
-      console.log('Cargando técnicos...');
       const techResponse = await ApiService.getTechnicians();
-      console.log('Respuesta del API:', techResponse);
 
       if (techResponse.success && techResponse.data) {
-        console.log('Datos recibidos:', techResponse.data);
-        console.log('Número de técnicos:', techResponse.data.length);
 
         const mappedTechnicians = techResponse.data.map((tech: any) => {
           const mappedTechnician = {
@@ -188,15 +183,12 @@ const TechnicianManagement: React.FC = () => {
             AssignedTickets: []
           };
 
-          console.log(`Técnico mapeado: ${tech.First_Name} ${tech.Last_Name} - Estado: ${tech.Status} - Motivo: ${tech.Status_Reason}`);
-
           return mappedTechnician;
         });
 
         const hasChanges = JSON.stringify(mappedTechnicians) !== JSON.stringify(technicians);
 
         if (hasChanges || technicians.length === 0) {
-          console.log('Datos han cambiado, actualizando estado...');
 
           if (isTechnician() && user) {
             const ownProfile = mappedTechnicians.find((t: Technician) => t.Fk_Users === user.id);
@@ -212,7 +204,7 @@ const TechnicianManagement: React.FC = () => {
             setTechnicians(mappedTechnicians);
           }
         } else {
-          console.log('Datos sin cambios, omitiendo actualización de estado');
+
         }
       } else {
         setError(techResponse.message || 'Error al cargar técnicos');
@@ -351,27 +343,6 @@ const TechnicianManagement: React.FC = () => {
           end: times.end + ':00'
         };
       }
-    });
-
-    console.log('Creating technician with data:', {
-      user: {
-        Fk_Role: 2,
-        Email: formData.email,
-        Password: formData.password,
-        Username: username,
-        Full_Name: full_name
-      },
-      technician: {
-        First_Name: formData.first_name,
-        Last_Name: formData.last_name,
-        Fk_Lunch_Block: formData.fk_lunch_block ? parseInt(formData.fk_lunch_block) : null,
-        Status: formData.status
-      },
-      services: formData.ti_services.map(serviceId => ({
-        Fk_TI_Service: serviceId,
-        Status: 'Activo'
-      })),
-      schedules: schedulesObject
     });
 
     try {
@@ -514,9 +485,6 @@ const TechnicianManagement: React.FC = () => {
       if (formData.password) {
         updateData.password = formData.password;
       }
-
-      console.log('Enviando datos de actualización:', updateData);
-      console.log('Servicios finales:', updateData.services);
 
       const response = await ApiService.updateTechnician(selectedTechnician.ID_Technicians, updateData);
 

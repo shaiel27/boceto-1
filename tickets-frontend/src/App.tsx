@@ -15,6 +15,7 @@ import UserRegistrationPage from './pages/UserRegistrationPage';
 import { PDFTestReport } from './components/reports/PDFTestReport';
 import OfficeManagementPage from './pages/OfficeManagementPage';
 import AdminTicketManagementPage from './pages/AdminTicketManagementPage';
+import AuditPage from './pages/AuditPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import TicketForm from './components/tickets/TicketForm';
@@ -31,6 +32,7 @@ const router = createBrowserRouter([
   { path: '/admin/offices', element: <ProtectedRoute allowedRoles={[1]}><OfficeManagementPage /></ProtectedRoute> },
   { path: '/admin/reports', element: <ProtectedRoute allowedRoles={[1]}><ReportsPage /></ProtectedRoute> },
   { path: '/admin/register-user', element: <ProtectedRoute allowedRoles={[1]}><UserRegistrationPage /></ProtectedRoute> },
+  { path: '/admin/audit', element: <ProtectedRoute allowedRoles={[1]}><AuditPage /></ProtectedRoute> },
   { path: '/technician', element: <ProtectedRoute allowedRoles={[2]}><TechnicianDashboardPage /></ProtectedRoute> },
   { path: '/requester', element: <ProtectedRoute allowedRoles={[3]}><RequesterDashboardPage /></ProtectedRoute> },
   { path: '/new-ticket', element: <ProtectedRoute allowedRoles={[1, 3]}><TicketForm /></ProtectedRoute> },

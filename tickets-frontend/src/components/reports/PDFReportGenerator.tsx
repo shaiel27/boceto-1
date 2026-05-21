@@ -26,7 +26,12 @@ export const PDFReportGenerator: React.FC<PDFReportGeneratorProps> = ({
       await pdfService.generateReport(reportData);
       
       setProgress(75);
-      const filename = `${reportData.title.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}.pdf`;
+      const cleanTitle = reportData.title
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, '_')
+        .replace(/[^a-zA-Z0-9_]/g, '')
+        .toLowerCase();
+      const filename = `${cleanTitle}_${Date.now()}.pdf`;
       pdfService.save(filename);
       
       setProgress(100);

@@ -20,6 +20,7 @@ import { sileo } from 'sileo';
 import './TicketForm.css';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import Header from '../layout/Header';
 
 interface TicketFormData {
   subject: string;
@@ -88,7 +89,6 @@ const TicketForm: React.FC = () => {
             type: office.Office_Type || office.Office_Type || office.type || 'Direction'
           }));
           setOffices(formattedOffices);
-          console.log('Offices loaded:', formattedOffices);
         }
       } catch (error) {
         console.error('Error loading offices:', error);
@@ -102,10 +102,8 @@ const TicketForm: React.FC = () => {
 
   // Auto-fill office based on user role - execute after offices are loaded
   useEffect(() => {
-    console.log('Auto-fill office check:', { user, officeId: user?.office_id, role: user?.role, officesLoaded: offices.length > 0 });
     if (user && user.role !== 1 && user.office_id && offices.length > 0) {
       const officeIdStr = user.office_id.toString();
-      console.log('Setting office ID:', officeIdStr, 'Available offices:', offices.map(o => o.id));
       setFormData(prev => ({ ...prev, fkOffice: officeIdStr }));
     }
   }, [user, offices]);
@@ -751,7 +749,9 @@ const TicketForm: React.FC = () => {
   };
 
   return (
-    <div className="tkt">
+    <>
+      <Header />
+      <div className="tkt">
       {submitStatus === 'success' && createdTicket && (
         <div className="tkt-done-overlay">
           <div className="tkt-done-card">
@@ -859,6 +859,7 @@ const TicketForm: React.FC = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

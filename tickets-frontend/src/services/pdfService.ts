@@ -92,43 +92,47 @@ export class PDFService {
     }
   }
 
-  private addTableHeader(columns: string[], startY: number): number {
-    let yPosition = startY;
+  private getColumnWidths(totalColumns: number): number[] {
     const tableWidth = this.pageWidth - (this.margin * 2);
-    
-    // Define column widths based on content type - pdf-best-practices
     const columnWidths: number[] = [];
-    const totalColumns = columns.length;
-    
+
+    if (totalColumns <= 0) return [];
+
     if (totalColumns === 4) {
-      // Better distribution for 4 columns
       columnWidths.push(tableWidth * 0.30);
       columnWidths.push(tableWidth * 0.20);
       columnWidths.push(tableWidth * 0.25);
       columnWidths.push(tableWidth * 0.25);
     } else if (totalColumns === 11) {
-      // Optimized distribution for technician report (11 columns)
-      columnWidths.push(tableWidth * 0.05);  // ID (5%)
-      columnWidths.push(tableWidth * 0.18);  // Nombre (18%)
-      columnWidths.push(tableWidth * 0.08);  // Estado (8%)
-      columnWidths.push(tableWidth * 0.15);  // Servicio (15%)
-      columnWidths.push(tableWidth * 0.08);  // Tickets Asignados (8%)
-      columnWidths.push(tableWidth * 0.08);  // Tickets Resueltos (8%)
-      columnWidths.push(tableWidth * 0.08);  // En Progreso (8%)
-      columnWidths.push(tableWidth * 0.08);  // Pendientes (8%)
-      columnWidths.push(tableWidth * 0.10);  // Tiempo Promedio (10%)
-      columnWidths.push(tableWidth * 0.06);  // Tasa Resolución (6%)
-      columnWidths.push(tableWidth * 0.06);  // Eficiencia (6%)
+      columnWidths.push(tableWidth * 0.05);
+      columnWidths.push(tableWidth * 0.18);
+      columnWidths.push(tableWidth * 0.08);
+      columnWidths.push(tableWidth * 0.15);
+      columnWidths.push(tableWidth * 0.08);
+      columnWidths.push(tableWidth * 0.08);
+      columnWidths.push(tableWidth * 0.08);
+      columnWidths.push(tableWidth * 0.08);
+      columnWidths.push(tableWidth * 0.10);
+      columnWidths.push(tableWidth * 0.06);
+      columnWidths.push(tableWidth * 0.06);
     } else {
-      // Equal distribution for other cases
       const equalWidth = tableWidth / totalColumns;
       for (let i = 0; i < totalColumns; i++) {
         columnWidths.push(equalWidth);
       }
     }
+
+    return columnWidths;
+  }
+
+  private addTableHeader(columns: string[], startY: number): number {
+    const columnWidths = this.getColumnWidths(columns.length);
+    if (columns.length === 0) return startY;
+
+    let yPosition = startY;
     
     this.doc.setFont('helvetica', 'bold');
-    this.doc.setFontSize(7); // Smaller font for 11 columns - pdf-best-practices
+    this.doc.setFontSize(7);
     
     let currentX = this.margin;
     columns.forEach((column, index) => {
@@ -144,45 +148,19 @@ export class PDFService {
   }
 
   private addTableRow(data: any[], columns: string[], startY: number): number {
+    const columnWidths = this.getColumnWidths(columns.length);
+    if (columns.length === 0 || columnWidths.length === 0) return startY;
+
     let yPosition = startY;
-    const tableWidth = this.pageWidth - (this.margin * 2);
-    
-    // Define column widths based on content type - pdf-best-practices
-    const columnWidths: number[] = [];
-    const totalColumns = columns.length;
-    
-    if (totalColumns === 4) {
-      columnWidths.push(tableWidth * 0.30);
-      columnWidths.push(tableWidth * 0.20);
-      columnWidths.push(tableWidth * 0.25);
-      columnWidths.push(tableWidth * 0.25);
-    } else if (totalColumns === 11) {
-      // Optimized distribution for technician report (11 columns)
-      columnWidths.push(tableWidth * 0.05);  // ID
-      columnWidths.push(tableWidth * 0.18);  // Nombre
-      columnWidths.push(tableWidth * 0.08);  // Estado
-      columnWidths.push(tableWidth * 0.15);  // Servicio
-      columnWidths.push(tableWidth * 0.08);  // Tickets Asignados
-      columnWidths.push(tableWidth * 0.08);  // Tickets Resueltos
-      columnWidths.push(tableWidth * 0.08);  // En Progreso
-      columnWidths.push(tableWidth * 0.08);  // Pendientes
-      columnWidths.push(tableWidth * 0.10);  // Tiempo Promedio
-      columnWidths.push(tableWidth * 0.06);  // Tasa Resolución
-      columnWidths.push(tableWidth * 0.06);  // Eficiencia
-    } else {
-      const equalWidth = tableWidth / totalColumns;
-      for (let i = 0; i < totalColumns; i++) {
-        columnWidths.push(equalWidth);
-      }
-    }
     
     this.doc.setFont('helvetica', 'normal');
-    this.doc.setFontSize(6); // Smaller font for 11 columns - pdf-best-practices
+    this.doc.setFontSize(6);
     
     data.forEach((row) => {
-      if (yPosition > this.pageHeight - 60) {
+      if (yPosition > this.pageHeight - 45) {
         this.doc.addPage();
         yPosition = 50;
+        this.addHeader();
         yPosition = this.addTableHeader(columns, yPosition);
       }
       
@@ -191,8 +169,7 @@ export class PDFService {
         const cellData = row[column] || '';
         const text = String(cellData);
         
-        // Truncate text to fit column width - pdf-best-practices
-        const maxChars = Math.floor(columnWidths[index] / 1.8); // Adjusted for smaller font
+        const maxChars = Math.floor(columnWidths[index] / 1.8);
         const truncatedText = text.length > maxChars ? text.substring(0, maxChars - 3) + '...' : text;
         
         this.doc.text(truncatedText, currentX, yPosition);

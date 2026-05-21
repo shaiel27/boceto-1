@@ -86,9 +86,6 @@ final class TicketService
                 );
 
                 if ($assigned) {
-                    // Update ticket status to 'En Proceso'
-                    $this->ticketModel->updateStatus($ticketId, 'En Proceso');
-
                     error_log("Successfully auto-assigned technician {$selectedTechnician['ID_Technicians']} to ticket {$ticketId}");
 
                     return [

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 class User {
     private $conn;
     private $table_name = "Users";
@@ -18,13 +21,13 @@ class User {
 
     public function login($email, $password) {
         // Select user by email. We'll enforce is_system_user OR role-based allowance after verifying password.
-        $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, u.Password, u.is_system_user,
+        $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, u.Password, u.is_system_user, u.last_login_at,
                          r.Role, r.ID_Role,
                          o.ID_Office as office_id
                   FROM " . $this->table_name . " u
                   JOIN Role r ON u.Fk_Role = r.ID_Role
                   LEFT JOIN Boss b ON u.ID_Users = b.Fk_User
-                  LEFT JOIN Office o ON b.ID_Boss = o.ID_Boss
+                   LEFT JOIN Office o ON b.ID_Boss = o.Fk_Boss_ID
                   WHERE u.Email = :email LIMIT 1";
 
         $stmt = $this->conn->prepare($query);
@@ -211,7 +214,7 @@ class User {
     }
 
     public function getById($id) {
-        $query = "SELECT u.ID_Users, u.Full_Name, u.Email, u.created_at,
+        $query = "SELECT u.ID_Users, u.Full_Name, u.Email, u.created_at, u.last_login_at,
                          COALESCE(o.ID_Office, NULL) as office_id,
                          COALESCE(o.Name_Office, '') as office_name,
                          COALESCE(o.Office_Type, '') as office_type,

@@ -435,7 +435,7 @@ const Reports: React.FC = () => {
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de Técnicos por Servicio', 105, 50, { align: 'center' });
+    doc.text('Reporte de T\u00e9cnicos por Servicio', 105, 50, { align: 'center' });
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -531,6 +531,9 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getTechnicianPerformanceMetrics();
+    if (!response.success || !response.data) {
+      console.warn('[PDF] Usando datos de prueba para reporte de desempe\u00f1o de t\u00e9cnicos');
+    }
     let servicesData: Record<string, any[]> = response.success && response.data
       ? response.data
       : ApiService.getMockTechnicianPerformanceMetrics().data;
@@ -545,7 +548,7 @@ const Reports: React.FC = () => {
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de Desempeño de Técnicos', 105, 50, { align: 'center' });
+    doc.text('Reporte de Desempe\u00f1o de T\u00e9cnicos', 105, 50, { align: 'center' });
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -564,7 +567,7 @@ const Reports: React.FC = () => {
         if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Desempeño de Técnicos (cont.)', 105, 50, { align: 'center' });
+        doc.text('Reporte de Desempe\u00f1o de T\u00e9cnicos (cont.)', 105, 50, { align: 'center' });
         yPosition += 20;
       }
 
@@ -652,27 +655,28 @@ const Reports: React.FC = () => {
     doc.text('RESUMEN GENERAL', 30, yPosition + 2);
     yPosition += 12;
 
-    const totalTechnicians = Object.values(servicesData).reduce((sum: number, arr: any[]) => sum + arr.length, 0);
-    const totalResolvedAll = Object.values(servicesData).reduce((sum: number, arr: any[]) =>
+    const values = Object.values(servicesData) as any[][];
+    const totalTechnicians = values.reduce((sum: number, arr: any[]) => sum + arr.length, 0);
+    const totalResolvedAll = values.reduce((sum: number, arr: any[]) =>
       sum + arr.reduce((s: number, t: any) => s + (t.resolved_tickets || t.tickets_resueltos || 0), 0), 0);
 
     doc.setTextColor(50, 50, 50);
     doc.setFont('helvetica', 'normal');
-    doc.text('• Total Servicios:', 30, yPosition);
+    doc.text('\u2022 Total Servicios:', 30, yPosition);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 139);
     doc.text(String(serviceIndex - 1), 100, yPosition);
     yPosition += 7;
     doc.setTextColor(50, 50, 50);
     doc.setFont('helvetica', 'normal');
-    doc.text('• Total Técnicos:', 30, yPosition);
+    doc.text('\u2022 Total T\u00e9cnicos:', 30, yPosition);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 139);
     doc.text(String(totalTechnicians), 100, yPosition);
     yPosition += 7;
     doc.setTextColor(50, 50, 50);
     doc.setFont('helvetica', 'normal');
-    doc.text('• Total Resueltos:', 30, yPosition);
+    doc.text('\u2022 Total Resueltos:', 30, yPosition);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 139);
     doc.text(String(totalResolvedAll), 100, yPosition);
@@ -693,6 +697,7 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getOfficeReport();
+    const isUsingMockData = !response.success || !response.data;
     const officeData = response.success && response.data
       ? response.data
       : ApiService.getMockOfficeReport().data;
@@ -754,7 +759,7 @@ const Reports: React.FC = () => {
       const total = office.total_tickets || office.ticket_count || 0;
       const resolved = office.resolved || office.resolved_tickets || 0;
       const pending = office.pending || office.pending_tickets || 0;
-      const avgTime = office.avg_time || office.avg_resolution_hours || 0;
+      const avgTime = office.avg_time || office.avg_resolution_time || 0;
 
       const truncatedName = name.length > 18 ? name.substring(0, 18) + '...' : name;
 
@@ -807,6 +812,13 @@ const Reports: React.FC = () => {
     doc.setTextColor(0, 0, 139);
     doc.text(String(totalTickets), 95, yPosition);
 
+    if (isUsingMockData) {
+      doc.setTextColor(255, 0, 0);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DATOS DE PRUEBA - CONECTAR A BASE DE DATOS', 105, 195, { align: 'center' });
+    }
+
     if (footerImage) {
       doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
     }
@@ -823,6 +835,9 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getProblemReport();
+    if (!response.success || !response.data) {
+      console.warn('[PDF] Usando datos de prueba para reporte de problemas');
+    }
     const problemData = response.success && response.data
       ? response.data
       : ApiService.getMockProblemReport().data;
@@ -980,6 +995,9 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getMonthlyProblemReport();
+    if (!response.success || !response.data) {
+      console.warn('[PDF] Usando datos de prueba para reporte mensual de problemas');
+    }
     const problemData = response.success && response.data
       ? response.data
       : ApiService.getMockProblemReport().data;
@@ -1137,6 +1155,9 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getSystemsAndProblems();
+    if (!response.success || !response.data) {
+      console.warn('[PDF] Sin datos de backend para reporte de sistemas');
+    }
     const systemsData = response.success && response.data
       ? response.data
       : [];
@@ -1263,6 +1284,9 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getProblemReport();
+    if (!response.success || !response.data) {
+      console.warn('[PDF] Usando datos de prueba para reporte de tipo de servicio');
+    }
     const problemData = response.success && response.data
       ? response.data
       : ApiService.getMockProblemReport().data;
@@ -1393,6 +1417,9 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getTechnicianShifts();
+    if (!response.success || !response.data) {
+      console.warn('[PDF] Sin datos de backend para reporte de turnos');
+    }
     const shiftsData = response.success && response.data
       ? response.data
       : [];
@@ -1570,6 +1597,9 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getGeneralTicketsReport();
+    if (!response.success || !response.data) {
+      console.warn('[PDF] Sin datos de backend para reporte general de tickets');
+    }
     const reportData = response.success && response.data
       ? response.data
       : [];

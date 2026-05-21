@@ -250,12 +250,9 @@ const AdminTicketManagement: React.FC = () => {
     setLoading(true);
 
     try {
-      console.log('Cargando tickets...');
       const response = await ApiService.getTickets();
-      console.log('Respuesta del API:', response);
 
       if (response.success && response.data) {
-        console.log('Tickets recibidos:', response.data);
         const formattedTickets = response.data.map((ticket: any) => ({
           ID_Service_Request: ticket.ID_Service_Request.toString(),
           Ticket_Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
@@ -285,7 +282,6 @@ const AdminTicketManagement: React.FC = () => {
           Attachments_Count: 0,
           Comments_Count: 0
         }));
-        console.log('Tickets formateados:', formattedTickets);
         setPreviousTickets([...formattedTickets]);
         setTickets(formattedTickets);
       } else {
@@ -380,30 +376,14 @@ const AdminTicketManagement: React.FC = () => {
 
   const loadAvailableTechnicians = async (serviceId: string) => {
     try {
-      console.log('=== LOAD GROUPED TECHNICIANS ===');
-      console.log('Ticket Service ID:', serviceId);
-      
       const response = await ApiService.getAllTechniciansGroupedByService();
-      console.log('API Response:', response);
       
       if (response.success && response.data) {
-        console.log('Grouped technicians data:', response.data);
-        console.log('Number of service groups:', response.data.length);
-        
         const allGroups = response.data;
-        
-        console.log('All service groups for manual assignment:', allGroups);
-        
-        allGroups.forEach((group: any) => {
-          console.log(`Service: ${group.service_name}, Technicians: ${group.technicians.length}`);
-          group.technicians.forEach((tech: any) => {
-            console.log(`  - ${tech.First_Name} ${tech.Last_Name} (${tech.Status})`);
-          });
-        });
         
         setGroupedTechnicians(allGroups);
       } else {
-        console.log('No technicians found or error, using mock data:', response.message);
+
         const mockGroupedTechnicians = [
           { service_id: 1, service_name: 'Redes', service_details: 'Infraestructura de red y conectividad', count: 2, technicians: [
             { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
@@ -444,11 +424,7 @@ const AdminTicketManagement: React.FC = () => {
     setSelectedTicket(ticket);
 
     try {
-      console.log('=== LOADING COMMENTS ===');
-      console.log('Ticket ID:', ticket.ID_Service_Request);
-      
       const commentsResponse = await ApiService.getTicketComments(parseInt(ticket.ID_Service_Request));
-      console.log('Comments API Response:', commentsResponse);
       
       if (commentsResponse.success && commentsResponse.data) {
         const formattedComments = commentsResponse.data.map((comment: any) => ({
@@ -462,7 +438,6 @@ const AdminTicketManagement: React.FC = () => {
         }));
         setComments(formattedComments);
       } else {
-        console.log('No comments or error:', commentsResponse.message);
         setComments([]);
       }
     } catch (error) {
@@ -471,11 +446,7 @@ const AdminTicketManagement: React.FC = () => {
     }
 
     try {
-      console.log('=== LOADING TIMELINE ===');
-      console.log('Ticket ID:', ticket.ID_Service_Request);
-      
       const timelineResponse = await ApiService.getTicketTimeline(parseInt(ticket.ID_Service_Request));
-      console.log('Timeline API Response:', timelineResponse);
       
       if (timelineResponse.success && timelineResponse.data) {
         const formattedTimeline = timelineResponse.data.map((event: any) => ({
@@ -490,7 +461,6 @@ const AdminTicketManagement: React.FC = () => {
         }));
         setTimeline(formattedTimeline);
       } else {
-        console.log('No timeline or error:', timelineResponse.message);
         setTimeline([]);
       }
     } catch (error) {

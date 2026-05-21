@@ -1008,10 +1008,14 @@ final class Technician
             // Todas las validaciones pasaron, proceder con la asignación.
             // Para mitigar condiciones de carrera volvemos a validar la capacidad del técnico dentro
             // de una transacción y usamos SELECT ... FOR UPDATE para bloquear las filas relevantes.
+            // Si ya hay una transacción activa (ej. desde TicketService::createTicket), reusarla.
             $capacityLimit = 5; // TODO: extraer a configuración si se requiere
+            $ownsTransaction = !$this->conn->inTransaction();
 
             try {
-                $this->conn->beginTransaction();
+                if ($ownsTransaction) {
+                    $this->conn->beginTransaction();
+                }
 
                 // Revalidar tickets activos del técnico con bloqueo
                 $checkCapacityQuery = "SELECT COUNT(*) as active_count
@@ -1028,8 +1032,9 @@ final class Technician
                 $activeCount = (int)($capacityResult['active_count'] ?? 0);
 
                 if ($activeCount >= $capacityLimit && !$allowCrossService) {
-                    // No hay capacidad para asignaciones automáticas
-                    $this->conn->rollBack();
+                    if ($ownsTransaction) {
+                        $this->conn->rollBack();
+                    }
                     error_log("Capacity full for technician {$technicianId} (active: {$activeCount}), cannot assign automatically");
                     return false;
                 }
@@ -1045,7 +1050,9 @@ final class Technician
                 $stmt->bindParam(":assignedBy", $assignedBy, PDO::PARAM_INT);
 
                 if (!$stmt->execute()) {
-                    $this->conn->rollBack();
+                    if ($ownsTransaction) {
+                        $this->conn->rollBack();
+                    }
                     error_log("Failed to execute assignToTicket query for technician {$technicianId} to ticket {$ticketId}");
                     return false;
                 }
@@ -1062,14 +1069,16 @@ final class Technician
                 $updateTicketStmt->bindParam(":ticketId", $ticketId, PDO::PARAM_INT);
                 $updateTicketStmt->execute();
 
-                $this->conn->commit();
+                if ($ownsTransaction) {
+                    $this->conn->commit();
+                }
 
                 $assignmentType = $allowCrossService ? 'manual (cross-service)' : 'automatic';
                 error_log("Successfully assigned technician {$technicianId} to ticket {$ticketId} ({$assignmentType}) and updated ticket status to 'En Proceso'");
                 return true;
 
             } catch (PDOException $e) {
-                if ($this->conn->inTransaction()) {
+                if ($this->conn->inTransaction() && $ownsTransaction) {
                     $this->conn->rollBack();
                 }
                 error_log("Error assigning technician inside transaction: " . $e->getMessage());

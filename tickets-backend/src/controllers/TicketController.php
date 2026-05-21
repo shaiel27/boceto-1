@@ -10,6 +10,8 @@ require_once __DIR__ . '/../models/TicketComment.php';
 require_once __DIR__ . '/../models/TicketTimeline.php';
 require_once __DIR__ . '/../models/Technician.php';
 require_once __DIR__ . '/../models/Notification.php';
+require_once __DIR__ . '/../models/AuditLog.php';
+require_once __DIR__ . '/../Services/AuditService.php';
 
 use App\Models\Notification;
 require_once __DIR__ . '/../DTO/CreateTicketDTO.php';
@@ -37,6 +39,8 @@ try {
     $notification = new Notification($db);
     $notificationService = new NotificationService($db, $notification);
     $ticketService = new TicketService($db, $ticket, $technician, $notificationService);
+    $auditLog = new AuditLog($db);
+    $auditService = new AuditService($auditLog);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
@@ -363,6 +367,7 @@ switch ($method) {
             error_log("Creating comment for ticket: {$comment->Fk_Service_Request}");
             
             if ($comment->create()) {
+                $auditService->logTicketAction('create_comment', (int) $comment->Fk_Service_Request, "Comentario agregado al ticket #{$comment->Fk_Service_Request}");
                 error_log("Comment created successfully");
                 echo json_encode([
                     'success' => true,
@@ -401,13 +406,19 @@ switch ($method) {
             }
 
             $isLead = $data->is_lead ?? true;
+            $ticketId = (int)$data->ticket_id;
+            $technicianId = (int)$data->technician_id;
             // Asignación manual: permitir asignación cruzada ($allowCrossService = true)
-            if ($technician->assignToTicket($data->ticket_id, $data->technician_id, $currentUserId, $isLead, true)) {
+            if ($technician->assignToTicket($ticketId, $technicianId, $currentUserId, $isLead, true)) {
                 // Update ticket status to "En Proceso" if it was pending
-                $ticketData = $ticket->getById($data->ticket_id);
+                $ticketData = $ticket->getById($ticketId);
                 if ($ticketData && $ticketData['Status'] === 'Pendiente') {
-                    $ticket->updateStatus($data->ticket_id, 'En Proceso');
+                    $ticket->updateStatus($ticketId, 'En Proceso');
                 }
+
+                $techName = $ticketData ? ($ticketData['Full_Name'] ?? 'Técnico #' . $technicianId) : ('Técnico #' . $technicianId);
+                $auditService->logAssignment($ticketId, $technicianId, $techName, $currentUserId, 'manual');
+                $timeline->create($ticketId, (int) $currentUserId, "Técnico {$techName} asignado", null, 'En Proceso');
 
                 echo json_encode([
                     'success' => true,
@@ -452,6 +463,8 @@ switch ($method) {
             $assignedCount = 0;
             $failedAssignments = [];
 
+            $assignedTechNames = [];
+
             foreach ($data->technician_ids as $index => $techId) {
                 $isLead = ($index === 0); // First technician is lead
                 error_log("Assigning technician {$techId} to ticket {$data->ticket_id} (isLead: " . ($isLead ? 'true' : 'false') . ")");
@@ -459,6 +472,8 @@ switch ($method) {
                 // Asignación manual: permitir asignación cruzada ($allowCrossService = true)
                 if ($technician->assignToTicket($data->ticket_id, $techId, $currentUserId, $isLead, true)) {
                     $assignedCount++;
+                    $assignedTechNames[] = 'Técnico #' . $techId;
+                    $auditService->logAssignment((int) $data->ticket_id, (int) $techId, 'Técnico #' . $techId, (int) $currentUserId, 'manual');
                     error_log("Successfully assigned technician {$techId}");
                 } else {
                     $failedAssignments[] = $techId;
@@ -472,6 +487,7 @@ switch ($method) {
                 if ($ticketData && $ticketData['Status'] === 'Pendiente') {
                     $ticket->updateStatus($data->ticket_id, 'En Proceso');
                 }
+                $timeline->create((int) $data->ticket_id, (int) $currentUserId, "{$assignedCount} técnico(s) asignado(s): " . implode(', ', $assignedTechNames), null, 'En Proceso');
             }
 
             error_log("Assignment complete: {$assignedCount} assigned, " . count($failedAssignments) . " failed");
@@ -509,15 +525,22 @@ switch ($method) {
             }
 
             if ($technician->unassignFromTicket($data->ticket_id, $data->technician_id)) {
+                $auditService->log('unassign_technician', [
+                    'entity_type' => 'Ticket',
+                    'entity_id'   => (int) $data->ticket_id,
+                    'description' => "Técnico #{$data->technician_id} desasignado del ticket #{$data->ticket_id}",
+                    'data'        => ['technician_id' => (int) $data->technician_id],
+                ]);
+                $timeline->create((int) $data->ticket_id, (int) $currentUserId, "Técnico #{$data->technician_id} desasignado", null, null);
                 echo json_encode([
                     'success' => true,
-                    'message' => 'Técnico reasignado exitosamente'
+                    'message' => 'Técnico desasignado exitosamente'
                 ]);
             } else {
                 http_response_code(500);
                 echo json_encode([
                     'success' => false,
-                    'message' => 'Error al reasignar técnico'
+                    'message' => 'Error al desasignar técnico'
                 ]);
             }
             break;
@@ -566,7 +589,17 @@ switch ($method) {
             
             error_log("Updating ticket {$ticket_id} status to: {$status}");
             
+            // Fetch old status before updating to get accurate "from" value
+            $oldData = $ticket->getById($ticket_id);
+            $oldStatus = $oldData['Status'] ?? 'Desconocido';
+            
             if ($ticket->updateStatus($ticket_id, $status)) {
+                $actionType = ($status === 'Cerrado' || $status === 'Resuelto') ? 'close_ticket' : 'update_ticket';
+                $description = ($actionType === 'close_ticket')
+                    ? "Ticket #{$ticket_id} cerrado (estado anterior: {$oldStatus})"
+                    : "Ticket #{$ticket_id}: estado cambiado de {$oldStatus} a {$status}";
+                $auditService->logTicketAction($actionType, $ticket_id, $description);
+                $timeline->create($ticket_id, (int) $currentUserId, "Estado cambiado de {$oldStatus} a {$status}", $oldStatus, $status);
                 echo json_encode([
                     'success' => true,
                     'message' => 'Ticket actualizado exitosamente'
@@ -603,6 +636,10 @@ switch ($method) {
         try {
             $dto = CreateTicketDTO::fromArray((array) $data);
             $result = $ticketService->createTicket($dto, (int) $currentUserId);
+
+            $auditService->logTicketAction('create_ticket', $result['ticket_id'], "Ticket creado: {$dto->subject}");
+            $ticketData = $ticket->getById($result['ticket_id']);
+            $timeline->create($result['ticket_id'], (int) $currentUserId, "Ticket creado por el usuario", null, 'Pendiente');
 
             http_response_code(201);
             echo json_encode([

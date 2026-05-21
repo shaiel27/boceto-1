@@ -50,11 +50,11 @@ class ServiceRequest {
         $stmt->bindParam(":Fk_Office", $dto->fkOffice, PDO::PARAM_INT);
         $stmt->bindParam(":Fk_User_Requester", $requesterId, PDO::PARAM_INT);
         $stmt->bindParam(":Fk_TI_Service", $dto->fkTiService, PDO::PARAM_INT);
-        $stmt->bindParam(":Fk_Problem_Catalog", $dto->fkProblemCatalog, PDO::PARAM_INT);
-        $stmt->bindParam(":Fk_Boss_Requester", $dto->fkBossRequester, PDO::PARAM_INT);
-        $stmt->bindParam(":Fk_Software_System", $dto->fkSoftwareSystem, PDO::PARAM_INT);
+        $stmt->bindValue(":Fk_Problem_Catalog", $dto->fkProblemCatalog, $dto->fkProblemCatalog === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindValue(":Fk_Boss_Requester", $dto->fkBossRequester, $dto->fkBossRequester === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindValue(":Fk_Software_System", $dto->fkSoftwareSystem, $dto->fkSoftwareSystem === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $stmt->bindParam(":Subject", $dto->subject);
-        $stmt->bindParam(":Property_Number", $dto->propertyNumber);
+        $stmt->bindValue(":Property_Number", $dto->propertyNumber, $dto->propertyNumber === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
         $stmt->bindParam(":Description", $dto->description);
         $stmt->bindParam(":System_Priority", $dto->systemPriority);
 

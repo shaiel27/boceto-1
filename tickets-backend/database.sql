@@ -27,8 +27,8 @@ CREATE TABLE Users (
 );
 
 -- Índices recomendados para optimizar login y filtrado por usuarios del sistema
-CREATE INDEX IF NOT EXISTS idx_users_system ON Users(is_system_user, Email);
-CREATE INDEX IF NOT EXISTS idx_users_active ON Users(is_system_user, Username);
+CREATE INDEX idx_users_system ON Users(is_system_user, Email);
+CREATE INDEX idx_users_active ON Users(is_system_user, Username);
 
 CREATE TABLE Boss (
     ID_Boss INT AUTO_INCREMENT PRIMARY KEY,
@@ -220,7 +220,31 @@ CREATE TABLE Ticket_Timeline (
 );
 
 -- ==========================================
--- 6. MÓDULO DE NOTIFICACIONES
+-- 6. MÓDULO DE AUDITORÍA
+-- ==========================================
+
+CREATE TABLE audit_logs (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    email VARCHAR(100) NULL,
+    action VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50) NULL,
+    entity_id INT NULL,
+    description TEXT NULL,
+    data JSON NULL,
+    severity ENUM('info','warning','critical') DEFAULT 'info',
+    success TINYINT(1) DEFAULT 1,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(500) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_audit_action (action),
+    INDEX idx_audit_user (user_id),
+    INDEX idx_audit_entity (entity_type, entity_id),
+    INDEX idx_audit_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ==========================================
+-- 7. MÓDULO DE NOTIFICACIONES
 -- ==========================================
 
 CREATE TABLE Notifications (

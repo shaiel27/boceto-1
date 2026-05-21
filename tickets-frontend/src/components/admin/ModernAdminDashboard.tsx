@@ -2,28 +2,28 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart3,
-  TrendingUp,
-  Users,
+  Activity,
   Clock,
   CheckCircle,
   AlertCircle,
-  Activity,
   FileText,
-  Download,
-  RefreshCw,
-  Eye,
-  Calendar,
+  Users,
   MapPin,
-  Wrench,
-  Bell,
-  ChevronRight,
   Search,
+  RefreshCw,
+  Download,
+  ChevronRight,
+  Eye,
+  Wrench,
+  Timer,
   Inbox,
   Shield,
-  Timer
+  Building,
+  UserPlus,
+  ClipboardList
 } from 'lucide-react';
 import './ModernAdminDashboard.css';
-import ApiService from '../../services/api';
+import ApiService, { API_BASE_URL } from '../../services/api';
 import AdminAssistanceManagement from '../assistance/AdminAssistanceManagement';
 import CenteredNotification, { NotificationData } from '../notifications/CenteredNotification';
 
@@ -109,7 +109,7 @@ const ModernAdminDashboard: React.FC = () => {
 
   const checkNotifications = async () => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_BASE || 'http://192.168.2.4:8000'}/api/notifications?action=my-notifications`, {
+      const response = await fetch(`${API_BASE_URL}/api/notifications?action=my-notifications`, {
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json',
@@ -359,6 +359,34 @@ const ModernAdminDashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Módulos de Administración */}
+        <div className="adm-modules">
+          <button className="adm-module-btn" onClick={() => navigate('/admin/tickets')}>
+            <FileText size={22} />
+            <span>Tickets</span>
+          </button>
+          <button className="adm-module-btn" onClick={() => navigate('/admin/technicians')}>
+            <Users size={22} />
+            <span>Técnicos</span>
+          </button>
+          <button className="adm-module-btn" onClick={() => navigate('/admin/structure')}>
+            <Building size={22} />
+            <span>Estructura</span>
+          </button>
+          <button className="adm-module-btn" onClick={() => navigate('/admin/offices')}>
+            <MapPin size={22} />
+            <span>Oficinas</span>
+          </button>
+          <button className="adm-module-btn" onClick={() => navigate('/admin/register-user')}>
+            <UserPlus size={22} />
+            <span>Registrar Usuario</span>
+          </button>
+          <button className="adm-module-btn" onClick={() => navigate('/admin/audit')}>
+            <ClipboardList size={22} />
+            <span>Auditoría</span>
+          </button>
+        </div>
+
         <div className="adm-grid">
           <section className="adm-card adm-card-tickets">
             <div className="adm-card-head">
@@ -507,7 +535,6 @@ const ModernAdminDashboard: React.FC = () => {
 
           <section className="adm-card adm-card-assistance">
             <AdminAssistanceManagement onRequestsUpdate={(count) => {
-              console.log('Pending assistance requests:', count);
             }} />
           </section>
         </div>

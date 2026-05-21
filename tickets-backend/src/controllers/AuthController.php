@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/User.php';
+require_once __DIR__ . '/../models/AuditLog.php';
+require_once __DIR__ . '/../Services/AuditService.php';
 
 try {
     $database = new Database();
@@ -18,6 +20,7 @@ try {
     }
 
     $user = new User($db);
+    $auditService = new AuditService(new AuditLog($db));
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode([
@@ -30,10 +33,7 @@ try {
 $data = json_decode(file_get_contents("php://input"));
 
 // Get JWT service from global (initialized in index.php)
-$jwtSecret = getenv('JWT_SECRET');
-if (empty($jwtSecret)) {
-    $jwtSecret = 'your-secret-key-change-in-production-min-32-chars';
-}
+$jwtSecret = getenv('JWT_SECRET') ?: 'change-this-secret-in-production-min-32-chars!!';
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     // Validate JWT token directly for GET requests
@@ -94,7 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'office_name' => $userData['office_name'] ?? '',
                 'office_type' => $userData['office_type'] ?? '',
                 'office_id' => $userData['office_id'] ?? null,
-                'created_at' => $userData['created_at'] ?? date('Y-m-d H:i:s')
+                'created_at' => $userData['created_at'] ?? date('Y-m-d H:i:s'),
+                'last_login_at' => $userData['last_login_at'] ?? null
             ]
         ]);
     } else {
@@ -131,6 +132,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $result = $user->login($data->email, $data->password);
                     
                     if ($result) {
+                        $auditService->logLogin($data->email, true);
                         // Generate JWT token
                         require_once __DIR__ . '/../Services/JwtService.php';
                         $jwtService = new \App\Services\JwtService($jwtSecret);
@@ -157,11 +159,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                                 'role' => $result['Role'],
                                 'role_name' => $result['Role'],
                                 'ID_Role' => $result['ID_Role'],
-                                'office_id' => $result['office_id'] ?? null
+                                'office_id' => $result['office_id'] ?? null,
+                                'last_login_at' => $result['last_login_at'] ?? null
                             ],
                             'token' => $token
                         ]);
                     } else {
+                        $auditService->logLogin($data->email, false, 'Credenciales incorrectas');
                         http_response_code(401);
                         echo json_encode([
                             'success' => false,
@@ -177,6 +181,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 }
                 break;
                 
+            case 'logout':
+                $headers = getallheaders();
+                $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+                if ($authHeader && preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+                    require_once __DIR__ . '/../Services/JwtService.php';
+                    $jwtService = new \App\Services\JwtService($jwtSecret);
+                    $payload = $jwtService->validateToken($matches[1]);
+                    if ($payload) {
+                        $auditService->logLogout((int) $payload['sub'], $payload['email'] ?? '');
+                    }
+                }
+                http_response_code(200);
+                echo json_encode(['success' => true, 'message' => 'Sesión cerrada exitosamente']);
+                break;
+
             case 'register':
                 if (isset($data->email) && isset($data->password)) {
                     // Input validation

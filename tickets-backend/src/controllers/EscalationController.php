@@ -49,10 +49,14 @@ function handleGet(EscalationService $service): void
         'config' => getEscalationConfig($service),
         'history' => getEscalationHistory($service),
         'pending_view' => getPendingTicketsView($service),
-        default => http_response_code(400) && print(json_encode([
-            'success' => false,
-            'message' => 'Acción no válida'
-        ]))
+        default => (function () {
+            http_response_code(400);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Acción no válida'
+            ]);
+            exit;
+        })()
     };
 }
 
