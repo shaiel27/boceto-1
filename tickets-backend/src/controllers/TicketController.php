@@ -242,7 +242,8 @@ switch ($method) {
                     break;
                 }
                 
-                $availableTechs = $technician->getAllTechniciansByService($serviceId);
+                // Return only available technicians (respecting schedule, lunch block and status)
+                $availableTechs = $technician->getAvailableTechniciansByService($serviceId);
                 
                 error_log("Final result count: " . count($availableTechs));
                 

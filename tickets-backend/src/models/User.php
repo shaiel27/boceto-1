@@ -9,6 +9,7 @@ class User {
     public $Password;
     public $Username;
     public $Full_Name;
+    public $is_system_user = 0;
     public $created_at;
 
     public function __construct($db) {
@@ -16,12 +17,14 @@ class User {
     }
 
     public function login($email, $password) {
-        $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, u.Password, r.Role, r.ID_Role,
+        // Select user by email. We'll enforce is_system_user OR role-based allowance after verifying password.
+        $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, u.Password, u.is_system_user,
+                         r.Role, r.ID_Role,
                          o.ID_Office as office_id
                   FROM " . $this->table_name . " u
                   JOIN Role r ON u.Fk_Role = r.ID_Role
                   LEFT JOIN Boss b ON u.ID_Users = b.Fk_User
-                  LEFT JOIN Office o ON b.ID_Boss = o.Fk_Boss_ID
+                  LEFT JOIN Office o ON b.ID_Boss = o.ID_Boss
                   WHERE u.Email = :email LIMIT 1";
 
         $stmt = $this->conn->prepare($query);
@@ -35,6 +38,30 @@ class User {
 
                 // Verify password using password_verify
                 if (password_verify($password, $row['Password'])) {
+                    // Decide whether this user is allowed to login.
+                    // Preferred method: is_system_user = 1.
+                    // For compatibility with pre-migration seeded data, allow users with internal roles (Admin, Tecnico, Jefe)
+                    $isSystem = isset($row['is_system_user']) ? (int)$row['is_system_user'] : 0;
+                    $roleId = isset($row['ID_Role']) ? (int)$row['ID_Role'] : null;
+
+                    $allowedRoles = [1, 2, 3]; // Admin, Tecnico, Jefe
+                    $allowed = ($isSystem === 1) || ($roleId !== null && in_array($roleId, $allowedRoles, true));
+
+                    if (!$allowed) {
+                        error_log("Login denied for user {$row['Email']}: not a system user and not in allowed roles");
+                        return false;
+                    }
+
+                    // Update last_login_at for auditing (best-effort)
+                    try {
+                        $update = $this->conn->prepare("UPDATE " . $this->table_name . " SET last_login_at = NOW() WHERE ID_Users = :id");
+                        $update->bindParam(':id', $row['ID_Users'], PDO::PARAM_INT);
+                        $update->execute();
+                    } catch (PDOException $e) {
+                        // Don't block login on update failure, just log
+                        error_log("Failed to update last_login_at for user {$row['ID_Users']}: " . $e->getMessage());
+                    }
+
                     // Remove password from response
                     unset($row['Password']);
                     
@@ -43,6 +70,9 @@ class User {
                         $row['office_id'] = null;
                     }
                     
+                    // Normalize is_system_user to int in returned row
+                    $row['is_system_user'] = $isSystem;
+
                     return $row;
                 }
             }
@@ -54,18 +84,24 @@ class User {
     }
 
     public function create() {
+        // Decide if this user should be marked as a system user.
+        // By default treat roles 1 (Admin), 2 (Tecnico), 3 (Jefe) as system users.
+        $roleId = isset($this->Fk_Role) ? (int)$this->Fk_Role : 0;
+        $isSystem = isset($this->is_system_user) ? (int)$this->is_system_user : (in_array($roleId, [1,2,3]) ? 1 : 0);
+
         $query = "INSERT INTO " . $this->table_name . " 
                   SET Fk_Role = :Fk_Role, Email = :Email, Password = :Password, 
-                      Username = :Username, Full_Name = :Full_Name, created_at = NOW()";
-        
+                      Username = :Username, Full_Name = :Full_Name, is_system_user = :is_system_user, created_at = NOW()";
+
         $stmt = $this->conn->prepare($query);
-        
+
         $stmt->bindParam(":Fk_Role", $this->Fk_Role);
         $stmt->bindParam(":Email", $this->Email);
         $stmt->bindParam(":Password", $this->Password);
         $stmt->bindParam(":Username", $this->Username);
         $stmt->bindParam(":Full_Name", $this->Full_Name);
-        
+        $stmt->bindValue(":is_system_user", $isSystem, PDO::PARAM_INT);
+
         try {
             if ($stmt->execute()) {
                 return true;
@@ -73,7 +109,7 @@ class User {
         } catch(PDOException $exception) {
             echo "Create error: " . $exception->getMessage();
         }
-        
+
         return false;
     }
 
@@ -90,11 +126,12 @@ class User {
     }
 
     public function getTechnicians() {
+        // Only return technicians that are system users (internal staff)
         $query = "SELECT u.ID_Users, u.Full_Name, u.Email, t.ID_Technicians
                   FROM " . $this->table_name . " u
                   JOIN Technicians t ON u.ID_Users = t.Fk_Users
                   JOIN Role r ON u.Fk_Role = r.ID_Role
-                  WHERE r.Role = 'Tecnico' AND t.Status = 'Activo'";
+                  WHERE r.Role = 'Tecnico' AND t.Status = 'Activo' AND COALESCE(u.is_system_user, 0) = 1";
         
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
@@ -110,19 +147,21 @@ class User {
     {
         error_log("=== getTechniciansWithServices START ===");
         
-        $query = "SELECT t.ID_Technicians, 
+            // Only include technicians whose Users record is marked as system users
+            $query = "SELECT t.ID_Technicians, 
                          t.First_Name, 
                          t.Last_Name, 
                          t.Status, 
                          u.Email,
-                         ts.Fk_TI_Service,
-                         s.Type_Service
-                  FROM Technicians t
-                  INNER JOIN Users u ON t.Fk_Users = u.ID_Users
-                  LEFT JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
-                  LEFT JOIN TI_Service s ON ts.Fk_TI_Service = s.ID_TI_Service
-                  WHERE t.Status IN ('Activo', 'Disponible', 'Ocupado')
-                  ORDER BY t.First_Name, t.Last_Name";
+                          ts.Fk_TI_Service,
+                          s.Type_Service
+                   FROM Technicians t
+                   INNER JOIN Users u ON t.Fk_Users = u.ID_Users
+                   LEFT JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
+                   LEFT JOIN TI_Service s ON ts.Fk_TI_Service = s.ID_TI_Service
+                   WHERE t.Status IN ('Activo', 'Disponible', 'Ocupado')
+                     AND COALESCE(u.is_system_user, 0) = 1
+                   ORDER BY t.First_Name, t.Last_Name";
 
         error_log("Query: " . $query);
 
@@ -202,15 +241,19 @@ class User {
             $this->conn->beginTransaction();
             
             // Insert user
+            // Determine is_system_user for this created user (respect provided flag, otherwise infer from role)
+            $isSystem = isset($data->is_system_user) ? (int)$data->is_system_user : (in_array((int)$data->role, [1,2,3]) ? 1 : 0);
+
             $query = "INSERT INTO " . $this->table_name . " 
-                      (Fk_Role, Email, Password, Username, Full_Name) 
-                      VALUES (:role, :email, :password, :username, :full_name)";
+                      (Fk_Role, Email, Password, Username, Full_Name, is_system_user) 
+                      VALUES (:role, :email, :password, :username, :full_name, :is_system_user)";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(":role", $data->role);
             $stmt->bindParam(":email", $data->email);
             $stmt->bindParam(":password", $data->password);
             $stmt->bindParam(":username", $data->username);
             $stmt->bindParam(":full_name", $data->full_name);
+            $stmt->bindValue(":is_system_user", $isSystem, PDO::PARAM_INT);
             $stmt->execute();
             
             $userId = $this->conn->lastInsertId();

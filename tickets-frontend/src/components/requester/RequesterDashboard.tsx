@@ -24,7 +24,8 @@ import {
   MapPinned,
   UserCheck,
   Send,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react';
 import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
@@ -218,12 +219,14 @@ const RequesterDashboard: React.FC = () => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
+      case 'Crítica':
+        return 'critic';
       case 'Alta':
-        return 'priority-high';
+        return 'high';
       case 'Media':
-        return 'priority-medium';
+        return 'medium';
       case 'Baja':
-        return 'priority-low';
+        return 'low';
       default:
         return '';
     }
@@ -346,6 +349,10 @@ const RequesterDashboard: React.FC = () => {
             {requesterProfile.office_type && <span className="dept-badge">{requesterProfile.office_type}</span>}
           </div>
           <div className="action-buttons">
+            <button className="action-btn dashboard-back" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft size={18} />
+              Dashboard
+            </button>
             <button className="action-btn profile" onClick={() => setShowProfile(true)}>
               <User size={18} />
               Mi Perfil

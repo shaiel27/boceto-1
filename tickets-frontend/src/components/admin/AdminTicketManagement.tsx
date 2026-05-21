@@ -2,27 +2,19 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
-  Filter,
-  Plus,
   Eye,
   User,
   UserX,
   Clock,
   MessageSquare,
-  Paperclip,
   AlertCircle,
   CheckCircle,
   CheckCircle2,
   XCircle,
   Calendar,
   FileText,
-  Settings,
-  BarChart3,
   Users,
-  TrendingUp,
-  Download,
   RefreshCw,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   X,
@@ -34,14 +26,11 @@ import {
   Flag,
   Star,
   Wrench,
-  Lock,
-  Network,
-  Code
+  Lock
 } from 'lucide-react';
 import './AdminTicketManagement.css';
 import ApiService from '../../services/api';
 
-// PHP-PRO: Strict TypeScript interfaces with proper typing
 interface TicketTechnician {
   readonly ID_Ticket_Technician: string;
   readonly Fk_Technician: string;
@@ -122,14 +111,12 @@ interface Attachment {
 const AdminTicketManagement: React.FC = () => {
   const navigate = useNavigate();
   
-  // Estados principales
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Estados de filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [serviceFilter, setServiceFilter] = useState<string>('all');
@@ -138,12 +125,10 @@ const AdminTicketManagement: React.FC = () => {
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
 
-  // Estados de modales
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showPriorityModal, setShowPriorityModal] = useState(false);
 
-  // Estados de asignación
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [groupedTechnicians, setGroupedTechnicians] = useState<any[]>([]);
   const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
@@ -151,35 +136,28 @@ const AdminTicketManagement: React.FC = () => {
   const [technicianSearch, setTechnicianSearch] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
 
-  // Estados de comentarios y timeline
   const [comments, setComments] = useState<Comment[]>([]);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [commentType, setCommentType] = useState<'public' | 'internal'>('public');
 
-  // Estado de prioridad
   const [newPriority, setNewPriority] = useState<'Baja' | 'Media' | 'Alta' | 'Crítica'>('Media');
 
-  // Estado de notificaciones
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Estado de actualización automática (silenciosa)
   const [previousTickets, setPreviousTickets] = useState<Ticket[]>([]);
-  const [refreshInterval] = useState(15000); // 15 segundos por defecto
+  const [refreshInterval] = useState(15000);
 
-  // Estado de paginación
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(6);
 
-  // Mostrar notificación
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Click outside to close modal
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
@@ -193,11 +171,9 @@ const AdminTicketManagement: React.FC = () => {
     }
   }, [showDetailModal]);
 
-  // Datos mock para demostración
   useEffect(() => {
     loadTickets();
 
-    // Configurar polling para actualización automática silenciosa
     const interval = setInterval(() => {
       checkForUpdates();
     }, refreshInterval);
@@ -205,16 +181,13 @@ const AdminTicketManagement: React.FC = () => {
     return () => clearInterval(interval);
   }, [refreshInterval]);
 
-  // Función para comparar si hay cambios en los tickets
   const hasTicketChanges = (newTickets: Ticket[], oldTickets: Ticket[]): boolean => {
     if (newTickets.length !== oldTickets.length) return true;
 
-    // Comparar cada ticket por ID y estado
     for (const newTicket of newTickets) {
       const oldTicket = oldTickets.find(t => t.ID_Service_Request === newTicket.ID_Service_Request);
-      if (!oldTicket) return true; // Nuevo ticket encontrado
+      if (!oldTicket) return true;
 
-      // Comparar campos clave que pueden cambiar
       if (
         newTicket.Status !== oldTicket.Status ||
         newTicket.System_Priority !== oldTicket.System_Priority ||
@@ -228,7 +201,6 @@ const AdminTicketManagement: React.FC = () => {
     return false;
   };
 
-  // Verificar actualizaciones sin mostrar loading (completamente silencioso)
   const checkForUpdates = async () => {
     try {
       const response = await ApiService.getTickets();
@@ -264,7 +236,6 @@ const AdminTicketManagement: React.FC = () => {
           Comments_Count: 0
         }));
 
-        // Solo actualizar si hay cambios
         if (hasTicketChanges(formattedTickets, previousTickets)) {
           setPreviousTickets([...tickets]);
           setTickets(formattedTickets);
@@ -329,7 +300,6 @@ const AdminTicketManagement: React.FC = () => {
     }
   };
 
-  // Filtrar tickets
   useEffect(() => {
     let filtered = [...tickets];
 
@@ -352,7 +322,6 @@ const AdminTicketManagement: React.FC = () => {
       filtered = filtered.filter(ticket => ticket.System_Priority === priorityFilter);
     }
 
-    // Filtro por fecha
     if (dateFilter !== 'all') {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -382,45 +351,38 @@ const AdminTicketManagement: React.FC = () => {
     }
 
     setFilteredTickets(filtered);
-    setCurrentPage(1); // Resetear a la primera página cuando cambian los filtros
+    setCurrentPage(1);
   }, [tickets, searchTerm, statusFilter, serviceFilter, priorityFilter, dateFilter, customStartDate, customEndDate]);
 
-  // Calcular tickets para la página actual
   const paginatedTickets = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return filteredTickets.slice(startIndex, endIndex);
   }, [filteredTickets, currentPage, itemsPerPage]);
 
-  // Calcular total de páginas
   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
 
-  // Cambiar de página
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // Ir a la página anterior
   const handlePreviousPage = () => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
   };
 
-  // Ir a la siguiente página
   const handleNextPage = () => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
   };
 
-  // Cargar técnicos disponibles cuando se abre el modal de asignación
   const loadAvailableTechnicians = async (serviceId: string) => {
     try {
       console.log('=== LOAD GROUPED TECHNICIANS ===');
       console.log('Ticket Service ID:', serviceId);
       
-      // Load all technicians grouped by service type (para asignación manual mostrar todos los servicios)
       const response = await ApiService.getAllTechniciansGroupedByService();
       console.log('API Response:', response);
       
@@ -428,13 +390,10 @@ const AdminTicketManagement: React.FC = () => {
         console.log('Grouped technicians data:', response.data);
         console.log('Number of service groups:', response.data.length);
         
-        // Para asignación manual: mostrar TODOS los técnicos de TODAS las áreas
-        // El usuario puede navegar entre pestañas para ver diferentes servicios
         const allGroups = response.data;
         
         console.log('All service groups for manual assignment:', allGroups);
         
-        // Log each service group and its technicians
         allGroups.forEach((group: any) => {
           console.log(`Service: ${group.service_name}, Technicians: ${group.technicians.length}`);
           group.technicians.forEach((tech: any) => {
@@ -445,87 +404,45 @@ const AdminTicketManagement: React.FC = () => {
         setGroupedTechnicians(allGroups);
       } else {
         console.log('No technicians found or error, using mock data:', response.message);
-        // Use mock data as fallback - mostrar todos los servicios
         const mockGroupedTechnicians = [
-          {
-            service_id: 1,
-            service_name: 'Redes',
-            service_details: 'Infraestructura de red y conectividad',
-            count: 2,
-            technicians: [
-              { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
-              { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
-            ]
-          },
-          {
-            service_id: 2,
-            service_name: 'Soporte',
-            service_details: 'Soporte técnico general',
-            count: 2,
-            technicians: [
-              { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Disponible', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 0 },
-              { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 0 }
-            ]
-          },
-          {
-            service_id: 3,
-            service_name: 'Programación',
-            service_details: 'Desarrollo de software',
-            count: 2,
-            technicians: [
-              { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Disponible', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 0 },
-              { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
-            ]
-          }
+          { service_id: 1, service_name: 'Redes', service_details: 'Infraestructura de red y conectividad', count: 2, technicians: [
+            { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
+            { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
+          ]},
+          { service_id: 2, service_name: 'Soporte', service_details: 'Soporte técnico general', count: 2, technicians: [
+            { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Disponible', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 0 },
+            { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 0 }
+          ]},
+          { service_id: 3, service_name: 'Programación', service_details: 'Desarrollo de software', count: 2, technicians: [
+            { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Disponible', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 0 },
+            { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
+          ]}
         ];
-        
         setGroupedTechnicians(mockGroupedTechnicians);
       }
     } catch (error) {
       console.error('Error loading technicians, using mock data:', error);
-      // Use mock data as fallback - mostrar todos los servicios
       const mockGroupedTechnicians = [
-        {
-          service_id: 1,
-          service_name: 'Redes',
-          service_details: 'Infraestructura de red y conectividad',
-          count: 2,
-          technicians: [
-            { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
-            { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
-          ]
-        },
-        {
-          service_id: 2,
-          service_name: 'Soporte',
-          service_details: 'Soporte técnico general',
-          count: 2,
-          technicians: [
-            { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Disponible', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 0 },
-            { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 0 }
-          ]
-        },
-        {
-          service_id: 3,
-          service_name: 'Programación',
-          service_details: 'Desarrollo de software',
-          count: 2,
-          technicians: [
-            { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Disponible', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 0 },
-            { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
-          ]
-        }
+        { service_id: 1, service_name: 'Redes', service_details: 'Infraestructura de red y conectividad', count: 2, technicians: [
+          { ID_Technicians: 1, First_Name: 'Juan', Last_Name: 'Pérez', Status: 'Disponible', Email: 'juan.perez@alcaldia.gob', Tickets_Resolved: 15, Active_Tickets: 0 },
+          { ID_Technicians: 2, First_Name: 'María', Last_Name: 'García', Status: 'Disponible', Email: 'maria.garcia@alcaldia.gob', Tickets_Resolved: 23, Active_Tickets: 0 }
+        ]},
+        { service_id: 2, service_name: 'Soporte', service_details: 'Soporte técnico general', count: 2, technicians: [
+          { ID_Technicians: 3, First_Name: 'Carlos', Last_Name: 'Rodríguez', Status: 'Disponible', Email: 'carlos.rodriguez@alcaldia.gob', Tickets_Resolved: 18, Active_Tickets: 0 },
+          { ID_Technicians: 4, First_Name: 'Ana', Last_Name: 'Martínez', Status: 'Disponible', Email: 'ana.martinez@alcaldia.gob', Tickets_Resolved: 12, Active_Tickets: 0 }
+        ]},
+        { service_id: 3, service_name: 'Programación', service_details: 'Desarrollo de software', count: 2, technicians: [
+          { ID_Technicians: 5, First_Name: 'Luis', Last_Name: 'López', Status: 'Disponible', Email: 'luis.lopez@alcaldia.gob', Tickets_Resolved: 30, Active_Tickets: 0 },
+          { ID_Technicians: 6, First_Name: 'Sofía', Last_Name: 'Sánchez', Status: 'Disponible', Email: 'sofia.sanchez@alcaldia.gob', Tickets_Resolved: 25, Active_Tickets: 0 }
+        ]}
       ];
-      
       setGroupedTechnicians(mockGroupedTechnicians);
     }
   };
 
-  // Cargar detalles del ticket
   const loadTicketDetails = async (ticket: Ticket) => {
     setSelectedTicket(ticket);
 
-    // Cargar comentarios reales del backend
     try {
       console.log('=== LOADING COMMENTS ===');
       console.log('Ticket ID:', ticket.ID_Service_Request);
@@ -553,7 +470,6 @@ const AdminTicketManagement: React.FC = () => {
       setComments([]);
     }
 
-    // Cargar timeline del backend real usando PHP-PRO
     try {
       console.log('=== LOADING TIMELINE ===');
       console.log('Ticket ID:', ticket.ID_Service_Request);
@@ -582,11 +498,9 @@ const AdminTicketManagement: React.FC = () => {
       setTimeline([]);
     }
 
-    // Attachments mock (por ahora)
     setAttachments([]);
   };
 
-  // Manejar asignación de técnicos
   const handleAssignTechnician = async () => {
     if (!selectedTicket || selectedTechnicians.length === 0) return;
 
@@ -599,7 +513,6 @@ const AdminTicketManagement: React.FC = () => {
       );
 
       if (response.success) {
-        // Recargar tickets para reflejar cambios
         await loadTickets();
 
         setShowAssignModal(false);
@@ -617,7 +530,6 @@ const AdminTicketManagement: React.FC = () => {
     }
   };
 
-  // Manejar cambio de prioridad
   const handlePriorityChange = async () => {
     if (!selectedTicket) return;
 
@@ -644,7 +556,6 @@ const AdminTicketManagement: React.FC = () => {
     }
   };
 
-  // Manejar envío de comentario
   const handleSendComment = async () => {
     if (!selectedTicket || !newComment.trim()) return;
 
@@ -657,7 +568,6 @@ const AdminTicketManagement: React.FC = () => {
       );
 
       if (response.success) {
-        // Recargar comentarios
         await loadTicketDetails(selectedTicket);
         setNewComment('');
         showNotification('success', 'Comentario agregado exitosamente');
@@ -672,7 +582,6 @@ const AdminTicketManagement: React.FC = () => {
     }
   };
 
-  // Manejar cierre de ticket
   const handleCloseTicket = async () => {
     if (!selectedTicket) return;
 
@@ -700,595 +609,292 @@ const AdminTicketManagement: React.FC = () => {
     }
   };
 
-  // Obtener color de prioridad
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Crítica': return 'priority-critical';
-      case 'Alta': return 'priority-high';
-      case 'Media': return 'priority-medium';
-      case 'Baja': return 'priority-low';
-      default: return 'priority-medium';
+  const getPriorityClass = (p: string) => {
+    switch (p) {
+      case 'Crítica': return 'p-crit';
+      case 'Alta': return 'p-high';
+      case 'Media': return 'p-med';
+      case 'Baja': return 'p-low';
+      default: return 'p-med';
     }
   };
 
-  // Obtener color de estado
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pendiente': return 'status-pending';
-      case 'En Proceso': return 'status-progress';
-      case 'Cerrado': return 'status-resolved';
-      default: return 'status-pending';
+  const getStatusClass = (s: string) => {
+    switch (s) {
+      case 'Pendiente': return 's-pend';
+      case 'En Proceso': return 's-prog';
+      case 'Cerrado': return 's-done';
+      default: return 's-pend';
     }
   };
 
   return (
-    <div className="admin-ticket-management">
-      {/* Notification Toast */}
+    <div className="gvt">
       {notification && (
-        <div className={`notification-toast ${notification.type}`}>
-          {notification.type === 'success' ? (
-            <CheckCircle2 size={20} />
-          ) : (
-            <XCircle size={20} />
-          )}
-          <span>{notification.message}</span>
+        <div className={`gvt-toast gvt-toast--${notification.type}`}>
+          {notification.type === 'success' ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
+          {notification.message}
         </div>
       )}
 
-      <div className="management-container">
-        {/* Header */}
-        <div className="management-header">
-          <div className="header-content">
-            <h1 className="page-title">
-              <FileText size={28} />
-              Gestión de Tickets
-            </h1>
+      <div className="gvt-body">
+        <div className="gvt-head">
+          <div className="gvt-head-l">
+            <div className="gvt-emblem">
+              <FileText size={18} />
+            </div>
+            <div>
+              <h1 className="gvt-title">Gestión de Tickets</h1>
+              <p className="gvt-sub">Sistema de Solicitudes de Servicio Técnico</p>
+            </div>
           </div>
-          
-          <div className="header-actions">
-            <button 
-              className="btn btn-secondary"
-              onClick={() => navigate('/')}
-            >
-              <ArrowLeft size={18} />
-              Volver al Dashboard
+          <div className="gvt-head-r">
+            <button className="gvt-btn gvt-btn--outline" onClick={() => navigate('/')}>
+              <ArrowLeft size={14} />
+              Dashboard
             </button>
-            <button 
-              className="btn btn-primary" 
-              onClick={() => loadTickets()}
-              disabled={loading}
-            >
-              <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
-              Actualizar
+            <button className="gvt-btn gvt-btn--primary" onClick={() => loadTickets()} disabled={loading}>
+              <RefreshCw size={14} className={loading ? 'gvt-spin' : ''} />
+              {loading ? 'Cargando' : 'Actualizar'}
             </button>
           </div>
         </div>
 
-        {/* Report Cards */}
-        <div className="report-cards">
-          <div className="report-card">
-            <div className="card-icon">
-              <Clock size={24} />
-            </div>
-            <div className="card-content">
-              <h3>Pendientes</h3>
-              <p className="card-value">{tickets.filter(t => t.Status === 'Pendiente').length}</p>
-            </div>
+        <div className="gvt-bar">
+          <div className="gvt-stat">
+            <span className="gvt-stat-n">{tickets.filter(t => t.Status === 'Pendiente').length}</span>
+            <span className="gvt-stat-l">Pendientes</span>
           </div>
-          
-          <div className="report-card">
-            <div className="card-icon">
-              <Settings size={24} />
-            </div>
-            <div className="card-content">
-              <h3>En Proceso</h3>
-              <p className="card-value">{tickets.filter(t => t.Status === 'En Proceso').length}</p>
-            </div>
+          <div className="gvt-stat">
+            <span className="gvt-stat-n">{tickets.filter(t => t.Status === 'En Proceso').length}</span>
+            <span className="gvt-stat-l">En Proceso</span>
           </div>
-          
-          <div className="report-card">
-            <div className="card-icon">
-              <CheckCircle size={24} />
-            </div>
-            <div className="card-content">
-              <h3>Resueltos</h3>
-              <p className="card-value">{tickets.filter(t => t.Status === 'Cerrado').length}</p>
-            </div>
+          <div className="gvt-stat">
+            <span className="gvt-stat-n">{tickets.filter(t => t.Status === 'Cerrado').length}</span>
+            <span className="gvt-stat-l">Resueltos</span>
           </div>
-          
-          <div className="report-card">
-            <div className="card-icon">
-              <AlertCircle size={24} />
-            </div>
-            <div className="card-content">
-              <h3>Críticos</h3>
-              <p className="card-value">{tickets.filter(t => t.System_Priority === 'Crítica').length}</p>
-            </div>
+          <div className="gvt-stat">
+            <span className="gvt-stat-n gvt-stat-n--crit">{tickets.filter(t => t.System_Priority === 'Crítica').length}</span>
+            <span className="gvt-stat-l">Críticos</span>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="filters-section">
-          <div className="search-container">
-            <Search size={20} className="search-icon" />
+        <div className="gvt-tools">
+          <div className="gvt-search">
+            <Search size={15} />
             <input
               type="text"
               placeholder="Buscar por código o asunto..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
+              onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
-          
-          <div className="filter-controls">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todos los Estados</option>
+          <div className="gvt-filters">
+            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="gvt-sel">
+              <option value="all">Todos los estados</option>
               <option value="Pendiente">Pendiente</option>
               <option value="En Proceso">En Proceso</option>
               <option value="Cerrado">Cerrado</option>
             </select>
-
-            <select
-              value={serviceFilter}
-              onChange={(e) => setServiceFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todos los Servicios</option>
-              <option value="1">Redes</option>
-              <option value="2">Soporte</option>
-              <option value="3">Programación</option>
-            </select>
-
-            <select
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todas las Prioridades</option>
+            <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="gvt-sel">
+              <option value="all">Todas las prioridades</option>
               <option value="Crítica">Crítica</option>
               <option value="Alta">Alta</option>
               <option value="Media">Media</option>
               <option value="Baja">Baja</option>
             </select>
-
-            <select
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">Todas las Fechas</option>
+            <select value={dateFilter} onChange={e => setDateFilter(e.target.value)} className="gvt-sel">
+              <option value="all">Todas las fechas</option>
               <option value="today">Hoy</option>
-              <option value="week">Esta Semana</option>
-              <option value="custom">Rango Personalizado</option>
+              <option value="week">Esta semana</option>
+              <option value="custom">Personalizado</option>
             </select>
-
             {dateFilter === 'custom' && (
-              <div className="custom-date-filters">
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  className="date-input"
-                />
-                <span className="date-separator">-</span>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  className="date-input"
-                />
+              <div className="gvt-dates">
+                <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="gvt-date" />
+                <span>–</span>
+                <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="gvt-date" />
               </div>
             )}
           </div>
         </div>
 
-        {/* Tickets Table - Institutional Professional Design */}
-        <div className="tickets-table-container">
-          {loading ? (
-            <div className="loading-state">
-              <RefreshCw className="spinner" size={32} />
-              <p>Cargando tickets...</p>
-            </div>
-          ) : error ? (
-            <div className="error-state">
-              <AlertCircle size={32} />
-              <p>{error}</p>
-            </div>
-          ) : (
-            <>
-              <div className="table-header-info">
-                <span className="table-count">{filteredTickets.length} TICKETS REGISTRADOS</span>
-                <span className="table-pagination-info">
-                  Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredTickets.length)} de {filteredTickets.length}
-                </span>
+        {loading && tickets.length === 0 ? (
+          <div className="gvt-cards">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="gvt-sk">
+                <div className="gvt-sk-s" style={{ width: 120 }} />
+                <div className="gvt-sk-s" style={{ width: '65%', marginTop: 8 }} />
+                <div className="gvt-sk-r"><span className="gvt-sk-b" /><span className="gvt-sk-b" /></div>
               </div>
-              <div className="institutional-table-wrapper">
-                <table className="institutional-ticket-table">
-                  <thead>
-                    <tr>
-                      <th className="col-code">CÓDIGO</th>
-                      <th className="col-subject">ASUNTO</th>
-                      <th className="col-location">UBICACIÓN</th>
-                      <th className="col-service">SERVICIO</th>
-                      <th className="col-priority">PRIORIDAD</th>
-                      <th className="col-status">ESTADO</th>
-                      <th className="col-date">FECHA</th>
-                      <th className="col-actions">ACCIONES</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedTickets.map((ticket: Ticket) => (
-                      <tr key={ticket.ID_Service_Request}>
-                        <td className="col-code">
-                          <div className="code-cell">
-                            <FileText size={14} />
-                            <span>{ticket.Ticket_Code}</span>
-                          </div>
-                        </td>
-                        <td className="col-subject">
-                          <div className="subject-cell">
-                            <span className="subject-text">{ticket.Subject}</span>
-                          </div>
-                        </td>
-                        <td className="col-location">
-                          <span className="location-text">
-                            {ticket.Direction_Name && ticket.Direction_Name.length > 25
-                              ? `${ticket.Direction_Name.substring(0, 25)}...`
-                              : ticket.Direction_Name || 'N/A'}
-                          </span>
-                        </td>
-                        <td className="col-service">
-                          <span className="service-text">{ticket.Service_Name || 'N/A'}</span>
-                        </td>
-                        <td className="col-priority">
-                          <span className={`priority-badge-institutional ${getPriorityColor(ticket.System_Priority)}`}>
-                            {ticket.System_Priority}
-                          </span>
-                        </td>
-                        <td className="col-status">
-                          <span className={`status-badge-institutional ${getStatusColor(ticket.Status)}`}>
-                            {ticket.Status}
-                          </span>
-                        </td>
-                        <td className="col-date">
-                          <span className="date-text">
-                            {new Date(ticket.Created_at).toLocaleString('es-ES', {
-                              day: '2-digit',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
-                        </td>
-                        <td className="col-actions">
-                          <div className="actions-cell">
-                            <button
-                              className="institutional-action-btn"
-                              onClick={() => {
-                                loadTicketDetails(ticket);
-                                setShowDetailModal(true);
-                              }}
-                              title="Ver detalles"
-                            >
-                              <Eye size={16} />
-                            </button>
-                            {ticket.Status !== 'Cerrado' && (
-                              <>
-                                <button
-                                  className="institutional-action-btn"
-                                  onClick={async () => {
-                                    await loadTicketDetails(ticket);
-                                    await loadAvailableTechnicians(ticket.Fk_TI_Service);
-                                    setShowAssignModal(true);
-                                  }}
-                                  title="Asignar técnico"
-                                >
-                                  <User size={16} />
-                                </button>
-                                <button
-                                  className="institutional-action-btn"
-                                  onClick={() => {
-                                    loadTicketDetails(ticket);
-                                    setNewPriority(ticket.System_Priority);
-                                    setShowPriorityModal(true);
-                                  }}
-                                  title="Cambiar prioridad"
-                                >
-                                  <Flag size={16} />
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Controls */}
-              {filteredTickets.length > itemsPerPage && (
-                <div className="pagination-container">
-                  <div className="pagination-info">
-                    <span>Página {currentPage} de {totalPages}</span>
-                  </div>
-                  <div className="pagination-controls">
-                    <button
-                      className="pagination-btn"
-                      onClick={handlePreviousPage}
-                      disabled={currentPage === 1}
-                    >
-                      <ChevronLeft size={16} />
-                      Anterior
-                    </button>
-                    
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                      if (
-                        page === 1 ||
-                        page === totalPages ||
-                        (page >= currentPage - 1 && page <= currentPage + 1)
-                      ) {
-                        return (
-                          <button
-                            key={page}
-                            className={`pagination-page-btn ${currentPage === page ? 'active' : ''}`}
-                            onClick={() => handlePageChange(page)}
-                          >
-                            {page}
-                          </button>
-                        );
-                      } else if (
-                        page === currentPage - 2 ||
-                        page === currentPage + 2
-                      ) {
-                        return <span key={page} className="pagination-ellipsis">...</span>;
-                      }
-                      return null;
-                    })}
-                    
-                    <button
-                      className="pagination-btn"
-                      onClick={handleNextPage}
-                      disabled={currentPage === totalPages}
-                    >
-                      Siguiente
-                      <ChevronRight size={16} />
-                    </button>
+            ))}
+          </div>
+        ) : error ? (
+          <div className="gvt-empty">
+            <div className="gvt-empty-i"><AlertCircle size={22} /></div>
+            <p className="gvt-empty-t">{error}</p>
+            <button className="gvt-btn gvt-btn--outline" onClick={() => loadTickets()}>Reintentar</button>
+          </div>
+        ) : filteredTickets.length === 0 ? (
+          <div className="gvt-empty">
+            <div className="gvt-empty-i"><FileText size={22} /></div>
+            <p className="gvt-empty-t">No se encontraron tickets</p>
+            <p className="gvt-empty-s">Ajusta los filtros de búsqueda</p>
+          </div>
+        ) : (
+          <>
+            <div className="gvt-cards">
+              {paginatedTickets.map((t, i) => (
+                <div key={t.ID_Service_Request} className={`gvt-card gvt-card--${getPriorityClass(t.System_Priority)}`} style={{ animationDelay: `${i * 35}ms` }}>
+                  <button className="gvt-card-body" onClick={() => { loadTicketDetails(t); setShowDetailModal(true); }}>
+                    <div className="gvt-card-head">
+                      <span className="gvt-card-code">
+                        <FileText size={11} />
+                        {t.Ticket_Code}
+                      </span>
+                      <div className="gvt-card-tags">
+                        <span className={`gvt-tag gvt-tag--${getPriorityClass(t.System_Priority)}`}>{t.System_Priority}</span>
+                        <span className={`gvt-tag gvt-tag--${getStatusClass(t.Status)}`}>{t.Status}</span>
+                      </div>
+                    </div>
+                    <h3 className="gvt-card-subject">{t.Subject}</h3>
+                    <div className="gvt-card-meta">
+                      <span>{t.Direction_Name || 'Sin dirección'}</span>
+                      <span>{t.Service_Name || '–'}</span>
+                      <span className="gvt-card-date">{new Date(t.Created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  </button>
+                  <div className="gvt-card-acts">
+                    <button className="gvt-act" onClick={() => { loadTicketDetails(t); setShowDetailModal(true); }} title="Ver"><Eye size={14} /></button>
+                    {t.Status !== 'Cerrado' && (
+                      <>
+                        <button className="gvt-act" onClick={async () => { await loadTicketDetails(t); await loadAvailableTechnicians(t.Fk_TI_Service); setShowAssignModal(true); }} title="Asignar"><User size={14} /></button>
+                        <button className="gvt-act" onClick={() => { loadTicketDetails(t); setNewPriority(t.System_Priority); setShowPriorityModal(true); }} title="Prioridad"><Flag size={14} /></button>
+                      </>
+                    )}
                   </div>
                 </div>
-              )}
-            </>
-          )}
-        </div>
+              ))}
+            </div>
+
+            {filteredTickets.length > itemsPerPage && (
+              <div className="gvt-pag">
+                <span className="gvt-pag-info">Página {currentPage} de {totalPages}</span>
+                <div className="gvt-pag-b">
+                  <button className="gvt-pag-btn" onClick={handlePreviousPage} disabled={currentPage === 1}>
+                    <ChevronLeft size={13} /> Anterior
+                  </button>
+                  <div className="gvt-pag-n">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => {
+                      if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1))
+                        return <button key={p} className={`gvt-pag-num ${currentPage === p ? 'active' : ''}`} onClick={() => handlePageChange(p)}>{p}</button>;
+                      if (p === currentPage - 2 || p === currentPage + 2)
+                        return <span key={p} className="gvt-pag-d">⋯</span>;
+                      return null;
+                    })}
+                  </div>
+                  <button className="gvt-pag-btn" onClick={handleNextPage} disabled={currentPage === totalPages}>
+                    Siguiente <ChevronRight size={13} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Modal de Asignación de Técnico - Diseño Ligero */}
       {showAssignModal && selectedTicket && (
-        <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
-          <div className="modal-content modal-wide" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>Asignar Técnicos</h2>
-              <button
-                className="close-btn"
-                onClick={() => setShowAssignModal(false)}
-              >
-                <X size={20} />
-              </button>
+        <div className="gvt-over" onClick={() => setShowAssignModal(false)}>
+          <div className="gvt-mod" onClick={e => e.stopPropagation()}>
+            <div className="gvt-mod-h">
+              <h2 className="gvt-mod-t">Asignar técnicos</h2>
+              <button className="gvt-mod-x" onClick={() => setShowAssignModal(false)}><X size={17} /></button>
             </div>
-
-            <div className="modal-body">
-              <div className="ticket-info">
-                <p><strong>Ticket:</strong> {selectedTicket.Ticket_Code}</p>
-                <p><strong>Asunto:</strong> {selectedTicket.Subject}</p>
-                <p><strong>Técnicos Asignados:</strong> {selectedTicket.Technicians.length > 0 ? selectedTicket.Technicians.map(t => t.Technician_Name).join(', ') : 'Sin asignar'}</p>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Seleccionar Técnicos</label>
-
-                {groupedTechnicians.length === 0 ? (
-                  <div className="empty-state-professional">
-                    <div className="empty-icon">
-                      <Users size={40} />
-                    </div>
-                    <p className="empty-title">No hay técnicos disponibles</p>
-                    <p className="empty-subtitle">Verifica que los técnicos estén asignados en el módulo de Gestión de Técnicos</p>
+            <div className="gvt-mod-info">
+              <div className="gvt-info-r"><span className="gvt-info-l">Ticket</span><span className="gvt-info-c">{selectedTicket.Ticket_Code}</span></div>
+              <div className="gvt-info-r"><span className="gvt-info-l">Asunto</span><span className="gvt-info-v">{selectedTicket.Subject}</span></div>
+              <div className="gvt-info-r"><span className="gvt-info-l">Técnicos</span><span className="gvt-info-v">{selectedTicket.Technicians.length > 0 ? selectedTicket.Technicians.map(x => x.Technician_Name).join(', ') : 'Sin asignar'}</span></div>
+            </div>
+            <div className="gvt-mod-b">
+              {groupedTechnicians.length === 0 ? (
+                <div className="gvt-empty" style={{ padding: '28px 0' }}>
+                  <div className="gvt-empty-i"><Users size={22} /></div>
+                  <p className="gvt-empty-t">No hay técnicos disponibles</p>
+                </div>
+              ) : (
+                <>
+                  <div className="gvt-grp">
+                    <button className={`gvt-grp-btn ${activeTab === 'all' ? 'active' : ''}`} onClick={() => setActiveTab('all')}>Todos</button>
+                    {groupedTechnicians.map(g => {
+                      const n = g.technicians.filter((x: any) => x.Status === 'Disponible').length;
+                      if (!n) return null;
+                      return <button key={g.service_name} className={`gvt-grp-btn ${activeTab === g.service_name ? 'active' : ''}`} onClick={() => setActiveTab(g.service_name)}>{g.service_name}</button>;
+                    })}
                   </div>
-                ) : (
-                  <div className="tabbed-assignment-container">
-                    <div className="tabs-header">
-                      <button
-                        className={`tab-button ${activeTab === 'all' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('all')}
-                      >
-                        Todos
-                        <span className="tab-count">
-                          {groupedTechnicians.reduce((acc: number, group: any) =>
-                            acc + group.technicians.filter((t: any) => t.Status === 'Disponible').length, 0)}
-                        </span>
-                      </button>
-                      {groupedTechnicians.map((serviceGroup) => {
-                        const availableCount = serviceGroup.technicians.filter((t: any) =>
-                          t.Status === 'Disponible'
-                        ).length;
-
-                        if (availableCount === 0) return null;
-
-                        const getTabIcon = (serviceName: string) => {
-                          switch (serviceName.toLowerCase()) {
-                            case 'redes': return '🌐';
-                            case 'soporte': return '🔧';
-                            case 'programación': return '💻';
-                            default: return '⚙️';
-                          }
-                        };
-
+                  <div className="gvt-ts">
+                    <Search size={14} />
+                    <input type="text" placeholder="Buscar técnico..." value={technicianSearch} onChange={e => setTechnicianSearch(e.target.value)} />
+                  </div>
+                  <div className="gvt-tl">
+                    {(() => {
+                      let list: any[] = [];
+                      if (activeTab === 'all') {
+                        groupedTechnicians.forEach(g => list = [...list, ...g.technicians.filter((x: any) => x.Status === 'Disponible')]);
+                      } else {
+                        const g = groupedTechnicians.find((x: any) => x.service_name === activeTab);
+                        if (g) list = g.technicians.filter((x: any) => x.Status === 'Disponible');
+                      }
+                      const f = list.filter((x: any) => !technicianSearch || `${x.First_Name} ${x.Last_Name}`.toLowerCase().includes(technicianSearch.toLowerCase()));
+                      if (!f.length) return <div className="gvt-empty" style={{ padding: '20px 0' }}><p className="gvt-empty-t">Sin resultados</p></div>;
+                      return f.map((tech: any) => {
+                        const id = tech.ID_Technicians?.toString();
+                        const is = selectedTechnicians.includes(id);
                         return (
-                          <button
-                            key={serviceGroup.service_id || serviceGroup.service_name}
-                            className={`tab-button ${activeTab === serviceGroup.service_name ? 'active' : ''}`}
-                            onClick={() => setActiveTab(serviceGroup.service_name)}
-                          >
-                            <span className="tab-icon">{getTabIcon(serviceGroup.service_name)}</span>
-                            {serviceGroup.service_name}
-                            <span className="tab-count">{availableCount}</span>
-                          </button>
+                          <div key={id} className={`gvt-tech ${is ? 'on' : ''}`} onClick={() => setSelectedTechnicians(is ? selectedTechnicians.filter(x => x !== id) : [...selectedTechnicians, id])}>
+                            <div className={`gvt-tech-av ${is ? 'on' : ''}`}>{tech.First_Name?.[0]}{tech.Last_Name?.[0]}</div>
+                            <div className="gvt-tech-i">
+                              <span className="gvt-tech-n">{tech.First_Name} {tech.Last_Name}</span>
+                              <span className="gvt-tech-e">{tech.Email}</span>
+                              <span className="gvt-tech-s">{tech.Tickets_Resolved || 0} resueltos · {tech.Active_Tickets || 0} activos</span>
+                            </div>
+                            <div className={`gvt-tech-c ${is ? 'on' : ''}`}>{is && <Check size={10} />}</div>
+                          </div>
                         );
-                      }).filter(Boolean)}
-                    </div>
-
-                    <div className="tab-content">
-                      <div className="tab-search">
-                        <Search size={16} className="search-icon" />
-                        <input
-                          type="text"
-                          placeholder="Buscar técnico..."
-                          value={technicianSearch}
-                          onChange={(e) => setTechnicianSearch(e.target.value)}
-                          className="tab-search-input"
-                        />
-                      </div>
-
-                      <div className="technicians-grid-new">
-                        {(() => {
-                          let techniciansToShow: any[] = [];
-
-                          if (activeTab === 'all') {
-                            groupedTechnicians.forEach((group: any) => {
-                              const availableTechs = group.technicians.filter((t: any) =>
-                                t.Status === 'Disponible'
-                              );
-                              techniciansToShow = [...techniciansToShow, ...availableTechs];
-                            });
-                          } else {
-                            const activeGroup = groupedTechnicians.find((g: any) => g.service_name === activeTab);
-                            if (activeGroup) {
-                              techniciansToShow = activeGroup.technicians.filter((t: any) =>
-                                t.Status === 'Disponible'
-                              );
-                            }
-                          }
-
-                          const filteredTechs = techniciansToShow.filter((t: any) =>
-                            technicianSearch === '' ||
-                            `${t.First_Name} ${t.Last_Name}`.toLowerCase().includes(technicianSearch.toLowerCase())
-                          );
-
-                          if (filteredTechs.length === 0) {
-                            return (
-                              <div className="no-results">
-                                <p>No se encontraron técnicos</p>
-                              </div>
-                            );
-                          }
-
-                          return filteredTechs.map((tech: any) => {
-                            const techId = tech.ID_Technicians?.toString();
-                            const isSelected = selectedTechnicians.includes(techId);
-
-                            return (
-                              <div
-                                key={techId}
-                                className={`tech-card-new ${isSelected ? 'selected' : ''}`}
-                                onClick={() => {
-                                  if (isSelected) {
-                                    setSelectedTechnicians(selectedTechnicians.filter(id => id !== techId));
-                                  } else {
-                                    setSelectedTechnicians([...selectedTechnicians, techId]);
-                                  }
-                                }}
-                              >
-                                <div className="tech-card-header">
-                                  <div className="tech-avatar-new">
-                                    {tech.First_Name?.charAt(0)}{tech.Last_Name?.charAt(0)}
-                                  </div>
-                                  <div className="tech-card-info">
-                                    <div className="tech-name-new">
-                                      {tech.First_Name} {tech.Last_Name}
-                                    </div>
-                                    <div className="tech-email-new">
-                                      {tech.Email}
-                                    </div>
-                                  </div>
-                                  <div className={`tech-check ${isSelected ? 'checked' : ''}`}>
-                                    <Check size={16} />
-                                  </div>
-                                </div>
-                                <div className="tech-card-stats-new">
-                                  <div className="stat-item-new">
-                                    <span className="stat-value-new">{tech.Tickets_Resolved || 0}</span>
-                                    <span className="stat-label-new">Resueltos</span>
-                                  </div>
-                                  <div className="stat-item-new">
-                                    <span className="stat-value-new">{tech.Active_Tickets || 0}</span>
-                                    <span className="stat-label-new">Activos</span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          });
-                        })()}
-                      </div>
-                    </div>
+                      });
+                    })()}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
-
-            <div className="modal-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={() => {
-                  setShowAssignModal(false);
-                  setSelectedTechnicians([]);
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleAssignTechnician}
-                disabled={selectedTechnicians.length === 0}
-              >
-                <Users size={16} />
-                Agregar {selectedTechnicians.length} técnico{selectedTechnicians.length !== 1 ? 's' : ''}
+            <div className="gvt-mod-f">
+              <button className="gvt-btn gvt-btn--outline" onClick={() => { setShowAssignModal(false); setSelectedTechnicians([]); }}>Cancelar</button>
+              <button className="gvt-btn gvt-btn--primary" onClick={handleAssignTechnician} disabled={!selectedTechnicians.length}>
+                <Users size={14} />
+                Asignar ({selectedTechnicians.length})
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Cambio de Prioridad */}
       {showPriorityModal && selectedTicket && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Cambiar Prioridad</h2>
-              <button
-                className="close-btn"
-                onClick={() => setShowPriorityModal(false)}
-              >
-                <X size={20} />
-              </button>
+        <div className="gvt-over">
+          <div className="gvt-mod gvt-mod--sm">
+            <div className="gvt-mod-h">
+              <h2 className="gvt-mod-t">Cambiar prioridad</h2>
+              <button className="gvt-mod-x" onClick={() => setShowPriorityModal(false)}><X size={17} /></button>
             </div>
-            
-            <div className="modal-body">
-              <div className="ticket-info">
-                <p><strong>Ticket:</strong> {selectedTicket.Ticket_Code}</p>
-                <p><strong>Prioridad Actual:</strong> {selectedTicket.System_Priority}</p>
+            <div className="gvt-mod-b">
+              <div className="gvt-prior">
+                <span className="gvt-info-l">Ticket</span> <span className="gvt-info-c">{selectedTicket.Ticket_Code}</span>
+                <div style={{ marginTop: 6 }}>
+                  <span className="gvt-info-l">Actual</span>{' '}
+                  <span className={`gvt-tag gvt-tag--${getPriorityClass(selectedTicket.System_Priority)}`}>{selectedTicket.System_Priority}</span>
+                </div>
               </div>
-              
-              <div className="form-group">
-                <label>Nueva Prioridad:</label>
-                <select
-                  value={newPriority}
-                  onChange={(e) => setNewPriority(e.target.value as any)}
-                  className="form-select"
-                >
+              <div className="gvt-field">
+                <label className="gvt-label">Nueva prioridad</label>
+                <select value={newPriority} onChange={e => setNewPriority(e.target.value as any)} className="gvt-sel" style={{ width: '100%' }}>
                   <option value="Baja">Baja</option>
                   <option value="Media">Media</option>
                   <option value="Alta">Alta</option>
@@ -1296,343 +902,134 @@ const AdminTicketManagement: React.FC = () => {
                 </select>
               </div>
             </div>
-            
-            <div className="modal-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowPriorityModal(false)}
-              >
-                Cancelar
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handlePriorityChange}
-              >
-                Cambiar Prioridad
-              </button>
+            <div className="gvt-mod-f">
+              <button className="gvt-btn gvt-btn--outline" onClick={() => setShowPriorityModal(false)}>Cancelar</button>
+              <button className="gvt-btn gvt-btn--primary" onClick={handlePriorityChange}>Guardar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Detalles del Ticket - Diseño Ligero */}
       {showDetailModal && selectedTicket && (
-        <div className="modal-overlay modal-large">
-          <div className="modal-large-content" ref={modalRef}>
-            <div className="detail-modal-header">
-              <div className="detail-modal-title-section">
-                <div className="ticket-code-badge">
-                  <FileText size={16} />
-                  {selectedTicket.Ticket_Code}
-                </div>
-                <div className="detail-modal-badges">
-                  <span className={`priority-badge ${getPriorityColor(selectedTicket.System_Priority)}`}>
-                    {selectedTicket.System_Priority}
-                  </span>
-                  <span className={`status-badge ${getStatusColor(selectedTicket.Status)}`}>
-                    {selectedTicket.Status}
-                  </span>
-                </div>
+        <div className="gvt-over" onClick={() => setShowDetailModal(false)}>
+          <div className="gvt-mod gvt-mod--xl" ref={modalRef} onClick={e => e.stopPropagation()}>
+            <div className="gvt-mod-h">
+              <div className="gvt-dh">
+                <span className="gvt-info-c"><FileText size={12} /> {selectedTicket.Ticket_Code}</span>
+                <span className={`gvt-tag gvt-tag--${getPriorityClass(selectedTicket.System_Priority)}`}>{selectedTicket.System_Priority}</span>
+                <span className={`gvt-tag gvt-tag--${getStatusClass(selectedTicket.Status)}`}>{selectedTicket.Status}</span>
               </div>
-              <button
-                className="close-btn detail-close-btn"
-                onClick={() => setShowDetailModal(false)}
-              >
-                <X size={20} />
-              </button>
+              <button className="gvt-mod-x" onClick={() => setShowDetailModal(false)}><X size={17} /></button>
             </div>
 
-            <div className="modal-large-body">
-              <div className="detail-modal-layout">
-                {/* Left Column - Main Info */}
-                <div className="detail-modal-left">
-                  {/* Subject & Description Card */}
-                  <div className="detail-card">
-                    <div className="detail-card-header">
-                      <h3 className="detail-card-title">
-                        <FileText size={18} />
-                        Información del Ticket
-                      </h3>
-                    </div>
-                    <div className="detail-card-content">
-                      <div className="ticket-subject-section">
-                        <label>Asunto</label>
-                        <p className="ticket-subject-text">{selectedTicket.Subject}</p>
-                      </div>
-                      <div className="ticket-description-section">
-                        <label>Descripción</label>
-                        <p className="ticket-description-text">{selectedTicket.Description}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Location & Service Card */}
-                  <div className="detail-card">
-                    <div className="detail-card-header">
-                      <h3 className="detail-card-title">
-                        <MapPin size={18} />
-                        Ubicación y Servicio
-                      </h3>
-                    </div>
-                    <div className="detail-card-content">
-                      <div className="info-grid">
-                        <div className="info-item">
-                          <label>Dirección</label>
-                          <p>{selectedTicket.Direction_Name}</p>
-                        </div>
-                        <div className="info-item">
-                          <label>División</label>
-                          <p>{selectedTicket.Division_Name}</p>
-                        </div>
-                        <div className="info-item">
-                          <label>Coordinación</label>
-                          <p>{selectedTicket.Coordination_Name}</p>
-                        </div>
-                        <div className="info-item">
-                          <label>Servicio</label>
-                          <p>{selectedTicket.Service_Name}</p>
-                        </div>
-                        {selectedTicket.Software_System_Name && (
-                          <div className="info-item info-item-full">
-                            <label>Sistema de Software</label>
-                            <p className="software-system">
-                              <Wrench size={14} />
-                              {selectedTicket.Software_System_Name}
-                            </p>
-                          </div>
-                        )}
-                        <div className="info-item info-item-full">
-                          <label>Fecha y Hora de Solicitud</label>
-                          <p className="created-at">
-                            <Calendar size={14} />
-                            {new Date(selectedTicket.Created_at).toLocaleString('es-ES', {
-                              day: '2-digit',
-                              month: 'long',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                        </div>
-                        {selectedTicket.Status === 'Cerrado' && selectedTicket.Resolved_at && (
-                          <div className="info-item info-item-full">
-                            <label>Fecha y Hora de Cierre</label>
-                            <p className="resolved-at">
-                              <Clock size={14} />
-                              {new Date(selectedTicket.Resolved_at).toLocaleString('es-ES', {
-                                day: '2-digit',
-                                month: 'long',
-                                year: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Timeline Card */}
-                  <div className="detail-card">
-                    <div className="detail-card-header">
-                      <h3 className="detail-card-title">
-                        <History size={18} />
-                        Timeline
-                      </h3>
-                    </div>
-                    <div className="detail-card-content">
-                      <div className="timeline-container">
-                        {timeline.length === 0 ? (
-                          <p className="no-timeline">No hay eventos registrados</p>
-                        ) : (
-                          timeline
-                            .filter(event => {
-                              // Solo mostrar: creación, asignación de técnicos, y cierre
-                              const desc = (event.Action_Description || '').toLowerCase();
-                              return (
-                                desc.includes('creado') ||
-                                desc.includes('asign') ||
-                                desc.includes('cerrado') ||
-                                desc.includes('closed')
-                              );
-                            })
-                            .map((event) => (
-                              <div key={event.ID_Timeline} className="timeline-item">
-                                <div className="timeline-dot"></div>
-                                <div className="timeline-content">
-                                  <div className="timeline-header">
-                                    <span className="timeline-action">{event.Action_Description}</span>
-                                    <span className="timeline-user">por {event.User_Name || 'Usuario'}</span>
-                                  </div>
-                                  {(event.Old_Status || event.New_Status) && (
-                                    <div className="timeline-status-change">
-                                      {event.Old_Status && <span className="old-status">{event.Old_Status}</span>}
-                                      {(event.Old_Status && event.New_Status) && <span className="status-arrow">→</span>}
-                                      {event.New_Status && <span className="new-status">{event.New_Status}</span>}
-                                    </div>
-                                  )}
-                                  <span className="timeline-date">
-                                    {new Date(event.Event_Date).toLocaleString('es-ES', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </span>
-                                </div>
-                              </div>
-                            ))
-                        )}
-                      </div>
-                    </div>
+            <div className="gvt-det">
+              <div className="gvt-det-p">
+                <div className="gvt-det-sec">
+                  <h4 className="gvt-det-h"><FileText size={13} /> Información</h4>
+                  <div className="gvt-det-f"><label>Asunto</label><p>{selectedTicket.Subject}</p></div>
+                  <div className="gvt-det-f"><label>Descripción</label><p>{selectedTicket.Description}</p></div>
+                </div>
+                <div className="gvt-det-sec">
+                  <h4 className="gvt-det-h"><MapPin size={13} /> Ubicación y servicio</h4>
+                  <div className="gvt-det-g">
+                    <div className="gvt-det-f"><label>Dirección</label><p>{selectedTicket.Direction_Name}</p></div>
+                    <div className="gvt-det-f"><label>División</label><p>{selectedTicket.Division_Name}</p></div>
+                    <div className="gvt-det-f"><label>Coordinación</label><p>{selectedTicket.Coordination_Name}</p></div>
+                    <div className="gvt-det-f"><label>Servicio</label><p>{selectedTicket.Service_Name}</p></div>
+                    {selectedTicket.Software_System_Name && (
+                      <div className="gvt-det-f"><label>Sistema</label><p><Wrench size={12} /> {selectedTicket.Software_System_Name}</p></div>
+                    )}
+                    <div className="gvt-det-f"><label>Solicitud</label><p><Calendar size={12} /> {new Date(selectedTicket.Created_at).toLocaleString('es-ES', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
+                    {selectedTicket.Status === 'Cerrado' && selectedTicket.Resolved_at && (
+                      <div className="gvt-det-f"><label>Cierre</label><p><Clock size={12} /> {new Date(selectedTicket.Resolved_at).toLocaleString('es-ES', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p></div>
+                    )}
                   </div>
                 </div>
-
-                {/* Right Column - Technicians, Comments, Actions */}
-                <div className="detail-modal-right">
-                  {/* Technicians Card */}
-                  <div className="detail-card">
-                    <div className="detail-card-header">
-                      <h3 className="detail-card-title">
-                        <Users size={18} />
-                        Técnicos Asignados
-                        <span className="badge-count">{selectedTicket.Technicians.length}</span>
-                      </h3>
-                    </div>
-                    <div className="detail-card-content">
-                      {selectedTicket.Technicians.length > 0 ? (
-                        <div className="technicians-list">
-                          {selectedTicket.Technicians.map(tech => (
-                            <div key={tech.ID_Ticket_Technician} className="technician-card">
-                              <div className="technician-card-header">
-                                <div className="technician-avatar">
-                                  {tech.Technician_Name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="technician-info">
-                                  <span className="technician-name">
-                                    {tech.Technician_Name}
-                                    {tech.Is_Lead && <Star size={12} className="lead-star" />}
-                                  </span>
-                                  {tech.Is_Lead && <span className="lead-badge">Principal</span>}
-                                </div>
+                <div className="gvt-det-sec">
+                  <h4 className="gvt-det-h"><History size={13} /> Timeline</h4>
+                  {timeline.length === 0 ? (
+                    <p className="gvt-det-empty">Sin eventos registrados</p>
+                  ) : (
+                    <div className="gvt-tl">
+                      {timeline.filter(e => { const d = (e.Action_Description || '').toLowerCase(); return d.includes('creado') || d.includes('asign') || d.includes('cerrado') || d.includes('closed'); }).map(ev => (
+                        <div key={ev.ID_Timeline} className="gvt-tl-i">
+                          <div className="gvt-tl-d" />
+                          <div>
+                            <p className="gvt-tl-a">{ev.Action_Description}</p>
+                            <p className="gvt-tl-u">por {ev.User_Name || 'Usuario'}</p>
+                            {(ev.Old_Status || ev.New_Status) && (
+                              <div className="gvt-tl-s">
+                                {ev.Old_Status && <span className="gvt-tl-o">{ev.Old_Status}</span>}
+                                {(ev.Old_Status && ev.New_Status) && <span className="gvt-tl-ar">→</span>}
+                                {ev.New_Status && <span className="gvt-tl-nw">{ev.New_Status}</span>}
                               </div>
-                              <div className="technician-meta">
-                                <Clock size={12} />
-                                {new Date(tech.Assigned_At).toLocaleDateString()}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="empty-state">
-                          <UserX size={32} />
-                          <p>Sin técnicos asignados</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Comments Card */}
-                  <div className="detail-card comments-card">
-                    <div className="detail-card-header">
-                      <h3 className="detail-card-title">
-                        <MessageSquare size={18} />
-                        Comentarios
-                        <span className="badge-count">{comments.length}</span>
-                      </h3>
-                    </div>
-                    <div className="detail-card-content">
-                      <div className="comments-list">
-                        {comments.length === 0 ? (
-                          <div className="empty-state">
-                            <MessageSquare size={32} />
-                            <p>No hay comentarios</p>
-                          </div>
-                        ) : (
-                          comments.map((comment) => (
-                            <div key={comment.ID_Comment} className="comment-card">
-                              <div className="comment-avatar">
-                                {(comment.User_Name || 'U').charAt(0).toUpperCase()}
-                              </div>
-                              <div className="comment-content">
-                                <div className="comment-header">
-                                  <span className="comment-author">{comment.User_Name || 'Usuario'}</span>
-                                  <span className="comment-date">
-                                    {new Date(comment.Created_at).toLocaleString('es-ES', {
-                                      day: '2-digit',
-                                      month: 'short',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </span>
-                                </div>
-                                <p className="comment-text">{comment.Comment_Text}</p>
-                              </div>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                      {selectedTicket.Status !== 'Cerrado' ? (
-                        <div className="comment-form-wrapper">
-                          <textarea
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Escribe un comentario..."
-                            className="comment-textarea"
-                            rows={2}
-                          />
-                          <button
-                            className="btn btn-primary comment-send-btn"
-                            onClick={handleSendComment}
-                            disabled={!newComment.trim() || loading}
-                          >
-                            <Send size={14} />
-                            {loading ? 'Enviando...' : 'Enviar'}
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="ticket-closed-notice">
-                          <div className="closed-notice-icon">
-                            <Lock size={20} />
-                          </div>
-                          <div className="closed-notice-content">
-                            <h4>Ticket Cerrado</h4>
-                            <p>Este ticket ha sido cerrado y no se pueden agregar nuevos comentarios.</p>
-                            {selectedTicket.Resolved_at && (
-                              <span className="closed-notice-time">
-                                Cerrado el {new Date(selectedTicket.Resolved_at).toLocaleString('es-ES', {
-                                  day: '2-digit',
-                                  month: 'long',
-                                  year: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
                             )}
+                            <span className="gvt-tl-dt">{new Date(ev.Event_Date).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions Card */}
-                  {selectedTicket.Status !== 'Cerrado' && (
-                    <div className="detail-card actions-card">
-                      <div className="detail-card-content">
-                        <button
-                          className="btn btn-danger close-ticket-btn"
-                          onClick={handleCloseTicket}
-                          disabled={loading}
-                        >
-                          <CheckCircle size={16} />
-                          {loading ? 'Cerrando...' : 'Cerrar Ticket'}
-                        </button>
-                      </div>
+                      ))}
                     </div>
                   )}
                 </div>
+              </div>
+
+              <div className="gvt-det-s">
+                <div className="gvt-det-sec">
+                  <h4 className="gvt-det-h"><Users size={13} /> Técnicos <span className="gvt-badge-cnt">{selectedTicket.Technicians.length}</span></h4>
+                  {selectedTicket.Technicians.length > 0 ? (
+                    <div className="gvt-techs">
+                      {selectedTicket.Technicians.map(t => (
+                        <div key={t.ID_Ticket_Technician} className="gvt-tech-i">
+                          <div className="gvt-tech-av sm">{t.Technician_Name.charAt(0)}</div>
+                          <div>
+                            <span className="gvt-tech-n">{t.Technician_Name} {t.Is_Lead && <Star size={10} className="gvt-star" />}</span>
+                            {t.Is_Lead && <span className="gvt-lead">Principal</span>}
+                            <span className="gvt-tech-d"><Clock size={9} /> {new Date(t.Assigned_At).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="gvt-det-empty"><UserX size={18} /><p>Sin técnicos</p></div>
+                  )}
+                </div>
+                <div className="gvt-det-sec">
+                  <h4 className="gvt-det-h"><MessageSquare size={13} /> Comentarios <span className="gvt-badge-cnt">{comments.length}</span></h4>
+                  <div className="gvt-cmts">
+                    {comments.length === 0 ? (
+                      <div className="gvt-det-empty"><MessageSquare size={18} /><p>Sin comentarios</p></div>
+                    ) : (
+                      comments.map(c => (
+                        <div key={c.ID_Comment} className="gvt-cmt">
+                          <div className="gvt-cmt-av">{(c.User_Name || 'U').charAt(0)}</div>
+                          <div>
+                            <div className="gvt-cmt-h"><span className="gvt-cmt-a">{c.User_Name || 'Usuario'}</span><span className="gvt-cmt-d">{new Date(c.Created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
+                            <p className="gvt-cmt-t">{c.Comment_Text}</p>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  {selectedTicket.Status !== 'Cerrado' ? (
+                    <div className="gvt-cmt-f">
+                      <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Escribir comentario..." rows={2} />
+                      <button className="gvt-btn gvt-btn--primary" onClick={handleSendComment} disabled={!newComment.trim() || loading}><Send size={13} /></button>
+                    </div>
+                  ) : (
+                    <div className="gvt-closed">
+                      <Lock size={15} />
+                      <div><p className="gvt-closed-t">Ticket cerrado</p><p className="gvt-closed-s">No se pueden agregar comentarios</p></div>
+                    </div>
+                  )}
+                </div>
+                {selectedTicket.Status !== 'Cerrado' && (
+                  <div className="gvt-det-sec">
+                    <button className="gvt-btn gvt-btn--danger" style={{ width: '100%', justifyContent: 'center' }} onClick={handleCloseTicket} disabled={loading}>
+                      <CheckCircle size={14} />
+                      {loading ? 'Cerrando...' : 'Cerrar ticket'}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

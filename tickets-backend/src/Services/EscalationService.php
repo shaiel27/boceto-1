@@ -159,49 +159,51 @@ final class EscalationService
         $availableTechs = $technicianModel->getAvailableTechniciansByService($serviceId);
 
         if (!empty($availableTechs)) {
-            $selectedTech = $availableTechs[0];
-            $assigned = $technicianModel->assignToTicket(
-                $ticket['ID_Service_Request'],
-                $selectedTech['ID_Technicians'],
-                null,
-                true,
-                true
-            );
+            foreach ($availableTechs as $selectedTech) {
+                $assigned = $technicianModel->assignToTicket(
+                    $ticket['ID_Service_Request'],
+                    $selectedTech['ID_Technicians'],
+                    null,
+                    true,
+                    true
+                );
 
-            if ($assigned) {
-                $this->resolveAlert($ticket['ID_Service_Request'], 'auto_escalated');
+                if ($assigned) {
+                    $this->resolveAlert($ticket['ID_Service_Request'], 'auto_escalated');
 
-                return [
-                    'ticket_id' => $ticket['ID_Service_Request'],
-                    'action' => 'auto_escalated',
-                    'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
-                    'result' => 'success',
-                ];
+                    return [
+                        'ticket_id' => $ticket['ID_Service_Request'],
+                        'action' => 'auto_escalated',
+                        'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
+                        'result' => 'success',
+                    ];
+                }
             }
         }
 
         $relatedTechs = $technicianModel->getTechniciansFromRelatedServices($serviceId);
 
         if (!empty($relatedTechs)) {
-            $selectedTech = $relatedTechs[0];
-            $assigned = $technicianModel->assignToTicket(
-                $ticket['ID_Service_Request'],
-                $selectedTech['ID_Technicians'],
-                null,
-                true,
-                true
-            );
+            foreach ($relatedTechs as $selectedTech) {
+                $assigned = $technicianModel->assignToTicket(
+                    $ticket['ID_Service_Request'],
+                    $selectedTech['ID_Technicians'],
+                    null,
+                    true,
+                    true
+                );
 
-            if ($assigned) {
-                $this->resolveAlert($ticket['ID_Service_Request'], 'cross_service_escalated');
+                if ($assigned) {
+                    $this->resolveAlert($ticket['ID_Service_Request'], 'cross_service_escalated');
 
-                return [
-                    'ticket_id' => $ticket['ID_Service_Request'],
-                    'action' => 'cross_service_escalated',
-                    'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
-                    'service_id' => $selectedTech['Fk_TI_Service'],
-                    'result' => 'success',
-                ];
+                    return [
+                        'ticket_id' => $ticket['ID_Service_Request'],
+                        'action' => 'cross_service_escalated',
+                        'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
+                        'service_id' => $selectedTech['Fk_TI_Service'],
+                        'result' => 'success',
+                    ];
+                }
             }
         }
 

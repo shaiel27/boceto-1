@@ -648,8 +648,9 @@ const TechnicianManagement: React.FC = () => {
         <header className="tm-header">
           <div className="tm-header-row">
             <div className="tm-header-left">
-              <button className="tm-back-btn" onClick={() => navigate('/')} title="Volver al Dashboard">
-                <ArrowLeft size={18} />
+              <button className="tm-back-btn" onClick={() => navigate('/')}>
+                <ArrowLeft size={16} />
+                <span>Dashboard</span>
               </button>
               <div className="tm-header-icon-wrap">
                 <BadgeCheck size={22} />

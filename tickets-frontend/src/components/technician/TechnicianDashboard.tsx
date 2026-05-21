@@ -21,7 +21,8 @@ import {
   Send,
   History,
   BarChart3,
-  AlertTriangle
+  AlertTriangle,
+  ArrowLeft
 } from 'lucide-react';
 import './TechnicianDashboard.css';
 import TechnicianProfileComponent from './TechnicianProfile';
@@ -491,12 +492,14 @@ const TechnicianDashboard: React.FC = () => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
+      case 'Crítica':
+        return 'critic';
       case 'Alta':
-        return 'priority-high';
+        return 'high';
       case 'Media':
-        return 'priority-medium';
+        return 'medium';
       case 'Baja':
-        return 'priority-low';
+        return 'low';
       default:
         return '';
     }
@@ -637,6 +640,10 @@ const TechnicianDashboard: React.FC = () => {
             </span>
           </div>
           <div className="action-buttons">
+            <button className="action-btn dashboard-back" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft size={18} />
+              Dashboard
+            </button>
             <button className="action-btn profile" onClick={() => setShowProfile(true)}>
               <User size={18} />
               Mi Perfil

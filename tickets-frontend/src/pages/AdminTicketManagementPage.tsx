@@ -1,12 +1,12 @@
 import React from 'react';
-import Layout from '../components/layout/Layout';
+import AdminLayout from '../components/layout/AdminLayout';
 import AdminTicketManagement from '../components/admin/AdminTicketManagement';
 
 const AdminTicketManagementPage: React.FC = () => {
   return (
-    <Layout showHeader={true} showUserInfo={true} userName="Administrador">
+    <AdminLayout userName="Administrador">
       <AdminTicketManagement />
-    </Layout>
+    </AdminLayout>
   );
 };
 

@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS Ticket_Escalations (
     Escalated_Service_ID INT NOT NULL,
     Escalated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_fk_service_request (Fk_Service_Request),
-    INDEX idx_escalated_at (Escalated_At)
+    INDEX idx_escalated_at (Escalated_At),
+    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Table to track pending ticket alerts (tickets that couldn't be assigned)
@@ -24,6 +25,10 @@ CREATE TABLE IF NOT EXISTS Pending_Ticket_Alerts (
     INDEX idx_alert_type (Alert_Type),
     INDEX idx_resolved (Resolved_At)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE Pending_Ticket_Alerts
+    ADD CONSTRAINT fk_pending_ticket_alerts_service_request FOREIGN KEY (Fk_Service_Request)
+    REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE;
 
 -- Table to store escalation thresholds configuration
 CREATE TABLE IF NOT EXISTS Escalation_Config (
@@ -42,6 +47,9 @@ INSERT INTO Escalation_Config (Priority_Level, Hours_Threshold, Notify_Admins, A
 ('Media', 12, TRUE, FALSE),
 ('Baja', 24, FALSE, FALSE)
 ON DUPLICATE KEY UPDATE Hours_Threshold = VALUES(Hours_Threshold);
+
+-- Ensure Escalation_Config has unique Priority_Level
+ALTER TABLE Escalation_Config ADD UNIQUE KEY ux_escalation_priority (Priority_Level);
 
 -- View to get pending tickets that need attention
 CREATE OR REPLACE VIEW v_Pending_Tickets_Needing_Attention AS

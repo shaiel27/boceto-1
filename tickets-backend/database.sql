@@ -20,9 +20,15 @@ CREATE TABLE Users (
     Password VARCHAR(255) NOT NULL,
     Username VARCHAR(100) NOT NULL UNIQUE,
     Full_Name VARCHAR(200) NOT NULL,
+    is_system_user BOOLEAN DEFAULT FALSE,
+    last_login_at TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Role) REFERENCES Role(ID_Role)
 );
+
+-- Índices recomendados para optimizar login y filtrado por usuarios del sistema
+CREATE INDEX IF NOT EXISTS idx_users_system ON Users(is_system_user, Email);
+CREATE INDEX IF NOT EXISTS idx_users_active ON Users(is_system_user, Username);
 
 CREATE TABLE Boss (
     ID_Boss INT AUTO_INCREMENT PRIMARY KEY,

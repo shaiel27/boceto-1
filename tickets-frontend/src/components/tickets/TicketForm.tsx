@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Send,
   AlertCircle,
@@ -9,7 +10,9 @@ import {
   User,
   Settings,
   Upload,
+  ArrowLeft,
   ArrowRight,
+  Check,
   Layers,
   AlertTriangle
 } from 'lucide-react';
@@ -44,6 +47,7 @@ interface SoftwareSystem {
 
 const TicketForm: React.FC = () => {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -213,8 +217,6 @@ const TicketForm: React.FC = () => {
       // Paso 3: Detalles del problema
       if (!formData.description.trim()) {
         newErrors.description = 'La descripción es requerida';
-      } else if (formData.description.length < 20) {
-        newErrors.description = 'La descripción debe tener al menos 20 caracteres';
       }
     }
 
@@ -749,101 +751,113 @@ const TicketForm: React.FC = () => {
   };
 
   return (
-    <div className="ticket-form">
-      <div className="form-header">
-        <h1>Crear Nuevo Ticket</h1>
-        <p>Completa el formulario para generar una solicitud de soporte</p>
-      </div>
-
-      <div className="stepper">
-        {formSteps.map((step, index) => (
-          <div
-            key={step.id}
-            className={`step-item ${index <= currentStep ? 'active' : ''} ${index === currentStep ? 'current' : ''}`}
-            onClick={() => handleStepClick(step.id)}
-          >
-            <div className="step-icon">
-              {step.icon}
+    <div className="tkt">
+      {submitStatus === 'success' && createdTicket && (
+        <div className="tkt-done-overlay">
+          <div className="tkt-done-card">
+            <div className="tkt-done-icon">
+              <CheckCircle size={52} />
             </div>
-            <div className="step-text">
-              <div className="step-title">{step.title}</div>
-              <div className="step-subtitle">Paso {index + 1} de {formSteps.length}</div>
-            </div>
-            {index < formSteps.length - 1 && <div className="step-line" />}
-          </div>
-        ))}
-      </div>
-
-      <form onSubmit={handleSubmit} className="form-content">
-        {renderStepContent()}
-
-        <div className="form-actions">
-          {currentStep > 0 && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={handlePrevious}
-              disabled={isSubmitting}
-            >
-              <ArrowRight size={20} className="rotate-180" />
-              Anterior
-            </button>
-          )}
-
-          {currentStep < formSteps.length - 1 ? (
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleNext}
-              disabled={isSubmitting}
-            >
-              Siguiente
-              <ArrowRight size={20} />
-            </button>
-          ) : (
-            <button
-              type="submit"
-              className="btn btn-success"
-              disabled={isSubmitting || submitStatus === 'success'}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="spinner" />
-                  Enviando...
-                </>
-              ) : (
-                <>
-                  <Send size={20} />
-                  Crear Ticket
-                </>
+            <h2 className="tkt-done-title">Ticket Creado</h2>
+            <p className="tkt-done-sub">La solicitud fue registrada exitosamente</p>
+            <div className="tkt-done-grid">
+              <div className="tkt-done-row"><span>Asunto</span><strong>{createdTicket.subject}</strong></div>
+              <div className="tkt-done-row"><span>Servicio</span><strong>{createdTicket.serviceName}</strong></div>
+              <div className="tkt-done-row"><span>Oficina</span><strong>{createdTicket.officeName}</strong></div>
+              <div className="tkt-done-row"><span>Prioridad</span><span className={`tkt-p-badge ${createdTicket.priority.toLowerCase()}`}>{createdTicket.priority}</span></div>
+              {createdTicket.technicianAssigned && (
+                <div className="tkt-done-row"><span>Técnico</span><strong>{createdTicket.technicianName}</strong></div>
               )}
-            </button>
-          )}
+            </div>
+            <p className="tkt-done-msg">Redirigiendo al dashboard...</p>
+            <button className="tkt-btn tkt-btn--pri" onClick={() => navigate('/')}>Ir al Dashboard</button>
+          </div>
+        </div>
+      )}
+
+      <div className="tkt-inner">
+        <div className="tkt-top">
+          <button className="tkt-top-back" onClick={() => navigate('/')}>
+            <ArrowLeft size={17} />
+            <span>Dashboard</span>
+          </button>
+          <div className="tkt-top-mid">
+            <h1 className="tkt-top-title">Nuevo Ticket</h1>
+            <p className="tkt-top-desc">Solicitud de servicio técnico</p>
+          </div>
+          <div className="tkt-top-step">Paso {currentStep + 1} / {formSteps.length}</div>
         </div>
 
-        {submitStatus === 'success' && createdTicket && (
-          <div className="success-toast">
-            <CheckCircle size={20} />
-            <div className="toast-content">
-              <strong>¡Ticket Creado!</strong>
-              <p>
-                {createdTicket.technicianAssigned 
-                  ? `Asignado a ${createdTicket.technicianName}` 
-                  : 'Pendiente de asignación de técnico'
-                }
-              </p>
-            </div>
+        <div className="tkt-body">
+          <div className="tkt-side">
+            {formSteps.map((step, index) => {
+              const done = index < currentStep;
+              const cur = index === currentStep;
+              return (
+                <div key={step.id} className={`tkt-si ${done ? 'done' : ''} ${cur ? 'cur' : ''}`} onClick={() => handleStepClick(step.id)}>
+                  <div className="tkt-si-num">{done ? <Check size={12} /> : index + 1}</div>
+                  <div className="tkt-si-txt">
+                    <span className="tkt-si-title">{step.title}</span>
+                    <span className="tkt-si-sub">{step.description}</span>
+                  </div>
+                  {index < formSteps.length - 1 && <div className={`tkt-si-line ${done ? 'done' : ''}`} />}
+                </div>
+              );
+            })}
           </div>
-        )}
 
-        {submitStatus === 'error' && (
-          <div className="error-message">
-            <AlertCircle size={48} />
-            <h3>Error al Crear Ticket</h3>
-            <p>Por favor, intenta nuevamente o contacta al administrador.</p>
+          <div className="tkt-main">
+            {submitStatus === 'success' && createdTicket ? null : (
+              <form onSubmit={handleSubmit} className="tkt-form">
+                <div className="tkt-step-label">
+                  <span className="tkt-step-badge">{currentStep + 1}</span>
+                  <span className="tkt-step-name">{formSteps[currentStep].title}</span>
+                </div>
+
+                {renderStepContent()}
+
+                <div className="tkt-nav">
+                  <div className="tkt-nav-l">
+                    {currentStep > 0 && (
+                      <button type="button" className="tkt-btn tkt-btn--sec" onClick={handlePrevious} disabled={isSubmitting}>
+                        <ArrowLeft size={15} />
+                        Anterior
+                      </button>
+                    )}
+                  </div>
+                  <div className="tkt-nav-r">
+                    {currentStep < formSteps.length - 1 ? (
+                      <button type="button" className="tkt-btn tkt-btn--pri" onClick={handleNext} disabled={isSubmitting}>
+                        Siguiente
+                        <ArrowRight size={15} />
+                      </button>
+                    ) : (
+                      <button type="submit" className="tkt-btn tkt-btn--pri" disabled={isSubmitting || submitStatus === 'success'}>
+                        {isSubmitting ? (
+                          <><span className="tkt-spin" /> Enviando...</>
+                        ) : (
+                          <><Send size={15} /> Crear Ticket</>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {submitStatus === 'error' && (
+                  <div className="tkt-err">
+                    <AlertCircle size={18} />
+                    <div className="tkt-err-body">
+                      <strong>Error al crear ticket</strong>
+                      <p>Intenta nuevamente o contacta al administrador.</p>
+                    </div>
+                    <button type="button" className="tkt-btn tkt-btn--sec" onClick={() => setSubmitStatus('idle')}><X size={14} /></button>
+                  </div>
+                )}
+              </form>
+            )}
           </div>
-        )}
-      </form>
+        </div>
+      </div>
     </div>
   );
 };

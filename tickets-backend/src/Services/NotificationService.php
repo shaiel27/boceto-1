@@ -99,7 +99,8 @@ final class NotificationService
     private function getAdminUserIds(): array
     {
         try {
-            $query = "SELECT ID_Users FROM Users WHERE Fk_Role = 1";
+            // Only include users marked as system users
+            $query = "SELECT ID_Users FROM Users WHERE Fk_Role = 1 AND COALESCE(is_system_user, 0) = 1";
             $stmt = $this->db->prepare($query);
             $stmt->execute();
             $results = $stmt->fetchAll(\PDO::FETCH_COLUMN);

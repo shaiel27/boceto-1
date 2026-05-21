@@ -437,8 +437,8 @@ final class Technician
                     LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
                     LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = ?
                     WHERE ts.Fk_TI_Service = ?
-                        AND ts.Status = 'Activo'
-                        AND t.Status IN ('Disponible', 'Ocupado')
+                    AND ts.Status = 'Activo'
+                        AND t.Status = 'Disponible'
                         AND (
                             (sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
                             AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time)
@@ -598,7 +598,7 @@ final class Technician
                     LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = ?
                     WHERE ts.Fk_TI_Service IN ({$placeholders})
                         AND ts.Status = 'Activo'
-                        AND t.Status IN ('Disponible', 'Ocupado')
+                        AND t.Status = 'Disponible'
                         AND (
                             (sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
                             AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time)
@@ -942,9 +942,18 @@ final class Technician
                 return false;
             }
 
-            // Validación 2: Verificar si el técnico está disponible
-            if ($technician['Status'] === 'Ocupado') {
-                error_log("Error: Técnico {$technicianId} está ocupado y no puede ser asignado");
+            // Validación 2: Verificar disponibilidad según el tipo de asignación
+            // - Para asignaciones automáticas (allowCrossService = false) el técnico debe estar 'Disponible'
+            // - Para asignaciones manuales/escaladas (allowCrossService = true) permitimos asignar aunque esté 'Ocupado'
+            //   pero nunca permitiremos asignar a un técnico que esté 'Inactivo'
+            $techStatus = $technician['Status'];
+            if ($techStatus === 'Inactivo') {
+                error_log("Error: Técnico {$technicianId} está Inactivo y no puede ser asignado");
+                return false;
+            }
+
+            if (!$allowCrossService && $techStatus !== 'Disponible') {
+                error_log("Error: Técnico {$technicianId} no está Disponible (Status: {$techStatus}) y no puede ser asignado automáticamente");
                 return false;
             }
 
@@ -996,38 +1005,80 @@ final class Technician
                 return false;
             }
 
-            // Todas las validaciones pasaron, proceder con la asignación
-            $query = "INSERT INTO Ticket_Technicians (Fk_Service_Request, Fk_Technician, Is_Lead, Assigned_At, Status)
-                      VALUES (:ticketId, :technicianId, :isLead, NOW(), 'Activo')";
+            // Todas las validaciones pasaron, proceder con la asignación.
+            // Para mitigar condiciones de carrera volvemos a validar la capacidad del técnico dentro
+            // de una transacción y usamos SELECT ... FOR UPDATE para bloquear las filas relevantes.
+            $capacityLimit = 5; // TODO: extraer a configuración si se requiere
 
-            $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":ticketId", $ticketId);
-            $stmt->bindParam(":technicianId", $technicianId);
-            $stmt->bindParam(":isLead", $isLead, PDO::PARAM_BOOL);
+            try {
+                $this->conn->beginTransaction();
 
-            if ($stmt->execute()) {
-                // Update technician status to Ocupado
+                // Revalidar tickets activos del técnico con bloqueo
+                $checkCapacityQuery = "SELECT COUNT(*) as active_count
+                                       FROM Ticket_Technicians tt
+                                       INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                                       WHERE tt.Fk_Technician = :technicianId
+                                         AND tt.Status = 'Activo'
+                                         AND sr.Status != 'Cerrado' FOR UPDATE";
+
+                $checkStmt = $this->conn->prepare($checkCapacityQuery);
+                $checkStmt->bindParam(":technicianId", $technicianId, PDO::PARAM_INT);
+                $checkStmt->execute();
+                $capacityResult = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                $activeCount = (int)($capacityResult['active_count'] ?? 0);
+
+                if ($activeCount >= $capacityLimit && !$allowCrossService) {
+                    // No hay capacidad para asignaciones automáticas
+                    $this->conn->rollBack();
+                    error_log("Capacity full for technician {$technicianId} (active: {$activeCount}), cannot assign automatically");
+                    return false;
+                }
+
+                // Insertar asignación
+                $query = "INSERT INTO Ticket_Technicians (Fk_Service_Request, Fk_Technician, Is_Lead, Assigned_At, Status, Fk_Assigned_By)
+                          VALUES (:ticketId, :technicianId, :isLead, NOW(), 'Activo', :assignedBy)";
+
+                $stmt = $this->conn->prepare($query);
+                $stmt->bindParam(":ticketId", $ticketId, PDO::PARAM_INT);
+                $stmt->bindParam(":technicianId", $technicianId, PDO::PARAM_INT);
+                $stmt->bindParam(":isLead", $isLead, PDO::PARAM_BOOL);
+                $stmt->bindParam(":assignedBy", $assignedBy, PDO::PARAM_INT);
+
+                if (!$stmt->execute()) {
+                    $this->conn->rollBack();
+                    error_log("Failed to execute assignToTicket query for technician {$technicianId} to ticket {$ticketId}");
+                    return false;
+                }
+
+                // Update technician status to Ocupado unless admin forced assignment while keeping him in another state
                 $updateQuery = "UPDATE " . $this->table_name . " SET Status = 'Ocupado' WHERE ID_Technicians = :technicianId";
                 $updateStmt = $this->conn->prepare($updateQuery);
-                $updateStmt->bindParam(":technicianId", $technicianId);
+                $updateStmt->bindParam(":technicianId", $technicianId, PDO::PARAM_INT);
                 $updateStmt->execute();
 
                 // Update ticket status to 'En Proceso' when technician is assigned
                 $updateTicketQuery = "UPDATE Service_Request SET Status = 'En Proceso' WHERE ID_Service_Request = :ticketId";
                 $updateTicketStmt = $this->conn->prepare($updateTicketQuery);
-                $updateTicketStmt->bindParam(":ticketId", $ticketId);
+                $updateTicketStmt->bindParam(":ticketId", $ticketId, PDO::PARAM_INT);
                 $updateTicketStmt->execute();
+
+                $this->conn->commit();
 
                 $assignmentType = $allowCrossService ? 'manual (cross-service)' : 'automatic';
                 error_log("Successfully assigned technician {$technicianId} to ticket {$ticketId} ({$assignmentType}) and updated ticket status to 'En Proceso'");
                 return true;
-            } else {
-                error_log("Failed to execute assignToTicket query for technician {$technicianId} to ticket {$ticketId}");
+
+            } catch (PDOException $e) {
+                if ($this->conn->inTransaction()) {
+                    $this->conn->rollBack();
+                }
+                error_log("Error assigning technician inside transaction: " . $e->getMessage());
+                return false;
             }
-        } catch(PDOException $exception) {
-            error_log("Error assigning technician: " . $exception->getMessage());
-            error_log("Params: ticketId={$ticketId}, technicianId={$technicianId}, isLead=" . ($isLead ? 'true' : 'false'));
-        }
+            } catch(PDOException $exception) {
+                error_log("Error assigning technician: " . $exception->getMessage());
+                error_log("Params: ticketId={$ticketId}, technicianId={$technicianId}, isLead=" . ($isLead ? 'true' : 'false'));
+            }
 
         return false;
     }
@@ -1165,26 +1216,29 @@ final class Technician
                 error_log("Found " . count($availableTechs) . " available technicians for service {$serviceId}, ticket priority: {$priority}");
 
                 if (!empty($availableTechs)) {
-                    $selectedTech = $availableTechs[0];
+                    // Try each available technician in order until one assignment succeeds
+                    foreach ($availableTechs as $selectedTech) {
+                        error_log("Trying to assign technician: {$selectedTech['First_Name']} {$selectedTech['Last_Name']} " .
+                                  "(Active Tickets: {$selectedTech['Active_Tickets_Count']}) to ticket {$ticketId}");
 
-                    error_log("Selecting technician: {$selectedTech['First_Name']} {$selectedTech['Last_Name']} " .
-                              "(Active Tickets: {$selectedTech['Active_Tickets_Count']})");
+                        $assigned = $this->assignToTicket($ticketId, $selectedTech['ID_Technicians'], null, true);
 
-                    $assigned = $this->assignToTicket($ticketId, $selectedTech['ID_Technicians'], null, true);
+                        if ($assigned) {
+                            $assignedCount++;
+                            $results[] = [
+                                'ticket_id' => $ticketId,
+                                'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
+                                'service_id' => $serviceId,
+                                'priority' => $priority,
+                                'escalated' => false
+                            ];
 
-                    if ($assigned) {
-                        $assignedCount++;
-                        $results[] = [
-                            'ticket_id' => $ticketId,
-                            'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
-                            'service_id' => $serviceId,
-                            'priority' => $priority,
-                            'escalated' => false
-                        ];
-
-                        error_log("Successfully assigned technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
-                    } else {
-                        error_log("Failed to assign technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
+                            error_log("Successfully assigned technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
+                            // stop trying others
+                            break;
+                        } else {
+                            error_log("Failed to assign technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} to ticket {$ticketId}");
+                        }
                     }
                 } else {
                     error_log("No available technicians found for service {$serviceId}, attempting escalation for ticket {$ticketId}");
@@ -1192,28 +1246,28 @@ final class Technician
                     $relatedTechs = $this->getTechniciansFromRelatedServices($serviceId);
 
                     if (!empty($relatedTechs)) {
-                        $selectedTech = $relatedTechs[0];
+                        foreach ($relatedTechs as $selectedTech) {
+                            error_log("Escalating: trying technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} from related service");
+                            $assigned = $this->assignToTicket($ticketId, $selectedTech['ID_Technicians'], null, true, true);
 
-                        error_log("Escalating: assigning technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} from related service");
+                            if ($assigned) {
+                                $assignedCount++;
+                                $escalatedCount++;
+                                $escalated = true;
+                                $results[] = [
+                                    'ticket_id' => $ticketId,
+                                    'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
+                                    'service_id' => $serviceId,
+                                    'related_service_id' => (int)$selectedTech['Fk_TI_Service'],
+                                    'priority' => $priority,
+                                    'escalated' => true
+                                ];
 
-                        $assigned = $this->assignToTicket($ticketId, $selectedTech['ID_Technicians'], null, true, true);
+                                $this->recordEscalation($ticketId, $serviceId, (int)$selectedTech['Fk_TI_Service']);
 
-                        if ($assigned) {
-                            $assignedCount++;
-                            $escalatedCount++;
-                            $escalated = true;
-                            $results[] = [
-                                'ticket_id' => $ticketId,
-                                'technician' => $selectedTech['First_Name'] . ' ' . $selectedTech['Last_Name'],
-                                'service_id' => $serviceId,
-                                'related_service_id' => (int)$selectedTech['Fk_TI_Service'],
-                                'priority' => $priority,
-                                'escalated' => true
-                            ];
-
-                            $this->recordEscalation($ticketId, $serviceId, (int)$selectedTech['Fk_TI_Service']);
-
-                            error_log("Successfully escalated assignment to technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} for ticket {$ticketId}");
+                                error_log("Successfully escalated assignment to technician {$selectedTech['First_Name']} {$selectedTech['Last_Name']} for ticket {$ticketId}");
+                                break;
+                            }
                         }
                     } else {
                         $escalations[] = [
