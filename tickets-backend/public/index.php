@@ -111,6 +111,12 @@ switch ($path) {
         require_once 'api-dashboard.php';
         break;
 
+    case '/api/public-board':
+    case '/api/public-board/':
+        // Public endpoint: no authentication required
+        require_once 'api-public-board.php';
+        break;
+
     case '/api/dashboard-public-temp':
     case '/api/dashboard-public-temp/':
         require_once 'api-dashboard-public-temp.php';

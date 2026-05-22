@@ -1,0 +1,42 @@
+/* Basic styles for Public Board */
+:root {
+  --bg: #0a0e1a;
+  --card-bg: rgba(255,255,255,0.04);
+  --text: #e6eef8;
+  --muted: #9aa6bf;
+  --priority-critica: #e74c3c;
+  --priority-alta: #f39c12;
+  --priority-media: #3498db;
+}
+
+.pb-root {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, Arial, sans-serif;
+  padding: 16px;
+}
+
+.pb-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.pb-title { font-size: 20px; font-weight: 700; }
+.pb-controls { display:flex; gap:8px; align-items:center; }
+
+.pb-main { display:flex; gap:16px; }
+.pb-tickets-section { flex: 3; }
+.pb-right { flex: 1; }
+
+.pb-ticket-card { background: var(--card-bg); padding:12px; border-radius:8px; margin-bottom:8px; }
+.pb-ticket-card.priority-critica { border-left: 4px solid var(--priority-critica); }
+.pb-ticket-card.priority-alta { border-left: 4px solid var(--priority-alta); }
+.pb-ticket-card.priority-media { border-left: 4px solid var(--priority-media); }
+
+.pb-technician-item { background: var(--card-bg); padding:8px; border-radius:6px; margin-bottom:6px; }
+
+.pb-connection.connected { color: #2ecc71; }
+.pb-connection.disconnected { color: #e74c3c; }

@@ -18,6 +18,7 @@ import AdminTicketManagementPage from './pages/AdminTicketManagementPage';
 import AuditPage from './pages/AuditPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import PublicBoardPage from './pages/PublicBoardPage';
 import TicketForm from './components/tickets/TicketForm';
 import './styles/variables.css';
 
@@ -37,6 +38,7 @@ const router = createBrowserRouter([
   { path: '/requester', element: <ProtectedRoute allowedRoles={[3]}><RequesterDashboardPage /></ProtectedRoute> },
   { path: '/new-ticket', element: <ProtectedRoute allowedRoles={[1, 3]}><TicketForm /></ProtectedRoute> },
   { path: '/pdf-test', element: <PDFTestReport /> },
+  { path: '/public-board', element: <PublicBoardPage /> },
 ]);
 
 function App() {
