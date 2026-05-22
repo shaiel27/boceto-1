@@ -26,7 +26,8 @@ import {
   Inbox,
   FileText,
   Filter,
-  Activity
+  Activity,
+  Paperclip
 } from 'lucide-react';
 import './TechnicianDashboard.css';
 import TechnicianProfileComponent from './TechnicianProfile';
@@ -120,6 +121,8 @@ const TechnicianDashboard: React.FC = () => {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [ticketHistory, setTicketHistory] = useState<TicketHistory | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -145,6 +148,62 @@ const TechnicianDashboard: React.FC = () => {
   const showToast = (type: 'success' | 'error', message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const loadInitialData = async () => {
+    setLoading(true);
+    let hasError = false;
+    try {
+      const profileResponse = await ApiService.getTechnicianProfile();
+      if (profileResponse.success && profileResponse.data) {
+        setTechnicianProfile(profileResponse.data);
+      } else {
+        showToast('error', profileResponse.message || 'Error al cargar perfil');
+        hasError = true;
+      }
+      const ticketsResponse = await ApiService.getTechnicianTickets();
+      if (ticketsResponse.success && ticketsResponse.data) {
+        const formattedTickets = ticketsResponse.data.map((ticket: any) => {
+          const createdDate = new Date(ticket.Created_at || new Date().toISOString());
+          const resolvedDate = ticket.Resolved_at ? new Date(ticket.Resolved_at) : null;
+          const resolutionTime = resolvedDate ? Math.floor((resolvedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60)) : null;
+          return {
+            id: ticket.ID_Service_Request.toString(),
+            Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
+            Subject: ticket.Subject || 'Sin asunto',
+            Description: ticket.Description || 'Sin descripción',
+            Property_Number: ticket.Property_Number || 'No especificado',
+            Direction_Name: ticket.Office_Name || ticket.office_name || 'No asignado',
+            Division_Name: ticket.Office_Type || ticket.office_type || 'No asignado',
+            Coordination_Name: ticket.Type_Service || ticket.service_type_name || 'No asignado',
+            System_Priority: ticket.System_Priority || 'Media',
+            Status: ticket.Status || 'Pendiente',
+            Created_at: ticket.Created_at || new Date().toISOString(),
+            Technician_Name: ticket.technicians?.find((t: any) => t.is_lead)?.name || 'No asignado',
+            Is_Lead: ticket.is_lead || false,
+            Comments_Count: ticket.Comments_Count || 0,
+            Resolved_at: ticket.Resolved_at || null,
+            Resolution_Time: resolutionTime,
+            Office_Name: ticket.Office_Name || ticket.office_name || 'No asignado',
+            Type_Service: ticket.Type_Service || ticket.service_type_name || 'No asignado',
+            Priority_Level: ticket.Priority_Level || 1
+          };
+        });
+        setMyTickets(formattedTickets);
+        await loadTicketHistory();
+      } else {
+        showToast('error', ticketsResponse.message || 'Error al cargar tickets');
+        hasError = true;
+      }
+    } catch (error) {
+      showToast('error', 'Error de conexión al cargar datos');
+      hasError = true;
+    } finally {
+      setLoading(false);
+      if (!hasError && myTickets.length === 0) {
+        showToast('success', 'Datos cargados correctamente');
+      }
+    }
   };
 
   const loadTicketHistory = async () => {
@@ -297,13 +356,34 @@ const TechnicianDashboard: React.FC = () => {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024;
+    const validFiles = files.filter(f => f.size <= maxSize);
+    if (validFiles.length !== files.length) {
+      showToast('error', 'Algunos archivos exceden el límite de 10MB');
+    }
+    setSelectedFiles(prev => [...prev, ...validFiles].slice(0, 5));
+    if (e.target) e.target.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendComment = async () => {
     if (!selectedTicket || !newComment.trim()) return;
     try {
-      const response = await ApiService.addTicketComment(parseInt(selectedTicket.id), newComment);
+      const hasFiles = selectedFiles.length > 0;
+      const response = await ApiService.addTicketComment(
+        parseInt(selectedTicket.id),
+        newComment,
+        hasFiles ? selectedFiles : undefined
+      );
       if (response.success) {
         setNewComment('');
-        showToast('success', 'Comentario enviado correctamente');
+        setSelectedFiles([]);
+        showToast('success', `Comentario enviado${hasFiles ? ' con archivos' : ''}`);
         await loadTicketComments(selectedTicket.id);
       } else {
         showToast('error', response.message || 'Error al enviar comentario');
@@ -373,70 +453,16 @@ const TechnicianDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    const loadData = async () => {
-      if (!user) {
-        setLoading(false);
-        return;
-      }
-      if (!user.last_login_at) {
-        setFirstLogin(true);
-        setLoading(false);
-        return;
-      }
-      let hasError = false;
-      try {
-        const profileResponse = await ApiService.getTechnicianProfile();
-        if (profileResponse.success && profileResponse.data) {
-          setTechnicianProfile(profileResponse.data);
-        } else {
-          showToast('error', profileResponse.message || 'Error al cargar perfil');
-          hasError = true;
-        }
-        const ticketsResponse = await ApiService.getTechnicianTickets();
-        if (ticketsResponse.success && ticketsResponse.data) {
-          const formattedTickets = ticketsResponse.data.map((ticket: any) => {
-            const createdDate = new Date(ticket.Created_at || new Date().toISOString());
-            const resolvedDate = ticket.Resolved_at ? new Date(ticket.Resolved_at) : null;
-            const resolutionTime = resolvedDate ? Math.floor((resolvedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60)) : null;
-            return {
-              id: ticket.ID_Service_Request.toString(),
-              Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
-              Subject: ticket.Subject || 'Sin asunto',
-              Description: ticket.Description || 'Sin descripción',
-              Property_Number: ticket.Property_Number || 'No especificado',
-              Direction_Name: ticket.Office_Name || ticket.office_name || 'No asignado',
-              Division_Name: ticket.Office_Type || ticket.office_type || 'No asignado',
-              Coordination_Name: ticket.Type_Service || ticket.service_type_name || 'No asignado',
-              System_Priority: ticket.System_Priority || 'Media',
-              Status: ticket.Status || 'Pendiente',
-              Created_at: ticket.Created_at || new Date().toISOString(),
-              Technician_Name: ticket.technicians?.find((t: any) => t.is_lead)?.name || 'No asignado',
-              Is_Lead: ticket.is_lead || false,
-              Comments_Count: ticket.Comments_Count || 0,
-              Resolved_at: ticket.Resolved_at || null,
-              Resolution_Time: resolutionTime,
-              Office_Name: ticket.Office_Name || ticket.office_name || 'No asignado',
-              Type_Service: ticket.Type_Service || ticket.service_type_name || 'No asignado',
-              Priority_Level: ticket.Priority_Level || 1
-            };
-          });
-          setMyTickets(formattedTickets);
-          await loadTicketHistory();
-        } else {
-          showToast('error', ticketsResponse.message || 'Error al cargar tickets');
-          hasError = true;
-        }
-      } catch (error) {
-        showToast('error', 'Error de conexión al cargar datos');
-        hasError = true;
-      } finally {
-        setLoading(false);
-        if (!hasError && myTickets.length === 0) {
-          showToast('success', 'Datos cargados correctamente');
-        }
-      }
-    };
-    if (user) loadData();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    if (!user.last_login_at) {
+      setFirstLogin(true);
+      setLoading(false);
+      return;
+    }
+    loadInitialData();
   }, [user]);
 
   useEffect(() => {
@@ -534,7 +560,10 @@ const TechnicianDashboard: React.FC = () => {
   }
 
   if (firstLogin) {
-    return <PasswordChangeRequired onComplete={() => setFirstLogin(false)} />;
+    return <PasswordChangeRequired onComplete={() => {
+      setFirstLogin(false);
+      loadInitialData();
+    }} />;
   }
 
   if (!technicianProfile) {
@@ -795,20 +824,83 @@ const TechnicianDashboard: React.FC = () => {
                         <span className="date">{new Date(comment.Created_at).toLocaleString()}</span>
                       </div>
                       <p className="dd-comment-text">{comment.Comment}</p>
+                      {comment.attachments && comment.attachments.length > 0 && (
+                        <div className="dd-comment-attachments">
+                          {comment.attachments.map((att: any) => {
+                            const isImage = att.File_Type?.startsWith('image/');
+                            return isImage ? (
+                              <div key={att.ID_Attachment} className="att-item">
+                                <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                                  <img
+                                    src={`${API_BASE_URL}/${att.File_Path}`}
+                                    alt={att.File_Name}
+                                    className="att-thumb"
+                                  />
+                                </a>
+                              </div>
+                            ) : (
+                              <div key={att.ID_Attachment} className="att-item att-file">
+                                <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                                  <FileText size={14} />
+                                  <span className="att-name">{att.File_Name}</span>
+                                </a>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}
                 {selectedTicket.Status !== 'Cerrado' && (
                   <div className="dd-comment-form">
-                    <textarea
-                      placeholder="Escribir comentario..."
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                    />
-                    <button className="action-btn primary" onClick={handleSendComment}
-                      style={{ background: 'var(--navy)', color: '#fff', border: 'none' }}>
-                      <Send size={15} />
-                    </button>
+                    <div className="dd-comment-input-row">
+                      <textarea
+                        placeholder="Escribir comentario..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                      />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar"
+                        onChange={handleFileSelect}
+                        style={{ display: 'none' }}
+                      />
+                      <div className="dd-comment-actions">
+                        <button
+                          className="action-btn attach"
+                          onClick={() => fileInputRef.current?.click()}
+                          title="Adjuntar archivos"
+                          style={{ background: selectedFiles.length > 0 ? 'var(--navy-s, #e8edf5)' : 'transparent', color: selectedFiles.length > 0 ? 'var(--navy)' : 'var(--text-muted, #6b7280)' }}
+                        >
+                          <Paperclip size={15} />
+                          {selectedFiles.length > 0 && <span className="attach-count">{selectedFiles.length}</span>}
+                        </button>
+                        <button className="action-btn primary" onClick={handleSendComment}
+                          style={{ background: 'var(--navy)', color: '#fff', border: 'none' }}>
+                          <Send size={15} />
+                        </button>
+                      </div>
+                    </div>
+                    {selectedFiles.length > 0 && (
+                      <div className="dd-file-previews">
+                        {selectedFiles.map((file, i) => (
+                          <div key={i} className="dd-file-preview">
+                            {file.type.startsWith('image/') ? (
+                              <img src={URL.createObjectURL(file)} alt={file.name} className="fp-thumb" />
+                            ) : (
+                              <FileText size={16} />
+                            )}
+                            <span className="fp-name">{file.name}</span>
+                            <button className="fp-remove" onClick={() => removeFile(i)}>
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

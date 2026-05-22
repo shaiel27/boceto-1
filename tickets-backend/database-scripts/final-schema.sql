@@ -185,10 +185,16 @@ CREATE TABLE IF NOT EXISTS Ticket_Comments (
 CREATE TABLE IF NOT EXISTS Ticket_Attachments (
     ID_Attachment INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Service_Request INT,
+    Fk_Comment INT,
+    Fk_User INT,
     File_Name VARCHAR(255) NOT NULL,
     File_Path VARCHAR(1024) NOT NULL,
+    File_Type VARCHAR(100) DEFAULT NULL,
+    File_Size INT DEFAULT NULL,
     Uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request)
+    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request),
+    FOREIGN KEY (Fk_Comment) REFERENCES Ticket_Comments(ID_Comment),
+    FOREIGN KEY (Fk_User) REFERENCES Users(ID_Users)
 );
 
 CREATE TABLE IF NOT EXISTS Ticket_Timeline (
@@ -265,6 +271,25 @@ CREATE TABLE IF NOT EXISTS Escalation_Config (
     Notify_Admins BOOLEAN DEFAULT TRUE,
     Auto_Escalate BOOLEAN DEFAULT FALSE
 );
+
+-- 9. Assistance Requests (simplified: technician requests admin help)
+CREATE TABLE IF NOT EXISTS Assistance_Requests (
+    ID_Request INT AUTO_INCREMENT PRIMARY KEY,
+    Fk_Ticket INT NOT NULL,
+    Fk_Requesting_Technician INT NOT NULL,
+    Fk_Assigned_Technician INT NULL,
+    Status ENUM('PENDIENTE','ASIGNADO','RECHAZADO','CANCELADO') DEFAULT 'PENDIENTE',
+    Requested_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Updated_At TIMESTAMP NULL,
+    Notification_Count INT DEFAULT 0,
+    Last_Notified_At TIMESTAMP NULL,
+    FOREIGN KEY (Fk_Ticket) REFERENCES Service_Request(ID_Service_Request),
+    FOREIGN KEY (Fk_Requesting_Technician) REFERENCES Users(ID_Users),
+    FOREIGN KEY (Fk_Assigned_Technician) REFERENCES Users(ID_Users)
+);
+
+CREATE INDEX idx_assistance_status ON Assistance_Requests(Status);
+CREATE INDEX idx_assistance_ticket ON Assistance_Requests(Fk_Ticket);
 
 -- Default data (roles, services, sample users) -- keep minimal
 INSERT IGNORE INTO Role (ID_Role, Role, Description) VALUES
