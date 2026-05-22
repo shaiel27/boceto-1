@@ -39,9 +39,28 @@ class User {
             if ($stmt->rowCount() > 0) {
                 $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-                // Verify password using password_verify
-                if (password_verify($password, $row['Password'])) {
-                    // Decide whether this user is allowed to login.
+                // Verify password — support both hashed and plaintext (seed data)
+                $storedHash = $row['Password'];
+                $valid = password_verify($password, $storedHash);
+                if (!$valid && !password_get_info($storedHash)['algo']) {
+                    $valid = ($password === $storedHash);
+                }
+                if (!$valid) {
+                    return false;
+                }
+                // Upgrade plaintext to hash on successful login
+                if (!password_get_info($storedHash)['algo']) {
+                    $newHash = password_hash($password, PASSWORD_DEFAULT);
+                    try {
+                        $upgrade = $this->conn->prepare("UPDATE " . $this->table_name . " SET Password = :hash WHERE ID_Users = :id");
+                        $upgrade->bindParam(':hash', $newHash);
+                        $upgrade->bindParam(':id', $row['ID_Users'], PDO::PARAM_INT);
+                        $upgrade->execute();
+                    } catch (PDOException $e) {
+                        error_log("Failed to upgrade password hash for user {$row['ID_Users']}: " . $e->getMessage());
+                    }
+                }
+                // Decide whether this user is allowed to login.
                     // Preferred method: is_system_user = 1.
                     // For compatibility with pre-migration seeded data, allow users with internal roles (Admin, Tecnico, Jefe)
                     $isSystem = isset($row['is_system_user']) ? (int)$row['is_system_user'] : 0;
@@ -77,7 +96,6 @@ class User {
                     $row['is_system_user'] = $isSystem;
 
                     return $row;
-                }
             }
         } catch(PDOException $exception) {
             echo "Login error: " . $exception->getMessage();

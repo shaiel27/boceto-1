@@ -883,8 +883,8 @@ export class ApiService {
 
 
 
-  static async addTicketComment(id: number, comment: string): Promise<ApiResponse> {
-    return this.addComment(id, comment);
+  static async addTicketComment(id: number, comment: string, files?: File[]): Promise<ApiResponse> {
+    return this.addComment(id, comment, files);
   }
 
 
@@ -2465,18 +2465,58 @@ export class ApiService {
     }
   }
 
-  static async addComment(ticketId: number, comment: string): Promise<ApiResponse> {
+  static async addComment(ticketId: number, comment: string, files?: File[]): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/tickets?action=comment`, {
-        method: 'POST',
+      const hasFiles = files && files.length > 0;
+
+      if (hasFiles) {
+        const formData = new FormData();
+        formData.append('Fk_Service_Request', ticketId.toString());
+        formData.append('Comment', comment);
+        for (const file of files) {
+          formData.append('files[]', file);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/api/tickets?action=comment`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+        return data;
+      } else {
+        const response = await fetch(`${API_BASE_URL}/api/tickets?action=comment`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            Fk_Service_Request: ticketId,
+            Comment: comment
+          })
+        });
+
+        const data = await response.json();
+        return data;
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al agregar comentario'
+      };
+    }
+  }
+
+  static async getTicketAttachments(id: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=attachments&id=${id}`, {
         headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          Fk_Service_Request: ticketId,
-          Comment: comment
-        })
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+        }
       });
 
       const data = await response.json();
@@ -2484,7 +2524,7 @@ export class ApiService {
     } catch (error) {
       return {
         success: false,
-        message: 'Error al agregar comentario'
+        message: 'Error al obtener archivos adjuntos'
       };
     }
   }
@@ -2747,150 +2787,79 @@ export class ApiService {
     }
   }
 
-  // Assistance Request System - Using existing Ticket_Comments and Ticket_Technicians tables
+  // Assistance Request System - Real API implementation
   
-  static async createAssistanceRequest(ticketId: number, requestData: {
-    reason: string;
-    priority: string;
-    required_skills: string[];
-  }): Promise<ApiResponse> {
-    // Use mock implementation as primary since backend doesn't exist
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const requestId = `REQ_${Date.now()}`;
-    const assistanceComment = `[ASISTENCIA_REQUEST]${JSON.stringify({
-        type: "ASISTENCIA_REQUEST",
-        request_id: requestId,
-        technician_id: null, // Will be filled by backend
-        ticket_id: ticketId,
-        reason: requestData.reason,
-        priority: requestData.priority,
-        required_skills: requestData.required_skills,
-        status: "PENDIENTE",
-        created_at: new Date().toISOString()
-      })}`;
-
-    return {
-      success: true,
-      message: 'Solicitud de asistencia creada exitosamente',
-      data: {
-        request_id: requestId,
-        status: 'PENDIENTE',
-        created_at: new Date().toISOString()
-      }
-    };
+  static async createAssistanceRequest(ticketId: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=assistance&id=${ticketId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+        }
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión al solicitar asistencia'
+      };
+    }
   }
 
   static async getPendingAssistanceRequests(): Promise<ApiResponse> {
-    // Use mock implementation as primary since backend doesn't exist
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return {
-      success: true,
-      message: 'Solicitudes pendientes obtenidas (datos mock)',
-      data: [
-        {
-          request_id: 'REQ_1715123456789',
-          comment_id: 123,
-          technician_id: 2,
-          technician_name: 'Juan Pérez',
-          ticket_id: 456,
-          ticket_title: 'Problema con impresora de red',
-          reason: 'Necesito especialista en redes para configurar VPN',
-          priority: 'ALTA',
-          required_skills: ['Redes', 'Configuración VPN'],
-          status: 'PENDIENTE',
-          created_at: '2026-05-07T13:00:00Z'
-        },
-        {
-          request_id: 'REQ_1715123456790',
-          comment_id: 124,
-          technician_id: 3,
-          technician_name: 'María González',
-          ticket_id: 457,
-          ticket_title: 'Error en sistema de catastro',
-          reason: 'Requiero apoyo con base de datos SQL',
-          priority: 'MEDIA',
-          required_skills: ['Base de datos', 'SQL'],
-          status: 'PENDIENTE',
-          created_at: '2026-05-07T14:30:00Z'
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=pending-assistance`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
         }
-      ]
-    };
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión al obtener solicitudes'
+      };
+    }
   }
 
-  static async manageAssistanceRequest(requestId: string, action: {
-    action: 'approve' | 'reject';
-    admin_notes?: string;
-    assigned_technicians?: number[];
-  }): Promise<ApiResponse> {
-    // Use mock implementation as primary since backend doesn't exist
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    return {
-      success: true,
-      message: `Solicitud ${action.action === 'approve' ? 'aprobada' : 'rechazada'} exitosamente`,
-      data: {
-        request_id: requestId,
-        status: action.action === 'approve' ? 'APROBADA' : 'RECHAZADA',
-        updated_at: new Date().toISOString()
-      }
-    };
+  static async respondAssistanceRequest(requestId: number, response: 'accept' | 'reject'): Promise<ApiResponse> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/tickets?action=respond-assistance`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ request_id: requestId, response })
+      });
+      const data = await res.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión al responder solicitud'
+      };
+    }
   }
 
   static async getMyAssistanceRequests(technicianId: number): Promise<ApiResponse> {
-    // Use mock implementation as primary since backend doesn't exist
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    return {
-      success: true,
-      message: 'Mis solicitudes de asistencia obtenidas (datos mock)',
-      data: [
-        {
-          request_id: 'REQ_1715123456788',
-          ticket_id: 455,
-          ticket_title: 'Actualización de sistema',
-          reason: 'Necesito ayuda con migración de datos',
-          priority: 'MEDIA',
-          required_skills: ['Migración', 'Base de datos'],
-          status: 'APROBADA',
-          created_at: '2026-05-06T10:00:00Z',
-          updated_at: '2026-05-06T11:30:00Z',
-          admin_notes: 'Asignado a especialista en bases de datos'
-        },
-        {
-          request_id: 'REQ_1715123456789',
-          ticket_id: 456,
-          ticket_title: 'Problema con impresora de red',
-          reason: 'Necesito especialista en redes para configurar VPN',
-          priority: 'ALTA',
-          required_skills: ['Redes', 'Configuración VPN'],
-          status: 'PENDIENTE',
-          created_at: '2026-05-07T13:00:00Z'
+    // Returns all assistance requests for a given technician (the ticket they requested help on)
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=pending-assistance&technician=${technicianId}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
         }
-      ]
-    };
-  }
-
-  static parseAssistanceRequests(comments: any[]): any[] {
-    const requests = [];
-    
-    for (const comment of comments) {
-      // Handle both PHP-PRO and frontend comment structures
-      const commentText = comment.Comment || comment.Comment_Text || '';
-      
-      if (commentText && commentText.startsWith('[ASISTENCIA_REQUEST]')) {
-        try {
-          const jsonData = commentText.substring(20);
-          const request = JSON.parse(jsonData);
-          request.comment_id = comment.ID_Comment || comment.ID_Comment;
-          requests.push(request);
-        } catch (error) {
-          console.error('Error parsing assistance request:', error);
-        }
-      }
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión al obtener solicitudes'
+      };
     }
-    return requests;
   }
 
   static async getAuditLogs(params: {
@@ -2942,6 +2911,55 @@ export class ApiService {
     } catch (error) {
       console.error('[API] Error en getAuditStats:', error);
       return { success: false, message: 'Error de conexión con el servidor' };
+    }
+  }
+
+  // Notification System API
+
+  static async getNotifications(limit: number = 20, offset: number = 0): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/notifications?action=my-notifications&limit=${limit}&offset=${offset}`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Error de conexión al obtener notificaciones' };
+    }
+  }
+
+  static async getUnreadCount(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/notifications?action=unread-count`, {
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        }
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Error de conexión' };
+    }
+  }
+
+  static async markNotificationRead(notificationId: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/notifications?action=mark-read`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notification_id: notificationId })
+      });
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return { success: false, message: 'Error de conexión' };
     }
   }
 

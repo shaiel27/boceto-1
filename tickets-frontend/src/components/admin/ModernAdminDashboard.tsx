@@ -26,6 +26,7 @@ import './ModernAdminDashboard.css';
 import ApiService, { API_BASE_URL } from '../../services/api';
 import AdminAssistanceManagement from '../assistance/AdminAssistanceManagement';
 import CenteredNotification, { NotificationData } from '../notifications/CenteredNotification';
+import NotificationBell from '../notifications/NotificationBell';
 
 interface DashboardStats {
   pending_count: number;
@@ -269,6 +270,7 @@ const ModernAdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="adm-header-right">
+            <NotificationBell />
             <div className="adm-search">
               <Search size={16} />
               <input

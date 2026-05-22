@@ -60,9 +60,13 @@ class Notification
 
     public function getByUser(int $userId, int $limit = 50, int $offset = 0): array
     {
-        $query = "SELECT * FROM Notifications
-                  WHERE Fk_User = :user_id
-                  ORDER BY Created_at DESC
+        $query = "SELECT n.*,
+                         COALESCE(sr.Ticket_Code, '') as ticket_code,
+                         COALESCE(sr.Subject, '') as ticket_subject
+                  FROM Notifications n
+                  LEFT JOIN Service_Request sr ON n.Fk_Service_Request = sr.ID_Service_Request
+                  WHERE n.Fk_User = :user_id
+                  ORDER BY n.Created_at DESC
                   LIMIT :limit OFFSET :offset";
 
         try {

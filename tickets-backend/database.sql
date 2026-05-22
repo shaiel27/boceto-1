@@ -201,10 +201,16 @@ CREATE TABLE Ticket_Comments (
 CREATE TABLE Ticket_Attachments (
     ID_Attachment INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Service_Request INT,
-    File_Name VARCHAR(100) NOT NULL,
-    File_Path VARCHAR(255) NOT NULL,
+    Fk_Comment INT,
+    Fk_User INT,
+    File_Name VARCHAR(255) NOT NULL,
+    File_Path VARCHAR(1024) NOT NULL,
+    File_Type VARCHAR(100) DEFAULT NULL,
+    File_Size INT DEFAULT NULL,
     Uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request)
+    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request),
+    FOREIGN KEY (Fk_Comment) REFERENCES Ticket_Comments(ID_Comment),
+    FOREIGN KEY (Fk_User) REFERENCES Users(ID_Users)
 );
 
 CREATE TABLE Ticket_Timeline (
@@ -247,7 +253,7 @@ CREATE TABLE audit_logs (
 -- 7. MÓDULO DE NOTIFICACIONES
 -- ==========================================
 
-CREATE TABLE Notifications (
+CREATE TABLE IF NOT EXISTS Notifications (
     ID_Notification INT AUTO_INCREMENT PRIMARY KEY,
     Fk_User INT NOT NULL,
     Type VARCHAR(50) NOT NULL COMMENT 'Type of notification: ticket_assignment, ticket_created, etc.',
@@ -277,12 +283,14 @@ INSERT INTO Role (Role, Description) VALUES
 ('Jefe', 'Jefe de oficina que puede solicitar tickets');
 
 -- Usuarios
-INSERT INTO Users (Fk_Role, Email, Password, Username, Full_Name) VALUES
-(1, 'admin@alcaldia.gob', 'password123', 'admin', 'Administrador del Sistema'),
-(2, 'tech1@alcaldia.gob', 'password123', 'carlos_diaz', 'Carlos Diaz'),
-(2, 'tech2@alcaldia.gob', 'password123', 'amna_verez', 'Amna Verez'),
-(3, 'jefe1@alcaldia.gob', 'password123', 'juan_perez', 'Juan Pérez'),
-(3, 'jefe2@alcaldia.gob', 'password123', 'maria_gonzalez', 'María González');
+-- ⚠️ Password debe ser un hash bcrypt. Generar con PHP: password_hash('password123', PASSWORD_DEFAULT)
+--    O ejecutar: php -r "echo password_hash('password123', PASSWORD_DEFAULT);"
+INSERT INTO Users (Fk_Role, Email, Password, Username, Full_Name, is_system_user) VALUES
+(1, 'admin@alcaldia.gob', 'password123', 'admin', 'Administrador del Sistema', TRUE),
+(2, 'tech1@alcaldia.gob', 'password123', 'carlos_diaz', 'Carlos Diaz', TRUE),
+(2, 'tech2@alcaldia.gob', 'password123', 'amna_verez', 'Amna Verez', TRUE),
+(3, 'jefe1@alcaldia.gob', 'password123', 'juan_perez', 'Juan Pérez', TRUE),
+(3, 'jefe2@alcaldia.gob', 'password123', 'maria_gonzalez', 'María González', TRUE);
 
 -- Jefes
 INSERT INTO Boss (Name_Boss, Pronoun, Fk_User) VALUES
@@ -423,6 +431,13 @@ INSERT INTO Service_Request (Fk_Office, Fk_User_Requester, Fk_TI_Service, Fk_Bos
 (7, 5, 2, 2, 'Computadora no enciende', 'La computadora no responde al encender', 'Alta', 'En Proceso'),
 (5, 4, 3, 1, 'Error en sistema de facturación', 'El sistema muestra error al generar reportes', 'Media', 'Pendiente');
 
+-- Asignación de técnicos a tickets (para que técnicos vean tickets asignados)
+INSERT INTO Ticket_Technicians (Fk_Service_Request, Fk_Technician, Is_Lead, Assignment_Role, Status) VALUES
+(1, 1, TRUE, 'Principal', 'Activo'),
+(1, 2, FALSE, 'Apoyo', 'Activo'),
+(2, 1, TRUE, 'Principal', 'Activo'),
+(3, 2, TRUE, 'Principal', 'Activo');
+
 -- Timeline de prueba
 INSERT INTO Ticket_Timeline (Fk_Service_Request, Fk_User_Actor, Action_Description, Old_Status, New_Status, Event_Date) VALUES
 (1, 1, 'Ticket creado por el usuario', NULL, 'Pendiente', NOW()),
@@ -430,11 +445,39 @@ INSERT INTO Ticket_Timeline (Fk_Service_Request, Fk_User_Actor, Action_Descripti
 (2, 1, 'Estado cambiado a En Proceso', 'Pendiente', 'En Proceso', NOW() + INTERVAL 1 HOUR),
 (3, 1, 'Ticket creado por el usuario', NULL, 'Pendiente', NOW());
 
+CREATE TABLE IF NOT EXISTS Assistance_Requests (
+    ID_Request INT AUTO_INCREMENT PRIMARY KEY,
+    Fk_Ticket INT NOT NULL,
+    Fk_Requesting_Technician INT NOT NULL,
+    Fk_Assigned_Technician INT NULL,
+    Status ENUM('PENDIENTE','ASIGNADO','RECHAZADO','CANCELADO') DEFAULT 'PENDIENTE',
+    Requested_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    Updated_At TIMESTAMP NULL,
+    Notification_Count INT DEFAULT 0,
+    Last_Notified_At TIMESTAMP NULL,
+    FOREIGN KEY (Fk_Ticket) REFERENCES Service_Request(ID_Service_Request),
+    FOREIGN KEY (Fk_Requesting_Technician) REFERENCES Users(ID_Users),
+    FOREIGN KEY (Fk_Assigned_Technician) REFERENCES Users(ID_Users)
+);
+
+CREATE INDEX idx_assistance_status ON Assistance_Requests(Status);
+CREATE INDEX idx_assistance_ticket ON Assistance_Requests(Fk_Ticket);
+
 INSERT INTO Lunch_Blocks (Block_Name, Start_Time, End_Time) VALUES
 ('Primer turno', '11:30:00', '12:10:00'),
 ('Segundo turno', '12:10:00', '12:50:00'),
 ('Tercer Turno', '12:50:00', '13:30:00'),
 ('Cuarto Turno', '13:30:00', '14:00:00');
 
-
-select * from users;
+-- Horarios de técnicos (Lunes a Viernes, 8am-5pm)
+INSERT INTO Technician_Schedules (Fk_Technician, Day_Of_Week, Work_Start_Time, Work_End_Time) VALUES
+(1, 'Lunes', '08:00:00', '17:00:00'),
+(1, 'Martes', '08:00:00', '17:00:00'),
+(1, 'Miercoles', '08:00:00', '17:00:00'),
+(1, 'Jueves', '08:00:00', '17:00:00'),
+(1, 'Viernes', '08:00:00', '17:00:00'),
+(2, 'Lunes', '08:00:00', '17:00:00'),
+(2, 'Martes', '08:00:00', '17:00:00'),
+(2, 'Miercoles', '08:00:00', '17:00:00'),
+(2, 'Jueves', '08:00:00', '17:00:00'),
+(2, 'Viernes', '08:00:00', '17:00:00');

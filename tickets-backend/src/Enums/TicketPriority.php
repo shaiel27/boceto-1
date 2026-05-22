@@ -4,36 +4,48 @@ declare(strict_types=1);
 
 namespace App\Enums;
 
-enum TicketPriority: string
+class TicketPriority
 {
-    case CRITICAL = 'Critica';
-    case HIGH = 'Alta';
-    case MEDIUM = 'Media';
-    case LOW = 'Baja';
+    const CRITICAL = 'Critica';
+    const HIGH = 'Alta';
+    const MEDIUM = 'Media';
+    const LOW = 'Baja';
 
-    public function weight(): int
+    private const WEIGHTS = [
+        'Critica' => 10,
+        'Alta' => 5,
+        'Media' => 2,
+        'Baja' => 1,
+    ];
+
+    private const LABELS = [
+        'Critica' => 'Crítica',
+        'Alta' => 'Alta',
+        'Media' => 'Media',
+        'Baja' => 'Baja',
+    ];
+
+    private const ESCALATION_HOURS = [
+        'Critica' => 1,
+        'Alta' => 4,
+        'Media' => 12,
+        'Baja' => 24,
+    ];
+
+    public static function weight(string $priority): int
     {
-        return match ($this) {
-            self::CRITICAL => 10,
-            self::HIGH => 5,
-            self::MEDIUM => 2,
-            self::LOW => 1,
-        };
+        return self::WEIGHTS[$priority] ?? self::WEIGHTS[self::MEDIUM];
     }
 
-    public function label(): string
+    public static function label(string $priority): string
     {
-        return match ($this) {
-            self::CRITICAL => 'Crítica',
-            self::HIGH => 'Alta',
-            self::MEDIUM => 'Media',
-            self::LOW => 'Baja',
-        };
+        return self::LABELS[$priority] ?? $priority;
     }
 
-    public static function fromString(string $value): self
+    public static function fromString(string $value): string
     {
-        return match (strtolower($value)) {
+        $lower = strtolower($value);
+        return match ($lower) {
             'critica', 'critical' => self::CRITICAL,
             'alta', 'high' => self::HIGH,
             'media', 'medium' => self::MEDIUM,
@@ -42,13 +54,8 @@ enum TicketPriority: string
         };
     }
 
-    public function escalationHours(): int
+    public static function escalationHours(string $priority): int
     {
-        return match ($this) {
-            self::CRITICAL => 1,
-            self::HIGH => 4,
-            self::MEDIUM => 12,
-            self::LOW => 24,
-        };
+        return self::ESCALATION_HOURS[$priority] ?? self::ESCALATION_HOURS[self::MEDIUM];
     }
 }

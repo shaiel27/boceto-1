@@ -154,4 +154,86 @@ final class NotificationService
 
         return $success;
     }
+
+    /**
+     * Notify all admins about a new assistance request
+     */
+    public function createAssistanceRequestNotification(
+        int $ticketId,
+        string $ticketCode,
+        string $ticketSubject,
+        string $technicianName,
+        int $requestId,
+        bool $isRenotification = false
+    ): bool {
+        $adminIds = $this->getAdminUserIds();
+        if (empty($adminIds)) return false;
+
+        $prefix = $isRenotification ? '⚠️ RECORDATORIO: ' : '🚨 ';
+        $title = $prefix . 'Solicitud de Asistencia' . ($isRenotification ? ' (pendiente)' : '');
+        $message = "Técnico: {$technicianName}\nTicket: {$ticketCode}\nAsunto: {$ticketSubject}\n\nSe necesita asignar un técnico de apoyo urgente.";
+
+        $success = true;
+        foreach ($adminIds as $adminId) {
+            $dto = new NotificationDTO(
+                type: 'assistance_request',
+                title: $title,
+                message: $message,
+                userId: (int)$adminId,
+                ticketId: $ticketId,
+                metadata: [
+                    'request_id' => $requestId,
+                    'technician_name' => $technicianName,
+                    'ticket_code' => $ticketCode,
+                    'ticket_subject' => $ticketSubject,
+                    'is_renotification' => $isRenotification,
+                    'notification_count' => null // filled by caller if needed
+                ]
+            );
+            if (!$this->notificationModel->create($dto)) $success = false;
+        }
+        return $success;
+    }
+
+    /**
+     * Notify technician that their assistance request was assigned
+     */
+    public function createAssistanceAssignedNotification(
+        int $technicianUserId,
+        int $ticketId,
+        string $ticketCode,
+        string $adminName
+    ): bool {
+        $dto = new NotificationDTO(
+            type: 'assistance_assigned',
+            title: '✅ Asistencia Asignada',
+            message: "Tu solicitud de asistencia para el ticket {$ticketCode} fue atendida por {$adminName}.",
+            userId: $technicianUserId,
+            ticketId: $ticketId,
+            metadata: [
+                'ticket_code' => $ticketCode,
+                'admin_name' => $adminName
+            ]
+        );
+        return $this->notificationModel->create($dto);
+    }
+
+    /**
+     * Notify technician that their assistance request was rejected
+     */
+    public function createAssistanceRejectedNotification(
+        int $technicianUserId,
+        int $ticketId,
+        string $ticketCode
+    ): bool {
+        $dto = new NotificationDTO(
+            type: 'assistance_rejected',
+            title: '❌ Solicitud de Asistencia Rechazada',
+            message: "Tu solicitud de asistencia para el ticket {$ticketCode} fue rechazada.",
+            userId: $technicianUserId,
+            ticketId: $ticketId,
+            metadata: ['ticket_code' => $ticketCode]
+        );
+        return $this->notificationModel->create($dto);
+    }
 }

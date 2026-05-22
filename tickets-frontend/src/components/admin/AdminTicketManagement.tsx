@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Search,
   Eye,
@@ -110,6 +110,7 @@ interface Attachment {
 
 const AdminTicketManagement: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
@@ -170,6 +171,13 @@ const AdminTicketManagement: React.FC = () => {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showDetailModal]);
+
+  useEffect(() => {
+    const initialSearch = searchParams.get('search');
+    if (initialSearch) {
+      setSearchTerm(initialSearch);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     loadTickets();

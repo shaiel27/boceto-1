@@ -7,7 +7,9 @@ define('DEFAULT_TICKET_LIMIT', 1000);
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/ServiceRequest.php';
 require_once __DIR__ . '/../models/TicketComment.php';
+require_once __DIR__ . '/../models/TicketAttachment.php';
 require_once __DIR__ . '/../models/TicketTimeline.php';
+require_once __DIR__ . '/../models/AssistanceRequest.php';
 require_once __DIR__ . '/../models/Technician.php';
 require_once __DIR__ . '/../models/Notification.php';
 require_once __DIR__ . '/../models/AuditLog.php';
@@ -34,6 +36,8 @@ try {
 
     $ticket = new ServiceRequest($db);
     $comment = new TicketComment($db);
+    $attachment = new TicketAttachment($db);
+    $assistanceRequest = new AssistanceRequest($db);
     $timeline = new TicketTimeline($db);
     $technician = new Technician($db);
     $notification = new Notification($db);
@@ -184,13 +188,42 @@ switch ($method) {
                 $ticketId = (int)$_GET['id'];
                 $comments = $comment->getByTicket($ticketId);
                 
+                // Attach files to each comment
+                $allAttachments = $attachment->getByTicket($ticketId);
+                $attachmentsByComment = [];
+                foreach ($allAttachments as $att) {
+                    $attachmentsByComment[$att['Fk_Comment']][] = $att;
+                }
+                foreach ($comments as &$cmt) {
+                    $cmtId = $cmt['ID_Comment'];
+                    $cmt['attachments'] = $attachmentsByComment[$cmtId] ?? [];
+                }
+                unset($cmt);
+                
                 error_log("Comments count: " . count($comments));
-                error_log("Comments data: " . json_encode($comments));
                 
                 echo json_encode([
                     'success' => true,
                     'data' => $comments,
                     'count' => count($comments)
+                ]);
+                break;
+                
+            case 'attachments':
+                if (!isset($_GET['id'])) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'ID no proporcionado'
+                    ]);
+                    break;
+                }
+                
+                $ticketId = (int)$_GET['id'];
+                $attachments = $attachment->getByTicket($ticketId);
+                echo json_encode([
+                    'success' => true,
+                    'data' => $attachments
                 ]);
                 break;
 
@@ -316,6 +349,43 @@ switch ($method) {
                 ]);
                 break;
 
+            case 'pending-assistance':
+                if (!in_array($currentUserRole, ['Admin', 'Jefe'], true)) {
+                    http_response_code(403);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Solo administradores pueden ver solicitudes de asistencia'
+                    ]);
+                    break;
+                }
+
+                // Re-notify for pending requests older than 5 min
+                $toRenotify = $assistanceRequest->shouldRenotify();
+                foreach ($toRenotify as $req) {
+                    $ticketData = $ticket->getById((int)$req['Fk_Ticket']);
+                    $techUser = getUserName($db, (int)$req['Fk_Requesting_Technician']);
+                    if ($ticketData && $techUser) {
+                        $notificationService->createAssistanceRequestNotification(
+                            (int)$req['Fk_Ticket'],
+                            $ticketData['Ticket_Code'] ?? "#{$req['Fk_Ticket']}",
+                            $ticketData['Subject'] ?? '',
+                            $techUser,
+                            (int)$req['ID_Request'],
+                            true
+                        );
+                        $assistanceRequest->markNotified((int)$req['ID_Request']);
+                        $auditService->logTicketAction('assistance_renotified', (int)$req['Fk_Ticket'],
+                            "Re-notificación de solicitud de asistencia #{$req['ID_Request']}");
+                    }
+                }
+
+                $pending = $assistanceRequest->getPending();
+                echo json_encode([
+                    'success' => true,
+                    'data' => $pending
+                ]);
+                break;
+
             default:
                 // Admins and technicians can see all tickets
                 if (!in_array($currentUserRole, ['Admin', 'Tecnico', 'Jefe'], true)) {
@@ -339,10 +409,18 @@ switch ($method) {
         break;
         
     case 'POST':
-        $data = json_decode(file_get_contents("php://input"));
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        $isMultipart = strpos($contentType, 'multipart/form-data') !== false;
+        
+        if ($isMultipart) {
+            $data = (object)$_POST;
+        } else {
+            $data = json_decode(file_get_contents("php://input"));
+        }
+        
         error_log("=== POST REQUEST ===");
         error_log("Action: {$action}");
-        error_log("GET params: " . json_encode($_GET));
+        error_log("Content-Type: {$contentType}");
         error_log("POST data: " . json_encode($data));
         
         // Action: add comment
@@ -367,11 +445,81 @@ switch ($method) {
             error_log("Creating comment for ticket: {$comment->Fk_Service_Request}");
             
             if ($comment->create()) {
-                $auditService->logTicketAction('create_comment', (int) $comment->Fk_Service_Request, "Comentario agregado al ticket #{$comment->Fk_Service_Request}");
-                error_log("Comment created successfully");
+                $commentId = $comment->ID_Comment;
+                
+                // Handle file uploads
+                $uploadedFiles = [];
+                if ($isMultipart && !empty($_FILES['files'])) {
+                    $uploadDir = __DIR__ . '/../../public/uploads/comments/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    
+                    $allowedTypes = [
+                        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                        'application/pdf',
+                        'application/msword',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'application/vnd.ms-excel',
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'text/plain', 'text/csv',
+                        'application/zip', 'application/x-rar-compressed'
+                    ];
+                    
+                    $files = $_FILES['files'];
+                    $fileCount = is_array($files['name']) ? count($files['name']) : 1;
+                    
+                    for ($i = 0; $i < $fileCount; $i++) {
+                        $fileName = is_array($files['name']) ? $files['name'][$i] : $files['name'];
+                        $fileTmpName = is_array($files['tmp_name']) ? $files['tmp_name'][$i] : $files['tmp_name'];
+                        $fileSize = is_array($files['size']) ? (int)$files['size'][$i] : (int)$files['size'];
+                        $fileType = is_array($files['type']) ? $files['type'][$i] : $files['type'];
+                        $fileError = is_array($files['error']) ? $files['error'][$i] : $files['error'];
+                        
+                        if ($fileError !== UPLOAD_ERR_OK) {
+                            continue;
+                        }
+                        
+                        $maxSize = 10 * 1024 * 1024;
+                        if ($fileSize > $maxSize) {
+                            continue;
+                        }
+                        
+                        $ext = pathinfo($fileName, PATHINFO_EXTENSION);
+                        $safeName = uniqid('cmt_', true) . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                        $destPath = $uploadDir . $safeName;
+                        
+                        if (move_uploaded_file($fileTmpName, $destPath)) {
+                            $attachment->Fk_Service_Request = (int)$data->Fk_Service_Request;
+                            $attachment->Fk_Comment = $commentId;
+                            $attachment->Fk_User = (int)$currentUserId;
+                            $attachment->File_Name = $fileName;
+                            $attachment->File_Path = 'uploads/comments/' . $safeName;
+                            $attachment->File_Type = $fileType;
+                            $attachment->File_Size = $fileSize;
+                            
+                            if ($attachment->create()) {
+                                $uploadedFiles[] = [
+                                    'ID_Attachment' => $attachment->ID_Attachment,
+                                    'File_Name' => $fileName,
+                                    'File_Path' => 'uploads/comments/' . $safeName,
+                                    'File_Type' => $fileType,
+                                    'File_Size' => $fileSize
+                                ];
+                            }
+                        }
+                    }
+                }
+                
+                $auditService->logTicketAction('create_comment', (int) $comment->Fk_Service_Request, "Comentario agregado al ticket #{$comment->Fk_Service_Request} con " . count($uploadedFiles) . " archivos adjuntos");
+                error_log("Comment created successfully with " . count($uploadedFiles) . " files");
                 echo json_encode([
                     'success' => true,
-                    'message' => 'Comentario agregado exitosamente'
+                    'message' => 'Comentario agregado exitosamente',
+                    'data' => [
+                        'ID_Comment' => $commentId,
+                        'files' => $uploadedFiles
+                    ]
                 ]);
             } else {
                 error_log("Failed to create comment");
@@ -614,6 +762,168 @@ switch ($method) {
             break;
         }
         
+        // Action: request assistance (technician requests admin help)
+        if ($action === 'assistance') {
+            $ticketId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+            if (!$ticketId) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'ID de ticket no proporcionado'
+                ]);
+                break;
+            }
+
+            $ticketData = $ticket->getById($ticketId);
+            if (!$ticketData) {
+                http_response_code(404);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Ticket no encontrado'
+                ]);
+                break;
+            }
+
+            $existing = $assistanceRequest->getByTicket($ticketId);
+            if ($existing && $existing['Status'] === 'PENDIENTE') {
+                http_response_code(409);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Ya existe una solicitud de asistencia pendiente para este ticket'
+                ]);
+                break;
+            }
+
+            $assistanceRequest->Fk_Ticket = $ticketId;
+            $assistanceRequest->Fk_Requesting_Technician = (int)$currentUserId;
+
+            if ($assistanceRequest->create()) {
+                $requestId = $assistanceRequest->ID_Request;
+                $techUser = getUserName($db, (int)$currentUserId);
+
+                $notifSent = $notificationService->createAssistanceRequestNotification(
+                    $ticketId,
+                    $ticketData['Ticket_Code'] ?? "#{$ticketId}",
+                    $ticketData['Subject'] ?? '',
+                    $techUser,
+                    $requestId
+                );
+                if (!$notifSent) {
+                    error_log("Assistance request #{$requestId}: notification creation failed (table missing or no admins)");
+                }
+
+                $auditService->logTicketAction('assistance_requested', $ticketId,
+                    "Solicitud de asistencia #{$requestId} creada por {$techUser} para ticket #{$ticketId}");
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Solicitud de asistencia enviada. Los administradores han sido notificados.',
+                    'data' => [
+                        'request_id' => $requestId,
+                        'status' => 'PENDIENTE'
+                    ]
+                ]);
+            } else {
+                http_response_code(500);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Error al crear solicitud de asistencia'
+                ]);
+            }
+            break;
+        }
+
+        // Action: respond to assistance request (admin assigns/rejects)
+        if ($action === 'respond-assistance') {
+            if (!in_array($currentUserRole, ['Admin', 'Jefe'], true)) {
+                http_response_code(403);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Solo administradores pueden responder solicitudes'
+                ]);
+                break;
+            }
+
+            $requestId = isset($data->request_id) ? (int)$data->request_id : 0;
+            $response = $data->response ?? '';
+
+            if (!$requestId || !in_array($response, ['accept', 'reject'], true)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Datos inválidos'
+                ]);
+                break;
+            }
+
+            if ($response === 'accept') {
+                if ($assistanceRequest->assign($requestId, (int)$currentUserId)) {
+                    $pendingList = $assistanceRequest->getPending();
+                    $reqData = null;
+                    foreach ($pendingList as $r) {
+                        if ((int)$r['ID_Request'] === $requestId) {
+                            $reqData = $r;
+                            break;
+                        }
+                    }
+                    $reqData = $assistanceRequest->getByTicket($reqData['Fk_Ticket'] ?? 0);
+
+                    $adminName = getUserName($db, (int)$currentUserId);
+                    if ($reqData) {
+                        $notificationService->createAssistanceAssignedNotification(
+                            (int)$reqData['Fk_Requesting_Technician'],
+                            (int)$reqData['Fk_Ticket'],
+                            $reqData['ticket_subject'] ?? "#{$reqData['Fk_Ticket']}",
+                            $adminName
+                        );
+                    }
+
+                    $auditService->logTicketAction('assistance_assigned', $reqData['Fk_Ticket'] ?? 0,
+                        "Solicitud de asistencia #{$requestId} aceptada por {$adminName}");
+
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Solicitud de asistencia aceptada'
+                    ]);
+                } else {
+                    http_response_code(500);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Error al aceptar solicitud'
+                    ]);
+                }
+            } else {
+                if ($assistanceRequest->reject($requestId)) {
+                    $pendingList = $assistanceRequest->getPending();
+                    $reqData = findRequestById($pendingList, $requestId);
+
+                    $adminName = getUserName($db, (int)$currentUserId);
+                    if ($reqData) {
+                        $notificationService->createAssistanceRejectedNotification(
+                            (int)$reqData['Fk_Requesting_Technician'],
+                            (int)$reqData['Fk_Ticket'],
+                            $reqData['ticket_subject'] ?? "#{$reqData['Fk_Ticket']}"
+                        );
+                    }
+
+                    $auditService->logTicketAction('assistance_rejected', $reqData['Fk_Ticket'] ?? 0,
+                        "Solicitud de asistencia #{$requestId} rechazada por {$adminName}");
+
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Solicitud de asistencia rechazada'
+                    ]);
+                } else {
+                    http_response_code(500);
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'Error al rechazar solicitud'
+                    ]);
+                }
+            }
+            break;
+        }
+
         // Default: create ticket using modern service
         if (!isset($data->Fk_Office) || !isset($data->Fk_TI_Service)) {
             http_response_code(400);
@@ -726,5 +1036,31 @@ switch ($method) {
             'success' => false,
             'message' => 'Método no permitido'
         ]);
+}
+
+/**
+ * Get user's full name by ID
+ */
+function getUserName(PDO $db, int $userId): string {
+    try {
+        $stmt = $db->prepare("SELECT Full_Name FROM Users WHERE ID_Users = :id");
+        $stmt->bindParam(":id", $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['Full_Name'] ?? 'Usuario';
+    } catch (PDOException $e) {
+        error_log("Error getting user name: " . $e->getMessage());
+        return 'Usuario';
+    }
+}
+
+/**
+ * Find request by ID in array
+ */
+function findRequestById(array $list, int $id): ?array {
+    foreach ($list as $item) {
+        if ((int)$item['ID_Request'] === $id) return $item;
+    }
+    return null;
 }
 ?>
