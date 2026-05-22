@@ -46,6 +46,17 @@ Asegúrate que `src/config/database.php` tenga las credenciales correctas de tu 
 curl http://localhost:8000/api/test
 ```
 
+#### Public Board (init)
+```bash
+curl "http://localhost:8000/api/public-board?action=init"
+```
+
+#### Public Board (SSE stream)
+Use curl in modo "no-buffer" para observar eventos SSE:
+```bash
+curl -N "http://localhost:8000/api/public-board?action=stream&since=2026-05-22T10:00:00Z"
+```
+
 #### Login:
 ```bash
 curl -X POST http://localhost:8000/api/auth/login \
