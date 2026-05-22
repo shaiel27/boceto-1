@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 
-import ApiService, { LoginResponse } from '../services/api';
+import ApiService from '../services/api';
 
 
 
@@ -23,6 +23,8 @@ export interface User {
   boss_name?: string;
 
   office_id?: number | null;
+
+  last_login_at?: string | null;
 
 }
 

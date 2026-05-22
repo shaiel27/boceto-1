@@ -20,7 +20,8 @@ import {
   Target,
   Zap,
   Shield,
-  Coffee
+  Coffee,
+  TrendingDown
 } from 'lucide-react';
 import './TechnicianAnalytics.css';
 
@@ -307,37 +308,91 @@ const TechnicianAnalytics: React.FC = () => {
           </div>
         </div>
 
-        {/* Schedule Analysis */}
+        {/* Schedule Analysis - Visual Timeline */}
         <div className="analytics-section">
           <div className="section-header">
             <Calendar size={24} />
             <h2>Análisis de Horarios</h2>
           </div>
-          <div className="schedule-grid">
-            {schedule_analysis.map((day, index) => (
-              <div key={index} className="schedule-card">
-                <div className="schedule-header">
-                  <h3>{day.day}</h3>
-                  <Shield size={20} />
-                </div>
-                <div className="schedule-metrics">
-                  <div className="metric">
-                    <span className="metric-label">Técnicos Activos</span>
-                    <span className="metric-value">{day.active_technicians}</span>
+          <div className="schedule-analysis-container">
+            <div className="week-timeline">
+              {schedule_analysis.map((day, index) => {
+                const percentage = (day.active_technicians / overview.total_technicians) * 100;
+                const activityLevel = percentage >= 75 ? 'high' : percentage >= 50 ? 'medium' : 'low';
+                
+                return (
+                  <div key={index} className="day-column">
+                    <div className={`day-card ${activityLevel === 'low' ? 'low-activity' : activityLevel === 'high' ? 'high-activity' : ''}`}>
+                      <div className="day-header">
+                        <div className="day-name">{day.day}</div>
+                      </div>
+                      
+                      <div className={`activity-circle ${activityLevel}`}>
+                        <span className="activity-count">{day.active_technicians}</span>
+                        <span className="activity-label">Activos</span>
+                      </div>
+                      
+                      <div className="peak-hours-badge">
+                        <Clock size={14} />
+                        <span>{day.peak_hours}</span>
+                      </div>
+                      
+                      <div className="schedule-visual">
+                        <div className="progress-container">
+                          <div className="progress-label">
+                            <span>Cobertura</span>
+                            <span>{percentage.toFixed(0)}%</span>
+                          </div>
+                          <div className="progress-bar-mini">
+                            <div 
+                              className={`fill ${activityLevel}`}
+                              style={{ width: `${percentage}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="metric">
-                    <span className="metric-label">Hora Pico</span>
-                    <span className="metric-value">{day.peak_hours}</span>
-                  </div>
+                );
+              })}
+            </div>
+            
+            {/* Summary Stats */}
+            <div className="schedule-summary-row">
+              <div className="summary-stat">
+                <div className="summary-stat-icon avg">
+                  <Users size={20} />
                 </div>
-                <div className="schedule-visual">
-                  <div
-                    className="schedule-bar"
-                    style={{ width: `${(day.active_technicians / overview.total_technicians) * 100}%` }}
-                  ></div>
+                <div className="summary-stat-info">
+                  <span className="summary-stat-value">
+                    {(schedule_analysis.reduce((acc, d) => acc + d.active_technicians, 0) / schedule_analysis.length).toFixed(1)}
+                  </span>
+                  <span className="summary-stat-label">Promedio Diario</span>
                 </div>
               </div>
-            ))}
+              <div className="summary-stat">
+                <div className="summary-stat-icon peak">
+                  <Clock size={20} />
+                </div>
+                <div className="summary-stat-info">
+                  <span className="summary-stat-value">
+                    {schedule_analysis.reduce((max, d) => d.active_technicians > max.active_technicians ? d : max).peak_hours}
+                  </span>
+                  <span className="summary-stat-label">Hora Pico</span>
+                </div>
+              </div>
+              <div className="summary-stat">
+                <div className="summary-stat-icon coverage">
+                  <Shield size={20} />
+                </div>
+                <div className="summary-stat-info">
+                  <span className="summary-stat-value">
+                    {((schedule_analysis.reduce((acc, d) => acc + d.active_technicians, 0) / (schedule_analysis.length * overview.total_technicians)) * 100).toFixed(0)}%
+                  </span>
+                  <span className="summary-stat-label">Cobertura Semanal</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

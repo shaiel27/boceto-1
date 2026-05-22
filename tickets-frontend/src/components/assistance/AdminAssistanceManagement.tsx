@@ -20,19 +20,18 @@ import ApiService from '../../services/api';
 import './AdminAssistanceManagement.css';
 
 interface AssistanceRequest {
+  ID_Request: number;
   request_id: string;
-  comment_id: number;
-  technician_id: number;
+  Fk_Ticket: number;
+  Fk_Requesting_Technician: number;
   technician_name: string;
-  ticket_id: number;
-  ticket_title: string;
-  reason: string;
-  priority: 'BAJA' | 'MEDIA' | 'ALTA' | 'CRÍTICA';
-  required_skills: string[];
-  status: 'PENDIENTE' | 'APROBADA' | 'RECHAZADA' | 'ASIGNADA';
-  created_at: string;
-  updated_at?: string;
-  admin_notes?: string;
+  ticket_subject: string;
+  Ticket_Code: string;
+  status: string;
+  Requested_At: string;
+  Updated_At?: string;
+  Notification_Count: number;
+  Last_Notified_At?: string;
 }
 
 interface AdminAssistanceManagementProps {
@@ -47,7 +46,7 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
   const [selectedRequest, setSelectedRequest] = useState<AssistanceRequest | null>(null);
   const [expandedRequests, setExpandedRequests] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
-  const [filterPriority, setFilterPriority] = useState<'all' | 'CRÍTICA' | 'ALTA' | 'MEDIA' | 'BAJA'>('all');
+  const [filterPriority, _setFilterPriority] = useState<'all' | string>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showActionModal, setShowActionModal] = useState(false);
   const [actionForm, setActionForm] = useState({
@@ -72,16 +71,12 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
         
         // Apply filters
         if (filterStatus !== 'all') {
-          const statusMap = {
+          const statusMap: Record<string, string> = {
             pending: 'PENDIENTE',
-            approved: 'APROBADA',
-            rejected: 'RECHAZADA'
+            approved: 'ASIGNADO',
+            rejected: 'RECHAZADO'
           };
-          filteredRequests = filteredRequests.filter((req: AssistanceRequest) => req.status === statusMap[filterStatus as keyof typeof statusMap]);
-        }
-        
-        if (filterPriority !== 'all') {
-          filteredRequests = filteredRequests.filter((req: AssistanceRequest) => req.priority === filterPriority);
+          filteredRequests = filteredRequests.filter((req: AssistanceRequest) => req.status === statusMap[filterStatus]);
         }
         
         setRequests(filteredRequests);
@@ -133,9 +128,6 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
       admin_notes: '',
       assigned_technicians: []
     });
-    
-    // Load available technicians when opening modal
-    await loadTechnicians();
     setShowActionModal(true);
   };
 
@@ -145,9 +137,9 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
     setActionLoading(selectedRequest.request_id);
     
     try {
-      const response = await ApiService.manageAssistanceRequest(
-        selectedRequest.request_id,
-        actionForm
+      const response = await ApiService.respondAssistanceRequest(
+        selectedRequest.ID_Request,
+        actionForm.action === 'approve' ? 'accept' : 'reject'
       );
       
       if (response.success) {
@@ -162,22 +154,12 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'CRÍTICA': return '#ef4444';
-      case 'ALTA': return '#f97316';
-      case 'MEDIA': return '#eab308';
-      case 'BAJA': return '#22c55e';
-      default: return '#6b7280';
-    }
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PENDIENTE': return '#f59e0b';
-      case 'APROBADA': return '#10b981';
-      case 'RECHAZADA': return '#ef4444';
-      case 'ASIGNADA': return '#3b82f6';
+      case 'ASIGNADO': return '#10b981';
+      case 'RECHAZADO': return '#ef4444';
+      case 'CANCELADO': return '#6b7280';
       default: return '#6b7280';
     }
   };
@@ -185,9 +167,9 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'PENDIENTE': return <Clock size={14} />;
-      case 'APROBADA': return <CheckCircle size={14} />;
-      case 'RECHAZADA': return <XCircle size={14} />;
-      case 'ASIGNADA': return <Users size={14} />;
+      case 'ASIGNADO': return <CheckCircle size={14} />;
+      case 'RECHAZADO': return <XCircle size={14} />;
+      case 'CANCELADO': return <AlertTriangle size={14} />;
       default: return null;
     }
   };
@@ -239,23 +221,6 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
             <option value="all">Todas</option>
           </select>
         </div>
-        
-        <div className="filter-group">
-          <label>
-            <AlertTriangle size={16} />
-            Prioridad
-          </label>
-          <select 
-            value={filterPriority} 
-            onChange={(e) => setFilterPriority(e.target.value as any)}
-          >
-            <option value="all">Todas</option>
-            <option value="CRÍTICA">Crítica</option>
-            <option value="ALTA">Alta</option>
-            <option value="MEDIA">Media</option>
-            <option value="BAJA">Baja</option>
-          </select>
-        </div>
       </div>
 
       <div className="assistance-requests-list">
@@ -273,33 +238,30 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
         ) : (
           requests.map(request => (
             <div 
-              key={request.request_id} 
-              className={`assistance-request-card ${expandedRequests.has(request.request_id) ? 'expanded' : ''}`}
+              key={request.ID_Request} 
+              className={`assistance-request-card ${expandedRequests.has(String(request.ID_Request)) ? 'expanded' : ''}`}
             >
-              <div className="request-header" onClick={() => toggleRequestExpansion(request.request_id)}>
+              <div className="request-header" onClick={() => toggleRequestExpansion(String(request.ID_Request))}>
                 <div className="request-main-info">
                   <div className="request-id">
                     <Hash size={16} />
-                    {request.request_id}
+                    #{request.ID_Request}
                   </div>
-                  <div className="request-title">{request.ticket_title}</div>
+                  <div className="request-title">{request.ticket_subject || request.Ticket_Code || `Ticket #${request.Fk_Ticket}`}</div>
                 </div>
                 
                 <div className="request-meta">
-                  <div className="priority-badge" style={{ backgroundColor: getPriorityColor(request.priority) }}>
-                    {request.priority}
-                  </div>
                   <div className="status-badge" style={{ backgroundColor: getStatusColor(request.status) }}>
                     {getStatusIcon(request.status)}
                     <span>{request.status}</span>
                   </div>
                   <button className="expand-btn">
-                    {expandedRequests.has(request.request_id) ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    {expandedRequests.has(String(request.ID_Request)) ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                   </button>
                 </div>
               </div>
 
-              {expandedRequests.has(request.request_id) && (
+              {expandedRequests.has(String(request.ID_Request)) && (
                 <div className="request-details">
                   <div className="detail-grid">
                     <div className="detail-item">
@@ -308,45 +270,26 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
                     </div>
                     <div className="detail-item">
                       <label><Calendar size={16} /> Fecha de solicitud</label>
-                      <span>{formatDate(request.created_at)}</span>
+                      <span>{formatDate(request.Requested_At)}</span>
                     </div>
                     <div className="detail-item">
-                      <label><Hash size={16} /> Ticket ID</label>
-                      <span>#{request.ticket_id}</span>
+                      <label><Hash size={16} /> Ticket</label>
+                      <span>#{request.Fk_Ticket}</span>
+                    </div>
+                    <div className="detail-item">
+                      <label><AlertTriangle size={16} /> Notificaciones</label>
+                      <span>{request.Notification_Count > 0 ? `${request.Notification_Count}x` : 'Inicial'}</span>
                     </div>
                   </div>
-
-                  <div className="request-reason">
-                    <label><MessageSquare size={16} /> Motivo de la solicitud</label>
-                    <p>{request.reason}</p>
-                  </div>
-
-                  {request.required_skills.length > 0 && (
-                    <div className="required-skills">
-                      <label><Users size={16} /> Habilidades requeridas</label>
-                      <div className="skills-chips">
-                        {request.required_skills.map(skill => (
-                          <span key={skill} className="skill-chip">{skill}</span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {request.admin_notes && (
-                    <div className="admin-notes">
-                      <label><MessageSquare size={16} /> Notas del administrador</label>
-                      <p>{request.admin_notes}</p>
-                    </div>
-                  )}
 
                   {request.status === 'PENDIENTE' && (
                     <div className="request-actions">
                       <button 
                         className="btn-approve"
                         onClick={() => handleActionClick(request)}
-                        disabled={actionLoading === request.request_id}
+                        disabled={actionLoading === String(request.ID_Request)}
                       >
-                        {actionLoading === request.request_id ? (
+                        {actionLoading === String(request.ID_Request) ? (
                           <>
                             <div className="spinner-small"></div>
                             Procesando...
@@ -354,16 +297,16 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
                         ) : (
                           <>
                             <CheckCircle size={16} />
-                            Aprobar
+                            Aceptar
                           </>
                         )}
                       </button>
                       <button 
                         className="btn-reject"
                         onClick={() => handleActionClick(request)}
-                        disabled={actionLoading === request.request_id}
+                        disabled={actionLoading === String(request.ID_Request)}
                       >
-                        {actionLoading === request.request_id ? (
+                        {actionLoading === String(request.ID_Request) ? (
                           <>
                             <div className="spinner-small"></div>
                             Procesando...
@@ -379,42 +322,41 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
                   )}
                 </div>
               )}
-            </div>
+            </div>          
           ))
         )}
       </div>
 
       {showActionModal && selectedRequest && (
-        <div className="action-modal-overlay">
-          <div className="action-modal-container">
-            <div className="action-modal-header">
-              <h3>
-                {actionForm.action === 'approve' ? 'Aprobar' : 'Rechazar'} Solicitud de Asistencia
-              </h3>
-              <button className="modal-close" onClick={() => setShowActionModal(false)}>
+        <div className="modal-overlay" onClick={() => {if (!actionLoading) {setShowActionModal(false); setSelectedRequest(null);}}}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Responder Solicitud de Asistencia</h3>
+              <button 
+                className="close-btn"
+                onClick={() => {setShowActionModal(false); setSelectedRequest(null);}}
+                disabled={!!actionLoading}
+              >
                 <X size={20} />
               </button>
             </div>
-
-            <div className="action-modal-body">
+            
+            <div className="modal-body">
               <div className="request-summary">
-                <h4>Solicitud: {selectedRequest.request_id}</h4>
                 <p><strong>Técnico:</strong> {selectedRequest.technician_name}</p>
-                <p><strong>Ticket:</strong> #{selectedRequest.ticket_id} - {selectedRequest.ticket_title}</p>
-                <p><strong>Motivo:</strong> {selectedRequest.reason}</p>
-                <p><strong>Prioridad:</strong> <span className="priority-badge" style={{ backgroundColor: getPriorityColor(selectedRequest.priority) }}>{selectedRequest.priority}</span></p>
+                <p><strong>Ticket:</strong> #{selectedRequest.Fk_Ticket} - {selectedRequest.ticket_subject}</p>
               </div>
 
               <div className="action-form">
                 <div className="form-group">
-                  <label>Acción</label>
+                  <label>¿Qué deseas hacer?</label>
                   <div className="action-options">
                     <button 
                       className={`action-option ${actionForm.action === 'approve' ? 'active' : ''}`}
                       onClick={() => setActionForm(prev => ({ ...prev, action: 'approve' }))}
                     >
                       <CheckCircle size={16} />
-                      Aprobar solicitud
+                      Aceptar solicitud
                     </button>
                     <button 
                       className={`action-option ${actionForm.action === 'reject' ? 'active' : ''}`}
@@ -425,121 +367,23 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
                     </button>
                   </div>
                 </div>
-
-                <div className="form-group">
-                  <label htmlFor="admin_notes">Notas del administrador (opcional)</label>
-                  <textarea
-                    id="admin_notes"
-                    value={actionForm.admin_notes}
-                    onChange={(e) => setActionForm(prev => ({ ...prev, admin_notes: e.target.value }))}
-                    placeholder="Añade observaciones sobre esta decisión..."
-                    rows={4}
-                  />
-                </div>
-
-                {actionForm.action === 'approve' && (
-                  <div className="form-group">
-                    <label>Asignar Técnicos Adicionales</label>
-                    {loadingTechnicians ? (
-                      <div className="loading-technicians">
-                        <div className="spinner-small"></div>
-                        <span>Cargando técnicos disponibles...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="technicians-selection">
-                          <div className="required-skills-info">
-                            <strong>Habilidades requeridas:</strong>
-                            <div className="skill-chips">
-                              {selectedRequest.required_skills.map(skill => (
-                                <span key={skill} className="skill-chip">{skill}</span>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          <div className="technicians-list">
-                            {availableTechnicians.map(technician => (
-                              <div 
-                                key={technician.id} 
-                                className={`technician-option ${actionForm.assigned_technicians.includes(technician.id) ? 'selected' : ''}`}
-                                onClick={() => {
-                                  setActionForm(prev => ({
-                                    ...prev,
-                                    assigned_technicians: prev.assigned_technicians.includes(technician.id)
-                                      ? prev.assigned_technicians.filter(id => id !== technician.id)
-                                      : [...prev.assigned_technicians, technician.id]
-                                  }));
-                                }}
-                              >
-                                <div className="technician-info">
-                                  <div className="technician-name">{technician.name}</div>
-                                  <div className="technician-email">{technician.email}</div>
-                                  <div className="technician-skills">
-                                    {technician.services?.map((service: string) => (
-                                      <span key={service} className="service-tag">{service}</span>
-                                    ))}
-                                  </div>
-                                </div>
-                                <div className="technician-checkbox">
-                                  <input
-                                    type="checkbox"
-                                    checked={actionForm.assigned_technicians.includes(technician.id)}
-                                    onChange={() => {}}
-                                    onClick={(e) => e.stopPropagation()}
-                                  />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                          
-                          {actionForm.assigned_technicians.length > 0 && (
-                            <div className="selected-technicians-summary">
-                              <strong>Técnicos seleccionados ({actionForm.assigned_technicians.length}):</strong>
-                              <div className="selected-tech-list">
-                                {actionForm.assigned_technicians.map(techId => {
-                                  const tech = availableTechnicians.find(t => t.id === techId);
-                                  return tech ? (
-                                    <span key={techId} className="selected-tech-chip">
-                                      {tech.name}
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setActionForm(prev => ({
-                                            ...prev,
-                                            assigned_technicians: prev.assigned_technicians.filter(id => id !== techId)
-                                          }));
-                                        }}
-                                      >
-                                        ×
-                                      </button>
-                                    </span>
-                                  ) : null;
-                                })}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
-            <div className="action-modal-footer">
+            <div className="modal-footer">
               <button 
-                className="btn-cancel"
-                onClick={() => setShowActionModal(false)}
-                disabled={actionLoading !== null}
+                className="btn-secondary"
+                onClick={() => {setShowActionModal(false); setSelectedRequest(null);}}
+                disabled={!!actionLoading}
               >
                 Cancelar
               </button>
               <button 
-                className={`btn-submit ${actionForm.action === 'approve' ? 'approve' : 'reject'}`}
+                className="btn-primary"
                 onClick={handleActionSubmit}
-                disabled={actionLoading !== null}
+                disabled={actionLoading === String(selectedRequest.ID_Request)}
               >
-                {actionLoading === selectedRequest.request_id ? (
+                {actionLoading === String(selectedRequest.ID_Request) ? (
                   <>
                     <div className="spinner-small"></div>
                     Procesando...
@@ -547,7 +391,7 @@ const AdminAssistanceManagement: React.FC<AdminAssistanceManagementProps> = ({
                 ) : (
                   <>
                     <Send size={16} />
-                    {actionForm.action === 'approve' ? 'Aprobar' : 'Rechazar'} Solicitud
+                    {actionForm.action === 'approve' ? 'Aceptar' : 'Rechazar'}
                   </>
                 )}
               </button>

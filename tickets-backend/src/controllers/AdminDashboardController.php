@@ -44,6 +44,7 @@ final class AdminDashboardController
     {
         $query = "
             SELECT 
+                COUNT(*) as total_tickets,
                 COUNT(CASE WHEN sr.Status = 'Pendiente' THEN 1 END) as pending_count,
                 COUNT(CASE WHEN sr.Status = 'En Proceso' THEN 1 END) as in_progress_count,
                 COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_count,
@@ -54,7 +55,11 @@ final class AdminDashboardController
                     THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) 
                     ELSE NULL END) as avg_resolution_hours,
                 COUNT(DISTINCT sr.Fk_Office) as active_offices,
-                COUNT(DISTINCT t.ID_Technicians) as active_technicians
+                COUNT(DISTINCT t.ID_Technicians) as active_technicians,
+                ROUND(
+                    COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) * 100.0 / 
+                    NULLIF(COUNT(*), 0), 1
+                ) as resolution_rate
             FROM Service_Request sr
             LEFT JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request
             LEFT JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
@@ -137,10 +142,10 @@ final class AdminDashboardController
                 COUNT(CASE WHEN sr.Status = 'En Proceso' THEN 1 END) as in_progress_tickets,
                 
                 -- Priority distribution
-                COUNT(CASE WHEN sr.System_Priority = 'Crítica' THEN 1 END) as critical_priority,
-                COUNT(CASE WHEN sr.System_Priority = 'Alta' THEN 1 END) as high_priority,
-                COUNT(CASE WHEN sr.System_Priority = 'Media' THEN 1 END) as medium_priority,
-                COUNT(CASE WHEN sr.System_Priority = 'Baja' THEN 1 END) as low_priority,
+                COUNT(CASE WHEN sr.System_Priority = 'Crítica' THEN 1 END) as priority_critical,
+                COUNT(CASE WHEN sr.System_Priority = 'Alta' THEN 1 END) as priority_high,
+                COUNT(CASE WHEN sr.System_Priority = 'Media' THEN 1 END) as priority_medium,
+                COUNT(CASE WHEN sr.System_Priority = 'Baja' THEN 1 END) as priority_low,
                 
                 -- Time metrics
                 AVG(CASE WHEN sr.Resolved_at IS NOT NULL 
@@ -162,7 +167,7 @@ final class AdminDashboardController
                 COUNT(DISTINCT CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN t.ID_Technicians END) as technicians_this_week,
                 
                 -- Service type metrics
-                COUNT(DISTINCT sr.Fk_TIService) as active_services,
+                COUNT(DISTINCT sr.Fk_TI_Service) as active_services,
                 
                 -- Trend metrics (comparisons with previous period)
                 COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 END) as tickets_today,
@@ -227,7 +232,7 @@ final class AdminDashboardController
                 'resolution_rate_percent' => (float)$summary['resolution_rate_percent'],
                 'active_offices' => (int)$summary['active_offices'],
                 'active_technicians' => (int)$summary['active_technicians'],
-                'critical_tickets' => (int)$summary['critical_priority'],
+                'critical_tickets' => (int)$summary['priority_critical'],
                 'critical_resolution_rate_percent' => (float)$summary['critical_resolution_rate_percent']
             ],
             'trends' => [
@@ -238,10 +243,10 @@ final class AdminDashboardController
                 'tickets_this_month' => (int)$summary['tickets_this_month']
             ],
             'priority_distribution' => [
-                'critical' => (int)$summary['critical_priority'],
-                'high' => (int)$summary['high_priority'],
-                'medium' => (int)$summary['medium_priority'],
-                'low' => (int)$summary['low_priority']
+                'critical' => (int)$summary['priority_critical'],
+                'high' => (int)$summary['priority_high'],
+                'medium' => (int)$summary['priority_medium'],
+                'low' => (int)$summary['priority_low']
             ],
             'status_distribution' => [
                 'resolved' => (int)$summary['resolved_tickets'],
@@ -419,6 +424,7 @@ final class AdminDashboardController
     {
         return [
             'stats' => $this->getDashboardStats(),
+            'executive_summary' => $this->getExecutiveSummary(),
             'recent_tickets' => $this->getRecentTickets(8),
             'priority_distribution' => $this->getTicketsByPriority(),
             'office_distribution' => $this->getTicketsByOffice(),

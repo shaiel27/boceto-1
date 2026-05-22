@@ -25,7 +25,7 @@ final class Database
         $this->port = self::env('DB_PORT', '3306');
         $this->db_name = self::env('DB_NAME', 'tickets_system');
         $this->username = self::env('DB_USER', 'root');
-        $this->password = self::env('DB_PASSWORD', 'NuevaClave123');
+        $this->password = self::env('DB_PASSWORD', '');
     }
 
     private static function env(string $key, string $default): string

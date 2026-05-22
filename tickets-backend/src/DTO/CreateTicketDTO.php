@@ -40,7 +40,8 @@ final class CreateTicketDTO
 
     private function validate(): void
     {
-        $allowedPriorities = ['Baja', 'Media', 'Alta'];
+        // Allow the full set of priorities used across the system, including variations
+        $allowedPriorities = ['Baja', 'Media', 'Alta', 'Critica', 'Crítica'];
         if (!in_array($this->systemPriority, $allowedPriorities, true)) {
             throw new \InvalidArgumentException("Prioridad inválida: {$this->systemPriority}");
         }

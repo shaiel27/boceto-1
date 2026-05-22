@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 class Office {
     private $conn;
     private $table_name = "Office";
@@ -48,21 +51,21 @@ class Office {
     public function getTicketsByOffice(?string $startDate = null, ?string $endDate = null): array
     {
         try {
-            // Build date filter conditions
-            $dateCondition = "";
+            // Build join conditions for LEFT JOIN (all offices, count only matching tickets)
+            $joinCondition = "sr.Status = 'Cerrado' AND sr.Resolved_at IS NOT NULL";
             $params = [];
             
             if ($startDate) {
-                $dateCondition .= " AND sr.Created_at >= :startDate";
+                $joinCondition .= " AND sr.Created_at >= :startDate";
                 $params[':startDate'] = $startDate . ' 00:00:00';
             }
             
             if ($endDate) {
-                $dateCondition .= " AND sr.Created_at <= :endDate";
+                $joinCondition .= " AND sr.Created_at <= :endDate";
                 $params[':endDate'] = $endDate . ' 23:59:59';
             }
 
-            // PHP-PRO: Only offices with significant resolved tickets (min 5 tickets)
+            // LEFT JOIN: includes ALL offices, even those with 0 tickets
             $query = "SELECT 
                      o.ID_Office,
                      o.Name_Office,
@@ -74,13 +77,9 @@ class Office {
                          ELSE NULL 
                      END) as avg_resolution_hours
                      FROM " . $this->table_name . " o
-                     INNER JOIN Service_Request sr ON o.ID_Office = sr.Fk_Office
-                     WHERE o.ID_Office IS NOT NULL
-                     AND sr.Status = 'Cerrado'
-                     AND sr.Resolved_at IS NOT NULL
-                     " . $dateCondition . "
+                     LEFT JOIN Service_Request sr ON o.ID_Office = sr.Fk_Office
+                     AND {$joinCondition}
                      GROUP BY o.ID_Office, o.Name_Office, o.Office_Type
-                     HAVING resolved_count > 0
                      ORDER BY resolved_count DESC, o.Name_Office ASC";
 
             $stmt = $this->conn->prepare($query);

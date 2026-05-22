@@ -1,12 +1,12 @@
 import React from 'react';
-import Layout from '../components/layout/Layout';
+import AdminLayout from '../components/layout/AdminLayout';
 import TechnicianManagement from '../components/admin/TechnicianManagement';
 
 const TechnicianManagementPage: React.FC = () => {
   return (
-    <Layout showHeader={true} showUserInfo={true} userName="Administrador Municipal">
+    <AdminLayout userName="Administrador Municipal">
       <TechnicianManagement />
-    </Layout>
+    </AdminLayout>
   );
 };
 

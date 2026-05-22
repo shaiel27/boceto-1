@@ -24,12 +24,14 @@ import {
   MapPinned,
   UserCheck,
   Send,
-  X
+  X,
+  ArrowLeft
 } from 'lucide-react';
 import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import PasswordChangeRequired from '../common/PasswordChangeRequired';
 
 interface Ticket {
   id: string;
@@ -63,8 +65,9 @@ interface RequesterProfile {
 
 const RequesterDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [firstLogin, setFirstLogin] = useState(false);
   const [requesterProfile, setRequesterProfile] = useState<RequesterProfile>({
     id: '',
     name: '',
@@ -82,6 +85,10 @@ const RequesterDashboard: React.FC = () => {
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [showCommentSection, setShowCommentSection] = useState<Record<string, boolean>>({});
   const [showProfile, setShowProfile] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [showTicketDetails, setShowTicketDetails] = useState(false);
+  const [ticketComments, setTicketComments] = useState<any[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
 
   useEffect(() => {
     loadDashboardData();
@@ -96,21 +103,23 @@ const RequesterDashboard: React.FC = () => {
         return;
       }
 
-      console.log('Loading dashboard data...');
       const userResponse = await ApiService.getMe();
-      console.log('getMe response:', userResponse);
       
       if (userResponse.success && userResponse.data) {
         const userId = userResponse.data.id;
-        console.log('User ID:', userId);
+
+        // Detectar primer inicio de sesión
+        if (!userResponse.data.last_login_at) {
+          setFirstLogin(true);
+          setLoading(false);
+          return;
+        }
         
         try {
           const profileResponse = await ApiService.getUserProfile(userId);
-          console.log('getUserProfile response:', profileResponse);
           
           if (profileResponse.success && profileResponse.data) {
             const profileData = profileResponse.data;
-            console.log('Profile data:', profileData);
             
             setRequesterProfile({
               id: userId.toString(),
@@ -123,7 +132,7 @@ const RequesterDashboard: React.FC = () => {
               supervisor: profileData.supervisor || 'No asignado'
             });
           } else {
-            console.error('Profile response not successful:', profileResponse);
+            console.error('Profile response not successful');
             // Use basic user data as fallback
             setRequesterProfile({
               id: userId.toString(),
@@ -181,7 +190,7 @@ const RequesterDashboard: React.FC = () => {
           setMyTickets([]);
         }
       } else {
-        console.error('User authentication failed:', userResponse);
+        console.error('User authentication failed');
         setRequesterProfile({
           id: '',
           name: '',
@@ -214,12 +223,14 @@ const RequesterDashboard: React.FC = () => {
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
+      case 'Crítica':
+        return 'critic';
       case 'Alta':
-        return 'priority-high';
+        return 'high';
       case 'Media':
-        return 'priority-medium';
+        return 'medium';
       case 'Baja':
-        return 'priority-low';
+        return 'low';
       default:
         return '';
     }
@@ -263,6 +274,33 @@ const RequesterDashboard: React.FC = () => {
   const resolvedTickets = myTickets.filter(t => t.Status === 'Cerrado');
 
   const handleAddComment = async (ticketId: string) => {
+    await handleAddCommentToTicket(ticketId);
+  };
+
+  const toggleCommentSection = (ticketId: string) => {
+    setShowCommentSection(prev => ({ ...prev, [ticketId]: !prev[ticketId] }));
+  };
+
+  const handleViewTicketDetails = async (ticket: Ticket) => {
+    setSelectedTicket(ticket);
+    setShowTicketDetails(true);
+    setLoadingComments(true);
+    try {
+      const commentsResponse = await ApiService.getTicketComments(parseInt(ticket.id));
+      if (commentsResponse.success && commentsResponse.data) {
+        setTicketComments(commentsResponse.data);
+      } else {
+        setTicketComments([]);
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error);
+      setTicketComments([]);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleAddCommentToTicket = async (ticketId: string) => {
     const comment = commentInputs[ticketId];
     if (comment && comment.trim()) {
       try {
@@ -278,6 +316,17 @@ const RequesterDashboard: React.FC = () => {
             return ticket;
           });
           setMyTickets(updatedTickets);
+          
+          if (selectedTicket && selectedTicket.id === ticketId) {
+            setTicketComments(prev => [...prev, {
+              ID_Comment: Date.now(),
+              Comment: comment,
+              Created_at: new Date().toISOString(),
+              User_Name: requesterProfile.name,
+              User_Role: requesterProfile.position
+            }]);
+          }
+          
           setCommentInputs(prev => ({ ...prev, [ticketId]: '' }));
           setShowCommentSection(prev => ({ ...prev, [ticketId]: false }));
         }
@@ -287,9 +336,9 @@ const RequesterDashboard: React.FC = () => {
     }
   };
 
-  const toggleCommentSection = (ticketId: string) => {
-    setShowCommentSection(prev => ({ ...prev, [ticketId]: !prev[ticketId] }));
-  };
+  if (firstLogin) {
+    return <PasswordChangeRequired onComplete={() => setFirstLogin(false)} />;
+  }
 
   return (
     <div className="requester-dashboard">
@@ -308,6 +357,10 @@ const RequesterDashboard: React.FC = () => {
             {requesterProfile.office_type && <span className="dept-badge">{requesterProfile.office_type}</span>}
           </div>
           <div className="action-buttons">
+            <button className="action-btn dashboard-back" onClick={() => navigate('/dashboard')}>
+              <ArrowLeft size={18} />
+              Dashboard
+            </button>
             <button className="action-btn profile" onClick={() => setShowProfile(true)}>
               <User size={18} />
               Mi Perfil
@@ -491,7 +544,10 @@ const RequesterDashboard: React.FC = () => {
                     )}
                   </div>
                   
-                  <button className="view-details-btn">
+                  <button 
+                    className="view-details-btn"
+                    onClick={() => handleViewTicketDetails(ticket)}
+                  >
                     Ver Detalles
                     <ChevronRight size={16} />
                   </button>
@@ -609,6 +665,164 @@ const RequesterDashboard: React.FC = () => {
                 profile={requesterProfile}
                 onUpdate={(updatedProfile) => setRequesterProfile(updatedProfile)}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Detalles del Ticket - PHP-PRO Backend Integrated */}
+      {showTicketDetails && selectedTicket && (
+        <div className="modal-overlay" onClick={() => setShowTicketDetails(false)}>
+          <div className="ticket-details-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="ticket-details-header">
+              <div className="ticket-details-title">
+                <FileText size={24} />
+                <div>
+                  <h2>{selectedTicket.Code}</h2>
+                  <p className="ticket-subject-text">{selectedTicket.Subject}</p>
+                </div>
+              </div>
+              <button className="close-btn" onClick={() => setShowTicketDetails(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="ticket-details-body">
+              {/* Ticket Info Grid */}
+              <div className="ticket-info-grid">
+                <div className="ticket-info-item">
+                  <span className="ticket-info-label">Estado</span>
+                  <span className={`ticket-status-badge status-${selectedTicket.Status.toLowerCase().replace(' ', '-')}`}>
+                    {selectedTicket.Status}
+                  </span>
+                </div>
+                <div className="ticket-info-item">
+                  <span className="ticket-info-label">Prioridad</span>
+                  <span className={`priority-badge ${getPriorityColor(selectedTicket.System_Priority)}`}>
+                    {selectedTicket.System_Priority}
+                  </span>
+                </div>
+                <div className="ticket-info-item">
+                  <span className="ticket-info-label">Oficina</span>
+                  <span className="ticket-info-value">{selectedTicket.office_type} - {selectedTicket.office_name}</span>
+                </div>
+                <div className="ticket-info-item">
+                  <span className="ticket-info-label">Creado</span>
+                  <span className="ticket-info-value">{formatDate(selectedTicket.Created_at)}</span>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="ticket-detail-section">
+                <h4 className="section-label">Descripción</h4>
+                <p className="ticket-description-text">{selectedTicket.Description}</p>
+              </div>
+
+              {/* Timeline */}
+              <div className="ticket-detail-section">
+                <h4 className="section-label">Estado del Ticket</h4>
+                <div className="ticket-timeline-modal">
+                  <div className="timeline-step completed">
+                    <div className="step-indicator">
+                      <CheckCircle size={16} />
+                    </div>
+                    <div className="step-label">Pendiente</div>
+                  </div>
+                  <div className={`timeline-connector ${getStatusStep(selectedTicket.Status) >= 2 ? 'completed' : ''}`}></div>
+                  <div className={`timeline-step ${getStatusStep(selectedTicket.Status) >= 2 ? 'completed' : 'pending'}`}>
+                    <div className="step-indicator">
+                      {getStatusStep(selectedTicket.Status) >= 2 ? <Users size={16} /> : <div className="step-dot"></div>}
+                    </div>
+                    <div className="step-label">En Proceso</div>
+                  </div>
+                  <div className={`timeline-connector ${getStatusStep(selectedTicket.Status) >= 3 ? 'completed' : ''}`}></div>
+                  <div className={`timeline-step ${getStatusStep(selectedTicket.Status) >= 3 ? 'completed' : 'pending'}`}>
+                    <div className="step-indicator">
+                      {getStatusStep(selectedTicket.Status) >= 3 ? <CheckCircle size={16} /> : <div className="step-dot"></div>}
+                    </div>
+                    <div className="step-label">Cerrado</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Technicians */}
+              {selectedTicket.Technicians.length > 0 && (
+                <div className="ticket-detail-section">
+                  <h4 className="section-label">Equipo Técnico Asignado</h4>
+                  <div className="technicians-list-modal">
+                    {selectedTicket.Technicians.map((tech, index) => (
+                      <div key={index} className="tech-item-modal">
+                        <div className="tech-avatar">
+                          <Users size={16} />
+                        </div>
+                        <span className="tech-name-modal">{tech.Name}</span>
+                        {tech.Is_Lead && <span className="lead-badge-modal">Principal</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Comments Section */}
+              <div className="ticket-detail-section comments-section-modal">
+                <div className="comments-header-modal">
+                  <h4 className="section-label">
+                    <MessageSquare size={18} />
+                    Comentarios ({ticketComments.length})
+                  </h4>
+                </div>
+
+                {loadingComments ? (
+                  <div className="loading-comments">
+                    <div className="loading-spinner small"></div>
+                    <span>Cargando comentarios...</span>
+                  </div>
+                ) : ticketComments.length > 0 ? (
+                  <div className="comments-list-modal">
+                    {ticketComments.map((comment, index) => (
+                      <div key={comment.ID_Comment || index} className="comment-item-modal">
+                        <div className="comment-avatar">
+                          <User size={14} />
+                        </div>
+                        <div className="comment-content">
+                          <div className="comment-header">
+                            <span className="comment-author">{comment.User_Name}</span>
+                            <span className="comment-role">{comment.User_Role}</span>
+                            <span className="comment-date">{formatDate(comment.Created_at)}</span>
+                          </div>
+                          <p className="comment-text">{comment.Comment}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="no-comments">
+                    <MessageSquare size={24} />
+                    <span>No hay comentarios aún</span>
+                  </div>
+                )}
+
+                {/* Add Comment Form */}
+                {selectedTicket.Status === 'En Proceso' && (
+                  <div className="add-comment-modal">
+                    <textarea
+                      className="comment-textarea-modal"
+                      placeholder="Escribe un comentario..."
+                      value={commentInputs[selectedTicket.id] || ''}
+                      onChange={(e) => setCommentInputs(prev => ({ ...prev, [selectedTicket.id]: e.target.value }))}
+                      rows={3}
+                    />
+                    <button 
+                      className="send-comment-btn-modal"
+                      onClick={() => handleAddCommentToTicket(selectedTicket.id)}
+                      disabled={!commentInputs[selectedTicket.id]?.trim()}
+                    >
+                      <Send size={16} />
+                      Enviar
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

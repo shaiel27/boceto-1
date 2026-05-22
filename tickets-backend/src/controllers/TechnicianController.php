@@ -1,15 +1,20 @@
 <?php
+
+declare(strict_types=1);
+
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../models/Technician.php';
-
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+require_once __DIR__ . '/../models/AuditLog.php';
+require_once __DIR__ . '/../Services/AuditService.php';
 
 try {
     $database = new Database();
     $db = $database->getConnection();
 
     $technician = new Technician($db);
+
+    $auditLog = new AuditLog($db);
+    $auditService = new AuditService($auditLog);
 
     // Get authenticated user from middleware context
     $currentUserId = $_SERVER['AUTH_USER_ID'] ?? null;
@@ -97,6 +102,7 @@ try {
                     unset($tech['Start_Time']);
                     unset($tech['End_Time']);
                 }
+                unset($tech);
                 
                 echo json_encode([
                     'success' => true,
@@ -246,6 +252,12 @@ try {
                 'success' => true,
                 'message' => 'Técnico actualizado exitosamente'
             ]);
+            
+            $auditService->logUserAction(
+                'update_user',
+                (int)$userId,
+                "Técnico #{$id} actualizado: {$data->first_name} {$data->last_name}"
+            );
         } else {
             echo json_encode([
                 'success' => false,

@@ -26,7 +26,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 switch ($method) {
     case 'GET':
-        $week = $_GET['week'] ?? date('Y-\W'); // Default to current week
+        $week = $_GET['week'] ?? date('Y-\WW'); // Default to current week
         $technicianId = $_GET['technician_id'] ?? null;
         
         $weeklyData = getWeeklyTechnicianReport($db, $week, $technicianId);

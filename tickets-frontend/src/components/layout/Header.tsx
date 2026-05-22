@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building, Clock, Globe } from 'lucide-react';
+import NotificationBell from '../notifications/NotificationBell';
 import './Header.css';
 
 interface HeaderProps {
@@ -54,6 +55,7 @@ const Header: React.FC<HeaderProps> = ({
       </div>
       
       <div className="header-right">
+        <NotificationBell />
         <div className="compact-clock">
           <span className="time-text">{venezuelaTime}</span>
         </div>

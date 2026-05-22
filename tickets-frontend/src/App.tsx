@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { Toaster } from 'sileo';
@@ -13,13 +13,31 @@ import InstitutionalStructurePage from './pages/InstitutionalStructurePage';
 import ReportsPage from './pages/ReportsPage';
 import UserRegistrationPage from './pages/UserRegistrationPage';
 import { PDFTestReport } from './components/reports/PDFTestReport';
-import { TechnicianWeeklyReport } from './components/reports/TechnicianWeeklyReport';
 import OfficeManagementPage from './pages/OfficeManagementPage';
 import AdminTicketManagementPage from './pages/AdminTicketManagementPage';
+import AuditPage from './pages/AuditPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import TicketForm from './components/tickets/TicketForm';
 import './styles/variables.css';
+
+const router = createBrowserRouter([
+  { path: '/', element: <ProtectedRoute allowedRoles={[1]}><DashboardPage /></ProtectedRoute> },
+  { path: '/login', element: <LoginPage /> },
+  { path: '/register', element: <RegisterPage /> },
+  { path: '/admin', element: <ProtectedRoute allowedRoles={[1]}><AdminManagementPage /></ProtectedRoute> },
+  { path: '/admin/tickets', element: <ProtectedRoute allowedRoles={[1]}><AdminTicketManagementPage /></ProtectedRoute> },
+  { path: '/admin/technicians', element: <ProtectedRoute allowedRoles={[1]}><TechnicianManagementPage /></ProtectedRoute> },
+  { path: '/admin/structure', element: <ProtectedRoute allowedRoles={[1]}><InstitutionalStructurePage /></ProtectedRoute> },
+  { path: '/admin/offices', element: <ProtectedRoute allowedRoles={[1]}><OfficeManagementPage /></ProtectedRoute> },
+  { path: '/admin/reports', element: <ProtectedRoute allowedRoles={[1]}><ReportsPage /></ProtectedRoute> },
+  { path: '/admin/register-user', element: <ProtectedRoute allowedRoles={[1]}><UserRegistrationPage /></ProtectedRoute> },
+  { path: '/admin/audit', element: <ProtectedRoute allowedRoles={[1]}><AuditPage /></ProtectedRoute> },
+  { path: '/technician', element: <ProtectedRoute allowedRoles={[2]}><TechnicianDashboardPage /></ProtectedRoute> },
+  { path: '/requester', element: <ProtectedRoute allowedRoles={[3]}><RequesterDashboardPage /></ProtectedRoute> },
+  { path: '/new-ticket', element: <ProtectedRoute allowedRoles={[1, 3]}><TicketForm /></ProtectedRoute> },
+  { path: '/pdf-test', element: <PDFTestReport /> },
+]);
 
 function App() {
   return (
@@ -27,24 +45,7 @@ function App() {
       <AuthProvider>
         <div className="App">
           <Toaster position="top-right" />
-          <Router>
-            <Routes>
-              <Route path="/" element={<ProtectedRoute allowedRoles={[1]}><DashboardPage /></ProtectedRoute>} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/admin" element={<ProtectedRoute allowedRoles={[1]}><AdminManagementPage /></ProtectedRoute>} />
-              <Route path="/admin/tickets" element={<ProtectedRoute allowedRoles={[1]}><AdminTicketManagementPage /></ProtectedRoute>} />
-              <Route path="/admin/technicians" element={<ProtectedRoute allowedRoles={[1]}><TechnicianManagementPage /></ProtectedRoute>} />
-              <Route path="/admin/structure" element={<ProtectedRoute allowedRoles={[1]}><InstitutionalStructurePage /></ProtectedRoute>} />
-              <Route path="/admin/offices" element={<ProtectedRoute allowedRoles={[1]}><OfficeManagementPage /></ProtectedRoute>} />
-              <Route path="/admin/reports" element={<ProtectedRoute allowedRoles={[1]}><ReportsPage /></ProtectedRoute>} />
-              <Route path="/admin/register-user" element={<ProtectedRoute allowedRoles={[1]}><UserRegistrationPage /></ProtectedRoute>} />
-              <Route path="/technician" element={<ProtectedRoute allowedRoles={[2]}><TechnicianDashboardPage /></ProtectedRoute>} />
-              <Route path="/requester" element={<ProtectedRoute allowedRoles={[3]}><RequesterDashboardPage /></ProtectedRoute>} />
-              <Route path="/new-ticket" element={<ProtectedRoute allowedRoles={[1, 3]}><TicketForm /></ProtectedRoute>} />
-              <Route path="/pdf-test" element={<PDFTestReport />} />
-            </Routes>
-          </Router>
+          <RouterProvider router={router} />
         </div>
       </AuthProvider>
     </ThemeProvider>

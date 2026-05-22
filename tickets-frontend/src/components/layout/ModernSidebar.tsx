@@ -137,6 +137,13 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ fullViewport = false }) =
       path: '/admin/register-user',
       department: 'it',
     },
+    {
+      id: 'audit',
+      label: 'Auditoría',
+      icon: <Archive size={20} strokeWidth={1.75} />,
+      path: '/admin/audit',
+      department: 'oversight',
+    },
   ];
 
   const toggleExpanded = (itemId: string) => {

@@ -50,11 +50,11 @@ class ServiceRequest {
         $stmt->bindParam(":Fk_Office", $dto->fkOffice, PDO::PARAM_INT);
         $stmt->bindParam(":Fk_User_Requester", $requesterId, PDO::PARAM_INT);
         $stmt->bindParam(":Fk_TI_Service", $dto->fkTiService, PDO::PARAM_INT);
-        $stmt->bindParam(":Fk_Problem_Catalog", $dto->fkProblemCatalog, PDO::PARAM_INT);
-        $stmt->bindParam(":Fk_Boss_Requester", $dto->fkBossRequester, PDO::PARAM_INT);
-        $stmt->bindParam(":Fk_Software_System", $dto->fkSoftwareSystem, PDO::PARAM_INT);
+        $stmt->bindValue(":Fk_Problem_Catalog", $dto->fkProblemCatalog, $dto->fkProblemCatalog === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindValue(":Fk_Boss_Requester", $dto->fkBossRequester, $dto->fkBossRequester === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+        $stmt->bindValue(":Fk_Software_System", $dto->fkSoftwareSystem, $dto->fkSoftwareSystem === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
         $stmt->bindParam(":Subject", $dto->subject);
-        $stmt->bindParam(":Property_Number", $dto->propertyNumber);
+        $stmt->bindValue(":Property_Number", $dto->propertyNumber, $dto->propertyNumber === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
         $stmt->bindParam(":Description", $dto->description);
         $stmt->bindParam(":System_Priority", $dto->systemPriority);
 
@@ -94,41 +94,9 @@ class ServiceRequest {
         
         try {
             if ($stmt->execute()) {
-                $this->ID_Service_Request = $this->conn->lastInsertId();
-                
-                // Asignar automáticamente técnico disponible usando getAvailableTechniciansByService
-                // Este método respeta: horario laboral, bloque de almuerzo, y estado = 'Disponible'
-                try {
-                    require_once __DIR__ . '/Technician.php';
-                    $technician = new Technician($this->conn);
-
-                    // Get available technicians for this service (with time restrictions)
-                    $availableTechnicians = $technician->getAvailableTechniciansByService((int)$this->Fk_TI_Service);
-
-                    error_log("Found " . count($availableTechnicians) . " available technicians for service {$this->Fk_TI_Service}");
-
-                    if (!empty($availableTechnicians)) {
-                        // Select technician with lowest workload (already ordered by priority score)
-                        $selectedTechnician = $availableTechnicians[0];
-                        
-                        error_log("Auto-assigning technician: {$selectedTechnician['First_Name']} {$selectedTechnician['Last_Name']} " .
-                                  "(Active Tickets: {$selectedTechnician['Active_Tickets_Count']}, Priority: {$selectedTechnician['priority_score']})");
-
-                        $assigned = $technician->assignToTicket($this->ID_Service_Request, $selectedTechnician['ID_Technicians'], null, true);
-
-                        if ($assigned) {
-                            error_log("Successfully auto-assigned technician {$selectedTechnician['First_Name']} {$selectedTechnician['Last_Name']} to ticket {$this->ID_Service_Request}");
-                        } else {
-                            error_log("Failed to auto-assign technician {$selectedTechnician['First_Name']} {$selectedTechnician['Last_Name']} to ticket {$this->ID_Service_Request}");
-                        }
-                    } else {
-                        error_log("No available technicians found for service {$this->Fk_TI_Service} - ticket will remain in 'Pendiente' status");
-                    }
-                } catch (Exception $e) {
-                    // Si falla la asignación, el ticket se queda en Pendiente
-                    error_log("Error assigning technician: " . $e->getMessage());
-                }
-                
+                $this->ID_Service_Request = (int) $this->conn->lastInsertId();
+                // La asignación automática se realiza ahora desde TicketService::createTicket
+                // para evitar intentos duplicados y transacciones anidadas.
                 return true;
             }
         } catch(PDOException $exception) {
@@ -317,12 +285,6 @@ class ServiceRequest {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Update ticket priority
-     * @param int $id
-     * @param string $priority
-     * @return bool
-     */
     public function updatePriority(int $id, string $priority): bool
     {
         $allowedPriorities = ['Baja', 'Media', 'Alta', 'Crítica'];

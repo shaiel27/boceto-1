@@ -28,10 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 require_once __DIR__ . '/../src/Services/JwtService.php';
 require_once __DIR__ . '/../src/Middleware/AuthMiddleware.php';
 
-$jwtSecret = getenv('JWT_SECRET');
-if (empty($jwtSecret)) {
-    $jwtSecret = 'your-secret-key-change-in-production-min-32-chars';
-}
+$jwtSecret = getenv('JWT_SECRET') ?: 'change-this-secret-in-production-min-32-chars!!';
 
 $jwtService = new App\Services\JwtService($jwtSecret);
 $authMiddleware = new App\Middleware\AuthMiddleware($jwtService);
@@ -42,7 +39,7 @@ $path = explode('?', $path)[0];
 
 if ($path !== '/api/auth' && $path !== '/api/auth/') {
     // Tickets endpoint requires authentication
-    if ($path === '/api/tickets' || $path === '/api/tickets/') {
+    if ($path === '/api/tickets' || $path === '/api/tickets/' || $path === '/api/audit' || $path === '/api/audit/') {
         $user = $authMiddleware->requireAuth();
         $authMiddleware->setUserContext($user);
     } else {
@@ -157,6 +154,23 @@ switch ($path) {
         $user = $authMiddleware->requireAuth();
         $authMiddleware->setUserContext($user);
         require_once __DIR__ . '/../src/controllers/NotificationController.php';
+        break;
+
+    case '/api/escalation':
+    case '/api/escalation/':
+        $user = $authMiddleware->requireAuth();
+        $authMiddleware->setUserContext($user);
+        require_once __DIR__ . '/../src/controllers/EscalationController.php';
+        break;
+
+    case '/api/audit':
+    case '/api/audit/':
+        if ($_SERVER['AUTH_USER_ROLE'] !== 'Admin') {
+            http_response_code(403);
+            echo json_encode(['success' => false, 'message' => 'Acceso denegado: se requiere rol Admin']);
+            exit;
+        }
+        require_once __DIR__ . '/../src/controllers/AuditLogController.php';
         break;
 
     default:

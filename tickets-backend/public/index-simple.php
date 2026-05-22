@@ -1,21 +1,24 @@
 <?php
 
 // Versión simplificada del index.php que no requiere Composer
+// ADVERTENCIA: No usar en producción. Configurar variables de entorno.
 
-// Cargar variables de entorno manualmente
-$_ENV['DB_HOST'] = 'localhost';
-$_ENV['DB_NAME'] = 'tickets_municipal';
-$_ENV['DB_USER'] = 'root';
-$_ENV['DB_PASS'] = '';
-$_ENV['DB_CHARSET'] = 'utf8mb4';
-$_ENV['JWT_SECRET'] = 'test-secret-key-for-development';
-$_ENV['JWT_EXPIRES_IN'] = '86400';
-$_ENV['DISPLAY_ERRORS'] = '1';
-$_ENV['TIMEZONE'] = 'America/Mexico_City';
+// Cargar variables de entorno con fallbacks para desarrollo
+$_ENV['DB_HOST'] = getenv('DB_HOST') ?: 'localhost';
+$_ENV['DB_NAME'] = getenv('DB_NAME') ?: 'tickets_municipal';
+$_ENV['DB_USER'] = getenv('DB_USER') ?: 'root';
+$_ENV['DB_PASS'] = getenv('DB_PASS') ?: '';
+$_ENV['DB_CHARSET'] = getenv('DB_CHARSET') ?: 'utf8mb4';
+$_ENV['JWT_SECRET'] = getenv('JWT_SECRET') ?: 'change-this-secret-in-production-min-32-chars!!';
+$_ENV['JWT_EXPIRES_IN'] = getenv('JWT_EXPIRES_IN') ?: '86400';
+$_ENV['DISPLAY_ERRORS'] = getenv('DISPLAY_ERRORS') ?: '0';
+$_ENV['TIMEZONE'] = getenv('TIMEZONE') ?: 'America/Mexico_City';
 
 // Configuración de errores
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
+if ((bool)$_ENV['DISPLAY_ERRORS']) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', '1');
+}
 date_default_timezone_set($_ENV['TIMEZONE']);
 
 // Autoloader manual
@@ -308,11 +311,11 @@ $router->post('/api/auth/login', function (SimpleRequest $request) {
     
     // Simulación de usuario (en producción, consultar base de datos)
     $db = SimpleDatabase::getInstance();
-    $stmt = $db->prepare("SELECT u.ID_Users, u.Email, u.Fk_Role, r.Role FROM Users u JOIN Role r ON u.Fk_Role = r.ID_Role WHERE u.Email = :email");
+    $stmt = $db->prepare("SELECT u.ID_Users, u.Email, u.Password, u.Fk_Role, r.Role FROM Users u JOIN Role r ON u.Fk_Role = r.ID_Role WHERE u.Email = :email");
     $stmt->execute(['email' => $email]);
     $user = $stmt->fetch();
     
-    if (!$user || $password !== 'password123') { // Simulación simple
+    if (!$user || !password_verify($password, $user['Password'])) {
         return SimpleResponse::error('Credenciales inválidas', 401);
     }
     
