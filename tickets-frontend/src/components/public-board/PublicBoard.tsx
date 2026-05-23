@@ -146,7 +146,7 @@ const PublicBoard: React.FC = () => {
   };
 
   return (
-    <div className="pb-root" data-theme="dark">
+    <div className="pb-root">
       {banner && (
         <div className={`pb-banner pb-banner-${banner.type}`} key={banner.text}>
           <span className="pb-banner-text">{banner.text}</span>

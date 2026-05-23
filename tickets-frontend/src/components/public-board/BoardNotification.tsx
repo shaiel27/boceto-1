@@ -1,9 +1,16 @@
+/**
+ * Institutional notification sounds for public display board.
+ * Uses Web Audio API to synthesize dignified chimes — no external files.
+ *
+ * Sound philosophy:
+ *   - new_ticket  → gentle rising two-tone chime (reception bell)
+ *   - lunch       → warm descending melody (announcement tone)
+ *   - assistance  → urgent but formal triple-pulse (attention signal)
+ *   - closed      → soft resolving tone (completion chime)
+ */
 class BoardNotification {
   private static audioCtx: AudioContext | null = null;
 
-  /**
-   * Lazy-resume suspended AudioContext (browsers require user-gesture first).
-   */
   private static ensureCtx(): AudioContext {
     if (!this.audioCtx) {
       this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -14,36 +21,31 @@ class BoardNotification {
     return this.audioCtx;
   }
 
-  // ── helpers ──────────────────────────────────────────────────────────
-
-  private static gain(
+  /** Play a single chime note with gentle envelope */
+  private static chime(
     ctx: AudioContext,
-    volume: number,
-    start: number,
-    duration: number,
-  ): GainNode {
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(volume, start);
-    g.gain.exponentialRampToValueAtTime(0.001, start + duration);
-    return g;
-  }
-
-  private static osc(
-    ctx: AudioContext,
-    type: OscillatorType,
     freq: number,
     start: number,
     duration: number,
-  ): OscillatorNode {
+    vol: number = 0.25,
+    type: OscillatorType = 'sine',
+  ): void {
     const o = ctx.createOscillator();
     o.type = type;
     o.frequency.setValueAtTime(freq, start);
+
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, start);
+    g.gain.linearRampToValueAtTime(vol, start + 0.04);
+    g.gain.setValueAtTime(vol, start + duration * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.001, start + duration);
+
+    o.connect(g).connect(ctx.destination);
     o.start(start);
     o.stop(start + duration);
-    return o;
   }
 
-  // ── public API ───────────────────────────────────────────────────────
+  // ── Public sounds ──────────────────────────────────────────────────────
 
   static playSound(type: 'new_ticket' | 'lunch' | 'assistance' | 'closed'): void {
     try {
@@ -52,81 +54,42 @@ class BoardNotification {
 
       switch (type) {
         case 'new_ticket': {
-          // Bright rising chime — C5 → E5 → G5
-          const notes = [523.25, 659.25, 783.99];
-          const master = this.gain(ctx, 0.28, t, 1.2);
-          master.connect(ctx.destination);
+          // Dignified two-tone chime — C5 → E5 (major third, welcoming)
+          this.chime(ctx, 523.25, t,       0.55, 0.22);
+          this.chime(ctx, 659.25, t + 0.18, 0.65, 0.20);
 
-          notes.forEach((f, i) => {
-            const o = this.osc(ctx, 'sine', f, t + i * 0.18, 0.6);
-            const g = ctx.createGain();
-            g.gain.setValueAtTime(0.8, t + i * 0.18);
-            g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.18 + 0.5);
-            o.connect(g).connect(master);
-          });
-
-          // Harmonic overtone
-          const o2 = this.osc(ctx, 'triangle', 1046.5, t + 0.15, 0.8);
-          const g2 = ctx.createGain();
-          g2.gain.setValueAtTime(0.12, t + 0.15);
-          g2.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
-          o2.connect(g2).connect(ctx.destination);
+          // Soft harmonic overtone
+          this.chime(ctx, 1046.5, t + 0.15, 0.7, 0.08, 'sine');
           break;
         }
 
         case 'lunch': {
-          // Warm descending two-note — F5 → D5 with soft attack
-          const notes = [698.46, 587.33];
-          const master = this.gain(ctx, 0.22, t, 1.6);
-          master.connect(ctx.destination);
-
-          notes.forEach((f, i) => {
-            const o = this.osc(ctx, 'triangle', f, t + i * 0.45, 0.9);
-            const g = ctx.createGain();
-            g.gain.setValueAtTime(0.6, t + i * 0.45);
-            g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.45 + 0.7);
-            o.connect(g).connect(master);
-          });
+          // Warm announcement — F4 → D4 → C4 (descending, calming)
+          this.chime(ctx, 349.23, t,        0.4, 0.16, 'triangle');
+          this.chime(ctx, 293.66, t + 0.22, 0.4, 0.16, 'triangle');
+          this.chime(ctx, 261.63, t + 0.44, 0.5, 0.14, 'triangle');
           break;
         }
 
         case 'assistance': {
-          // Urgent alternating pulse — fast beeps with vibrato
-          const master = this.gain(ctx, 0.32, t, 2.0);
-          master.connect(ctx.destination);
-
-          for (let i = 0; i < 5; i++) {
-            const f = i % 2 === 0 ? 880 : 660;
-            const o = this.osc(ctx, 'square', f, t + i * 0.22, 0.4);
-            const g = ctx.createGain();
-            g.gain.setValueAtTime(0.45, t + i * 0.22);
-            g.gain.setValueAtTime(0.15, t + i * 0.22 + 0.08);
-            g.gain.setValueAtTime(0.45, t + i * 0.22 + 0.12);
-            g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.22 + 0.35);
-            o.connect(g).connect(master);
+          // Formal attention signal — alternating G5/E5 pulses (not alarming, but noticeable)
+          for (let i = 0; i < 4; i++) {
+            const f = i % 2 === 0 ? 783.99 : 659.25;
+            this.chime(ctx, f, t + i * 0.28, 0.22, 0.2, 'sine');
           }
+
+          // Gentle undertone for gravitas
+          this.chime(ctx, 196, t, 1.1, 0.07, 'sine');
           break;
         }
 
         case 'closed': {
-          // Resolving descending tone — C5 → G4
-          const master = this.gain(ctx, 0.24, t, 1.0);
-          master.connect(ctx.destination);
+          // Completion chime — C5 → G4 (resolving fifth)
+          this.chime(ctx, 523.25, t,        0.45, 0.18);
+          this.chime(ctx, 392.00, t + 0.25, 0.55, 0.16);
 
-          const o = this.osc(ctx, 'sine', 523.25, t, 0.7);
-          o.frequency.linearRampToValueAtTime(392, t + 0.5);
-          const g = ctx.createGain();
-          g.gain.setValueAtTime(0.7, t);
-          g.gain.linearRampToValueAtTime(0.3, t + 0.5);
-          g.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
-          o.connect(g).connect(master);
-
-          // Soft chord
-          const o2 = this.osc(ctx, 'sine', 261.63, t + 0.15, 0.7);
-          const g2 = ctx.createGain();
-          g2.gain.setValueAtTime(0.08, t + 0.15);
-          g2.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
-          o2.connect(g2).connect(ctx.destination);
+          // Soft chord closure
+          this.chime(ctx, 261.63, t + 0.20, 0.7, 0.08, 'sine');
           break;
         }
       }

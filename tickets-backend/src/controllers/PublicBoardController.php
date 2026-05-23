@@ -54,15 +54,18 @@ final class PublicBoardController
         ignore_user_abort(true);
         set_time_limit(0);
 
-        // ── Force initial flush to push headers + padding through ─────
+        // ── Force initial flush ─────────────────────────────────────────
         echo str_repeat(' ', 4096) . "\n";
         flush();
-
-        // ── SSE comment to confirm connection ──────────────────────────
         echo ": connected\n\n";
         flush();
 
-        $lastChecked = $since ? new DateTimeImmutable($since) : new DateTimeImmutable('now');
+        // Separate cursors per event type — prevents cross-contamination
+        $baseTime = $since ? new DateTimeImmutable($since) : new DateTimeImmutable('now');
+        $lastTicketAt = $baseTime;
+        $lastAssistanceAt = $baseTime;
+        $lastClosedAt = $baseTime;
+
         $prevTechSnapshot = $this->getTechnicianSnapshot();
         $lastEventAt = time();
 
@@ -72,15 +75,15 @@ final class PublicBoardController
             $now = new DateTimeImmutable('now');
 
             // 1) Nuevos tickets
-            $newTickets = $this->getNewTicketsSince($lastChecked);
+            $newTickets = $this->getNewTicketsSince($lastTicketAt);
             if (!empty($newTickets)) {
                 foreach ($newTickets as $t) {
-                    $this->sendSSE('new_ticket', $t, (string)$t['id']);
+                    $this->sendSSE('new_ticket', $t, 'ticket-' . $t['id'] . '-' . $t['created_at']);
                     $lastEventAt = time();
                 }
                 $lastCreated = end($newTickets)['created_at'] ?? null;
-                if ($lastCreated) {
-                    $lastChecked = new DateTimeImmutable($lastCreated);
+                if ($lastCreated !== null) {
+                    $lastTicketAt = (new DateTimeImmutable($lastCreated))->modify('+1 second');
                 }
             }
 
@@ -102,7 +105,7 @@ final class PublicBoardController
                 }
             }
 
-            // 3) Lunch blocks
+            // 3) Lunch blocks (deduplicated by DB via INSERT IGNORE — safe)
             $lunchBlocks = $this->getLunchBlocks();
             foreach ($lunchBlocks as $block) {
                 $blockId = (int)$block['id'];
@@ -129,29 +132,29 @@ final class PublicBoardController
                 }
             }
 
-            // 4) Assistance requests
-            $assistances = $this->getNewAssistanceSince($lastChecked);
+            // 4) Assistance requests — own cursor
+            $assistances = $this->getNewAssistanceSince($lastAssistanceAt);
             if (!empty($assistances)) {
                 foreach ($assistances as $a) {
                     $this->sendSSE('assistance_request', $a, "a{$a['id']}");
                     $lastEventAt = time();
                 }
                 $lastReq = end($assistances)['requested_at'] ?? null;
-                if ($lastReq) {
-                    $lastChecked = new DateTimeImmutable($lastReq);
+                if ($lastReq !== null) {
+                    $lastAssistanceAt = (new DateTimeImmutable($lastReq))->modify('+1 second');
                 }
             }
 
-            // 5) Tickets closed
-            $closed = $this->getTicketsClosedSince($lastChecked);
+            // 5) Tickets closed — own cursor
+            $closed = $this->getTicketsClosedSince($lastClosedAt);
             if (!empty($closed)) {
                 foreach ($closed as $c) {
                     $this->sendSSE('ticket_closed', $c, "c{$c['id']}");
                     $lastEventAt = time();
                 }
                 $lastClosed = end($closed)['created_at'] ?? null;
-                if ($lastClosed) {
-                    $lastChecked = new DateTimeImmutable($lastClosed);
+                if ($lastClosed !== null) {
+                    $lastClosedAt = (new DateTimeImmutable($lastClosed))->modify('+1 second');
                 }
             }
 
@@ -299,7 +302,7 @@ SQL;
                 LEFT JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
                 LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                 LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
-                WHERE sr.Created_at >= :since AND sr.Status != 'Cerrado'
+                WHERE sr.Created_at > :since AND sr.Status != 'Cerrado'
                 ORDER BY sr.Created_at ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
@@ -317,7 +320,7 @@ SQL;
                 LEFT JOIN Users u ON ar.Fk_Requesting_Technician = u.ID_Users
                 LEFT JOIN Service_Request sr ON ar.Fk_Ticket = sr.ID_Service_Request
                 LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
-                WHERE ar.Status = 'PENDIENTE' AND ar.Requested_At >= :since
+                WHERE ar.Status = 'PENDIENTE' AND ar.Requested_At > :since
                 ORDER BY ar.Requested_At ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
@@ -331,7 +334,7 @@ SQL;
                        tt.Event_Date as created_at
                 FROM Ticket_Timeline tt
                 JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                WHERE tt.New_Status = 'Cerrado' AND tt.Event_Date >= :since
+                WHERE tt.New_Status = 'Cerrado' AND tt.Event_Date > :since
                 ORDER BY tt.Event_Date ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
