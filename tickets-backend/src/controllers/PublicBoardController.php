@@ -239,10 +239,15 @@ SQL;
 
     private function getPendingAssistance(): array
     {
-        $sql = "SELECT ar.ID as id, ar.Ticket_Code as ticket_code, CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name, o.Name_Office as office_name, ar.Requested_At as requested_at
+        $sql = "SELECT ar.ID_Request as id,
+                       sr.Ticket_Code as ticket_code,
+                       CONCAT(u.First_Name, ' ', u.Last_Name) as technician_name,
+                       o.Name_Office as office_name,
+                       ar.Requested_At as requested_at
                 FROM Assistance_Requests ar
-                LEFT JOIN Technicians t ON ar.Fk_Technician = t.ID_Technicians
-                LEFT JOIN Office o ON ar.Fk_Office = o.ID_Office
+                LEFT JOIN Users u ON ar.Fk_Requesting_Technician = u.ID_Users
+                LEFT JOIN Service_Request sr ON ar.Fk_Ticket = sr.ID_Service_Request
+                LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                 WHERE ar.Status = 'PENDIENTE'
                 ORDER BY ar.Requested_At ASC";
         $stmt = $this->db->query($sql);
@@ -279,11 +284,15 @@ SQL;
 
     private function getNewAssistanceSince(DateTimeImmutable $since): array
     {
-        $sql = "SELECT ar.ID as id, ar.Ticket_Code as ticket_code, CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
-                       o.Name_Office as office_name, ar.Requested_At as requested_at
+        $sql = "SELECT ar.ID_Request as id,
+                       sr.Ticket_Code as ticket_code,
+                       CONCAT(u.First_Name, ' ', u.Last_Name) as technician_name,
+                       o.Name_Office as office_name,
+                       ar.Requested_At as requested_at
                 FROM Assistance_Requests ar
-                LEFT JOIN Technicians t ON ar.Fk_Technician = t.ID_Technicians
-                LEFT JOIN Office o ON ar.Fk_Office = o.ID_Office
+                LEFT JOIN Users u ON ar.Fk_Requesting_Technician = u.ID_Users
+                LEFT JOIN Service_Request sr ON ar.Fk_Ticket = sr.ID_Service_Request
+                LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                 WHERE ar.Status = 'PENDIENTE' AND ar.Requested_At > :since
                 ORDER BY ar.Requested_At ASC";
         $stmt = $this->db->prepare($sql);
@@ -293,10 +302,13 @@ SQL;
 
     private function getTicketsClosedSince(DateTimeImmutable $since): array
     {
-        $sql = "SELECT tt.ID as id, tt.Ticket_Code as ticket_code, tt.Created_at as created_at
+        $sql = "SELECT tt.ID_Timeline as id,
+                       sr.Ticket_Code as ticket_code,
+                       tt.Event_Date as created_at
                 FROM Ticket_Timeline tt
-                WHERE tt.New_Status = 'Cerrado' AND tt.Created_at > :since
-                ORDER BY tt.Created_at ASC";
+                JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                WHERE tt.New_Status = 'Cerrado' AND tt.Event_Date > :since
+                ORDER BY tt.Event_Date ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
