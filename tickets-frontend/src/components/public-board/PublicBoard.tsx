@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import BoardNotification from './BoardNotification';
 import './PublicBoard.css';
-import { API_BASE_URL } from '../../services/api';
+import { API_BASE_URL, SSE_BASE_URL } from '../../services/api';
 
 interface ActiveTicket { id:number; ticket_code:string; office_name:string; technician_name?:string; priority?:string; created_at:string; elapsed_minutes?:number; }
 interface Technician { id:number; name:string; status:string; status_reason?:string; active_tickets_count:number; }
@@ -32,7 +32,7 @@ const PublicBoard: React.FC = () => {
 
   useEffect(() => {
     if (!serverTime) return;
-    const streamUrl = `${API_BASE_URL}/api/public-board?action=stream&since=${encodeURIComponent(serverTime)}`;
+    const streamUrl = `${SSE_BASE_URL}/api/public-board?action=stream&since=${encodeURIComponent(serverTime)}`;
     const es = new EventSource(streamUrl);
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);

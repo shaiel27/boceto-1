@@ -12,6 +12,15 @@ function resolveApiBase(): string {
 
 
 export const API_BASE_URL = resolveApiBase();
+
+function resolveSseBase(): string {
+  const explicit = process.env.REACT_APP_SSE_URL?.trim().replace(/\/$/, '');
+  if (explicit) return explicit;
+  const port = parseInt(process.env.REACT_APP_API_BASE?.match(/:(\d+)/)?.[1] || '8000', 10);
+  return API_BASE_URL.replace(new RegExp(`:${port}$`), `:${port + 1}`);
+}
+
+export const SSE_BASE_URL = resolveSseBase();
 const DASHBOARD_API_BASE = `${API_BASE_URL}/api/dashboard-public`;
 
 
