@@ -1,83 +1,39 @@
-/* ── Public Board Clock — institutional style ─────────────────────────── */
+/* ── Public Board Clock — system design language ────────────────────── */
 .pb-clock {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
 }
-
 .pb-clock-digits {
-  display: flex;
-  align-items: baseline;
-  gap: 1px;
+  display: flex; align-items: baseline; gap: 1px;
 }
-
 .pb-clock-h,
 .pb-clock-m,
 .pb-clock-s {
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
-  font-weight: 700;
-  font-size: 38px;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
-  color: #074A71;
-  line-height: 1;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-weight: 700; font-size: 34px;
+  font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
+  color: var(--text-main, #1e293b); line-height: 1;
 }
-
 .pb-clock-sep {
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 28px;
-  color: #EBC476;
-  margin: 0 2px;
-  opacity: 0.9;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-weight: 600; font-size: 24px;
+  color: var(--institution-gold, #c9a961); margin: 0 2px; opacity: 0.85;
   animation: pb-blink 1s step-end infinite;
 }
-
-.pb-clock-sep:nth-child(4) {
-  animation: none;
-  opacity: 0.5;
-  color: #94a3b8;
-}
-
-@keyframes pb-blink {
-  0%, 100% { opacity: 0.9; }
-  50%      { opacity: 0.25; }
-}
-
-.pb-clock-s {
-  font-size: 28px;
-  color: #94a3b8;
-  min-width: 1.3em;
-  text-align: center;
-}
-
+.pb-clock-sep:nth-child(4) { animation: none; opacity: 0.4; color: var(--text-muted); }
+@keyframes pb-blink { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.2; } }
+.pb-clock-s { font-size: 24px; color: var(--text-muted); min-width: 1.2em; text-align: center; }
 .pb-clock-date {
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #64748b;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text-muted);
 }
 
-/* ── Responsive ──────────────────────────────────────────────────────── */
 @media (max-width: 1100px) {
-  .pb-clock-h,
-  .pb-clock-m,
-  .pb-clock-s {
-    font-size: 26px;
-  }
-  .pb-clock-sep { font-size: 20px; }
-  .pb-clock-s   { font-size: 20px; }
+  .pb-clock-h, .pb-clock-m, .pb-clock-s { font-size: 24px; }
+  .pb-clock-sep { font-size: 18px; }
+  .pb-clock-s { font-size: 18px; }
 }
-
 @media (min-width: 1600px) {
-  .pb-clock-h,
-  .pb-clock-m,
-  .pb-clock-s {
-    font-size: 50px;
-  }
-  .pb-clock-sep { font-size: 36px; }
-  .pb-clock-s   { font-size: 36px; }
+  .pb-clock-h, .pb-clock-m, .pb-clock-s { font-size: 44px; }
+  .pb-clock-sep { font-size: 32px; }
+  .pb-clock-s { font-size: 32px; }
 }

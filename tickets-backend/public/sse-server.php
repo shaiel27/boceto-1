@@ -12,6 +12,7 @@ declare(strict_types=1);
 $allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://192.168.1.6:3000',
     'http://192.168.100.8:3000',
     'http://192.168.5.43:3000',
     'http://10.2.0.2:3000',

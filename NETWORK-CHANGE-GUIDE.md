@@ -1,141 +1,115 @@
-# Guía de Cambio de Red - Sistema de Tickets
+# Guía de Cambio de Red — Sistema de Tickets
 
-## Problema Común
-Cuando cambias de red (WiFi, Ethernet, ubicación), las direcciones IP cambian y el frontend no puede conectar con el backend.
+## Dirección actual
+```
+http://192.168.1.6:3000
+```
+
+## Cuando cambias de red (WiFi, Ethernet, ubicación)
+
+Las direcciones IP cambian y el frontend deja de conectar con el backend. Esta guía te dice exactamente qué archivos modificar.
 
 ## Síntomas
-- Error: `net::ERR_CONNECTION_TIMED_OUT`
-- Error: `CORS policy: No 'Access-Control-Allow-Origin' header`
-- Frontend en `http://192.168.X.X:3000` no conecta con backend
+- `net::ERR_CONNECTION_TIMED_OUT`
+- `CORS policy: No 'Access-Control-Allow-Origin' header`
+- Frontend carga pero no conecta con backend
 
-## Pasos para Solucionar
+---
 
-### 1. Identificar tu nueva IP
-Ejecuta en el frontend:
-```bash
-npm start
+## Pasos (3 archivos)
+
+### 1. Averiguar tu nueva IP
+
+Ejecutá `npm start` en el frontend y mirá la salida:
 ```
-Busca la línea "On Your Network" para ver tu nueva IP, ejemplo:
-```
-On Your Network:  http://192.168.2.4:3000
+On Your Network:  http://192.168.X.X:3000    ← esta es tu nueva IP
 ```
 
-### 2. Actualizar Frontend (.env y api.ts)
+También podés ejecutar en PowerShell:
+```powershell
+ipconfig | Select-String "IPv4"
+```
 
-**Primero, actualiza el archivo .env:**
-Edita el archivo: `tickets-frontend/.env`
+### 2. Actualizar CORS en el backend (2 archivos)
 
-```bash
-# Cambia la línea:
+**Archivo: `tickets-backend/public/index.php`** (línea ~4)
+
+Agregá tu nueva IP al array `$allowedOrigins`:
+```php
+$allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://192.168.1.6:3000',      // ← IP actual
+    'http://TU_NUEVA_IP:3000',      // ← agregá esta línea
+];
+```
+
+**Archivo: `tickets-backend/public/sse-server.php`** (línea ~8)
+
+El mismo array, misma modificación. Agregá tu nueva IP.
+
+### 3. Actualizar URL del backend en el frontend (1 archivo)
+
+**Archivo: `tickets-frontend/.env.local`**
+
+```
 REACT_APP_API_BASE=http://TU_NUEVA_IP:8000
+REACT_APP_SSE_URL=http://TU_NUEVA_IP:8001
 ```
 
-**Luego, actualiza api.ts (opcional, como respaldo):**
-Edita el archivo: `tickets-frontend/src/services/api.ts`
+> **Nota**: El archivo `.env.local` tiene prioridad sobre `.env`. Si no existe `.env.local`, editá `.env`.
 
-**Cambia estas líneas:**
-```typescript
-// Línea 10 - Reemplaza con tu nueva IP
-return 'http://TU_NUEVA_IP:8000';
+### 4. Reiniciar servicios
+
+**Backend (2 terminales):**
+```powershell
+cd "C:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-backend"
+
+# Terminal A — API (puerto 8000)
+C:\xampp\php\php.exe -S 0.0.0.0:8000 -t public public/router.php
+
+# Terminal B — SSE (puerto 8001)
+C:\xampp\php\php.exe -S 0.0.0.0:8001 -t public public/sse-server.php
 ```
 
-**Ejemplo con IP 192.168.2.4:**
-```typescript
-export const API_BASE_URL = 'http://192.168.2.4:8000';
-const DASHBOARD_API_BASE = 'http://192.168.2.4:8000/api/dashboard-public';
-```
-
-### 3. Actualizar Backend (index.php)
-Edita el archivo: `tickets-backend/public/index.php`
-
-**Línea 3 - Agrega tu nueva IP al array:**
-```php
-$allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://192.168.100.8:3000',
-    'http://192.168.5.43:3000',
-    'http://10.2.0.2:3000',
-    'http://192.168.1.5:3000',
-    'http://TU_NUEVA_IP:3000'  // <-- Agrega esta línea
-];
-```
-
-**Ejemplo con IP 192.168.2.4:**
-```php
-$allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://192.168.100.8:3000',
-    'http://192.168.5.43:3000',
-    'http://10.2.0.2:3000',
-    'http://192.168.1.5:3000',
-    'http://192.168.2.4:3000'
-];
-```
-
-### 4. Reiniciar Servicios
-
-**Iniciar Backend:**
-```bash
-cd c:\xampp\htdocs\boceto-1\tickets-backend
-php -S 0.0.0.0:8000 -t public
-C:\xampp\php\php.exe -S 0.0.0.0:8000 -t public
-```
-
-**Reiniciar Frontend:**
-```bash
+**Frontend (1 terminal):**
+```powershell
+cd "C:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-frontend"
 # Detener con Ctrl+C si está corriendo
 npm start
 ```
 
-### 5. Probar Conexión
-- Abre http://192.168.2.4:3000 en tu navegador
-- Intenta hacer login con: `admin@alcaldia.gob` / `password123`
-- Debería funcionar sin errores de conexión
+### 5. Probar
 
-**Nota:** También puedes usar http://localhost:3000 si estás en la misma máquina
+Abrí en el navegador `http://TU_NUEVA_IP:3000` y verificá:
+- Login funciona: `admin@alcaldia.gob` / `password123`
+- Tablero público: `http://TU_NUEVA_IP:3000/public-board`
+- Pestaña Network en DevTools muestra requests a `TU_NUEVA_IP:8000`
 
-## Alternativa: Usar localhost (Recomendado)
+---
 
-Si el backend corre en la misma máquina que el frontend, puedes usar `localhost` para evitar problemas futuros:
+## Resumen rápido
 
-**En api.ts:**
-```typescript
-export const API_BASE_URL = 'http://localhost:8000';
-const DASHBOARD_API_BASE = 'http://localhost:8000/api/dashboard-public';
-```
+| Archivo | Qué cambiar |
+|---------|-------------|
+| `tickets-backend/public/index.php` | Agregar IP a `$allowedOrigins` |
+| `tickets-backend/public/sse-server.php` | Agregar IP a `$allowedOrigins` |
+| `tickets-frontend/.env.local` | `REACT_APP_API_BASE=http://IP:8000` |
 
-**En index.php (backend):**
-```php
-$allowedOrigins = ['http://localhost:3000'];
-```
+**Puertos fijos** (nunca cambian): backend `8000`, SSE `8001`, frontend `3000`.
 
-## Verificación
+---
 
-Para confirmar que todo funciona:
-1. Backend corriendo en puerto 8000
-2. Frontend corriendo en puerto 3000
-3. Login exitoso sin errores de consola
-4. Los datos de tickets cargan correctamente
-
-## Errores Comunes y Soluciones
+## Errores comunes
 
 | Error | Causa | Solución |
 |-------|-------|----------|
-| `net::ERR_CONNECTION_TIMED_OUT` | IP incorrecta en api.ts | Actualizar API_BASE_URL |
-| `CORS policy error` | IP no agregada en index.php | Agregar IP a $allowedOrigins |
-| `Failed to load resource` | Backend no iniciado | Iniciar servidor PHP |
-| `404 Not Found` | Puerto incorrecto | Usar puerto 8000 para backend |
-
-## Recuerda
-- **Backend siempre en puerto 8000**
-- **Frontend siempre en puerto 3000**
-- **IP cambia, puertos no**
-- **Actualiza tres archivos: .env, api.ts y index.php**
-- **Reinicia `npm start` después de cambiar el .env**
-- **Dirección actual del proyecto: http://192.168.2.4:3000**
+| `ERR_CONNECTION_TIMED_OUT` | IP incorrecta en `.env.local` | Corregir `REACT_APP_API_BASE` |
+| `CORS policy error` | IP no está en `$allowedOrigins` | Agregar IP a index.php y sse-server.php |
+| `Failed to load resource` | Backend no iniciado | Arrancar los 2 servidores PHP |
+| Página en blanco | Frontend no reiniciado | Ctrl+C → `npm start` después de cambiar `.env.local` |
 
 ---
+
 *Última actualización: Mayo 2026*
-*Dirección actual: http://192.168.2.4:3000*
+*IP actual: `192.168.1.6`*
