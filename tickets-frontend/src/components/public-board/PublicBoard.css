@@ -52,6 +52,4 @@
 
 .pb-right h3 { margin-top:0; }
 
-
-.pb-connection.connected { color: #2ecc71; }
-.pb-connection.disconnected { color: #e74c3c; }
+.pb-empty { color: var(--text-muted, #9aa6bf); font-style: italic; padding: 20px 0; }

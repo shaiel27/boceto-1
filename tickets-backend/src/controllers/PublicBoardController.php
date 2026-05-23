@@ -8,6 +8,11 @@ final class PublicBoardController
     public function __construct(PDO $db)
     {
         $this->db = $db;
+
+        // Sync PHP and MySQL session timezone to avoid drift in timestamp comparisons
+        $phpTz = date_default_timezone_get();
+        $offset = (new DateTimeImmutable('now', new DateTimeZone($phpTz)))->format('P');
+        $this->db->exec("SET time_zone = '{$offset}'");
     }
 
     public function getInitialState(): array
@@ -32,20 +37,36 @@ final class PublicBoardController
 
     public function streamEvents(?string $since): never
     {
-        // SSE headers
+        // ── SSE headers ─────────────────────────────────────────────────
         header('Content-Type: text/event-stream; charset=utf-8');
-        header('Cache-Control: no-cache');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
         header('Connection: keep-alive');
         header('X-Accel-Buffering: no');
 
+        // ── Disable all PHP output buffering ────────────────────────────
+        @ini_set('output_buffering', 'off');
+        @ini_set('zlib.output_compression', '0');
+        @ini_set('implicit_flush', '1');
+        while (ob_get_level() > 0) {
+            @ob_end_clean();
+        }
+        ob_implicit_flush(true);
         ignore_user_abort(true);
         set_time_limit(0);
-        @ob_end_flush();
-        ob_implicit_flush(true);
+
+        // ── Force initial flush to push headers + padding through ─────
+        echo str_repeat(' ', 4096) . "\n";
+        flush();
+
+        // ── SSE comment to confirm connection ──────────────────────────
+        echo ": connected\n\n";
+        flush();
 
         $lastChecked = $since ? new DateTimeImmutable($since) : new DateTimeImmutable('now');
         $prevTechSnapshot = $this->getTechnicianSnapshot();
         $lastEventAt = time();
+
+        error_log("[SSE] Stream started. since=" . ($since ?? 'now'));
 
         while (!connection_aborted()) {
             $now = new DateTimeImmutable('now');
@@ -75,7 +96,7 @@ final class PublicBoardController
                         'status' => $tech['status'],
                         'status_reason' => $tech['status_reason'] ?? null,
                         'active_tickets_count' => (int)$tech['active_tickets_count'],
-                    ], (string)$id);
+                    ], "t{$id}");
                     $lastEventAt = time();
                     $prevTechSnapshot[$id] = $tech;
                 }
@@ -112,7 +133,7 @@ final class PublicBoardController
             $assistances = $this->getNewAssistanceSince($lastChecked);
             if (!empty($assistances)) {
                 foreach ($assistances as $a) {
-                    $this->sendSSE('assistance_request', $a);
+                    $this->sendSSE('assistance_request', $a, "a{$a['id']}");
                     $lastEventAt = time();
                 }
                 $lastReq = end($assistances)['requested_at'] ?? null;
@@ -125,7 +146,7 @@ final class PublicBoardController
             $closed = $this->getTicketsClosedSince($lastChecked);
             if (!empty($closed)) {
                 foreach ($closed as $c) {
-                    $this->sendSSE('ticket_closed', $c);
+                    $this->sendSSE('ticket_closed', $c, "c{$c['id']}");
                     $lastEventAt = time();
                 }
                 $lastClosed = end($closed)['created_at'] ?? null;
@@ -134,24 +155,28 @@ final class PublicBoardController
                 }
             }
 
-            // Keepalive
+            // Keepalive every 15s
             if ((time() - $lastEventAt) >= 15) {
-                $this->sendSSE('keepalive', ['timestamp' => (new DateTimeImmutable())->format(DATE_ATOM)]);
+                $this->sendSSE('keepalive', [
+                    'timestamp' => (new DateTimeImmutable())->format(DATE_ATOM),
+                ]);
                 $lastEventAt = time();
             }
 
             sleep(3);
         }
 
+        error_log("[SSE] Stream ended (connection aborted)");
         exit;
     }
 
     private function sendSSE(string $event, array $data, ?string $id = null): void
     {
-        if ($id !== null) echo "id: {$id}\n";
+        if ($id !== null) {
+            echo "id: {$id}\n";
+        }
         echo "event: {$event}\n";
         echo 'data: ' . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n\n";
-        if (ob_get_level()) { @ob_flush(); }
         flush();
     }
 
@@ -211,7 +236,6 @@ ORDER BY t.First_Name
 SQL;
         $stmt = $this->db->query($sql);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-        // normalize
         foreach ($rows as &$r) {
             $r['status'] = $r['Status'] ?? $r['status'] ?? null;
             $r['status_reason'] = $r['status_reason'] ?? null;
@@ -275,7 +299,7 @@ SQL;
                 LEFT JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
                 LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                 LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
-                WHERE sr.Created_at > :since AND sr.Status != 'Cerrado'
+                WHERE sr.Created_at >= :since AND sr.Status != 'Cerrado'
                 ORDER BY sr.Created_at ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
@@ -293,7 +317,7 @@ SQL;
                 LEFT JOIN Users u ON ar.Fk_Requesting_Technician = u.ID_Users
                 LEFT JOIN Service_Request sr ON ar.Fk_Ticket = sr.ID_Service_Request
                 LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
-                WHERE ar.Status = 'PENDIENTE' AND ar.Requested_At > :since
+                WHERE ar.Status = 'PENDIENTE' AND ar.Requested_At >= :since
                 ORDER BY ar.Requested_At ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
@@ -307,7 +331,7 @@ SQL;
                        tt.Event_Date as created_at
                 FROM Ticket_Timeline tt
                 JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                WHERE tt.New_Status = 'Cerrado' AND tt.Event_Date > :since
+                WHERE tt.New_Status = 'Cerrado' AND tt.Event_Date >= :since
                 ORDER BY tt.Event_Date ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
@@ -326,8 +350,12 @@ SQL;
 
     private function techChanged(array $prev, array $current): bool
     {
-        if (($prev['status'] ?? null) !== ($current['status'] ?? null)) return true;
-        if ((int)($prev['active_tickets_count'] ?? 0) !== (int)($current['active_tickets_count'] ?? 0)) return true;
+        if (($prev['status'] ?? null) !== ($current['status'] ?? null)) {
+            return true;
+        }
+        if ((int)($prev['active_tickets_count'] ?? 0) !== (int)($current['active_tickets_count'] ?? 0)) {
+            return true;
+        }
         return false;
     }
 
@@ -342,7 +370,7 @@ SQL;
         return ($now >= $startDT && $now <= $endDT);
     }
 
-    private function timeFor(string $timeStr, DateTimeImmutable $ref = null): DateTimeImmutable
+    private function timeFor(string $timeStr, ?DateTimeImmutable $ref = null): DateTimeImmutable
     {
         $ref = $ref ?? new DateTimeImmutable('now');
         $date = $ref->format('Y-m-d');

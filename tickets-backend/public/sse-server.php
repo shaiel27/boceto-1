@@ -1,25 +1,49 @@
 <?php
-// Standalone SSE server — run on a separate port to avoid blocking the main API
-// Usage: php -S 0.0.0.0:8001 -t public sse-server.php
+declare(strict_types=1);
 
+// ── Standalone SSE server ───────────────────────────────────────────────
+// Run on a separate port to avoid blocking the main API with the long-lived
+// SSE connection (PHP built-in server is single-threaded).
+//
+// Usage: php -S 0.0.0.0:8001 -t public public/sse-server.php
+// ────────────────────────────────────────────────────────────────────────
+
+// ── CORS ────────────────────────────────────────────────────────────────
+$allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://192.168.100.8:3000',
+    'http://192.168.5.43:3000',
+    'http://10.2.0.2:3000',
+    'http://192.168.1.5:3000',
+    'http://192.168.2.4:3000',
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: {$origin}");
+    header('Access-Control-Allow-Credentials: true');
+}
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit(0);
+}
+
+// ── Routing ─────────────────────────────────────────────────────────────
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-// Only handle the SSE stream endpoint
 if ($uri !== '/api/public-board' && $uri !== '/api/public-board/') {
     http_response_code(404);
-    header('Content-Type: application/json');
-    echo json_encode(['error' => 'not found']);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['error' => 'not found'], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 $action = $_GET['action'] ?? '';
-if ($action !== 'stream') {
-    http_response_code(400);
-    header('Content-Type: application/json');
-    echo json_encode(['error' => 'this server only handles stream']);
-    exit;
-}
 
+// ── Load dependencies ───────────────────────────────────────────────────
 require_once __DIR__ . '/../src/Controllers/PublicBoardController.php';
 require_once __DIR__ . '/../src/config/database.php';
 
@@ -27,5 +51,23 @@ $dbInstance = new Database();
 $db = $dbInstance->getConnection();
 $controller = new PublicBoardController($db);
 
-$since = $_GET['since'] ?? null;
-$controller->streamEvents($since);
+// ── Dispatch ────────────────────────────────────────────────────────────
+switch ($action) {
+    case 'init':
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(
+            ['success' => true, 'data' => $controller->getInitialState()],
+            JSON_UNESCAPED_UNICODE
+        );
+        break;
+
+    case 'stream':
+        $since = $_GET['since'] ?? null;
+        $controller->streamEvents($since);
+        break;
+
+    default:
+        http_response_code(400);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['error' => 'invalid action'], JSON_UNESCAPED_UNICODE);
+}

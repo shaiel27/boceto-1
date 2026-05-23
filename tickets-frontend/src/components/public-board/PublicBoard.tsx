@@ -16,45 +16,75 @@ const PublicBoard: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => localStorage.getItem('pb_sound') === '1');
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/public-board?action=init`)
+    const initUrl = `${API_BASE_URL}/api/public-board?action=init`;
+    console.log('[PublicBoard] Fetching init from:', initUrl);
+    fetch(initUrl)
       .then(r => r.json())
       .then((payload) => {
         const data = payload.data;
+        console.log('[PublicBoard] Init received:', { tickets: data.active_tickets?.length, techs: data.technicians?.length, serverTime: data.server_time });
         setActiveTickets(data.active_tickets || []);
         setTechnicians(data.technicians || []);
         setLunchBlocks(data.lunch_blocks || []);
         setServerTime(data.server_time);
       })
       .catch(err => {
-        console.error('PublicBoard init failed', err);
+        console.error('[PublicBoard] Init failed:', err);
       });
   }, []);
 
   useEffect(() => {
     if (!serverTime) return;
+
     const streamUrl = `${SSE_BASE_URL}/api/public-board?action=stream&since=${encodeURIComponent(serverTime)}`;
+    console.log('[PublicBoard] Opening SSE:', streamUrl);
     const es = new EventSource(streamUrl);
-    es.onopen = () => setConnected(true);
-    es.onerror = () => setConnected(false);
+
+    es.onopen = () => {
+      console.log('[PublicBoard] SSE connected');
+      setConnected(true);
+    };
+
+    es.onerror = (e) => {
+      console.warn('[PublicBoard] SSE error/closed. ReadyState:', es.readyState);
+      setConnected(es.readyState === EventSource.OPEN);
+    };
 
     es.addEventListener('new_ticket', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE new_ticket:', d);
         setActiveTickets(prev => [d, ...prev].slice(0, 50));
         if (soundEnabled) BoardNotification.playSound('new_ticket');
+      } catch (err) { console.error(err); }
+    });
+
+    es.addEventListener('ticket_closed', (e: MessageEvent) => {
+      try {
+        const d = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE ticket_closed:', d);
       } catch (err) { console.error(err); }
     });
 
     es.addEventListener('lunch_started', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE lunch_started:', d);
         if (soundEnabled) BoardNotification.playSound('lunch');
+      } catch (err) { console.error(err); }
+    });
+
+    es.addEventListener('lunch_ended', (e: MessageEvent) => {
+      try {
+        const d = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE lunch_ended:', d);
       } catch (err) { console.error(err); }
     });
 
     es.addEventListener('assistance_request', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE assistance_request:', d);
         if (soundEnabled) BoardNotification.playSound('assistance');
       } catch (err) { console.error(err); }
     });
@@ -62,6 +92,7 @@ const PublicBoard: React.FC = () => {
     es.addEventListener('technician_status', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE technician_status:', d);
         setTechnicians(prev => {
           const idx = prev.findIndex(p => p.id === d.id);
           if (idx === -1) return [...prev, d];
@@ -72,7 +103,15 @@ const PublicBoard: React.FC = () => {
       } catch (err) { console.error(err); }
     });
 
+    es.addEventListener('keepalive', (e: MessageEvent) => {
+      try {
+        const d = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE keepalive:', d.timestamp);
+      } catch (err) { /* silent */ }
+    });
+
     return () => {
+      console.log('[PublicBoard] Closing SSE');
       es.close();
     };
   }, [serverTime, soundEnabled]);
@@ -83,19 +122,34 @@ const PublicBoard: React.FC = () => {
     localStorage.setItem('pb_sound', next ? '1' : '0');
   };
 
+  const statusLabel = (status: string): string => {
+    const s = status?.toLowerCase() ?? '';
+    if (s === 'disponible' || s === 'available') return 'Disponible';
+    if (s === 'ocupado' || s === 'busy') return 'Ocupado';
+    if (s === 'almuerzo' || s === 'lunch') return 'Almuerzo';
+    return status || 'Desconocido';
+  };
+
   return (
     <div className="pb-root" data-theme="dark">
       <header className="pb-header">
         <div className="pb-title">SISTEMA DE GESTIÓN DE TICKETS — Tablero Público</div>
         <div className="pb-controls">
-          <button onClick={toggleSound}>{soundEnabled ? '🔊' : '🔇'}</button>
-          <div className={`pb-connection ${connected ? 'connected' : 'disconnected'}`}>{connected ? 'Conectado' : 'Conexión'}</div>
+          <button onClick={toggleSound} title={soundEnabled ? 'Silenciar' : 'Activar sonido'}>
+            {soundEnabled ? '🔊' : '🔇'}
+          </button>
+          <div className={`pb-connection ${connected ? 'connected' : 'disconnected'}`}>
+            {connected ? 'Conectado' : 'Desconectado'}
+          </div>
         </div>
       </header>
 
       <main className="pb-main">
         <section className="pb-tickets-section">
           <h2>TICKETS EN PROCESO</h2>
+          {activeTickets.length === 0 && (
+            <p className="pb-empty">No hay tickets activos en este momento.</p>
+          )}
           {activeTickets.map(t => (
             <article key={t.id} className={`pb-ticket-card priority-${(t.priority||'baja').toLowerCase()}`}>
               <div className="pb-ticket-header">
@@ -114,7 +168,7 @@ const PublicBoard: React.FC = () => {
             {technicians.map(t => (
               <div key={t.id} className={`pb-technician-item pb-status-${t.status?.toLowerCase() || 'inactive'}`}>
                 <div className="pb-tech-name">{t.name}</div>
-                <div className="pb-tech-status">{t.status}</div>
+                <div className="pb-tech-status">{statusLabel(t.status)}</div>
               </div>
             ))}
           </section>
