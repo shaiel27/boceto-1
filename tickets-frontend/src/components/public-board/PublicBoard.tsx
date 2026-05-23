@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import BoardNotification from './BoardNotification';
+import Clock from './Clock';
 import './PublicBoard.css';
 import { API_BASE_URL, SSE_BASE_URL } from '../../services/api';
 
@@ -133,13 +134,16 @@ const PublicBoard: React.FC = () => {
   return (
     <div className="pb-root" data-theme="dark">
       <header className="pb-header">
-        <div className="pb-title">SISTEMA DE GESTIÓN DE TICKETS — Tablero Público</div>
-        <div className="pb-controls">
-          <button onClick={toggleSound} title={soundEnabled ? 'Silenciar' : 'Activar sonido'}>
-            {soundEnabled ? '🔊' : '🔇'}
-          </button>
-          <div className={`pb-connection ${connected ? 'connected' : 'disconnected'}`}>
-            {connected ? 'Conectado' : 'Desconectado'}
+        <div className="pb-title">TABLERO <span>PÚBLICO</span></div>
+        <div className="pb-header-right">
+          <Clock />
+          <div className="pb-controls">
+            <button onClick={toggleSound} title={soundEnabled ? 'Silenciar' : 'Activar sonido'}>
+              {soundEnabled ? '🔊' : '🔇'}
+            </button>
+            <div className={`pb-connection ${connected ? 'connected' : 'disconnected'}`}>
+              {connected ? 'Conectado' : 'Desconectado'}
+            </div>
           </div>
         </div>
       </header>

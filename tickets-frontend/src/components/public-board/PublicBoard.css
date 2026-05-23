@@ -1,55 +1,399 @@
-/* Public Board styles — use system variables (variables.css) */
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLERO PÚBLICO — Municipal Service Desk Display
+   Dark-mode institutional design optimized for large-format TV screens.
+   Uses system CSS variables from variables.css for institutional consistency.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Root container ──────────────────────────────────────────────────── */
 .pb-root {
+  --pb-gap: 24px;
+  --pb-radius: 12px;
+  --pb-transition: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+
   min-height: 100vh;
-  background: var(--bg-primary, #0a0e1a);
-  color: var(--text-main, #e6eef8);
-  font-family: Inter, Arial, sans-serif;
-  padding: 18px;
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(30, 58, 138, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, rgba(201, 169, 97, 0.06) 0%, transparent 50%),
+    var(--bg-primary, #0f172a);
+  color: var(--text-main, #f8fafc);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  padding: 32px 40px;
+  overflow-x: hidden;
 }
 
+/* ── Header ──────────────────────────────────────────────────────────── */
 .pb-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  padding-bottom: 18px;
+  margin-bottom: 28px;
+  border-bottom: 1px solid rgba(201, 169, 97, 0.18);
+  position: relative;
 }
 
-.pb-title { font-size: 24px; font-weight: 800; color: var(--alcaldia-primary-light, var(--accent-blue)); }
-.pb-controls { display:flex; gap:12px; align-items:center; }
+.pb-header::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 120px;
+  height: 2px;
+  background: var(--institution-gold, #c9a961);
+}
 
-.pb-main { display:flex; gap:20px; align-items:flex-start; }
-.pb-tickets-section { flex: 3; }
-.pb-right { flex: 1; max-width: 360px; }
+.pb-title {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-main, #f8fafc);
+}
 
+.pb-title span {
+  color: var(--institution-gold, #c9a961);
+}
+
+.pb-header-right {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.pb-controls {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.pb-controls button {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  font-size: 22px;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--pb-radius);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--pb-transition);
+}
+
+.pb-controls button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--institution-gold, #c9a961);
+}
+
+/* ── Connection indicator ────────────────────────────────────────────── */
+.pb-connection {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pb-connection::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pb-connection.connected {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color, #34d399);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.pb-connection.connected::before {
+  background: var(--success-color, #34d399);
+  box-shadow: 0 0 8px var(--success-color, #34d399);
+  animation: pb-pulse-connected 2.5s ease-in-out infinite;
+}
+
+.pb-connection.disconnected {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color, #f87171);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.pb-connection.disconnected::before {
+  background: var(--danger-color, #f87171);
+}
+
+@keyframes pb-pulse-connected {
+  0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--success-color); }
+  50% { opacity: 0.5; box-shadow: 0 0 12px var(--success-color); }
+}
+
+/* ── Main grid ───────────────────────────────────────────────────────── */
+.pb-main {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr;
+  gap: var(--pb-gap);
+  align-items: start;
+}
+
+/* ── Section headings ────────────────────────────────────────────────── */
+.pb-tickets-section h2,
+.pb-right h3 {
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted, #64748b);
+  margin: 0 0 16px 4px;
+  padding: 0;
+}
+
+.pb-right h3 {
+  margin-bottom: 14px;
+}
+
+/* ── Ticket cards ────────────────────────────────────────────────────── */
 .pb-ticket-card {
-  background: rgba(255,255,255,0.03);
-  padding:14px;
-  border-radius:10px;
-  margin-bottom:10px;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(255,255,255,0.03);
+  background: rgba(30, 41, 59, 0.65);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-left: 5px solid var(--border-color, #334155);
+  border-radius: 6px var(--pb-radius) var(--pb-radius) 6px;
+  padding: 18px 20px;
+  margin-bottom: 12px;
+  transition: transform var(--pb-transition), box-shadow var(--pb-transition);
+  animation: pb-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-.pb-ticket-card.priority-critica { border-left: 6px solid var(--institution-gold); box-shadow: 0 0 0 4px rgba(231,76,60,0.03); }
-.pb-ticket-card.priority-alta { border-left: 6px solid var(--alcaldia-emphasis); }
-.pb-ticket-card.priority-media { border-left: 6px solid var(--institution-blue); }
 
-.pb-technician-item { background: rgba(255,255,255,0.02); padding:10px; border-radius:8px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+.pb-ticket-card:nth-child(1) { animation-delay: 0.05s; }
+.pb-ticket-card:nth-child(2) { animation-delay: 0.1s; }
+.pb-ticket-card:nth-child(3) { animation-delay: 0.15s; }
+.pb-ticket-card:nth-child(4) { animation-delay: 0.2s; }
+.pb-ticket-card:nth-child(5) { animation-delay: 0.25s; }
 
-.pb-tech-name { font-weight:600; }
-.pb-tech-status { font-size: 0.95rem; color: var(--text-muted); }
+.pb-ticket-card:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
 
-.pb-technician-item.pb-status-disponible, .pb-technician-item.pb-status-available { border-left: 6px solid var(--success-color); }
-.pb-technician-item.pb-status-ocupado, .pb-technician-item.pb-status-busy { border-left: 6px solid var(--danger-color); }
-.pb-technician-item.pb-status-almuerzo, .pb-technician-item.pb-status-lunch { border-left: 6px solid var(--warning-color); }
+/* Priority accents */
+.pb-ticket-card.priority-critica {
+  border-left-color: var(--danger-color, #f87171);
+  box-shadow: inset 8px 0 24px -12px rgba(239, 68, 68, 0.15);
+}
 
-.pb-connection.connected { color: var(--success-color); }
-.pb-connection.disconnected { color: var(--danger-color); }
+.pb-ticket-card.priority-alta {
+  border-left-color: var(--warning-color, #fbbf24);
+  box-shadow: inset 8px 0 24px -12px rgba(251, 191, 36, 0.12);
+}
 
-.pb-ticket-header { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-.pb-priority { font-size:0.9rem; padding:4px 8px; border-radius:8px; background: rgba(255,255,255,0.03); color: var(--text-muted); }
+.pb-ticket-card.priority-media {
+  border-left-color: var(--institution-blue, #2563eb);
+  box-shadow: inset 8px 0 24px -12px rgba(37, 99, 235, 0.12);
+}
 
-.pb-ticket-card + .pb-ticket-card { transform-origin: top; }
+.pb-ticket-card.priority-baja {
+  border-left-color: var(--text-muted, #64748b);
+}
 
-.pb-right h3 { margin-top:0; }
+@keyframes pb-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 
-.pb-empty { color: var(--text-muted, #9aa6bf); font-style: italic; padding: 20px 0; }
+/* ── Ticket card internals ───────────────────────────────────────────── */
+.pb-ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.pb-ticket-header strong {
+  font-family: "IBM Plex Sans", monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-main);
+}
+
+.pb-priority {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.pb-ticket-card.priority-critica .pb-priority {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger-color, #f87171);
+}
+
+.pb-ticket-card.priority-alta .pb-priority {
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--warning-color, #fbbf24);
+}
+
+.pb-ticket-card.priority-media .pb-priority {
+  background: rgba(37, 99, 235, 0.12);
+  color: var(--institution-blue, #60a5fa);
+}
+
+.pb-ticket-card > div {
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-secondary, #cbd5e1);
+}
+
+.pb-ticket-card > div:nth-child(2) { /* office */
+  font-weight: 500;
+  color: var(--text-main, #f8fafc);
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────── */
+.pb-empty {
+  color: var(--text-muted, #64748b);
+  font-size: 16px;
+  font-style: italic;
+  padding: 32px 20px;
+  text-align: center;
+  border: 1px dashed rgba(255, 255, 255, 0.06);
+  border-radius: var(--pb-radius);
+}
+
+/* ── Technician cards ────────────────────────────────────────────────── */
+.pb-technician-item {
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-left: 4px solid var(--border-color, #334155);
+  border-radius: 4px var(--pb-radius) var(--pb-radius) 4px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: var(--pb-transition);
+}
+
+.pb-tech-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.pb-tech-status {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+/* Status-specific styles */
+.pb-technician-item.pb-status-disponible,
+.pb-technician-item.pb-status-available {
+  border-left-color: var(--success-color, #34d399);
+}
+
+.pb-technician-item.pb-status-disponible .pb-tech-status,
+.pb-technician-item.pb-status-available .pb-tech-status {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-color, #34d399);
+}
+
+.pb-technician-item.pb-status-ocupado,
+.pb-technician-item.pb-status-busy {
+  border-left-color: var(--danger-color, #f87171);
+}
+
+.pb-technician-item.pb-status-ocupado .pb-tech-status,
+.pb-technician-item.pb-status-busy .pb-tech-status {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--danger-color, #f87171);
+}
+
+.pb-technician-item.pb-status-almuerzo,
+.pb-technician-item.pb-status-lunch {
+  border-left-color: var(--warning-color, #fbbf24);
+}
+
+.pb-technician-item.pb-status-almuerzo .pb-tech-status,
+.pb-technician-item.pb-status-lunch .pb-tech-status {
+  background: rgba(251, 191, 36, 0.1);
+  color: var(--warning-color, #fbbf24);
+}
+
+.pb-technician-item.pb-status-inactivo .pb-tech-status,
+.pb-technician-item.pb-status-inactive .pb-tech-status {
+  background: rgba(100, 116, 139, 0.08);
+  color: var(--text-muted, #64748b);
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .pb-root {
+    padding: 24px 20px;
+  }
+
+  .pb-main {
+    grid-template-columns: 1fr;
+  }
+
+  .pb-title {
+    font-size: 26px;
+  }
+
+  .pb-header-right {
+    gap: 16px;
+  }
+
+  .pb-right {
+    max-width: none;
+  }
+
+  .pb-technician-item {
+    flex-wrap: wrap;
+  }
+}
+
+@media (min-width: 1600px) {
+  .pb-root {
+    padding: 40px 60px;
+  }
+
+  .pb-title {
+    font-size: 44px;
+  }
+
+  .pb-ticket-header strong {
+    font-size: 22px;
+  }
+
+  .pb-ticket-card {
+    padding: 22px 28px;
+    margin-bottom: 16px;
+  }
+}

@@ -1,214 +1,132 @@
-# Sistema de Gestión de Tickets - Alcaldía de San Cristóbal
+# Sistema de Gestión de Tickets — Alcaldía
 
-Sistema interno de soporte técnico (Helpdesk) para la Alcaldía del Municipio San Cristóbal. Centraliza reportes de fallas de red, hardware y software de las distintas dependencias municipales.
+Sistema de gestión de tickets de servicio técnico para instituciones municipales. Backend PHP 8.2+ puro, MySQL, frontend React.
 
-## 📌 Visión General
+## Requisitos
 
-Este sistema permite a las dependencias municipales reportar incidentes técnicos de manera eficiente, asignar técnicos especializados, y dar seguimiento completo a cada solicitud de servicio hasta su resolución.
+| Componente | Requerido |
+|------------|-----------|
+| **PHP** | 8.2+ con extensiones `pdo_mysql`, `mbstring` |
+| **MySQL** | 5.7+ / MariaDB 10.3+ |
+| **Node.js** | 18+ con npm 9+ |
+| **XAMPP** (recomendado) | PHP + MySQL integrados en Windows |
 
-## 🛠 Stack Tecnológico
-
-- **Frontend:** React (TypeScript) + React Router + Lucide React
-- **Backend:** PHP (API RESTful) con PDO
-- **Base de Datos:** MySQL (alcaldia_tickets_db)
-- **Arquitectura:** Desacoplada (Frontend y Backend en carpetas separadas)
-
-## ✨ Características Principales
-
-### Gestión de Tickets
-- Creación de tickets con categorización por tipo de servicio
-- Asignación automática y manual de técnicos
-- Seguimiento de estados: Pendiente, En progreso, Verificada, Cerrada
-- Sistema de prioridades: Baja, Media, Alta, Crítica
-- Línea de tiempo de actividad por ticket
-- Comentarios y notas técnicas
-
-### Roles de Usuario
-- **Cliente (Usuario):** Crear tickets, ver estado de solicitudes, añadir comentarios
-- **Técnico:** Ver cola de trabajo, cambiar estados, añadir notas técnicas
-- **Admin:** Control total, asignación manual, métricas globales, gestión de usuarios/oficinas
-
-### Reportes y Métricas
-- 6 tipos de reportes predefinidos
-- Filtros avanzados por fecha, estado, oficina, prioridad
-- Exportación en múltiples formatos (PDF, Excel, CSV)
-- Estadísticas en tiempo real y KPIs
-- Análisis de tiempos de respuesta
-- Distribución por oficinas y tipos de servicio
-
-### Interfaz de Usuario
-- Diseño moderno y responsive
-- Identidad visual institucional
-- Navegación intuitiva con sidebar
-- Dashboard con métricas en tiempo real
-- Buscador integrado de tickets
-
-## 🗄️ Estructura de la Base de Datos
-
-### Entidades Principales
-- `Users`: Almacena Admin (1), Técnicos (9) y Usuarios (10)
-- `Technicians`: Relación 1:1 con Users para especialidades y estado
-- `Office`: 10 oficinas principales (Hacienda, Registro Civil, Despacho, etc.)
-- `Service_Request`: Tabla principal de tickets
-- `TI_Service`: Áreas de atención (Redes, Soporte Técnico, Programación, Telefonía IP)
-- `Ticket_Timeline`: Auditoría de cambios en tickets
-- `Ticket_Assignments_History`: Historial de asignaciones
-
-### Estados de Tickets
-- `Pendiente`: Ticket creado, sin asignar
-- `En progreso`: Técnico asignado trabajando
-- `Verificada`: Solución aplicada, espera validación
-- `Cerrada`: Ticket resuelto y validado
-
-### Niveles de Prioridad
-- `Baja`: Incidentes no críticos
-- `Media`: Incidentes con impacto moderado
-- `Alta`: Incidentes que afectan operaciones
-- `Crítica`: Emergencias que requieren atención inmediata
-
-## 🎨 Identidad Visual
-
-Basado en el portal institucional `alcaldiasancristobal.gob.ve`:
-- **Color Primario:** Azul Institucional (Logo y Navegación)
-- **Color de Énfasis:** Rojo Coral (Alertas y Escudo)
-- **Fondo:** Menta/Beige muy suave (Secciones)
-- **Estilo:** Limpio, profesional, bordes redondeados
-
-## 📁 Estructura del Proyecto
+## Estructura
 
 ```
-boceto-1/
-├── tickets-frontend/          # Aplicación React (Frontend)
-│   ├── public/                # Archivos estáticos
+boceto 1/
+├── tickets-backend/          # API PHP (puerto 8000)
+│   ├── public/
+│   │   ├── index.php         # Front controller (rutas con auth)
+│   │   ├── router.php        # Router para php -S (reescritura)
+│   │   ├── sse-server.php    # Servidor SSE autónomo (puerto 8001)
+│   │   └── api-public-board.php  # Endpoint público (init + stream)
 │   ├── src/
-│   │   ├── components/        # Componentes React
-│   │   │   ├── dashboard/    # Componentes del Dashboard
-│   │   │   ├── admin/        # Componentes de administración
-│   │   │   └── ui/           # Componentes UI reutilizables
-│   │   ├── contexts/         # Contextos de React
-│   │   ├── pages/            # Páginas principales
-│   │   ├── App.tsx           # Componente principal
-│   │   └── index.tsx         # Punto de entrada
-│   ├── package.json          # Dependencias del frontend
-│   └── README.md             # Documentación del frontend
-├── tickets-backend/           # API PHP (Backend)
-├── database-scripts/          # Scripts de base de datos
-│   ├── schema.sql            # Esquema de la BD
-│   └── data.sql              # Datos iniciales
-├── consultas.sql              # Consultas SQL de referencia
-├── datos_insercion.sql        # Scripts de inserción
-├── sql Tickets1.sql           # Script SQL adicional
-├── Proyect_Context.md         # Contexto del proyecto
-└── README.md                  # Este archivo
+│   │   ├── controllers/      # Controladores
+│   │   ├── config/           # Config DB, JWT
+│   │   ├── Middleware/       # Auth middleware
+│   │   └── Services/         # JWT, etc.
+│   └── database-scripts/     # Schema SQL y migraciones
+├── tickets-frontend/         # SPA React (puerto 3000)
+│   └── src/
+│       ├── components/       # Componentes React
+│       ├── pages/            # Páginas
+│       ├── contexts/         # Auth, Theme
+│       ├── services/         # API client
+│       └── styles/           # CSS variables institucionales
+└── database-scripts/         # Migraciones (Lunch_Notifications_Log)
 ```
 
-## 🚀 Instalación y Configuración
+## Inicio rápido
 
-### Prerrequisitos
-- Node.js (v16 o superior)
-- npm o yarn
-- PHP (v7.4 o superior)
-- MySQL (v5.7 o superior)
-- Servidor web (Apache/Nginx)
+### 1. Base de datos
 
-### Configuración del Frontend
+Ejecutar el schema en MySQL:
 
-```bash
-cd tickets-frontend
+```
+mysql -u root -p < tickets-backend/database-scripts/final-schema.sql
+mysql -u root -p < database-scripts/20260522_create_lunch_notifications_log.sql
+```
+
+### 2. Backend (2 terminales)
+
+**Terminal A — API principal (puerto 8000):**
+
+```powershell
+cd "C:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-backend"
+C:\xampp\php\php.exe -S 0.0.0.0:8000 -t public public/router.php
+```
+
+**Terminal B — SSE Stream (puerto 8001):**
+
+```powershell
+cd "C:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-backend"
+C:\xampp\php\php.exe -S 0.0.0.0:8001 -t public public/sse-server.php
+```
+
+> **Por qué dos servidores:** `php -S` es single-threaded. La conexión SSE es de larga duración y bloquearía el único hilo. El stream corre en su propio proceso para no interferir con la API.
+
+### 3. Frontend (1 terminal)
+
+**Terminal C — React dev server:**
+
+```powershell
+cd "C:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-frontend"
 npm install
 npm start
 ```
 
-La aplicación estará disponible en `http://localhost:3000`
+> El archivo `.env.local` ya está configurado con `REACT_APP_API_BASE=http://localhost:8000` y `REACT_APP_SSE_URL=http://localhost:8001`.
 
-### Configuración del Backend
+### 4. Verificar
 
-1. Configurar el servidor web para apuntar a la carpeta `tickets-backend`
-2. Crear la base de datos MySQL usando los scripts en `database-scripts/`
-3. Configurar las credenciales de base de datos en el archivo de configuración del backend
-4. Asegurar que el servidor PHP tenga las extensiones necesarias (pdo_mysql, json)
+| URL | Descripción |
+|-----|-------------|
+| `http://localhost:8000/api/public-board?action=init` | Endpoint init (JSON) |
+| `http://localhost:8001/api/public-board?action=stream&since=...` | SSE stream |
+| `http://localhost:3000/` | App principal (login) |
+| `http://localhost:3000/public-board` | Tablero público |
 
-### Configuración de la Base de Datos
+## Producción
 
-```bash
-# Crear la base de datos
-mysql -u root -p < database-scripts/schema.sql
+En producción usar Apache con `mod_rewrite` y el `.htaccess` incluido en `tickets-backend/`. El SSE funciona sobre Apache sin necesidad de puerto separado (Apache maneja concurrencia nativamente).
 
-# Insertar datos iniciales
-mysql -u root -p alcaldia_tickets_db < database-scripts/data.sql
+Configurar variables de entorno en Apache (`SetEnv` en VirtualHost o `.htaccess`):
+
+```
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=tickets_system
+DB_USER=root
+DB_PASSWORD=***
+JWT_SECRET=cambiar-por-secreto-largo-y-aleatorio
 ```
 
-## 📖 Uso del Sistema
+Build del frontend para producción:
 
-### Para Usuarios (Clientes)
-1. Iniciar sesión con credenciales proporcionadas
-2. Navegar al Dashboard
-3. Crear nuevo ticket desde el botón "Nuevo Ticket"
-4. Llenar formulario con descripción del incidente
-5. Seleccionar tipo de servicio y prioridad
-6. Seguir estado del ticket desde la lista de tickets
-
-### Para Técnicos
-1. Iniciar sesión con credenciales de técnico
-2. Ver cola de tickets asignados
-3. Actualizar estados de tickets
-4. Añadir notas técnicas y comentarios
-5. Solicitar reasignación si es necesario
-
-### Para Administradores
-1. Acceso completo a todas las funcionalidades
-2. Asignación manual de técnicos
-3. Gestión de usuarios y oficinas
-4. Visualización de reportes y métricas
-5. Configuración del sistema
-
-## 🧪 Desarrollo
-
-### Reglas de Desarrollo
-- Siempre usar **TypeScript** para el frontend
-- Las respuestas del backend deben ser siempre en **JSON**
-- Usar **Prepared Statements (PDO)** para consultas SQL
-- El código de los tickets debe seguir el formato `TK-XXXX` o `SC-2026-XXXX`
-- Seguir los principios de diseño frontend establecidos
-- Mantener coherencia con la estructura de la base de datos
-
-### Scripts Disponibles (Frontend)
-```bash
-npm start       # Inicia servidor de desarrollo
-npm build       # Construye para producción
-npm test        # Ejecuta tests
+```powershell
+cd tickets-frontend
+npm run build
 ```
 
-## 📊 Reportes Implementados
+Los archivos estáticos se generan en `tickets-frontend/build/` y se sirven desde Apache.
 
-1. **Resumen General de Tickets** - Estadísticas generales y KPIs
-2. **Tickets por Oficina** - Distribución por oficinas municipales
-3. **Tiempos de Respuesta** - Análisis por tipo de servicio
-4. **Tickets de Alta Prioridad** - Reporte de tickets críticos
-5. **Evolución Mensual** - Tendencias temporales
-6. **Tickets por Tipo de Servicio** - Análisis por categorías técnicas
+## Purgar logs de notificaciones (cron)
 
-## 🔒 Seguridad
+```sql
+DELETE FROM Lunch_Notifications_Log WHERE Notification_Date < CURDATE() - INTERVAL 15 DAY;
+```
 
-- Autenticación basada en tokens
-- Roles y permisos diferenciados
-- Validación de entradas en backend
-- Prepared statements para prevenir SQL injection
-- HTTPS recomendado para producción
+Opcional: crear un evento MySQL o entrada en crontab.
 
-## 📝 Licencia
+## Stack técnico
 
-Este proyecto es propiedad de la Alcaldía del Municipio San Cristóbal.
-
-## 👥 Equipo de Desarrollo
-
-Sistema desarrollado para el Departamento de Tecnología de Información de la Alcaldía de San Cristóbal.
-
-## 📞 Soporte
-
-Para reportar problemas o solicitar asistencia, contactar al departamento de TI de la Alcaldía.
-
----
-
-**Versión:** 1.0.0  
-**Última actualización:** Abril 2026
+| Capa | Tecnología |
+|------|-----------|
+| Backend | PHP 8.2+ (sin framework) |
+| Base de datos | MySQL 8 / MariaDB |
+| Frontend | React 18 + React Router 6 |
+| Estilos | CSS custom properties (variables institucionales) |
+| Auth | JWT (stateless) |
+| Real-time | Server-Sent Events (SSE) |
+| Sonido | Web Audio API |
