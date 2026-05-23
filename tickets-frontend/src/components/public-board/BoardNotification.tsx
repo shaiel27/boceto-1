@@ -15,8 +15,9 @@ class BoardNotification {
     try {
       const ctx = this.ensureCtx();
       if (ctx.state === 'suspended') {
-        ctx.resume().then(() => { this.unlocked = true; });
-        return ctx.state === 'running';
+        ctx.resume();
+        this.unlocked = true;
+        return true;
       }
       this.unlocked = true;
       return true;
@@ -61,10 +62,11 @@ class BoardNotification {
   static playSound(type: 'new_ticket' | 'lunch' | 'assistance' | 'closed'): void {
     try {
       const ctx = this.ensureCtx();
-      if (ctx.state !== 'running') {
+      if (ctx.state === 'suspended') {
         ctx.resume();
-        if (ctx.state !== 'running') return; // still locked by browser
+        return; // resume is async; sound will play on next event
       }
+      if (ctx.state !== 'running') return; // closed
       const t = ctx.currentTime;
 
       switch (type) {
