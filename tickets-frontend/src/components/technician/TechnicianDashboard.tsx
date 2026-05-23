@@ -153,6 +153,7 @@ const TechnicianDashboard: React.FC = () => {
   const loadInitialData = async () => {
     setLoading(true);
     let hasError = false;
+    let loadedTickets: Ticket[] = [];
     try {
       const profileResponse = await ApiService.getTechnicianProfile();
       if (profileResponse.success && profileResponse.data) {
@@ -163,7 +164,7 @@ const TechnicianDashboard: React.FC = () => {
       }
       const ticketsResponse = await ApiService.getTechnicianTickets();
       if (ticketsResponse.success && ticketsResponse.data) {
-        const formattedTickets = ticketsResponse.data.map((ticket: any) => {
+        loadedTickets = ticketsResponse.data.map((ticket: any) => {
           const createdDate = new Date(ticket.Created_at || new Date().toISOString());
           const resolvedDate = ticket.Resolved_at ? new Date(ticket.Resolved_at) : null;
           const resolutionTime = resolvedDate ? Math.floor((resolvedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60)) : null;
@@ -189,8 +190,8 @@ const TechnicianDashboard: React.FC = () => {
             Priority_Level: ticket.Priority_Level || 1
           };
         });
-        setMyTickets(formattedTickets);
-        await loadTicketHistory();
+        setMyTickets(loadedTickets);
+        await loadTicketHistory(loadedTickets);
       } else {
         showToast('error', ticketsResponse.message || 'Error al cargar tickets');
         hasError = true;
@@ -200,17 +201,18 @@ const TechnicianDashboard: React.FC = () => {
       hasError = true;
     } finally {
       setLoading(false);
-      if (!hasError && myTickets.length === 0) {
+      if (!hasError && loadedTickets.length === 0) {
         showToast('success', 'Datos cargados correctamente');
       }
     }
   };
 
-  const loadTicketHistory = async () => {
+  const loadTicketHistory = async (tickets?: Ticket[]) => {
+    const sourceTickets = tickets ?? myTickets;
     try {
       setHistoryLoading(true);
-      if (myTickets.length > 0) {
-        const calculatedHistory = calculateTicketHistory(myTickets);
+      if (sourceTickets.length > 0) {
+        const calculatedHistory = calculateTicketHistory(sourceTickets);
         setTicketHistory(calculatedHistory);
       } else {
         setTicketHistory({
@@ -246,7 +248,7 @@ const TechnicianDashboard: React.FC = () => {
       }
     } catch (error) {
       console.error('❌ Error cargando historial de tickets:', error);
-      const calculatedHistory = calculateTicketHistory(myTickets);
+      const calculatedHistory = calculateTicketHistory(sourceTickets);
       setTicketHistory(calculatedHistory);
     } finally {
       setHistoryLoading(false);
@@ -424,7 +426,7 @@ const TechnicianDashboard: React.FC = () => {
           };
         });
         setMyTickets(formattedTickets);
-        await loadTicketHistory();
+        await loadTicketHistory(formattedTickets);
       }
     } catch (error) {
       showToast('error', 'Error al refrescar tickets');
