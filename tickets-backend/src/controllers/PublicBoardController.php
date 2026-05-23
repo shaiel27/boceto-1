@@ -241,7 +241,7 @@ SQL;
     {
         $sql = "SELECT ar.ID_Request as id,
                        sr.Ticket_Code as ticket_code,
-                       CONCAT(u.First_Name, ' ', u.Last_Name) as technician_name,
+                       u.Full_Name as technician_name,
                        o.Name_Office as office_name,
                        ar.Requested_At as requested_at
                 FROM Assistance_Requests ar
@@ -286,7 +286,7 @@ SQL;
     {
         $sql = "SELECT ar.ID_Request as id,
                        sr.Ticket_Code as ticket_code,
-                       CONCAT(u.First_Name, ' ', u.Last_Name) as technician_name,
+                       u.Full_Name as technician_name,
                        o.Name_Office as office_name,
                        ar.Requested_At as requested_at
                 FROM Assistance_Requests ar
