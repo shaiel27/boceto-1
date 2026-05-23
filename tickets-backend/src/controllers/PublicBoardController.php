@@ -67,6 +67,7 @@ final class PublicBoardController
         $lastClosedAt = $baseTime;
 
         $prevTechSnapshot = $this->getTechnicianSnapshot();
+        $prevStats = $this->getStats();
         $lastEventAt = time();
 
         error_log("[SSE] Stream started. since=" . ($since ?? 'now'));
@@ -156,6 +157,14 @@ final class PublicBoardController
                 if ($lastClosed !== null) {
                     $lastClosedAt = (new DateTimeImmutable($lastClosed))->modify('+1 second');
                 }
+            }
+
+            // 6) Stats changes (pending / unassigned counts)
+            $currentStats = $this->getStats();
+            if ($currentStats !== $prevStats) {
+                $this->sendSSE('stats_updated', $currentStats);
+                $lastEventAt = time();
+                $prevStats = $currentStats;
             }
 
             // Keepalive every 15s
@@ -286,17 +295,28 @@ SQL;
         $sql = "SELECT
                  (SELECT COUNT(*) FROM Service_Request WHERE Status = 'Pendiente') as pending,
                  (SELECT COUNT(*) FROM Service_Request WHERE Status = 'En Proceso') as in_progress,
-                 (SELECT COUNT(*) FROM Service_Request WHERE DATE(Created_at) = CURDATE()) as today_created
+                 (SELECT COUNT(*) FROM Service_Request WHERE DATE(Created_at) = CURDATE()) as today_created,
+                 (SELECT COUNT(*) FROM Service_Request sr
+                  WHERE sr.Status IN ('Pendiente','En Proceso')
+                    AND sr.Status != 'Cerrado'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM Ticket_Technicians tt
+                      WHERE tt.Fk_Service_Request = sr.ID_Service_Request AND tt.Status = 'Activo'
+                    )) as unassigned
                 ";
         $stmt = $this->db->query($sql);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['pending' => 0, 'in_progress' => 0, 'today_created' => 0];
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['pending' => 0, 'in_progress' => 0, 'today_created' => 0, 'unassigned' => 0];
     }
 
     private function getNewTicketsSince(DateTimeImmutable $since): array
     {
         $sql = "SELECT sr.ID_Service_Request as id, sr.Ticket_Code as ticket_code, sr.Subject as subject,
                        o.Name_Office as office_name, ts.Type_Service as service_name, sr.System_Priority as priority,
-                       CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name, sr.Created_at as created_at
+                       sr.Status as status,
+                       CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
+                       t.ID_Technicians as technician_id,
+                       sr.Created_at as created_at,
+                       (t.ID_Technicians IS NOT NULL) as has_technician
                 FROM Service_Request sr
                 LEFT JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request AND tt.Status = 'Activo'
                 LEFT JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians

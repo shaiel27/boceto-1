@@ -1,12 +1,44 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import BoardNotification from './BoardNotification';
 import Clock from './Clock';
 import './PublicBoard.css';
 import { API_BASE_URL, SSE_BASE_URL } from '../../services/api';
 
-interface ActiveTicket { id:number; ticket_code:string; office_name:string; technician_name?:string; priority?:string; created_at:string; elapsed_minutes?:number; }
-interface Technician { id:number; name:string; status:string; status_reason?:string; active_tickets_count:number; }
-interface LunchBlock { id:number; block_name:string; start_time:string; end_time:string; }
+interface ActiveTicket {
+  id: number;
+  ticket_code: string;
+  subject?: string;
+  office_name: string;
+  technician_name?: string;
+  technician_id?: number;
+  has_technician?: number | boolean;
+  priority?: string;
+  status?: string;
+  created_at: string;
+  elapsed_minutes?: number;
+}
+
+interface Technician {
+  id: number;
+  name: string;
+  status: string;
+  status_reason?: string;
+  active_tickets_count: number;
+}
+
+interface LunchBlock {
+  id: number;
+  block_name: string;
+  start_time: string;
+  end_time: string;
+}
+
+interface Stats {
+  pending: number;
+  in_progress: number;
+  today_created: number;
+  unassigned: number;
+}
 
 const PublicBoard: React.FC = () => {
   const [activeTickets, setActiveTickets] = useState<ActiveTicket[]>([]);
@@ -15,15 +47,30 @@ const PublicBoard: React.FC = () => {
   const [serverTime, setServerTime] = useState<string>('');
   const [connected, setConnected] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => localStorage.getItem('pb_sound') === '1');
-
-  // Visual notification banner
+  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(false);
+  const [stats, setStats] = useState<Stats>({ pending: 0, in_progress: 0, today_created: 0, unassigned: 0 });
   const [banner, setBanner] = useState<{ type: string; text: string } | null>(null);
+
+  const soundRef = useRef(soundEnabled);
+  soundRef.current = soundEnabled;
 
   const showBanner = (type: string, text: string) => {
     setBanner({ type, text });
-    setTimeout(() => setBanner(null), 5000);
+    setTimeout(() => setBanner(null), 6000);
   };
 
+  // ── Sound unlock on first user click ──────────────────────────────────
+  const toggleSound = () => {
+    if (!audioUnlocked) {
+      const ok = BoardNotification.unlock();
+      setAudioUnlocked(ok);
+    }
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    localStorage.setItem('pb_sound', next ? '1' : '0');
+  };
+
+  // ── Init ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const initUrl = `${API_BASE_URL}/api/public-board?action=init`;
     console.log('[PublicBoard] Fetching init from:', initUrl);
@@ -31,10 +78,15 @@ const PublicBoard: React.FC = () => {
       .then(r => r.json())
       .then((payload) => {
         const data = payload.data;
-        console.log('[PublicBoard] Init received:', { tickets: data.active_tickets?.length, techs: data.technicians?.length, serverTime: data.server_time });
+        console.log('[PublicBoard] Init received:', {
+          tickets: data.active_tickets?.length,
+          techs: data.technicians?.length,
+          stats: data.stats,
+        });
         setActiveTickets(data.active_tickets || []);
         setTechnicians(data.technicians || []);
         setLunchBlocks(data.lunch_blocks || []);
+        setStats(data.stats || { pending: 0, in_progress: 0, today_created: 0, unassigned: 0 });
         setServerTime(data.server_time);
       })
       .catch(err => {
@@ -42,6 +94,7 @@ const PublicBoard: React.FC = () => {
       });
   }, []);
 
+  // ── SSE stream ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!serverTime) return;
 
@@ -54,43 +107,42 @@ const PublicBoard: React.FC = () => {
       setConnected(true);
     };
 
-    es.onerror = (e) => {
+    es.onerror = () => {
       console.warn('[PublicBoard] SSE error/closed. ReadyState:', es.readyState);
       setConnected(es.readyState === EventSource.OPEN);
     };
 
     es.addEventListener('new_ticket', (e: MessageEvent) => {
       try {
-        const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE new_ticket:', d);
+        const d: ActiveTicket = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE new_ticket:', d.ticket_code);
         setActiveTickets(prev => [d, ...prev].slice(0, 50));
-        showBanner('new_ticket', `Nuevo ticket: ${d.ticket_code} — ${d.office_name || ''}`);
-        if (soundEnabled) BoardNotification.playSound('new_ticket');
+        const tag = d.has_technician ? d.ticket_code : `⚠ SIN TÉCNICO: ${d.ticket_code}`;
+        showBanner('new_ticket', `Nuevo ticket: ${tag} — ${d.office_name || ''}`);
+        if (soundRef.current) BoardNotification.playSound('new_ticket');
       } catch (err) { console.error(err); }
     });
 
     es.addEventListener('ticket_closed', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE ticket_closed:', d);
+        console.log('[PublicBoard] SSE ticket_closed:', d.ticket_code);
         showBanner('ticket_closed', `Ticket cerrado: ${d.ticket_code}`);
-        if (soundEnabled) BoardNotification.playSound('closed');
+        if (soundRef.current) BoardNotification.playSound('closed');
       } catch (err) { console.error(err); }
     });
 
     es.addEventListener('lunch_started', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE lunch_started:', d);
         showBanner('lunch_started', `Almuerzo iniciado: ${d.block_name}`);
-        if (soundEnabled) BoardNotification.playSound('lunch');
+        if (soundRef.current) BoardNotification.playSound('lunch');
       } catch (err) { console.error(err); }
     });
 
     es.addEventListener('lunch_ended', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE lunch_ended:', d);
         showBanner('lunch_ended', `Almuerzo finalizado: ${d.block_name}`);
       } catch (err) { console.error(err); }
     });
@@ -98,67 +150,78 @@ const PublicBoard: React.FC = () => {
     es.addEventListener('assistance_request', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE assistance_request:', d);
         showBanner('assistance', `¡ASISTENCIA SOLICITADA! ${d.technician_name} — ${d.office_name || ''}`);
-        if (soundEnabled) BoardNotification.playSound('assistance');
+        if (soundRef.current) BoardNotification.playSound('assistance');
       } catch (err) { console.error(err); }
     });
 
     es.addEventListener('technician_status', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE technician_status:', d);
         setTechnicians(prev => {
           const idx = prev.findIndex(p => p.id === d.id);
           if (idx === -1) return [...prev, d];
           const copy = [...prev];
-          copy[idx] = {...copy[idx], ...d};
+          copy[idx] = { ...copy[idx], ...d };
           return copy;
         });
       } catch (err) { console.error(err); }
     });
 
-    es.addEventListener('keepalive', (e: MessageEvent) => {
+    es.addEventListener('stats_updated', (e: MessageEvent) => {
       try {
-        const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE keepalive:', d.timestamp);
-      } catch (err) { /* silent */ }
+        const d: Stats = JSON.parse(e.data);
+        console.log('[PublicBoard] SSE stats_updated:', d);
+        setStats(d);
+      } catch (err) { console.error(err); }
     });
+
+    es.addEventListener('keepalive', () => { /* silent */ });
 
     return () => {
       console.log('[PublicBoard] Closing SSE');
       es.close();
     };
-  }, [serverTime, soundEnabled]);
+  }, [serverTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toggleSound = () => {
-    const next = !soundEnabled;
-    setSoundEnabled(next);
-    localStorage.setItem('pb_sound', next ? '1' : '0');
-  };
-
+  // ── Helpers ───────────────────────────────────────────────────────────
   const statusLabel = (status: string): string => {
     const s = status?.toLowerCase() ?? '';
     if (s === 'disponible' || s === 'available') return 'Disponible';
     if (s === 'ocupado' || s === 'busy') return 'Ocupado';
     if (s === 'almuerzo' || s === 'lunch') return 'Almuerzo';
-    return status || 'Desconocido';
+    return status || 'Inactivo';
   };
 
+  const hasTech = (t: ActiveTicket): boolean =>
+    !!(t.has_technician ?? t.technician_name ?? t.technician_id);
+
+  // ── Render ────────────────────────────────────────────────────────────
   return (
     <div className="pb-root">
       {banner && (
-        <div className={`pb-banner pb-banner-${banner.type}`} key={banner.text}>
+        <div className={`pb-banner pb-banner-${banner.type}`}>
           <span className="pb-banner-text">{banner.text}</span>
         </div>
       )}
+
       <header className="pb-header">
         <div className="pb-title">TABLERO <span>PÚBLICO</span></div>
         <div className="pb-header-right">
           <Clock />
           <div className="pb-controls">
-            <button onClick={toggleSound} title={soundEnabled ? 'Silenciar' : 'Activar sonido'}>
-              {soundEnabled ? '🔊' : '🔇'}
+            <button
+              onClick={toggleSound}
+              title={
+                !audioUnlocked
+                  ? 'Click para activar audio'
+                  : soundEnabled
+                  ? 'Silenciar'
+                  : 'Activar sonido'
+              }
+              className={!audioUnlocked ? 'pb-btn-unlock' : ''}
+            >
+              {!audioUnlocked ? '🔇' : soundEnabled ? '🔊' : '🔇'}
             </button>
             <div className={`pb-connection ${connected ? 'connected' : 'disconnected'}`}>
               {connected ? 'Conectado' : 'Desconectado'}
@@ -167,6 +230,26 @@ const PublicBoard: React.FC = () => {
         </div>
       </header>
 
+      {/* ── Stats bar ─────────────────────────────────────────────────── */}
+      <div className="pb-stats-bar">
+        <div className={`pb-stat ${stats.unassigned > 0 ? 'pb-stat-alert' : ''}`}>
+          <span className="pb-stat-num">{stats.unassigned}</span>
+          <span className="pb-stat-label">Sin técnico</span>
+        </div>
+        <div className="pb-stat">
+          <span className="pb-stat-num">{stats.in_progress}</span>
+          <span className="pb-stat-label">En proceso</span>
+        </div>
+        <div className={`pb-stat ${stats.pending > 0 ? 'pb-stat-warn' : ''}`}>
+          <span className="pb-stat-num">{stats.pending}</span>
+          <span className="pb-stat-label">Pendientes</span>
+        </div>
+        <div className="pb-stat">
+          <span className="pb-stat-num">{stats.today_created}</span>
+          <span className="pb-stat-label">Hoy</span>
+        </div>
+      </div>
+
       <main className="pb-main">
         <section className="pb-tickets-section">
           <h2>TICKETS EN PROCESO</h2>
@@ -174,13 +257,22 @@ const PublicBoard: React.FC = () => {
             <p className="pb-empty">No hay tickets activos en este momento.</p>
           )}
           {activeTickets.map(t => (
-            <article key={t.id} className={`pb-ticket-card priority-${(t.priority||'baja').toLowerCase()}`}>
+            <article
+              key={t.id}
+              className={`pb-ticket-card priority-${(t.priority || 'baja').toLowerCase()}${!hasTech(t) ? ' pb-no-tech' : ''}`}
+            >
               <div className="pb-ticket-header">
-                <strong>{t.ticket_code}</strong> <span className="pb-priority">{t.priority}</span>
+                <strong>
+                  {!hasTech(t) && <span className="pb-no-tech-badge" title="Sin técnico asignado">⚠</span>}
+                  {t.ticket_code}
+                </strong>
+                <span className="pb-priority">{t.priority || 'Baja'}</span>
               </div>
               <div>{t.office_name}</div>
-              <div>Técnico: {t.technician_name || '(sin asignar)'}</div>
-              <div>⏱ {Math.floor((t.elapsed_minutes||0)/60)}h {(t.elapsed_minutes||0)%60}m</div>
+              <div>Técnico: {t.technician_name || <span className="pb-no-tech-text">(sin asignar)</span>}</div>
+              <div className="pb-elapsed">
+                ⏱ {Math.floor((t.elapsed_minutes || 0) / 60)}h {(t.elapsed_minutes || 0) % 60}m
+              </div>
             </article>
           ))}
         </section>
