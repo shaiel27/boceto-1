@@ -23,11 +23,14 @@
 **Política de audio**: AudioContext bloqueado por el navegador hasta primer click. Botón 🔇 parpadea en coral hasta que el operador hace click para desbloquear.
 
 ### 1.3 Header institucional del sistema
-Se agregó `PublicHeader` con:
-- Barra superior azul institucional (#074A71 → #066B9D)
-- Línea decorativa inferior con los 4 colores del portal (navy, blue, gold, light blue)
-- "ALCALDÍA DE SAN CRISTÓBOL" + "Sistema de Gestión de Tickets"
-- Tag "DIRECCIÓN DE INFORMÁTICA Y TECNOLOGÍA"
+Se reutiliza el componente `Header.tsx` del layout principal (`src/components/layout/Header.tsx`), que incluye:
+- Logo "Alcaldía San Cristóbal" (izquierda)
+- Campana de notificaciones (centro-derecha — se desactiva sin auth)
+- Reloj Venezuela en tiempo real (derecha)
+- Logo "Ciudad Ecológica" (derecha)
+- Barra inferior dorada institucional
+
+El `NotificationBell` funciona sin token (llamadas API fallan silenciosamente, sin romper la UI).
 
 ### 1.4 Indicadores en tiempo real (stats bar)
 | Indicador | Fuente SSE | Actualización |
@@ -197,5 +200,5 @@ source database-scripts/20260522_create_lunch_notifications_log.sql;
 | `tickets-frontend/src/components/public-board/PublicBoard.css` | Estilos institucionales |
 | `tickets-frontend/src/components/public-board/BoardNotification.tsx` | Síntesis de audio |
 | `tickets-frontend/src/components/public-board/Clock.tsx` | Reloj Venezuela |
-| `tickets-frontend/src/components/public-board/PublicHeader.tsx` | Header institucional |
+| `tickets-frontend/src/components/layout/Header.tsx` | Header institucional compartido |
 | `database-scripts/20260522_create_lunch_notifications_log.sql` | Migración BD |
