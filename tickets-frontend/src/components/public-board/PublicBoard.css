@@ -9,6 +9,7 @@
   flex-direction: column;
   min-height: 100vh;
   background: #effaee;
+  padding-top: 56px; /* accounts for fixed Header */
 }
 
 /* ── CSS variables locales ────────────────────────────────────────────── */
@@ -46,10 +47,10 @@
 /* ── Notification banner ─────────────────────────────────────────────── */
 .pb-banner {
   position: fixed;
-  top: 20px;
+  top: 68px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 100;
+  z-index: 1100;
   padding: 14px 28px;
   border-radius: var(--pb-radius);
   font-size: 16px;

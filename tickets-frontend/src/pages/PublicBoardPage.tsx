@@ -1,11 +1,11 @@
 import React from 'react';
-import PublicHeader from '../components/public-board/PublicHeader';
+import Header from '../components/layout/Header';
 import PublicBoard from '../components/public-board/PublicBoard';
 
 const PublicBoardPage: React.FC = () => {
   return (
     <div className="public-board-page">
-      <PublicHeader />
+      <Header showUserInfo={false} />
       <PublicBoard />
     </div>
   );
