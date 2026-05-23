@@ -1,0 +1,94 @@
+/* ── Public Header — matches system institutional branding ─────────── */
+.ph-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 36px;
+  height: 52px;
+  background: linear-gradient(135deg, #074A71 0%, #066B9D 100%);
+  color: #fff;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ph-color-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    #074A71 0%, #074A71 25%,
+    #066B9D 25%, #066B9D 50%,
+    #EBC476 50%, #EBC476 75%,
+    #567FB6 75%, #567FB6 100%
+  );
+}
+
+.ph-header-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  z-index: 1;
+}
+
+.ph-brand {
+  font-family: "Source Serif 4", Georgia, serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+}
+
+.ph-divider {
+  width: 1px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.ph-module {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.8);
+  text-transform: uppercase;
+}
+
+.ph-header-right {
+  z-index: 1;
+}
+
+.ph-tag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+@media (max-width: 768px) {
+  .ph-header {
+    padding: 0 16px;
+    height: 44px;
+  }
+  .ph-brand {
+    font-size: 13px;
+  }
+  .ph-module {
+    display: none;
+  }
+  .ph-divider {
+    display: none;
+  }
+  .ph-tag {
+    font-size: 10px;
+    padding: 4px 10px;
+  }
+}

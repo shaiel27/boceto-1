@@ -350,6 +350,7 @@ SQL;
     private function getTicketsClosedSince(DateTimeImmutable $since): array
     {
         $sql = "SELECT tt.ID_Timeline as id,
+                       sr.ID_Service_Request as ticket_id,
                        sr.Ticket_Code as ticket_code,
                        tt.Event_Date as created_at
                 FROM Ticket_Timeline tt

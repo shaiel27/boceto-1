@@ -1,9 +1,15 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    TABLERO PÚBLICO — Alcaldía de San Cristóbal
    Estilo institucional basado en el portal alcaldiasancristobal.gob.ve
-   Colores: Azul institucional #066B9D, Coral énfasis #D64045,
-   Fondo menta/beige #effaee, Componentes rounded-xl.
    ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Page wrapper (in PublicBoardPage.tsx) ───────────────────────────── */
+.public-board-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #effaee;
+}
 
 /* ── CSS variables locales ────────────────────────────────────────────── */
 .pb-root {
@@ -25,37 +31,17 @@
   --pb-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
   --pb-transition: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
-  min-height: 100vh;
+  flex: 1;
   background:
     linear-gradient(180deg, #e8f4fa 0%, #effaee 30%, #effaee 100%);
   color: var(--pb-text);
   font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
-  padding: 28px 36px;
+  padding: 24px 36px;
   overflow-x: hidden;
   position: relative;
 }
 
-/* ── Top decorative bar (matching portal navbar stripes) ─────────────── */
-.pb-root::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  z-index: 200;
-  background: linear-gradient(
-    90deg,
-    var(--pb-blue-dark) 0%,
-    var(--pb-blue-dark) 25%,
-    var(--pb-blue) 25%,
-    var(--pb-blue) 50%,
-    var(--pb-gold) 50%,
-    var(--pb-gold) 75%,
-    #567FB6 75%,
-    #567FB6 100%
-  );
-}
+/* ── Top decorative bar — removed; now in PublicHeader ──────────────── */
 
 /* ── Notification banner ─────────────────────────────────────────────── */
 .pb-banner {

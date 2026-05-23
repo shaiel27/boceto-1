@@ -126,7 +126,8 @@ const PublicBoard: React.FC = () => {
     es.addEventListener('ticket_closed', (e: MessageEvent) => {
       try {
         const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE ticket_closed:', d.ticket_code);
+        console.log('[PublicBoard] SSE ticket_closed:', d.ticket_code, 'ticket_id:', d.ticket_id);
+        setActiveTickets(prev => prev.filter(t => t.id !== d.ticket_id));
         showBanner('ticket_closed', `Ticket cerrado: ${d.ticket_code}`);
         if (soundRef.current) BoardNotification.playSound('closed');
       } catch (err) { console.error(err); }
