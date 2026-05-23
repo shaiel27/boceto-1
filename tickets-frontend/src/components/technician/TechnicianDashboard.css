@@ -589,16 +589,93 @@
 }
 
 /* ===== RESPONSIVE ===== */
-@media(max-width:768px){
+@media(max-width:900px){
+  .tech-topbar{
+    flex-direction:column;align-items:flex-start;padding:10px 14px;gap:10px;
+  }
+  .tech-topbar-right{
+    width:100%;flex-wrap:wrap;gap:6px;
+  }
+  .tech-topbar-right .action-btn{
+    padding:7px 10px;font-size:12px;
+  }
   .tech-workspace{flex-direction:column;height:auto}
-  .tech-inbox{width:100%;min-width:0;border-right:none;max-height:50vh}
-  .tech-detail{min-height:50vh}
+  .tech-inbox{width:100%;min-width:0;border-right:none;border-bottom:1px solid var(--line);max-height:none}
+  .tech-inbox-list{max-height:60vh}
+  .tech-detail{min-height:auto}
+  .tech-detail-welcome{padding:24px 16px}
   .tech-detail-body{grid-template-columns:1fr}
-  .tech-detail-view{padding:16px}
-  .tech-detail-top{flex-direction:column;gap:12px}
-  .tech-detail-top .dd-actions{width:100%}
-  .tech-detail-top .dd-actions button{flex:1;justify-content:center}
-  .tech-welcome-grid{grid-template-columns:1fr}
+  .tech-detail-view{padding:14px}
+  .tech-detail-top{flex-direction:column;gap:10px}
+  .tech-detail-top .dd-actions{width:100%;flex-wrap:wrap}
+  .tech-detail-top .dd-actions button{flex:1 1 auto;justify-content:center}
+  .tech-detail-top .dd-actions .action-btn.assistance{margin-right:0}
+  .tech-detail-close-action{padding:12px 16px}
+  .tech-detail-close-action .action-btn.danger{width:100%;justify-content:center}
+  .tech-welcome-grid{grid-template-columns:repeat(2,1fr);gap:8px}
   .tech-inbox-stats{grid-template-columns:repeat(2,1fr)}
-  .tech-drawer{width:100vw;max-width:100vw}
+  .tech-inbox-filters{flex-wrap:wrap}
+  .tech-inbox-filters input,
+  .tech-inbox-filters select{flex:1 1 120px}
+  .inbox-ticket{padding:10px 12px}
+  .tkt-subject{font-size:13px}
+  .tkt-code{font-size:12px}
+  .dd-code{font-size:18px}
+  .dd-title{font-size:16px}
+  .dd-desc{font-size:13px}
+  .dd-comment-input-row textarea{min-height:60px;font-size:14px}
+  .dd-comment-actions{flex-wrap:wrap}
+  .dd-comment-actions .action-btn{padding:8px 12px}
+  .tech-drawer{width:100vw;max-width:100vw;border-radius:0}
+  .modal-content{width:94vw;max-width:94vw;margin:8px;max-height:90vh}
+  .modal-content.extra-large{width:96vw;max-width:96vw}
+  .stats-grid{grid-template-columns:1fr}
+  .weekly-performance-grid{grid-template-columns:repeat(2,1fr)}
+  .service-stat-item{flex-direction:column;gap:6px;align-items:flex-start}
+  .tech-drawer-overlay{z-index:999}
+  .tech-drawer{z-index:1000}
+  .dd-file-previews{flex-wrap:wrap}
+  .dd-file-preview{flex:1 1 calc(50% - 6px)}
+  .dd-comment-head{flex-direction:column;gap:2px}
+  .dd-comment-head .date{font-size:10px}
+  .dd-row{flex-direction:column;gap:2px}
+  .dd-row .dd-label{width:auto}
+}
+
+@media(max-width:480px){
+  .tech-topbar{padding:8px 10px}
+  .tech-topbar-left .tech-name{font-size:12px}
+  .tech-topbar-left .tech-role{font-size:10px}
+  .tech-avatar{width:28px;height:28px;font-size:11px}
+  .tech-topbar-right .action-btn{padding:6px 8px;font-size:11px;gap:3px}
+  .tech-inbox-header{padding:10px 12px 6px}
+  .tech-inbox-list{padding:6px 8px 10px}
+  .inbox-ticket{padding:10px}
+  .tkt-top{gap:6px}
+  .tkt-meta{flex-wrap:wrap;gap:4px}
+  .tech-welcome-grid{grid-template-columns:1fr 1fr}
+  .tech-welcome-card{padding:14px 10px}
+  .wc-num{font-size:20px}
+  .wc-label{font-size:10px}
+  .tech-inbox-stats{grid-template-columns:repeat(2,1fr);gap:4px}
+  .tech-inbox-stat{padding:8px 4px}
+  .tech-inbox-stat .stat-num{font-size:13px}
+  .tech-inbox-stat .stat-label{font-size:8px}
+  .dd-meta{flex-wrap:wrap;gap:4px}
+  .priority-badge{font-size:10px;padding:2px 8px}
+  .tech-detail-grid{gap:8px}
+  .dd-row{padding:8px}
+  .dd-comment{padding:10px}
+  .tech-detail-section h3{font-size:11px}
+  .dd-comment-input-row textarea{padding:10px}
+  .tech-detail-comments{padding:12px}
+  .dd-comment-form{padding:0}
+  .dd-file-preview{flex:1 1 100%}
+  .weekly-performance-grid{grid-template-columns:1fr}
+  .trend-chart{gap:4px}
+  .tech-inbox-pagination{padding:8px 10px}
+  .modal-content{width:98vw;max-width:98vw;margin:4px;border-radius:8px}
+  .modal-content.extra-large{width:100vw;max-width:100vw}
+  .modal-header h2{font-size:15px}
+  .stats-section-title{font-size:13px}
 }

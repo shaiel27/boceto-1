@@ -204,6 +204,17 @@
 .pb-ticket-card > div:nth-child(2) { font-weight: 600; color: var(--text-main); }
 .pb-elapsed { font-size: 13px !important; color: var(--text-muted) !important; }
 
+.pb-problem {
+  font-size: 13px;
+  color: var(--institution-navy-deep, #1a365d);
+  font-weight: 500;
+  background: var(--accent-blue-light, #dbeafe);
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 0.25rem;
+  margin: 4px 0;
+}
+
 /* ── Empty state ─────────────────────────────────────────────────────── */
 .pb-empty {
   color: var(--text-muted); font-size: 14px; font-style: italic;

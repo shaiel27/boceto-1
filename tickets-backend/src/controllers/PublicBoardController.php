@@ -209,19 +209,27 @@ SELECT
   sr.Subject as subject,
   o.Name_Office as office_name,
   ts.Type_Service as service_name,
+  spc.Problem_Name as problem_name,
   sr.System_Priority as priority,
   sr.Status as status,
-  CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
-  t.ID_Technicians as technician_id,
   sr.Created_at as created_at,
-  TIMESTAMPDIFF(MINUTE, sr.Created_at, NOW()) as elapsed_minutes
+  TIMESTAMPDIFF(MINUTE, sr.Created_at, NOW()) as elapsed_minutes,
+  (SELECT GROUP_CONCAT(CONCAT(t2.First_Name, ' ', t2.Last_Name) SEPARATOR ', ')
+   FROM Ticket_Technicians tt2
+   JOIN Technicians t2 ON tt2.Fk_Technician = t2.ID_Technicians
+   WHERE tt2.Fk_Service_Request = sr.ID_Service_Request AND tt2.Status = 'Activo'
+  ) as technician_names,
+  EXISTS (
+    SELECT 1 FROM Ticket_Technicians tt3
+    WHERE tt3.Fk_Service_Request = sr.ID_Service_Request AND tt3.Status = 'Activo'
+  ) as has_technician
 FROM Service_Request sr
-JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request AND tt.Status = 'Activo'
-JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
 LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
 LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
-WHERE sr.Status = 'En Proceso'
-ORDER BY sr.Created_at ASC
+LEFT JOIN Service_Problems_Catalog spc ON sr.Fk_Problem_Catalog = spc.ID_Problem_Catalog
+WHERE sr.Status IN ('En Proceso', 'Pendiente')
+  AND sr.Status != 'Cerrado'
+ORDER BY FIELD(sr.Status, 'Pendiente', 'En Proceso'), sr.Created_at ASC
 SQL;
         $stmt = $this->db->query($sql);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
@@ -311,17 +319,23 @@ SQL;
     private function getNewTicketsSince(DateTimeImmutable $since): array
     {
         $sql = "SELECT sr.ID_Service_Request as id, sr.Ticket_Code as ticket_code, sr.Subject as subject,
-                       o.Name_Office as office_name, ts.Type_Service as service_name, sr.System_Priority as priority,
-                       sr.Status as status,
-                       CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
-                       t.ID_Technicians as technician_id,
+                       o.Name_Office as office_name, ts.Type_Service as service_name,
+                       spc.Problem_Name as problem_name,
+                       sr.System_Priority as priority, sr.Status as status,
                        sr.Created_at as created_at,
-                       (t.ID_Technicians IS NOT NULL) as has_technician
+                       (SELECT GROUP_CONCAT(CONCAT(t2.First_Name, ' ', t2.Last_Name) SEPARATOR ', ')
+                        FROM Ticket_Technicians tt2
+                        JOIN Technicians t2 ON tt2.Fk_Technician = t2.ID_Technicians
+                        WHERE tt2.Fk_Service_Request = sr.ID_Service_Request AND tt2.Status = 'Activo'
+                       ) as technician_names,
+                       EXISTS (
+                         SELECT 1 FROM Ticket_Technicians tt3
+                         WHERE tt3.Fk_Service_Request = sr.ID_Service_Request AND tt3.Status = 'Activo'
+                       ) as has_technician
                 FROM Service_Request sr
-                LEFT JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request AND tt.Status = 'Activo'
-                LEFT JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
                 LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                 LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
+                LEFT JOIN Service_Problems_Catalog spc ON sr.Fk_Problem_Catalog = spc.ID_Problem_Catalog
                 WHERE sr.Created_at > :since AND sr.Status != 'Cerrado'
                 ORDER BY sr.Created_at ASC";
         $stmt = $this->db->prepare($sql);

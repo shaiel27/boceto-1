@@ -9,8 +9,8 @@ interface ActiveTicket {
   ticket_code: string;
   subject?: string;
   office_name: string;
-  technician_name?: string;
-  technician_id?: number;
+  problem_name?: string;
+  technician_names?: string;
   has_technician?: number | boolean;
   priority?: string;
   status?: string;
@@ -195,7 +195,7 @@ const PublicBoard: React.FC = () => {
   };
 
   const hasTech = (t: ActiveTicket): boolean =>
-    !!(t.has_technician ?? t.technician_name ?? t.technician_id);
+    !!(t.has_technician ?? t.technician_names);
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
@@ -270,7 +270,13 @@ const PublicBoard: React.FC = () => {
                 <span className="pb-priority">{t.priority || 'Baja'}</span>
               </div>
               <div>{t.office_name}</div>
-              <div>Técnico: {t.technician_name || <span className="pb-no-tech-text">(sin asignar)</span>}</div>
+              {t.problem_name && <div className="pb-problem">🛠 {t.problem_name}</div>}
+              <div>
+                {t.technician_names
+                  ? <span>Técnicos: {t.technician_names}</span>
+                  : <span className="pb-no-tech-text">(sin asignar)</span>
+                }
+              </div>
               <div className="pb-elapsed">
                 ⏱ {Math.floor((t.elapsed_minutes || 0) / 60)}h {(t.elapsed_minutes || 0) % 60}m
               </div>
