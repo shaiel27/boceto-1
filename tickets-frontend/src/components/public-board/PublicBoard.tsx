@@ -16,6 +16,14 @@ const PublicBoard: React.FC = () => {
   const [connected, setConnected] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => localStorage.getItem('pb_sound') === '1');
 
+  // Visual notification banner
+  const [banner, setBanner] = useState<{ type: string; text: string } | null>(null);
+
+  const showBanner = (type: string, text: string) => {
+    setBanner({ type, text });
+    setTimeout(() => setBanner(null), 5000);
+  };
+
   useEffect(() => {
     const initUrl = `${API_BASE_URL}/api/public-board?action=init`;
     console.log('[PublicBoard] Fetching init from:', initUrl);
@@ -56,6 +64,7 @@ const PublicBoard: React.FC = () => {
         const d = JSON.parse(e.data);
         console.log('[PublicBoard] SSE new_ticket:', d);
         setActiveTickets(prev => [d, ...prev].slice(0, 50));
+        showBanner('new_ticket', `Nuevo ticket: ${d.ticket_code} — ${d.office_name || ''}`);
         if (soundEnabled) BoardNotification.playSound('new_ticket');
       } catch (err) { console.error(err); }
     });
@@ -64,6 +73,8 @@ const PublicBoard: React.FC = () => {
       try {
         const d = JSON.parse(e.data);
         console.log('[PublicBoard] SSE ticket_closed:', d);
+        showBanner('ticket_closed', `Ticket cerrado: ${d.ticket_code}`);
+        if (soundEnabled) BoardNotification.playSound('closed');
       } catch (err) { console.error(err); }
     });
 
@@ -71,6 +82,7 @@ const PublicBoard: React.FC = () => {
       try {
         const d = JSON.parse(e.data);
         console.log('[PublicBoard] SSE lunch_started:', d);
+        showBanner('lunch_started', `Almuerzo iniciado: ${d.block_name}`);
         if (soundEnabled) BoardNotification.playSound('lunch');
       } catch (err) { console.error(err); }
     });
@@ -79,6 +91,7 @@ const PublicBoard: React.FC = () => {
       try {
         const d = JSON.parse(e.data);
         console.log('[PublicBoard] SSE lunch_ended:', d);
+        showBanner('lunch_ended', `Almuerzo finalizado: ${d.block_name}`);
       } catch (err) { console.error(err); }
     });
 
@@ -86,6 +99,7 @@ const PublicBoard: React.FC = () => {
       try {
         const d = JSON.parse(e.data);
         console.log('[PublicBoard] SSE assistance_request:', d);
+        showBanner('assistance', `¡ASISTENCIA SOLICITADA! ${d.technician_name} — ${d.office_name || ''}`);
         if (soundEnabled) BoardNotification.playSound('assistance');
       } catch (err) { console.error(err); }
     });
@@ -133,6 +147,11 @@ const PublicBoard: React.FC = () => {
 
   return (
     <div className="pb-root" data-theme="dark">
+      {banner && (
+        <div className={`pb-banner pb-banner-${banner.type}`} key={banner.text}>
+          <span className="pb-banner-text">{banner.text}</span>
+        </div>
+      )}
       <header className="pb-header">
         <div className="pb-title">TABLERO <span>PÚBLICO</span></div>
         <div className="pb-header-right">

@@ -19,6 +19,72 @@
   font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
   padding: 32px 40px;
   overflow-x: hidden;
+  position: relative;
+}
+
+/* ── Notification banner ─────────────────────────────────────────────── */
+.pb-banner {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  padding: 16px 32px;
+  border-radius: var(--pb-radius);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: pb-banner-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  pointer-events: none;
+}
+
+@keyframes pb-banner-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.pb-banner-new_ticket {
+  background: rgba(30, 58, 138, 0.92);
+  border: 1px solid var(--institution-blue, #2563eb);
+  color: #f8fafc;
+}
+
+.pb-banner-ticket_closed {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid var(--success-color, #34d399);
+  color: var(--success-color, #34d399);
+}
+
+.pb-banner-lunch_started {
+  background: rgba(201, 169, 97, 0.15);
+  border: 1px solid var(--institution-gold, #c9a961);
+  color: var(--institution-gold-bright, #e8d5a3);
+}
+
+.pb-banner-lunch_ended {
+  background: rgba(100, 116, 139, 0.15);
+  border: 1px solid var(--text-muted, #64748b);
+  color: var(--text-secondary, #cbd5e1);
+}
+
+.pb-banner-assistance {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid var(--danger-color, #f87171);
+  color: var(--danger-color, #f87171);
+  animation: pb-banner-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both,
+             pb-banner-pulse 1s ease-in-out 0.4s 3;
+}
+
+@keyframes pb-banner-pulse {
+  0%, 100% { box-shadow: 0 8px 32px rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 8px 48px rgba(239, 68, 68, 0.7); }
 }
 
 /* ── Header ──────────────────────────────────────────────────────────── */
