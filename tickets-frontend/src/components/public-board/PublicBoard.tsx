@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import BoardNotification from './BoardNotification';
 import './PublicBoard.css';
+import { API_BASE_URL } from '../../services/api';
 
 interface ActiveTicket { id:number; ticket_code:string; office_name:string; technician_name?:string; priority?:string; created_at:string; elapsed_minutes?:number; }
 interface Technician { id:number; name:string; status:string; status_reason?:string; active_tickets_count:number; }
@@ -15,7 +16,7 @@ const PublicBoard: React.FC = () => {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => localStorage.getItem('pb_sound') === '1');
 
   useEffect(() => {
-    fetch('/api/public-board?action=init')
+    fetch(`${API_BASE_URL}/api/public-board?action=init`)
       .then(r => r.json())
       .then((payload) => {
         const data = payload.data;
@@ -24,12 +25,15 @@ const PublicBoard: React.FC = () => {
         setLunchBlocks(data.lunch_blocks || []);
         setServerTime(data.server_time);
       })
-      .catch(console.error);
+      .catch(err => {
+        console.error('PublicBoard init failed', err);
+      });
   }, []);
 
   useEffect(() => {
     if (!serverTime) return;
-    const es = new EventSource(`/api/public-board?action=stream&since=${encodeURIComponent(serverTime)}`);
+    const streamUrl = `${API_BASE_URL}/api/public-board?action=stream&since=${encodeURIComponent(serverTime)}`;
+    const es = new EventSource(streamUrl);
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
 
@@ -80,7 +84,7 @@ const PublicBoard: React.FC = () => {
   };
 
   return (
-    <div className="pb-root">
+    <div className="pb-root" data-theme="dark">
       <header className="pb-header">
         <div className="pb-title">SISTEMA DE GESTIÓN DE TICKETS — Tablero Público</div>
         <div className="pb-controls">

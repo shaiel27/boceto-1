@@ -7,8 +7,9 @@ function resolveApiBase(): string {
   if (fromApiUrl) {
     return fromApiUrl.endsWith('/api') ? fromApiUrl.slice(0, -4) : fromApiUrl;
   }
-  return 'http://localhost:8000';
+  return 'http://localhost/tickets-backend';
 }
+
 
 export const API_BASE_URL = resolveApiBase();
 const DASHBOARD_API_BASE = `${API_BASE_URL}/api/dashboard-public`;
