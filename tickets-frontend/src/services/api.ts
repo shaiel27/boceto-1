@@ -7,7 +7,7 @@ function resolveApiBase(): string {
   if (fromApiUrl) {
     return fromApiUrl.endsWith('/api') ? fromApiUrl.slice(0, -4) : fromApiUrl;
   }
-  return 'http://localhost/tickets-backend';
+  return 'http://192.168.1.6:8000';
 }
 
 
