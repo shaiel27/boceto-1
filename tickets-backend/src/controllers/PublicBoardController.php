@@ -18,7 +18,7 @@ final class PublicBoardController
     public function getInitialState(): array
     {
         $activeTickets = $this->getActiveTickets();
-        $technicians = $this->getTechniciansWithStatus();
+        $techniciansGrouped = $this->getTechniciansGroupedByService();
         $lunchBlocks = $this->getLunchBlocks();
         $currentLunch = $this->getCurrentLunchBlock();
         $pendingAssistance = $this->getPendingAssistance();
@@ -26,12 +26,38 @@ final class PublicBoardController
 
         return [
             'active_tickets' => $activeTickets,
-            'technicians' => $technicians,
+            'technicians_grouped' => $techniciansGrouped,
             'lunch_blocks' => $lunchBlocks,
             'current_lunch' => $currentLunch,
             'pending_assistance' => $pendingAssistance,
             'stats' => $stats,
             'server_time' => (new DateTimeImmutable('now'))->format(DATE_ATOM),
+        ];
+    }
+
+    public function getUpdatesSince(?string $since): array
+    {
+        $baseTime = $since ? new DateTimeImmutable($since) : new DateTimeImmutable('-10 seconds');
+
+        $newTickets = $this->getNewTicketsSince($baseTime);
+        $updatedTickets = $this->getUpdatedTicketsSince($baseTime);
+        $closedTickets = $this->getTicketsClosedSince($baseTime);
+        $newAssistance = $this->getNewAssistanceSince($baseTime);
+        $techniciansGrouped = $this->getTechniciansGroupedByService();
+        $lunchBlocks = $this->getLunchBlocks();
+        $currentLunch = $this->getCurrentLunchBlock();
+        $stats = $this->getStats();
+
+        return [
+            'server_time' => (new DateTimeImmutable('now'))->format(DATE_ATOM),
+            'new_tickets' => $newTickets,
+            'updated_tickets' => $updatedTickets,
+            'closed_tickets' => $closedTickets,
+            'new_assistance' => $newAssistance,
+            'technicians_grouped' => $techniciansGrouped,
+            'lunch_blocks' => $lunchBlocks,
+            'current_lunch' => $currentLunch,
+            'stats' => $stats,
         ];
     }
 
@@ -258,6 +284,7 @@ SQL;
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
         foreach ($rows as &$r) {
             $r['status'] = $r['Status'] ?? $r['status'] ?? null;
+            unset($r['Status']);
             $r['status_reason'] = $r['status_reason'] ?? null;
         }
         return $rows;
@@ -304,6 +331,7 @@ SQL;
                  (SELECT COUNT(*) FROM Service_Request WHERE Status = 'Pendiente') as pending,
                  (SELECT COUNT(*) FROM Service_Request WHERE Status = 'En Proceso') as in_progress,
                  (SELECT COUNT(*) FROM Service_Request WHERE DATE(Created_at) = CURDATE()) as today_created,
+                 (SELECT COUNT(*) FROM Service_Request WHERE Status = 'Cerrado' AND DATE(Created_at) = CURDATE()) as closed_today,
                  (SELECT COUNT(*) FROM Service_Request sr
                   WHERE sr.Status IN ('Pendiente','En Proceso')
                     AND sr.Status != 'Cerrado'
@@ -313,7 +341,52 @@ SQL;
                     )) as unassigned
                 ";
         $stmt = $this->db->query($sql);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: ['pending' => 0, 'in_progress' => 0, 'today_created' => 0, 'unassigned' => 0];
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [
+            'pending' => 0, 'in_progress' => 0, 'today_created' => 0,
+            'closed_today' => 0, 'unassigned' => 0,
+        ];
+    }
+
+    private function getTechniciansGroupedByService(): array
+    {
+        $sql = "SELECT
+                 ts.ID_TI_Service as service_id,
+                 ts.Type_Service as service_name,
+                 t.ID_Technicians as id,
+                 CONCAT(t.First_Name, ' ', t.Last_Name) as name,
+                 t.Status,
+                 (SELECT COUNT(*) FROM Ticket_Technicians tt
+                  JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                  WHERE tt.Fk_Technician = t.ID_Technicians
+                    AND tt.Status = 'Activo'
+                    AND sr.Status != 'Cerrado') as active_tickets_count
+                FROM TI_Service ts
+                INNER JOIN Technicians_Service tsvc ON ts.ID_TI_Service = tsvc.Fk_TI_Service
+                INNER JOIN Technicians t ON tsvc.Fk_Technicians = t.ID_Technicians
+                WHERE tsvc.Status = 'Activo'
+                  AND t.Status != 'Inactivo'
+                ORDER BY ts.Type_Service, t.First_Name";
+        $stmt = $this->db->query($sql);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+        $grouped = [];
+        foreach ($rows as $r) {
+            $sid = (int)$r['service_id'];
+            if (!isset($grouped[$sid])) {
+                $grouped[$sid] = [
+                    'service_id' => $sid,
+                    'service_name' => $r['service_name'],
+                    'technicians' => [],
+                ];
+            }
+            $tech = $r;
+            $tech['id'] = (int)$tech['id'];
+            $tech['status'] = $tech['Status'] ?? null;
+            unset($tech['Status'], $tech['service_id'], $tech['service_name']);
+            $grouped[$sid]['technicians'][] = $tech;
+        }
+
+        return array_values($grouped);
     }
 
     private function getNewTicketsSince(DateTimeImmutable $since): array
@@ -323,6 +396,7 @@ SQL;
                        spc.Problem_Name as problem_name,
                        sr.System_Priority as priority, sr.Status as status,
                        sr.Created_at as created_at,
+                       TIMESTAMPDIFF(MINUTE, sr.Created_at, NOW()) as elapsed_minutes,
                        (SELECT GROUP_CONCAT(CONCAT(t2.First_Name, ' ', t2.Last_Name) SEPARATOR ', ')
                         FROM Ticket_Technicians tt2
                         JOIN Technicians t2 ON tt2.Fk_Technician = t2.ID_Technicians
@@ -340,6 +414,52 @@ SQL;
                 ORDER BY sr.Created_at ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    }
+
+    private function getUpdatedTicketsSince(DateTimeImmutable $since): array
+    {
+        $sql = "SELECT sr.ID_Service_Request as id, sr.Ticket_Code as ticket_code, sr.Subject as subject,
+                       o.Name_Office as office_name, ts.Type_Service as service_name,
+                       spc.Problem_Name as problem_name,
+                       sr.System_Priority as priority, sr.Status as status,
+                       sr.Created_at as created_at,
+                       TIMESTAMPDIFF(MINUTE, sr.Created_at, NOW()) as elapsed_minutes,
+                       (SELECT GROUP_CONCAT(CONCAT(t2.First_Name, ' ', t2.Last_Name) SEPARATOR ', ')
+                        FROM Ticket_Technicians tt2
+                        JOIN Technicians t2 ON tt2.Fk_Technician = t2.ID_Technicians
+                        WHERE tt2.Fk_Service_Request = sr.ID_Service_Request AND tt2.Status = 'Activo'
+                       ) as technician_names,
+                       EXISTS (
+                         SELECT 1 FROM Ticket_Technicians tt3
+                         WHERE tt3.Fk_Service_Request = sr.ID_Service_Request AND tt3.Status = 'Activo'
+                       ) as has_technician
+                 FROM Service_Request sr
+                 LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
+                 LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
+                 LEFT JOIN Service_Problems_Catalog spc ON sr.Fk_Problem_Catalog = spc.ID_Problem_Catalog
+                 WHERE sr.Created_at <= :since2
+                   AND sr.Status != 'Cerrado'
+                   AND (
+                     EXISTS (
+                       SELECT 1 FROM Ticket_Timeline tt
+                       WHERE tt.Fk_Service_Request = sr.ID_Service_Request
+                         AND tt.Event_Date > :since
+                     )
+                     OR EXISTS (
+                       SELECT 1 FROM Ticket_Technicians tt
+                       WHERE tt.Fk_Service_Request = sr.ID_Service_Request
+                         AND tt.Assigned_At > :since3
+                     )
+                   )
+                 GROUP BY sr.ID_Service_Request
+                 ORDER BY sr.Created_at DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':since' => $since->format('Y-m-d H:i:s'),
+            ':since2' => $since->format('Y-m-d H:i:s'),
+            ':since3' => $since->format('Y-m-d H:i:s'),
+        ]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 

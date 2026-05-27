@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import BoardNotification from './BoardNotification';
 import Clock from './Clock';
 import './PublicBoard.css';
-import { API_BASE_URL, SSE_BASE_URL } from '../../services/api';
+import { API_BASE_URL } from '../../services/api';
+import { CheckCircle, Ticket, Coffee, XCircle, AlertCircle } from 'lucide-react';
 
 interface ActiveTicket {
   id: number;
   ticket_code: string;
   subject?: string;
   office_name: string;
+  service_name?: string;
   problem_name?: string;
   technician_names?: string;
   has_technician?: number | boolean;
@@ -33,269 +35,359 @@ interface LunchBlock {
   end_time: string;
 }
 
+interface CurrentLunch {
+  active: boolean;
+  block: LunchBlock | null;
+}
+
 interface Stats {
   pending: number;
   in_progress: number;
   today_created: number;
+  closed_today: number;
   unassigned: number;
 }
 
+interface TechnicianGroup {
+  service_id: number;
+  service_name: string;
+  technicians: Technician[];
+}
+
+const POLL_INTERVAL_MS = 5000;
+
 const PublicBoard: React.FC = () => {
   const [activeTickets, setActiveTickets] = useState<ActiveTicket[]>([]);
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
+  const [techniciansGrouped, setTechniciansGrouped] = useState<TechnicianGroup[]>([]);
   const [lunchBlocks, setLunchBlocks] = useState<LunchBlock[]>([]);
+  const [currentLunch, setCurrentLunch] = useState<CurrentLunch>({ active: false, block: null });
   const [serverTime, setServerTime] = useState<string>('');
   const [connected, setConnected] = useState<boolean>(false);
-  const [soundEnabled, setSoundEnabled] = useState<boolean>(() => localStorage.getItem('pb_sound') === '1');
-  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(false);
-  const [stats, setStats] = useState<Stats>({ pending: 0, in_progress: 0, today_created: 0, unassigned: 0 });
+  const [soundEnabled] = useState<boolean>(true);
+  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(true);
+  const [stats, setStats] = useState<Stats>({ pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 });
   const [banner, setBanner] = useState<{ type: string; text: string } | null>(null);
 
   const soundRef = useRef(soundEnabled);
   soundRef.current = soundEnabled;
 
-  const showBanner = (type: string, text: string) => {
+  const prevTicketIdsRef = useRef<Set<number>>(new Set());
+  const prevClosedIdsRef = useRef<Set<number>>(new Set());
+  const prevAssistanceIdsRef = useRef<Set<number>>(new Set());
+  const prevStatsRef = useRef<Stats>({ pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 });
+  /** Track which tickets are unassigned to detect when they get a tech */
+  const unassignedTicketsRef = useRef<Set<number>>(new Set());
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const showBanner = useCallback((type: string, text: string) => {
     setBanner({ type, text });
     setTimeout(() => setBanner(null), 6000);
+  }, []);
+
+  // Auto-unlock audio on first user interaction
+  const handleFirstClick = () => {
+    BoardNotification.unlock();
   };
 
-  // ── Sound unlock on first user click ──────────────────────────────────
-  const toggleSound = () => {
-    if (!audioUnlocked) {
-      const ok = BoardNotification.unlock();
-      setAudioUnlocked(ok);
-    }
-    const next = !soundEnabled;
-    setSoundEnabled(next);
-    localStorage.setItem('pb_sound', next ? '1' : '0');
-  };
-
-  // ── Init ──────────────────────────────────────────────────────────────
   useEffect(() => {
     const initUrl = `${API_BASE_URL}/api/public-board?action=init`;
-    console.log('[PublicBoard] Fetching init from:', initUrl);
     fetch(initUrl)
       .then(r => r.json())
       .then((payload) => {
         const data = payload.data;
-        console.log('[PublicBoard] Init received:', {
-          tickets: data.active_tickets?.length,
-          techs: data.technicians?.length,
-          stats: data.stats,
-        });
         setActiveTickets(data.active_tickets || []);
-        setTechnicians(data.technicians || []);
+        prevTicketIdsRef.current = new Set((data.active_tickets || []).map((t: ActiveTicket) => t.id));
+        unassignedTicketsRef.current = new Set(
+          (data.active_tickets || [])
+            .filter((t: ActiveTicket) => !(t.has_technician ?? t.technician_names))
+            .map((t: ActiveTicket) => t.id)
+        );
+        setTechniciansGrouped(data.technicians_grouped || []);
         setLunchBlocks(data.lunch_blocks || []);
-        setStats(data.stats || { pending: 0, in_progress: 0, today_created: 0, unassigned: 0 });
+        setCurrentLunch(data.current_lunch || { active: false, block: null });
+        setStats(data.stats || { pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 });
+        prevStatsRef.current = data.stats || { pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 };
         setServerTime(data.server_time);
+        setConnected(true);
       })
-      .catch(err => {
-        console.error('[PublicBoard] Init failed:', err);
-      });
+      .catch(() => setConnected(false));
   }, []);
 
-  // ── SSE stream ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!serverTime) return;
 
-    const streamUrl = `${SSE_BASE_URL}/api/public-board?action=stream&since=${encodeURIComponent(serverTime)}`;
-    console.log('[PublicBoard] Opening SSE:', streamUrl);
-    const es = new EventSource(streamUrl);
+    const poll = () => {
+      const pollUrl = `${API_BASE_URL}/api/public-board?action=poll&since=${encodeURIComponent(serverTime)}`;
+      fetch(pollUrl)
+        .then(r => r.json())
+        .then((payload) => {
+          if (!payload.success) return;
+          const data = payload.data;
+          if (!data) return;
 
-    es.onopen = () => {
-      console.log('[PublicBoard] SSE connected');
-      setConnected(true);
+          setConnected(true);
+
+          const newServerTime = data.server_time;
+          if (newServerTime) setServerTime(newServerTime);
+
+          const incoming = (data.new_tickets || []) as ActiveTicket[];
+          if (incoming.length > 0) {
+            for (const t of incoming) {
+              if (!prevTicketIdsRef.current.has(t.id)) {
+                prevTicketIdsRef.current.add(t.id);
+                if (!(t.has_technician ?? t.technician_names)) {
+                  unassignedTicketsRef.current.add(t.id);
+                }
+                const tag = t.has_technician ? t.ticket_code : `⚠ SIN TÉCNICO: ${t.ticket_code}`;
+                showBanner('new_ticket', `Nuevo: ${tag} — ${t.office_name || ''}`);
+                if (soundRef.current) BoardNotification.playSound('new_ticket');
+              }
+            }
+            setActiveTickets(prev => {
+              const existingMap = new Map(prev.map(t => [t.id, t]));
+              for (const t of incoming) existingMap.set(t.id, t);
+              return Array.from(existingMap.values())
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice(0, 50);
+            });
+          }
+
+          const updated = (data.updated_tickets || []) as ActiveTicket[];
+          if (updated.length > 0) {
+            for (const t of updated) {
+              const wasUnassigned = unassignedTicketsRef.current.has(t.id);
+              const nowHasTech = !!(t.has_technician ?? t.technician_names);
+              if (wasUnassigned && nowHasTech) {
+                unassignedTicketsRef.current.delete(t.id);
+                showBanner(
+                  'new_ticket',
+                  `Asignado: ${t.ticket_code || '#' + t.id} → ${t.technician_names}`
+                );
+                if (soundRef.current) BoardNotification.playSound('new_ticket');
+              }
+            }
+            setActiveTickets(prev => {
+              const existingMap = new Map(prev.map(t => [t.id, t]));
+              for (const t of updated) existingMap.set(t.id, t);
+              return Array.from(existingMap.values())
+                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                .slice(0, 50);
+            });
+          }
+
+          const closed = (data.closed_tickets || []) as any[];
+          if (closed.length > 0) {
+            for (const c of closed) {
+              if (!prevClosedIdsRef.current.has(c.ticket_id)) {
+                prevClosedIdsRef.current.add(c.ticket_id);
+                showBanner('ticket_closed', `Cerrado: ${c.ticket_code}`);
+                if (soundRef.current) BoardNotification.playSound('closed');
+              }
+            }
+            const closedIds = new Set(closed.map((c: any) => c.ticket_id));
+            setActiveTickets(prev => prev.filter(t => !closedIds.has(t.id)));
+          }
+
+          const assistances = (data.new_assistance || []) as any[];
+          if (assistances.length > 0) {
+            for (const a of assistances) {
+              if (!prevAssistanceIdsRef.current.has(a.id)) {
+                prevAssistanceIdsRef.current.add(a.id);
+                showBanner('assistance', `¡ASISTENCIA! ${a.technician_name} — ${a.office_name || ''}`);
+                if (soundRef.current) BoardNotification.playSound('assistance');
+              }
+            }
+          }
+
+          if (data.technicians_grouped) setTechniciansGrouped(data.technicians_grouped);
+
+          if (data.current_lunch) setCurrentLunch(data.current_lunch);
+
+          if (data.stats) {
+            const newStats = data.stats as Stats;
+            const prev = prevStatsRef.current;
+            if (newStats.unassigned > prev.unassigned) {
+              showBanner('stats', `¡Sin técnico: ${newStats.unassigned}`);
+            }
+            prevStatsRef.current = newStats;
+            setStats(newStats);
+          }
+        })
+        .catch(() => setConnected(false));
     };
 
-    es.onerror = () => {
-      console.warn('[PublicBoard] SSE error/closed. ReadyState:', es.readyState);
-      setConnected(es.readyState === EventSource.OPEN);
-    };
-
-    es.addEventListener('new_ticket', (e: MessageEvent) => {
-      try {
-        const d: ActiveTicket = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE new_ticket:', d.ticket_code);
-        setActiveTickets(prev => [d, ...prev].slice(0, 50));
-        const tag = d.has_technician ? d.ticket_code : `⚠ SIN TÉCNICO: ${d.ticket_code}`;
-        showBanner('new_ticket', `Nuevo ticket: ${tag} — ${d.office_name || ''}`);
-        if (soundRef.current) BoardNotification.playSound('new_ticket');
-      } catch (err) { console.error(err); }
-    });
-
-    es.addEventListener('ticket_closed', (e: MessageEvent) => {
-      try {
-        const d = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE ticket_closed:', d.ticket_code, 'ticket_id:', d.ticket_id);
-        setActiveTickets(prev => prev.filter(t => t.id !== d.ticket_id));
-        showBanner('ticket_closed', `Ticket cerrado: ${d.ticket_code}`);
-        if (soundRef.current) BoardNotification.playSound('closed');
-      } catch (err) { console.error(err); }
-    });
-
-    es.addEventListener('lunch_started', (e: MessageEvent) => {
-      try {
-        const d = JSON.parse(e.data);
-        showBanner('lunch_started', `Almuerzo iniciado: ${d.block_name}`);
-        if (soundRef.current) BoardNotification.playSound('lunch');
-      } catch (err) { console.error(err); }
-    });
-
-    es.addEventListener('lunch_ended', (e: MessageEvent) => {
-      try {
-        const d = JSON.parse(e.data);
-        showBanner('lunch_ended', `Almuerzo finalizado: ${d.block_name}`);
-      } catch (err) { console.error(err); }
-    });
-
-    es.addEventListener('assistance_request', (e: MessageEvent) => {
-      try {
-        const d = JSON.parse(e.data);
-        showBanner('assistance', `¡ASISTENCIA SOLICITADA! ${d.technician_name} — ${d.office_name || ''}`);
-        if (soundRef.current) BoardNotification.playSound('assistance');
-      } catch (err) { console.error(err); }
-    });
-
-    es.addEventListener('technician_status', (e: MessageEvent) => {
-      try {
-        const d = JSON.parse(e.data);
-        setTechnicians(prev => {
-          const idx = prev.findIndex(p => p.id === d.id);
-          if (idx === -1) return [...prev, d];
-          const copy = [...prev];
-          copy[idx] = { ...copy[idx], ...d };
-          return copy;
-        });
-      } catch (err) { console.error(err); }
-    });
-
-    es.addEventListener('stats_updated', (e: MessageEvent) => {
-      try {
-        const d: Stats = JSON.parse(e.data);
-        console.log('[PublicBoard] SSE stats_updated:', d);
-        setStats(d);
-      } catch (err) { console.error(err); }
-    });
-
-    es.addEventListener('keepalive', () => { /* silent */ });
+    poll();
+    intervalRef.current = setInterval(poll, POLL_INTERVAL_MS);
 
     return () => {
-      console.log('[PublicBoard] Closing SSE');
-      es.close();
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [serverTime]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Helpers ───────────────────────────────────────────────────────────
-  const statusLabel = (status: string): string => {
-    const s = status?.toLowerCase() ?? '';
-    if (s === 'disponible' || s === 'available') return 'Disponible';
-    if (s === 'ocupado' || s === 'busy') return 'Ocupado';
-    if (s === 'almuerzo' || s === 'lunch') return 'Almuerzo';
-    return status || 'Inactivo';
-  };
+    }, [serverTime, showBanner]);
 
   const hasTech = (t: ActiveTicket): boolean =>
     !!(t.has_technician ?? t.technician_names);
 
-  // ── Render ────────────────────────────────────────────────────────────
+  const formatCreatedAt = (createdAt: string | undefined): string => {
+    if (!createdAt) return '--:--';
+    try {
+      const d = new Date(createdAt.replace(' ', 'T'));
+      if (isNaN(d.getTime())) return '--:--';
+      return d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } catch { return '--:--'; }
+  };
+
+  const priorityClass = (p: string | undefined): string => {
+    const s = (p || '').toLowerCase();
+    if (s === 'crítica' || s === 'critica') return 'critica';
+    if (s === 'alta') return 'alta';
+    if (s === 'media') return 'media';
+    return 'baja';
+  };
+
+  const shortPriority = (p: string | undefined): string => {
+    const s = (p || '').toLowerCase();
+    if (s === 'crítica' || s === 'critica') return 'CRT';
+    if (s === 'alta') return 'ALT';
+    if (s === 'media') return 'MED';
+    return 'BAJ';
+  };
+
   return (
-    <div className="pb-root">
+    <div className="pb-root" onClick={handleFirstClick}>
       {banner && (
         <div className={`pb-banner pb-banner-${banner.type}`}>
           <span className="pb-banner-text">{banner.text}</span>
         </div>
       )}
 
-      <header className="pb-header">
-        <div className="pb-title">TABLERO <span>PÚBLICO</span></div>
-        <div className="pb-header-right">
-          <Clock />
-          <div className="pb-controls">
-            <button
-              onClick={toggleSound}
-              title={
-                !audioUnlocked
-                  ? 'Click para activar audio'
-                  : soundEnabled
-                  ? 'Silenciar'
-                  : 'Activar sonido'
-              }
-              className={!audioUnlocked ? 'pb-btn-unlock' : ''}
-            >
-              {!audioUnlocked ? '🔇' : soundEnabled ? '🔊' : '🔇'}
-            </button>
-            <div className={`pb-connection ${connected ? 'connected' : 'disconnected'}`}>
-              {connected ? 'Conectado' : 'Desconectado'}
-            </div>
+      <header className="pb-topbar">
+        <div className="pb-topbar-left">
+          <img
+            className="pb-logo"
+            src="/SC-1-Photoroom.png"
+            alt="Alcaldía de San Cristóbal"
+          />
+          <div className={`pb-dot ${connected ? 'pb-dot-live' : 'pb-dot-dead'}`} />
+        </div>
+
+        <div className="pb-stats-strip">
+          <div className="pb-stat-chip">
+            <span className="pb-chip-num">{stats.in_progress}</span>
+            <span className="pb-chip-lbl">En proceso</span>
           </div>
+          <div className={`pb-stat-chip ${stats.pending > 0 ? 'pb-chip-warn' : ''}`}>
+            <span className="pb-chip-num">{stats.pending}</span>
+            <span className="pb-chip-lbl">Pendientes</span>
+          </div>
+          <div className="pb-stat-chip">
+            <span className="pb-chip-num">{stats.today_created}</span>
+            <span className="pb-chip-lbl">Creados hoy</span>
+          </div>
+          <div className="pb-stat-chip">
+            <span className="pb-chip-num">{stats.closed_today}</span>
+            <span className="pb-chip-lbl">Cerrados hoy</span>
+          </div>
+        </div>
+
+        <div className="pb-topbar-right">
+          <Clock />
         </div>
       </header>
 
-      {/* ── Stats bar ─────────────────────────────────────────────────── */}
-      <div className="pb-stats-bar">
-        <div className={`pb-stat ${stats.unassigned > 0 ? 'pb-stat-alert' : ''}`}>
-          <span className="pb-stat-num">{stats.unassigned}</span>
-          <span className="pb-stat-label">Sin técnico</span>
-        </div>
-        <div className="pb-stat">
-          <span className="pb-stat-num">{stats.in_progress}</span>
-          <span className="pb-stat-label">En proceso</span>
-        </div>
-        <div className={`pb-stat ${stats.pending > 0 ? 'pb-stat-warn' : ''}`}>
-          <span className="pb-stat-num">{stats.pending}</span>
-          <span className="pb-stat-label">Pendientes</span>
-        </div>
-        <div className="pb-stat">
-          <span className="pb-stat-num">{stats.today_created}</span>
-          <span className="pb-stat-label">Hoy</span>
-        </div>
-      </div>
-
-      <main className="pb-main">
-        <section className="pb-tickets-section">
-          <h2>TICKETS EN PROCESO</h2>
+      <div className="pb-body">
+        <section className="pb-tickets-grid">
           {activeTickets.length === 0 && (
-            <p className="pb-empty">No hay tickets activos en este momento.</p>
+            <p className="pb-empty">No hay tickets activos en este momento</p>
           )}
           {activeTickets.map(t => (
             <article
               key={t.id}
-              className={`pb-ticket-card priority-${(t.priority || 'baja').toLowerCase()}${!hasTech(t) ? ' pb-no-tech' : ''}`}
+              className={`pb-ticket priority-${priorityClass(t.priority)}${!hasTech(t) ? ' no-tech' : ''}`}
             >
-              <div className="pb-ticket-header">
-                <strong>
-                  {!hasTech(t) && <span className="pb-no-tech-badge" title="Sin técnico asignado">⚠</span>}
-                  {t.ticket_code}
-                </strong>
-                <span className="pb-priority">{t.priority || 'Baja'}</span>
+              <div className="pb-ticket-left">
+                <span className="pb-ticket-code">
+                  {!hasTech(t) && <span className="pb-no-tech-dot" />}
+                  {t.ticket_code || `#${t.id}`}
+                </span>
+                {t.service_name && (
+                  <span className="pb-ticket-service">{t.service_name}</span>
+                )}
               </div>
-              <div>{t.office_name}</div>
-              {t.problem_name && <div className="pb-problem">🛠 {t.problem_name}</div>}
-              <div>
-                {t.technician_names
-                  ? <span>Técnicos: {t.technician_names}</span>
-                  : <span className="pb-no-tech-text">(sin asignar)</span>
-                }
+              <div className="pb-ticket-mid">
+                <span className="pb-ticket-office">{t.office_name}</span>
+                {t.problem_name && (
+                  <span className="pb-ticket-problem">{t.problem_name}</span>
+                )}
+                {t.technician_names && (
+                  <span className="pb-ticket-tech">{t.technician_names}</span>
+                )}
               </div>
-              <div className="pb-elapsed">
-                ⏱ {Math.floor((t.elapsed_minutes || 0) / 60)}h {(t.elapsed_minutes || 0) % 60}m
+              <div className="pb-ticket-right">
+                <span className={`pb-pill ${priorityClass(t.priority)}`}>
+                  {shortPriority(t.priority)}
+                </span>
+                <span className="pb-ticket-time">{formatCreatedAt(t.created_at)}</span>
               </div>
             </article>
           ))}
         </section>
 
-        <aside className="pb-right">
-          <section className="pb-technicians-section">
-            <h3>TÉCNICOS</h3>
-            {technicians.map(t => (
-              <div key={t.id} className={`pb-technician-item pb-status-${t.status?.toLowerCase() || 'inactive'}`}>
-                <div className="pb-tech-name">{t.name}</div>
-                <div className="pb-tech-status">{statusLabel(t.status)}</div>
+        <aside className="pb-tech-panel">
+          <div className="pb-tech-header">
+            <span>TÉCNICOS</span>
+            <span className="pb-tech-count">{techniciansGrouped.reduce((s, g) => s + g.technicians.length, 0)}</span>
+          </div>
+          <div className="pb-tech-list">
+            {techniciansGrouped.map(group => (
+              <div key={group.service_id} className="pb-tech-group">
+                <div className="pb-tech-group-name">{group.service_name}</div>
+                {group.technicians.map(t => {
+                  const isOcupado = t.status?.toLowerCase() === 'ocupado' || t.status?.toLowerCase() === 'busy';
+                  const isAlmuerzo = t.status?.toLowerCase() === 'almuerzo' || t.status?.toLowerCase() === 'lunch';
+                  const isDisponible = t.status?.toLowerCase() === 'disponible' || t.status?.toLowerCase() === 'available';
+                  const isInactivo = !isOcupado && !isAlmuerzo && !isDisponible;
+                  const hasTickets = t.active_tickets_count > 0;
+
+                  let StatusIcon: React.ElementType;
+                  let orbClass: string;
+                  if (isDisponible) { StatusIcon = CheckCircle; orbClass = 'disponible'; }
+                  else if (isAlmuerzo) { StatusIcon = Coffee; orbClass = 'almuerzo'; }
+                  else if (isOcupado && hasTickets) { StatusIcon = Ticket; orbClass = 'ocupado'; }
+                  else if (isOcupado) { StatusIcon = AlertCircle; orbClass = 'ocupado'; }
+                  else { StatusIcon = XCircle; orbClass = 'inactivo'; }
+
+                  return (
+                  <div
+                    key={t.id}
+                    className={`pb-tech-row ${orbClass}`}
+                  >
+                    <span className={`pb-tech-orb ${orbClass}`}>
+                      <StatusIcon size={14} strokeWidth={2.5} />
+                    </span>
+                    <span className="pb-tech-name">
+                      {t.name}
+                    </span>
+                    {hasTickets && isOcupado && (
+                      <span className="pb-tech-badge">{t.active_tickets_count}</span>
+                    )}
+                  </div>
+                  );
+                })}
               </div>
             ))}
-          </section>
+          </div>
         </aside>
-      </main>
+      </div>
+
+      {currentLunch.active && currentLunch.block && (
+        <footer className="pb-footer">
+          <span className="pb-footer-dot" />
+          <span className="pb-footer-text">
+            Almuerzo activo: <strong>{currentLunch.block.block_name}</strong>
+            {' '}({currentLunch.block.start_time} – {currentLunch.block.end_time})
+          </span>
+        </footer>
+      )}
     </div>
   );
 };

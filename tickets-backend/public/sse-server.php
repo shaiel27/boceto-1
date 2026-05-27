@@ -9,18 +9,24 @@ declare(strict_types=1);
 // ────────────────────────────────────────────────────────────────────────
 
 // ── CORS ────────────────────────────────────────────────────────────────
+// Dinámico: permite cualquier origen del mismo host para funcionar en cualquier red
 $allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'http://192.168.1.6:3000',
-    'http://192.168.100.8:3000',
-    'http://192.168.5.43:3000',
-    'http://10.2.0.2:3000',
-    'http://192.168.1.5:3000',
-    'http://192.168.2.4:3000',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+
+$corsAllowed = false;
 if (in_array($origin, $allowedOrigins, true)) {
+    $corsAllowed = true;
+} elseif ($origin) {
+    $originHost = parse_url($origin, PHP_URL_HOST);
+    $serverHost = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
+    if ($originHost === $serverHost || $originHost === 'localhost' || $originHost === '127.0.0.1') {
+        $corsAllowed = true;
+    }
+}
+if ($corsAllowed) {
     header("Access-Control-Allow-Origin: {$origin}");
     header('Access-Control-Allow-Credentials: true');
 }

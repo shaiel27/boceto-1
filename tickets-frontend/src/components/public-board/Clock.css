@@ -1,39 +1,55 @@
-/* ── Public Board Clock — system design language ────────────────────── */
+/* ── Public Board Clock — Tema institucional ───────────────────────────── */
 .pb-clock {
-  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
 }
 .pb-clock-digits {
-  display: flex; align-items: baseline; gap: 1px;
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
 }
 .pb-clock-h,
 .pb-clock-m,
 .pb-clock-s {
-  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
-  font-weight: 700; font-size: 34px;
-  font-variant-numeric: tabular-nums; letter-spacing: 0.04em;
-  color: var(--text-main, #1e293b); line-height: 1;
+  font-family: 'DM Mono', 'Fira Code', monospace;
+  font-weight: 500;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  color: #1A2A3A;
+  line-height: 1;
 }
 .pb-clock-sep {
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  font-weight: 600; font-size: 24px;
-  color: var(--institution-gold, #c9a961); margin: 0 2px; opacity: 0.85;
+  font-family: 'DM Mono', monospace;
+  font-weight: 500;
+  font-size: 13px;
+  color: #0275B9;
+  margin: 0 1px;
+  opacity: 0.65;
   animation: pb-blink 1s step-end infinite;
 }
-.pb-clock-sep:nth-child(4) { animation: none; opacity: 0.4; color: var(--text-muted); }
-@keyframes pb-blink { 0%, 100% { opacity: 0.85; } 50% { opacity: 0.2; } }
-.pb-clock-s { font-size: 24px; color: var(--text-muted); min-width: 1.2em; text-align: center; }
+.pb-clock-sep:nth-child(4) {
+  animation: none;
+  opacity: 0.25;
+  color: #8B9DAF;
+}
+@keyframes pb-blink {
+  0%, 100% { opacity: 0.65; }
+  50% { opacity: 0.1; }
+}
+.pb-clock-s {
+  font-size: 13px;
+  color: #8B9DAF;
+  min-width: 1.2em;
+  text-align: center;
+}
 .pb-clock-date {
-  font-size: 11px; font-weight: 500; letter-spacing: 0.04em; text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-@media (max-width: 1100px) {
-  .pb-clock-h, .pb-clock-m, .pb-clock-s { font-size: 24px; }
-  .pb-clock-sep { font-size: 18px; }
-  .pb-clock-s { font-size: 18px; }
-}
-@media (min-width: 1600px) {
-  .pb-clock-h, .pb-clock-m, .pb-clock-s { font-size: 44px; }
-  .pb-clock-sep { font-size: 32px; }
-  .pb-clock-s { font-size: 32px; }
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8B9DAF;
+  white-space: nowrap;
 }

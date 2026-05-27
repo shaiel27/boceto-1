@@ -1,132 +1,128 @@
-# Sistema de Gestión de Tickets — Alcaldía
+# Sistema de Gestión de Tickets
 
-Sistema de gestión de tickets de servicio técnico para instituciones municipales. Backend PHP 8.2+ puro, MySQL, frontend React.
+Sistema integral para la gestión de solicitudes de soporte técnico de la Alcaldía de San Cristóbal.
+
+## Arquitectura
+
+```
+boceto-1/
+├── tickets-backend/     API REST PHP (backend)
+├── tickets-frontend/    Aplicación web React (frontend)
+├── tickets-App/         Aplicación móvil React Native / Expo
+├── database-scripts/    Scripts SQL de esquema y datos
+├── docs/                Documentación del sistema
+└── .agents/             Configuración de skills de IA
+```
 
 ## Requisitos
 
-| Componente | Requerido |
-|------------|-----------|
-| **PHP** | 8.2+ con extensiones `pdo_mysql`, `mbstring` |
-| **MySQL** | 5.7+ / MariaDB 10.3+ |
-| **Node.js** | 18+ con npm 9+ |
-| **XAMPP** (recomendado) | PHP + MySQL integrados en Windows |
+- **PHP** 8.1+ con extensiones `pdo_mysql`, `mbstring`
+- **MySQL** 8.0+ / MariaDB 10.5+
+- **Node.js** 18+ (para frontend y app móvil)
+- **Composer** (opcional, el backend no lo requiere)
 
-## Estructura
-
-```
-boceto 1/
-├── tickets-backend/          # API PHP (puerto 8000)
-│   ├── public/
-│   │   ├── index.php         # Front controller (rutas con auth)
-│   │   ├── router.php        # Router para php -S (reescritura)
-│   │   ├── sse-server.php    # Servidor SSE autónomo (puerto 8001)
-│   │   └── api-public-board.php  # Endpoint público (init + stream)
-│   ├── src/
-│   │   ├── controllers/      # Controladores
-│   │   ├── config/           # Config DB, JWT
-│   │   ├── Middleware/       # Auth middleware
-│   │   └── Services/         # JWT, etc.
-│   └── database-scripts/     # Schema SQL y migraciones
-├── tickets-frontend/         # SPA React (puerto 3000)
-│   └── src/
-│       ├── components/       # Componentes React
-│       ├── pages/            # Páginas
-│       ├── contexts/         # Auth, Theme
-│       ├── services/         # API client
-│       └── styles/           # CSS variables institucionales
-└── database-scripts/         # Migraciones (Lunch_Notifications_Log)
-```
-
-## Inicio rápido
+## Instalación rápida
 
 ### 1. Base de datos
 
-Ejecutar el schema en MySQL:
+```sql
+-- Crear base de datos
+CREATE DATABASE IF NOT EXISTS tickets_system;
+USE tickets_system;
 
-```
-mysql -u root -p < tickets-backend/database-scripts/final-schema.sql
-mysql -u root -p < database-scripts/20260522_create_lunch_notifications_log.sql
-```
-
-### 2. Backend (2 terminales)
-
-**Terminal A — API principal (puerto 8000):**
-
-```powershell
-cd "C:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-backend"
-C:\xampp\php\php.exe -S 0.0.0.0:8000 -t public public/router.php
+-- Ejecutar esquema
+SOURCE tickets-backend/database.sql;
 ```
 
-**Terminal B — SSE Stream (puerto 8001):**
+El archivo `database.sql` incluye el esquema completo y datos de prueba. También puedes usar `datos_insercion.sql` para reiniciar solo los datos semilla con contraseñas hasheadas.
 
-```powershell
-cd "C:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-backend"
-C:\xampp\php\php.exe -S 0.0.0.0:8001 -t public public/sse-server.php
+> **Contraseña por defecto:** `password123` (hash bcrypt)
+
+### 2. Backend (PHP)
+
+```bash
+cd tickets-backend
+php -S localhost:8000 -t public
 ```
 
-> **Por qué dos servidores:** `php -S` es single-threaded. La conexión SSE es de larga duración y bloquearía el único hilo. El stream corre en su propio proceso para no interferir con la API.
+El backend corre en `http://localhost:8000`. Sin autenticación, algunos endpoints requieren token JWT.
 
-### 3. Frontend (1 terminal)
+Variables de entorno (`.env`):
 
-**Terminal C — React dev server:**
+| Variable | Valor por defecto |
+|---|---|
+| DB_HOST | localhost |
+| DB_PORT | 3306 |
+| DB_NAME | tickets_system |
+| DB_USER | root |
+| DB_PASSWORD | (vacío) |
+| JWT_SECRET | change-this-secret-in-production-min-32-chars!! |
 
-```powershell
-cd "C:\Users\shaie\OneDrive\Desktop\Pasantias\boceto 1\tickets-frontend"
+### 3. Frontend web (React)
+
+```bash
+cd tickets-frontend
 npm install
 npm start
 ```
 
-> El archivo `.env.local` ya está configurado con `REACT_APP_API_BASE=http://localhost:8000` y `REACT_APP_SSE_URL=http://localhost:8001`.
+Se abre en `http://localhost:3000`.
 
-### 4. Verificar
+### 4. App móvil (Expo)
 
-| URL | Descripción |
-|-----|-------------|
-| `http://localhost:8000/api/public-board?action=init` | Endpoint init (JSON) |
-| `http://localhost:8001/api/public-board?action=stream&since=...` | SSE stream |
-| `http://localhost:3000/` | App principal (login) |
-| `http://localhost:3000/public-board` | Tablero público |
-
-## Producción
-
-En producción usar Apache con `mod_rewrite` y el `.htaccess` incluido en `tickets-backend/`. El SSE funciona sobre Apache sin necesidad de puerto separado (Apache maneja concurrencia nativamente).
-
-Configurar variables de entorno en Apache (`SetEnv` en VirtualHost o `.htaccess`):
-
-```
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=tickets_system
-DB_USER=root
-DB_PASSWORD=***
-JWT_SECRET=cambiar-por-secreto-largo-y-aleatorio
+```bash
+cd tickets-App
+npm install
+npx expo start
 ```
 
-Build del frontend para producción:
+## Usuarios de prueba
 
-```powershell
-cd tickets-frontend
-npm run build
-```
+| Email | Contraseña | Rol |
+|---|---|---|
+| admin@alcaldia.gob | password123 | Admin |
+| tech1@alcaldia.gob | password123 | Técnico |
+| tech2@alcaldia.gob | password123 | Técnico |
+| jefe1@alcaldia.gob | password123 | Jefe |
+| jefe2@alcaldia.gob | password123 | Jefe |
 
-Los archivos estáticos se generan en `tickets-frontend/build/` y se sirven desde Apache.
+## Endpoints principales
 
-## Purgar logs de notificaciones (cron)
+| Método | Ruta | Descripción |
+|---|---|---|
+| POST | /api/auth | Inicio de sesión |
+| GET | /api/tickets | Listar tickets |
+| GET | /api/technicians | Listar técnicos |
+| GET | /api/office | Listar oficinas |
+| GET | /api/analytics | Estadísticas del dashboard |
+| GET | /api/public-board | Tablero público |
+| GET | /api/notifications | Notificaciones del usuario |
+| GET | /api/dashboard | Dashboard administrativo |
+| GET | /api/service | Servicios TI |
+| GET | /api/assignments | Asignaciones de técnicos |
+| POST | /api/users | Crear usuario |
+| GET | /api/problem-report | Reporte de problemas |
+| GET | /api/weekly-report | Reporte semanal de técnicos |
 
-```sql
-DELETE FROM Lunch_Notifications_Log WHERE Notification_Date < CURDATE() - INTERVAL 15 DAY;
-```
+## Roles del sistema
 
-Opcional: crear un evento MySQL o entrada en crontab.
+- **Admin** — Acceso completo al sistema
+- **Técnico** — Visualiza y gestiona tickets asignados
+- **Jefe** — Crea solicitudes desde su oficina
 
-## Stack técnico
+## Stack tecnológico
 
-| Capa | Tecnología |
-|------|-----------|
-| Backend | PHP 8.2+ (sin framework) |
-| Base de datos | MySQL 8 / MariaDB |
-| Frontend | React 18 + React Router 6 |
-| Estilos | CSS custom properties (variables institucionales) |
-| Auth | JWT (stateless) |
-| Real-time | Server-Sent Events (SSE) |
-| Sonido | Web Audio API |
+| Componente | Tecnología |
+|---|---|
+| Backend | PHP 8+ (sin framework, PDO/MySQL) |
+| Frontend web | React 19, TypeScript, React Router v6 |
+| App móvil | React Native, Expo SDK 54, Expo Router |
+| Base de datos | MySQL |
+| Autenticación | JWT (HS256) |
+| Tiempo real | SSE (Server-Sent Events) |
+| PDF | jsPDF (frontend) |
+| Estilos | CSS personalizado + variables CSS |
+
+## Licencia
+
+Uso interno — Alcaldía de San Cristóbal.

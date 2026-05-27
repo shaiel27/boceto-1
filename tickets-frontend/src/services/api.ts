@@ -1,13 +1,17 @@
-// API Configuration - Real backend (CRA: reiniciar `npm start` tras cambiar .env)
+// API Configuration - Dinámico: usa el mismo host que el frontend
+// Puertos fijos: API 8000, SSE 8001 (nunca cambian)
 
 function resolveApiBase(): string {
   const explicit = process.env.REACT_APP_API_BASE?.trim().replace(/\/$/, '');
   if (explicit) return explicit;
+  if (typeof window !== 'undefined' && window.location) {
+    return `${window.location.protocol}//${window.location.hostname}:8000`;
+  }
   const fromApiUrl = process.env.REACT_APP_API_URL?.trim().replace(/\/$/, '');
   if (fromApiUrl) {
     return fromApiUrl.endsWith('/api') ? fromApiUrl.slice(0, -4) : fromApiUrl;
   }
-  return 'http://192.168.1.6:8000';
+  return 'http://localhost:8000';
 }
 
 
@@ -16,6 +20,9 @@ export const API_BASE_URL = resolveApiBase();
 function resolveSseBase(): string {
   const explicit = process.env.REACT_APP_SSE_URL?.trim().replace(/\/$/, '');
   if (explicit) return explicit;
+  if (typeof window !== 'undefined' && window.location) {
+    return `${window.location.protocol}//${window.location.hostname}:8001`;
+  }
   const port = parseInt(process.env.REACT_APP_API_BASE?.match(/:(\d+)/)?.[1] || '8000', 10);
   return API_BASE_URL.replace(new RegExp(`:${port}$`), `:${port + 1}`);
 }

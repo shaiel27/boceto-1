@@ -1,220 +1,225 @@
-
 -- ==========================================
--- LIMPIEZA DE DATOS EXISTENTES (OPCIONAL)
--- ==========================================
-
--- Descomenta las siguientes líneas si quieres limpiar la base de datos antes de insertar nuevos datos
--- SET FOREIGN_KEY_CHECKS = 0;
--- TRUNCATE TABLE Ticket_Attachments;
--- TRUNCATE TABLE Ticket_Comments;
--- TRUNCATE TABLE Ticket_Timeline;
--- TRUNCATE TABLE Ticket_Assignments_History;
--- TRUNCATE TABLE Service_Request;
--- TRUNCATE TABLE Technicians_Service;
--- TRUNCATE TABLE Technicians;
--- TRUNCATE TABLE Area_Office;
--- TRUNCATE TABLE TI_Service;
--- TRUNCATE TABLE Office;
--- TRUNCATE TABLE Users;
--- TRUNCATE TABLE Role;
--- SET FOREIGN_KEY_CHECKS = 1;
-
--- ==========================================
--- INSERCIÓN DE DATOS PARA ALCALDÍA TICKETS DB
+-- SISTEMA DE GESTIÓN DE TICKETS
+-- Alcaldía de San Cristóbal
+-- Script de Inserción de Datos Iniciales
+-- Base de datos: tickets_system
+-- Contraseña por defecto: password123
+-- Hash bcrypt generado con PHP
 -- ==========================================
 
-USE alcaldia_tickets_db;
+USE tickets_system;
 
 -- ==========================================
--- 1. INSERCIÓN DE ROLES (SIN ESPECIFICAR ID - AUTOINCREMENT)
+-- 1. ROLES
 -- ==========================================
-
-INSERT IGNORE INTO Role (Role, Description) VALUES
-('Administrador', 'Usuario con acceso completo al sistema'),
-('Tecnico', 'Usuario técnico que resuelve tickets'),
-('Usuario', 'Usuario regular que crea tickets');
-
--- ==========================================
--- 2. INSERCIÓN DE USUARIOS (20 usuarios - SIN ESPECIFICAR ID)
--- ==========================================
-
--- 1 Administrador
-INSERT IGNORE INTO Users (Fk_Role, First_Name, Last_Name, CI, Telephone_Number, Email, Password) VALUES
-(1, 'Carlos', 'Rodriguez', 'A12345678', '555-0001', 'admin@alcaldia.gov', 'admin123');
-
--- 9 Técnicos
-INSERT IGNORE INTO Users (Fk_Role, First_Name, Last_Name, CI, Telephone_Number, Email, Password) VALUES
-(2, 'Juan', 'Perez', 'B23456789', '555-0002', 'juan.perez@alcaldia.gov', 'tec123'),
-(2, 'Maria', 'Gonzalez', 'C34567890', '555-0003', 'maria.gonzalez@alcaldia.gov', 'tec123'),
-(2, 'Luis', 'Martinez', 'D45678901', '555-0004', 'luis.martinez@alcaldia.gov', 'tec123'),
-(2, 'Ana', 'Sanchez', 'E56789012', '555-0005', 'ana.sanchez@alcaldia.gov', 'tec123'),
-(2, 'Roberto', 'Lopez', 'F67890123', '555-0006', 'roberto.lopez@alcaldia.gov', 'tec123'),
-(2, 'Patricia', 'Diaz', 'G78901234', '555-0007', 'patricia.diaz@alcaldia.gov', 'tec123'),
-(2, 'Miguel', 'Torres', 'H89012345', '555-0008', 'miguel.torres@alcaldia.gov', 'tec123'),
-(2, 'Sofia', 'Ramirez', 'I90123456', '555-0009', 'sofia.ramirez@alcaldia.gov', 'tec123'),
-(2, 'Diego', 'Herrera', 'J01234567', '555-0010', 'diego.herrera@alcaldia.gov', 'tec123');
-
--- 10 Usuarios regulares
-INSERT IGNORE INTO Users (Fk_Role, First_Name, Last_Name, CI, Telephone_Number, Email, Password) VALUES
-(3, 'Pedro', 'Castillo', 'K12345678', '555-0011', 'pedro.castillo@alcaldia.gov', 'user123'),
-(3, 'Laura', 'Vargas', 'L23456789', '555-0012', 'laura.vargas@alcaldia.gov', 'user123'),
-(3, 'Andres', 'Mendoza', 'M34567890', '555-0013', 'andres.mendoza@alcaldia.gov', 'user123'),
-(3, 'Carmen', 'Silva', 'N45678901', '555-0014', 'carmen.silva@alcaldia.gov', 'user123'),
-(3, 'Ricardo', 'Morales', 'O56789012', '555-0015', 'ricardo.morales@alcaldia.gov', 'user123'),
-(3, 'Beatriz', 'Ortiz', 'P67890123', '555-0016', 'beatriz.ortiz@alcaldia.gov', 'user123'),
-(3, 'Fernando', 'Gutierrez', 'Q78901234', '555-0017', 'fernando.gutierrez@alcaldia.gov', 'user123'),
-(3, 'Monica', 'Cruz', 'R89012345', '555-0018', 'monica.cruz@alcaldia.gov', 'user123'),
-(3, 'Javier', 'Reyes', 'S90123456', '555-0019', 'javier.reyes@alcaldia.gov', 'user123'),
-(3, 'Gabriela', 'Flores', 'T01234567', '555-0020', 'gabriela.flores@alcaldia.gov', 'user123');
+INSERT INTO Role (Role, Description) VALUES
+('Admin', 'Administrador del sistema con acceso total'),
+('Tecnico', 'Técnico de TI encargado de resolver tickets'),
+('Jefe', 'Jefe de oficina que puede solicitar tickets');
 
 -- ==========================================
--- 3. INSERCIÓN DE TÉCNICOS (SIN ESPECIFICAR ID - AUTOINCREMENT)
+-- 2. USUARIOS
 -- ==========================================
-
-INSERT IGNORE INTO Technicians (Fk_Users, Status) VALUES
-(2, 'Disponible'),
-(3, 'Disponible'),
-(4, 'Ocupado'),
-(5, 'Disponible'),
-(6, 'Disponible'),
-(7, 'Ocupado'),
-(8, 'Disponible'),
-(9, 'Disponible'),
-(10, 'Ocupado');
+INSERT INTO Users (Fk_Role, Email, Password, Username, Full_Name, is_system_user) VALUES
+(1, 'admin@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'admin', 'Administrador del Sistema', TRUE),
+(2, 'tech1@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'carlos_diaz', 'Carlos Diaz', TRUE),
+(2, 'tech2@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'amna_verez', 'Amna Verez', TRUE),
+(3, 'jefe1@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'juan_perez', 'Juan Pérez', TRUE),
+(3, 'jefe2@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'maria_gonzalez', 'María González', TRUE);
 
 -- ==========================================
--- 4. INSERCIÓN DE OFICINAS (10 oficinas - SIN ESPECIFICAR ID)
+-- 3. JEFES
 -- ==========================================
-
-INSERT IGNORE INTO Office (Name_Office, Building, Telephone_Number, Fk_Office_Boss) VALUES
-('Oficina de Recursos Humanos', 'Edificio Central', '555-1001', 1),
-('Departamento de Tecnología', 'Edificio Central', '555-1002', 1),
-('Secretaría General', 'Edificio A', '555-1003', 1),
-('Tesorería Municipal', 'Edificio B', '555-1004', 1),
-('Oficina de Obras Públicas', 'Edificio C', '555-1005', 1),
-('Departamento de Salud', 'Edificio D', '555-1006', 1),
-('Oficina de Educación', 'Edificio E', '555-1007', 1),
-('Secretaría de Transporte', 'Edificio F', '555-1008', 1),
-('Departamento de Ambiente', 'Edificio G', '555-1009', 1),
-('Oficina de Cultura', 'Edificio H', '555-1010', 1);
+INSERT INTO Boss (Name_Boss, Pronoun, Fk_User) VALUES
+('Juan Pérez', 'Sr.', 4),
+('María González', 'Sra.', 5);
 
 -- ==========================================
--- 5. INSERCIÓN DE TIPOS DE SERVICIO (SIN ESPECIFICAR ID - AUTOINCREMENT)
+-- 4. OFICINAS
 -- ==========================================
-
-INSERT IGNORE INTO TI_Service (Type_Service, Details) VALUES
-('Redes', 'Instalación, configuración y mantenimiento de redes de datos y conectividad'),
-('Programacion', 'Desarrollo y mantenimiento de software, sistemas y aplicaciones'),
-('Servicio Tecnico', 'Soporte técnico general, reparación de hardware y mantenimiento de equipos');
-
--- ==========================================
--- 6. ASIGNACIÓN DE SERVICIOS A TÉCNICOS (SIN ESPECIFICAR ID - AUTOINCREMENT)
--- ==========================================
-
-INSERT IGNORE INTO Technicians_Service (Fk_Technicians, Fk_TI_Service, status) VALUES
-(1, 1, 'Disponible'), (1, 2, 'Disponible'), (1, 3, 'Disponible'),
-(2, 1, 'Disponible'), (2, 2, 'Disponible'), (2, 3, 'Disponible'),
-(3, 1, 'Ocupado'), (3, 2, 'Disponible'), (3, 3, 'Ocupado'),
-(4, 1, 'Disponible'), (4, 2, 'Disponible'), (4, 3, 'Disponible'),
-(5, 1, 'Disponible'), (5, 2, 'Ocupado'), (5, 3, 'Disponible'),
-(6, 1, 'Disponible'), (6, 2, 'Disponible'), (6, 3, 'Ocupado'),
-(7, 1, 'Disponible'), (7, 2, 'Disponible'), (7, 3, 'Disponible'),
-(8, 1, 'Ocupado'), (8, 2, 'Disponible'), (8, 3, 'Disponible'),
-(9, 1, 'Disponible'), (9, 2, 'Disponible'), (9, 3, 'Ocupado');
-
--- ==========================================
--- 7. INSERCIÓN DE ÁREAS DE OFICINA (SIN ESPECIFICAR ID - AUTOINCREMENT)
--- ==========================================
-
-INSERT IGNORE INTO Area_Office (Area_Name, Description, Fk_Area_Boos, Fk_Office) VALUES
-('Soporte Técnico', 'Área encargada del soporte técnico interno', 1, 2),
-('Administración', 'Área administrativa general', 1, 1),
-('Secretaría', 'Área de gestión documental', 1, 3),
-('Finanzas', 'Área de gestión financiera', 1, 4),
-('Infraestructura', 'Área de mantenimiento de infraestructura', 1, 5),
-('Salud Ocupacional', 'Área de salud y bienestar', 1, 6),
-('Capacitación', 'Área de formación y desarrollo', 1, 7),
-('Logística', 'Área de transporte y logística', 1, 8),
-('Medio Ambiente', 'Área de gestión ambiental', 1, 9),
-('Cultura', 'Área de eventos y actividades culturales', 1, 10);
-
--- ==========================================
--- 8. INSERCIÓN DE TICKETS (8 casos - SIN ESPECIFICAR ID - AUTOINCREMENT)
--- ==========================================
-
-INSERT IGNORE INTO Service_Request (Ticket_Code, Fk_Users, FK_Office, FK_Area_Office, Fk_TI_Service, Fk_Technician_Current, Subject, Property_number, Description, Request_Type, User_Priority, System_Priority, Status) VALUES
-('TKT-2024-001', 11, 1, 2, 3, 1, 'Computadora no enciende', 'PC-HR-001', 'La computadora de escritorio no enciende al presionar el botón de power', 'Incidente', 'Alta', 'Alta', 'En Progreso'),
-('TKT-2024-002', 12, 2, 1, 2, 2, 'Microsoft Office no funciona', 'PC-TECH-03', 'No puedo abrir los documentos de Word y Excel, se cierran solos', 'Incidente', 'Media', 'Media', 'Pendiente'),
-('TKT-2024-003', 13, 3, 3, 1, 3, 'Sin conexión a internet', 'PC-SEC-005', 'No tengo acceso a internet desde hace 2 días', 'Incidente', 'Alta', 'Alta', 'Resuelto'),
-('TKT-2024-004', 14, 4, 4, 3, 4, 'Impresora no imprime', 'IMP-TES-01', 'La impresora HP LaserJet no responde cuando intento imprimir', 'Incidente', 'Media', 'Media', 'En Progreso'),
-('TKT-2024-005', 15, 5, 5, 3, 5, 'Windows muy lento', 'PC-OBR-002', 'El sistema operativo funciona extremadamente lento', 'Incidente', 'Media', 'Baja', 'Pendiente'),
-('TKT-2024-006', 16, 6, 6, 1, 6, 'No puedo enviar correos', 'PC-SAL-001', 'Outlook no envía correos, marca error de servidor', 'Incidente', 'Alta', 'Media', 'En Progreso'),
-('TKT-2024-007', 17, 7, 7, 2, 7, 'No puedo crear tickets', 'PC-EDU-003', 'El sistema de tickets me da error al intentar crear una nueva solicitud', 'Incidente', 'Media', 'Alta', 'Resuelto'),
-('TKT-2024-008', 18, 8, 8, 3, 8, 'Sospecha de virus', 'PC-TRANS-04', 'El antivirus detectó una amenaza pero no puede eliminarla', 'Incidente', 'Alta', 'Alta', 'En Progreso');
-
--- ==========================================
--- 8. INSERCIÓN DE COMENTARIOS EN TICKETS (SIN ESPECIFICAR ID - AUTOINCREMENT)
--- ==========================================
-
-INSERT IGNORE INTO Ticket_Comments (Fk_Service_Request, Fk_User, Comment, Is_Internal) VALUES
-(1, 1, 'Ticket asignado al técnico Juan Perez para revisión de hardware', FALSE),
-(1, 2, 'Se detectó falla en la fuente de poder, se necesita reemplazo', TRUE),
-(2, 1, 'Por favor verificar la instalación de Microsoft Office', FALSE),
-(3, 3, 'Problema resuelto: se reinició el router y se configuró la IP', TRUE),
-(4, 4, 'Se necesita limpiar los cabezales de la impresora', TRUE),
-(5, 1, 'El ticket está en cola, se atenderá según prioridad', FALSE),
-(6, 6, 'Se verificó la configuración del servidor SMTP', TRUE),
-(7, 7, 'Se actualizó el sistema y se reinició el servicio', TRUE),
-(8, 8, 'Se inició análisis profundo del sistema', TRUE);
-
--- ==========================================
--- 9. INSERCIÓN DE HISTORIAL DE ASIGNACIONES (SIN ESPECIFICAR ID - AUTOINCREMENT)
--- ==========================================
-
-INSERT IGNORE INTO Ticket_Assignments_History (Fk_Service_Request, Fk_Technician, Fk_Assigned_By, Assignment_Date, Reason_Reassignment) VALUES
-(1, 1, 1, '2024-01-15 09:00:00', 'Asignación inicial por especialidad en hardware'),
-(2, 2, 1, '2024-01-15 10:30:00', 'Asignación por experiencia en software'),
-(3, 3, 1, '2024-01-15 11:00:00', 'Asignación por urgencia y disponibilidad'),
-(4, 4, 1, '2024-01-15 14:00:00', 'Asignación por especialidad en impresoras'),
-(5, 5, 1, '2024-01-16 08:00:00', 'Asignación por disponibilidad'),
-(6, 6, 1, '2024-01-16 09:30:00', 'Asignación por especialidad en correo'),
-(7, 7, 1, '2024-01-16 10:00:00', 'Asignación por conocimiento del sistema'),
-(8, 8, 1, '2024-01-16 11:30:00', 'Asignación por urgencia de seguridad');
-
--- ==========================================
--- 10. INSERCIÓN DE LÍNEA DE TIEMPO (SIN ESPECIFICAR ID - AUTOINCREMENT)
--- ==========================================
-
-INSERT IGNORE INTO Ticket_Timeline (Fk_Service_Request, Fk_User_Action, Action_Type, Previous_Value, New_Value, Action_Date) VALUES
-(1, 11, 'Creación', NULL, 'Pendiente', '2024-01-15 08:45:00'),
-(1, 1, 'Asignación', 'Pendiente', 'En Progreso', '2024-01-15 09:00:00'),
-(3, 13, 'Creación', NULL, 'Pendiente', '2024-01-15 10:45:00'),
-(3, 3, 'Resolución', 'En Progreso', 'Resuelto', '2024-01-15 15:30:00'),
-(7, 17, 'Creación', NULL, 'Pendiente', '2024-01-16 09:15:00'),
-(7, 7, 'Resolución', 'En Progreso', 'Resuelto', '2024-01-16 16:45:00');
-
--- ==========================================
--- 11. INSERCIÓN DE ADJUNTOS (SIN ESPECIFICAR ID - AUTOINCREMENT)
--- ==========================================
-
-INSERT IGNORE INTO Ticket_Attachments (Fk_Service_Request, File_Name, File_Path, File_Type) VALUES
-(1, 'error_pc.jpg', '/adjuntos/tickets/TKT-2024-001/error_pc.jpg', 'jpg'),
-(2, 'captura_error.png', '/adjuntos/tickets/TKT-2024-002/captura_error.png', 'png'),
-(4, 'config_impresora.pdf', '/adjuntos/tickets/TKT-2024-004/config_impresora.pdf', 'pdf'),
-(8, 'reporte_virus.txt', '/adjuntos/tickets/TKT-2024-008/reporte_virus.txt', 'txt');
+INSERT INTO Office (ID_Office, Name_Office, Office_Type) VALUES
+(1, 'DIRECCIÓN DE INFORMÁTICA Y TECNOLOGÍA', 'Direction'),
+(2, 'DIVISIÓN DE CATASTRO', 'Division'),
+(5, 'ÁREA LEGAL DE CATASTRO', 'Division'),
+(6, 'DIRECCIÓN DE TALENTO HUMANO', 'Direction'),
+(7, 'DIVISIÓN DE ÁREA LEGAL Y ARCHIVO', 'Division'),
+(8, 'DIVISIÓN DE PRESTACIONES Y NÓMINA', 'Division'),
+(10, 'SOLVENCIAS', 'Division'),
+(11, 'OFICINA DE LICORES Y ESPECTACULOS', 'Division'),
+(12, 'DIRECCIÓN DE EDUCACIÓN', 'Direction'),
+(13, 'DIVISIÓN DE RENTAS', 'Division'),
+(14, 'ÁREA DE FISCALES DE RENTAS', 'Division'),
+(15, 'DIVISIÓN DE JUSTICIA MUNICIPAL', 'Division'),
+(16, 'DIVISIÓN DE DESARROLLO COMUNITARIO', 'Division'),
+(17, 'TESORERÍA', 'Division'),
+(19, 'ARCHIVO', 'Division'),
+(20, 'SINDICATURA MUNICIPAL', 'Division'),
+(21, 'OFICINA DE PUBLICIDAD Y PROPAGANDA', 'Division'),
+(22, 'DIRECCIÓN DE ADMINISTRACIÓN', 'Direction'),
+(23, 'DIVISIÓN DE CONTABILIDAD', 'Division'),
+(24, 'DIVISIÓN DE BIENES', 'Division'),
+(25, 'DIVISIÓN DE COMPRAS', 'Division'),
+(26, 'DIVISIÓN DE SERVICIOS GENERALES', 'Division'),
+(27, 'ÁREA TÉCNICA DE CATASTRO', 'Division'),
+(28, 'COORDINACIÓN DE TIERRAS', 'Coordination'),
+(29, 'AUDITORÍA INTERNA', 'Division'),
+(30, 'DIRECCIÓN DE DESARROLLO URBANO LOCAL', 'Direction'),
+(31, 'DIVISIÓN DE PROTECCIÓN AMBIENTAL', 'Division'),
+(32, 'DIVISIÓN DE INGENIERÍA', 'Division'),
+(33, 'DIVISIÓN DE PLANIFICACIÓN URBANA', 'Division'),
+(34, 'CONSEJO LOCAL DE PLANIFICACIÓN PÚBLICA', 'Division'),
+(35, 'DIRECCIÓN DE SANEAMIENTO AMBIENTAL Y SERVICIOS MUNICIPALES', 'Direction'),
+(36, 'DIRECCIÓN DE ATENCIÓN AL CIUDADANO', 'Direction'),
+(37, 'DIVISIÓN DE PROYECTOS', 'Division'),
+(38, 'DIRECCIÓN DE PLANIFICACIÓN Y PRESUPUESTO', 'Direction'),
+(39, 'COORDINACIÓN DE SEGURIDAD LABORAL', 'Coordination'),
+(40, 'IAMDESIN', 'Division'),
+(41, 'PROTECCIÓN CIVIL', 'Division'),
+(42, 'DIRECCIÓN DE VIALIDAD, TRÁNSITO, TRANSPORTE E INFRAESTRUCTURA', 'Direction'),
+(43, 'DIVISIÓN DE MANTENIMIENTO VIAL E INFRAESTRUCTURA', 'Division'),
+(44, 'DIVISIÓN DE TRÁNSITO Y TRANSPORTE', 'Division'),
+(45, 'CONSULTORÍA JURÍDICA', 'Division'),
+(46, 'DIRECCIÓN EJECUTIVA', 'Direction'),
+(47, 'DIRECCIÓN GENERAL', 'Direction'),
+(48, 'DESPACHO DEL ALCALDE', 'Division'),
+(49, 'DIRECCIÓN DE COMUNICACIONES', 'Direction'),
+(50, 'DIRECCIÓN DE HACIENDA', 'Direction'),
+(51, 'ÁREA LEGAL DE RENTAS', 'Division'),
+(52, 'SOPORTE TÉCNICO SUMAT', 'Division'),
+(53, 'CAJA DE AHORROS EMPLEADOS', 'Division'),
+(54, 'CAJA DE AHORRO OBREROS', 'Division'),
+(55, 'SINDICATO EMPLEADOS', 'Division'),
+(56, 'SINDICATO OBREROS', 'Division'),
+(57, 'COORDINACIÓN DE DEPÓSITO', 'Coordination'),
+(58, 'DIVISIÓN DE MANTENIMIENTO VEHICULAR', 'Division'),
+(59, 'VIVERO MUNICIPAL', 'Division'),
+(60, 'DIRECCIÓN DE CONSTRUCCIÓN DE OBRAS MUNICIPALES', 'Direction'),
+(61, 'DIVISIÓN DE CONSTRUCCIÓN Y MANTENIMIENTO', 'Division'),
+(62, 'DIRECCIÓN DE DEPORTE Y RECREACIÓN', 'Direction'),
+(63, 'DIVISIÓN DE VIALIDAD', 'Division'),
+(64, 'COORDINACIÓN DE FISCALES AMBIENTALES', 'Coordination'),
+(65, 'DIVISIÓN DE SANEAMIENTO AMBIENTAL', 'Division'),
+(66, 'DIVISIÓN DE SERVICIOS MUNICIPALES', 'Division'),
+(67, 'DIRECCIÓN DE SALUD MUNICIPAL', 'Direction'),
+(68, 'SPINNA', 'Division'),
+(69, 'POLICIA MUNICIPAL', 'Division'),
+(70, 'CUERPO DE BOMBEROS', 'Division'),
+(71, 'CONCEJO MUNICIPAL', 'Division'),
+(72, 'CONTRALORIA MUNICIPAL', 'Division'),
+(73, 'REGISTRO CIVIL', 'Division'),
+(74, 'COORDINACIÓN DEL MERCADO MUNICIPAL LA GUAYANA', 'Coordination'),
+(75, 'COORDINACIÓN DEL MERCADO MUNICIPAL LA VILLA', 'Coordination'),
+(76, 'COORDINACIÓN DEL MERCADO MUNICIPAL LA ERMITA', 'Coordination'),
+(77, 'COORDINACIÓN DEL CEMENTERIO MUNICIPAL', 'Coordination'),
+(78, 'DIRECCIÓN DE COOPERACIÓN PROTOCOLARES Y RELACIONES INTERINSTITUCIONALES', 'Direction'),
+(79, 'VIVIENDA MUNICIPAL', 'Division'),
+(80, 'ACTIVIDADES ECONÓMICAS', 'Division'),
+(81, 'CULTURA MUNICIPAL', 'Division'),
+(82, 'COORDINACIÓN DE ALUMBRADO PÚBLICO', 'Coordination'),
+(83, 'COORDINACIÓN DE REDES HIDRÁULICAS, REJILLAS Y ALCANTARILLADO', 'Coordination'),
+(84, 'TERMINAL DE PASAJEROS', 'Division'),
+(85, 'EXTERNO', 'Division'),
+(86, 'TAQUILLA ÚNICA', 'Division'),
+(87, 'SECRETARIA DE SEGURIDAD CIUDADANA', 'Division'),
+(88, 'DIVISION DE ATENCIÓN AL CONTRIBUYENTE', 'Division'),
+(89, 'COORDINACION DE ASUNTOS LEGALES DEL SUMAT', 'Coordination'),
+(90, 'COORDINACION DE FISCALIZACION', 'Coordination'),
+(91, 'ESCUELA MUNICIPAL LUISA CACERES DE ARISMENDI', 'Division'),
+(92, 'SUPERINTENDENCIA MUNICIPAL DE ADMINISTRACIÓN TRIBUTARIA', 'Division'),
+(93, 'COORDINACIÓN DE ASEO URBANO DOMICILIARIO Y COMERCIAL', 'Coordination'),
+(94, 'DIRECCIÓN DE SERVICIOS PÚBLICOS', 'Direction'),
+(95, 'DIVISION DE CONTRATACIONES', 'Division'),
+(96, 'DIVISIÓN DE COBRANZA', 'Division'),
+(97, 'DIRECCION DE MEDIOS Y COMUNICACIONES Y MARKETING DIGITAL', 'Direction'),
+(98, 'SALA TECNICA DEL CONSEJO LOCAL DE PLANIFICACION PUBLICA', 'Division');
 
 -- ==========================================
--- RESUMEN DE DATOS INSERTADOS
+-- 5. SERVICIOS TI
 -- ==========================================
--- Roles: 3 (Administrador, Tecnico, Usuario)
--- Usuarios: 20 (1 Admin, 9 Técnicos, 10 Usuarios regulares)
--- Técnicos: 9 (asociados a los usuarios técnicos)
--- Oficinas: 10
--- Áreas de Oficina: 10
--- Tipos de Servicio: 3 (Redes, Programacion, Servicio Tecnico)
--- Servicios asignados a técnicos: 27
--- Tickets: 8
--- Comentarios: 9
--- Historial de asignaciones: 8
--- Línea de tiempo: 6
--- Adjuntos: 4
+INSERT INTO TI_Service (Type_Service, Details) VALUES
+('Redes', 'Configuración y mantenimiento de redes de computadoras'),
+('Soporte', 'Soporte técnico general de hardware y software'),
+('Programación', 'Desarrollo y mantenimiento de sistemas de software');
+
+-- ==========================================
+-- 6. TÉCNICOS
+-- ==========================================
+INSERT INTO Technicians (Fk_Users, First_Name, Last_Name, Status) VALUES
+(2, 'Carlos', 'Diaz', 'Disponible'),
+(3, 'Amna', 'Verez', 'Disponible');
+
+-- ==========================================
+-- 7. RELACIÓN TÉCNICOS-SERVICIOS
+-- ==========================================
+INSERT INTO Technicians_Service (Fk_TI_Service, Fk_Technicians, Status) VALUES
+(1, 1, 'Activo'),
+(2, 1, 'Activo'),
+(1, 2, 'Activo'),
+(3, 2, 'Activo');
+
+-- ==========================================
+-- 8. CATÁLOGO DE PROBLEMAS
+-- ==========================================
+INSERT INTO Service_Problems_Catalog (Fk_TI_Service, Problem_Name, Typical_Description, Estimated_Severity) VALUES
+(1, 'Sin conexión a internet', 'No se puede acceder a la red o internet', 'Alta'),
+(2, 'Computadora no enciende', 'El equipo no responde al presionar el botón de encendido', 'Alta'),
+(2, 'Error en sistema', 'El sistema muestra mensajes de error', 'Media'),
+(3, 'Error en base de datos', 'Problemas con la conexión o consultas SQL', 'Alta');
+
+-- ==========================================
+-- 9. SISTEMAS DE SOFTWARE
+-- ==========================================
+INSERT INTO Software_Systems (System_Name, Description, Status) VALUES
+('Sistema de Facturación', 'Sistema para gestión de facturas y pagos', 'Activo'),
+('Sistema de Catastro', 'Sistema para gestión de catastro inmobiliario', 'Activo'),
+('Sistema de RRHH', 'Sistema de recursos humanos', 'Activo');
+
+-- ==========================================
+-- 10. BLOQUES DE ALMUERZO
+-- ==========================================
+INSERT INTO Lunch_Blocks (Block_Name, Start_Time, End_Time) VALUES
+('Primer turno', '11:30:00', '12:10:00'),
+('Segundo turno', '12:10:00', '12:50:00'),
+('Tercer Turno', '12:50:00', '13:30:00'),
+('Cuarto Turno', '13:30:00', '14:00:00');
+
+-- ==========================================
+-- 11. HORARIOS DE TÉCNICOS
+-- ==========================================
+INSERT INTO Technician_Schedules (Fk_Technician, Day_Of_Week, Work_Start_Time, Work_End_Time) VALUES
+(1, 'Lunes', '08:00:00', '17:00:00'),
+(1, 'Martes', '08:00:00', '17:00:00'),
+(1, 'Miercoles', '08:00:00', '17:00:00'),
+(1, 'Jueves', '08:00:00', '17:00:00'),
+(1, 'Viernes', '08:00:00', '17:00:00'),
+(2, 'Lunes', '08:00:00', '17:00:00'),
+(2, 'Martes', '08:00:00', '17:00:00'),
+(2, 'Miercoles', '08:00:00', '17:00:00'),
+(2, 'Jueves', '08:00:00', '17:00:00'),
+(2, 'Viernes', '08:00:00', '17:00:00');
+
+-- ==========================================
+-- 12. TICKETS DE PRUEBA
+-- ==========================================
+INSERT INTO Service_Request (Fk_Office, Fk_User_Requester, Fk_TI_Service, Fk_Boss_Requester, Subject, Description, System_Priority, Status) VALUES
+(6, 4, 1, 1, 'Sin conexión a internet', 'No puedo acceder a internet desde mi computadora', 'Alta', 'Pendiente'),
+(7, 5, 2, 2, 'Computadora no enciende', 'La computadora no responde al encender', 'Alta', 'En Proceso'),
+(5, 4, 3, 1, 'Error en sistema de facturación', 'El sistema muestra error al generar reportes', 'Media', 'Pendiente');
+
+-- ==========================================
+-- 13. ASIGNACIÓN DE TÉCNICOS A TICKETS
+-- ==========================================
+INSERT INTO Ticket_Technicians (Fk_Service_Request, Fk_Technician, Is_Lead, Assignment_Role, Status) VALUES
+(1, 1, TRUE, 'Principal', 'Activo'),
+(1, 2, FALSE, 'Apoyo', 'Activo'),
+(2, 1, TRUE, 'Principal', 'Activo'),
+(3, 2, TRUE, 'Principal', 'Activo');
+
+-- ==========================================
+-- 14. TIMELINE DE TICKETS
+-- ==========================================
+INSERT INTO Ticket_Timeline (Fk_Service_Request, Fk_User_Actor, Action_Description, Old_Status, New_Status, Event_Date) VALUES
+(1, 1, 'Ticket creado por el usuario', NULL, 'Pendiente', NOW()),
+(2, 1, 'Ticket creado por el usuario', NULL, 'Pendiente', NOW()),
+(2, 1, 'Estado cambiado a En Proceso', 'Pendiente', 'En Proceso', NOW() + INTERVAL 1 HOUR),
+(3, 1, 'Ticket creado por el usuario', NULL, 'Pendiente', NOW());

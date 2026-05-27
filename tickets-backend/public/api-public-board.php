@@ -15,6 +15,14 @@ switch ($action) {
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['success' => true, 'data' => $controller->getInitialState()], JSON_UNESCAPED_UNICODE);
         break;
+    case 'poll':
+        $since = $_GET['since'] ?? null;
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'success' => true,
+            'data' => $controller->getUpdatesSince($since),
+        ], JSON_UNESCAPED_UNICODE);
+        break;
     case 'stream':
         $since = $_GET['since'] ?? null;
         $controller->streamEvents($since);

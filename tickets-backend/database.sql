@@ -285,12 +285,14 @@ INSERT INTO Role (Role, Description) VALUES
 -- Usuarios
 -- ⚠️ Password debe ser un hash bcrypt. Generar con PHP: password_hash('password123', PASSWORD_DEFAULT)
 --    O ejecutar: php -r "echo password_hash('password123', PASSWORD_DEFAULT);"
+-- ⚠️ Reemplazar 'password_hash_here' con el hash generado por:
+--    php -r "echo password_hash('password123', PASSWORD_DEFAULT);"
 INSERT INTO Users (Fk_Role, Email, Password, Username, Full_Name, is_system_user) VALUES
-(1, 'admin@alcaldia.gob', 'password123', 'admin', 'Administrador del Sistema', TRUE),
-(2, 'tech1@alcaldia.gob', 'password123', 'carlos_diaz', 'Carlos Diaz', TRUE),
-(2, 'tech2@alcaldia.gob', 'password123', 'amna_verez', 'Amna Verez', TRUE),
-(3, 'jefe1@alcaldia.gob', 'password123', 'juan_perez', 'Juan Pérez', TRUE),
-(3, 'jefe2@alcaldia.gob', 'password123', 'maria_gonzalez', 'María González', TRUE);
+(1, 'admin@alcaldia.gob', 'password_hash_here', 'admin', 'Administrador del Sistema', TRUE),
+(2, 'tech1@alcaldia.gob', 'password_hash_here', 'carlos_diaz', 'Carlos Diaz', TRUE),
+(2, 'tech2@alcaldia.gob', 'password_hash_here', 'amna_verez', 'Amna Verez', TRUE),
+(3, 'jefe1@alcaldia.gob', 'password_hash_here', 'juan_perez', 'Juan Pérez', TRUE),
+(3, 'jefe2@alcaldia.gob', 'password_hash_here', 'maria_gonzalez', 'María González', TRUE);
 
 -- Jefes
 INSERT INTO Boss (Name_Boss, Pronoun, Fk_User) VALUES
