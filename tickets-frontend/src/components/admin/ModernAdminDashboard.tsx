@@ -383,10 +383,6 @@ const ModernAdminDashboard: React.FC = () => {
             <UserPlus size={22} />
             <span>Registrar Usuario</span>
           </button>
-          <button className="adm-module-btn" onClick={() => navigate('/admin/audit')}>
-            <ClipboardList size={22} />
-            <span>Auditoría</span>
-          </button>
         </div>
 
         <div className="adm-grid">

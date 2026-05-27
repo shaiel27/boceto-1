@@ -295,7 +295,8 @@ CREATE INDEX idx_assistance_ticket ON Assistance_Requests(Fk_Ticket);
 INSERT IGNORE INTO Role (ID_Role, Role, Description) VALUES
 (1, 'Admin', 'Administrador del sistema con acceso total'),
 (2, 'Tecnico', 'Técnico de TI encargado de resolver tickets'),
-(3, 'Jefe', 'Jefe de oficina que puede solicitar tickets');
+(3, 'Jefe', 'Jefe de oficina que puede solicitar tickets'),
+(4, 'Auditor', 'Auditor del sistema con permisos de solo lectura');
 
 INSERT IGNORE INTO TI_Service (ID_TI_Service, Type_Service, Details) VALUES
 (1, 'Redes', 'Configuración y mantenimiento de redes de computadoras'),

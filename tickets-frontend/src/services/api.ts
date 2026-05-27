@@ -170,20 +170,13 @@ export class ApiService {
 
           roleNumber = 3;
 
-        } else if (roleString.toLowerCase() === 'solicitante') {
-
+        } else if (roleString.toLowerCase() === 'auditor') {
           roleNumber = 4;
-
         }
 
-
-
         return {
-
           success: true,
-
-          message: data.message || 'Login exitoso',
-
+          message: data.message,
           data: {
 
             token: data.token,
@@ -403,8 +396,9 @@ export class ApiService {
           roleNumber = 2;
         } else if (roleString.toLowerCase() === 'jefe' || roleString.toLowerCase() === 'requester') {
           roleNumber = 3;
-        } else if (roleString.toLowerCase() === 'solicitante') {
+        } else if (roleString.toLowerCase() === 'auditor') {
           roleNumber = 4;
+
         }
 
         return {

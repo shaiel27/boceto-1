@@ -215,11 +215,9 @@ interface AuthContextType {
   clearError: () => void;
 
   isAdmin: () => boolean;
-
   isTechnician: () => boolean;
-
   isBoss: () => boolean;
-
+  isAuditor: () => boolean;
 }
 
 
@@ -417,10 +415,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 
   const isAdmin = (): boolean => state.user?.role === 1;
-
   const isTechnician = (): boolean => state.user?.role === 2;
-
   const isBoss = (): boolean => state.user?.role === 3;
+  const isAuditor = (): boolean => state.user?.role === 4;
 
 
 
@@ -443,11 +440,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     clearError,
 
     isAdmin,
-
     isTechnician,
-
     isBoss,
-
+    isAuditor,
   };
 
 

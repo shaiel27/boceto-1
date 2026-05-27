@@ -15,14 +15,14 @@ final class RoleMiddleware
     public const ROLE_ADMIN = 'Admin';
     public const ROLE_TECHNICIAN = 'Tecnico';
     public const ROLE_BOSS = 'Jefe';
-    public const ROLE_REQUESTER = 'Solicitante';
+    public const ROLE_AUDITOR = 'Auditor';
 
     // Role ID mappings
     private const ROLE_IDS = [
         self::ROLE_ADMIN => 1,
         self::ROLE_TECHNICIAN => 2,
         self::ROLE_BOSS => 3,
-        self::ROLE_REQUESTER => 4,
+        self::ROLE_AUDITOR => 4,
     ];
 
     /**
@@ -106,11 +106,11 @@ final class RoleMiddleware
     }
 
     /**
-     * Check if user is requester
+     * Check if user is auditor
      */
-    public function isRequester(string $userRole): bool
+    public function isAuditor(string $userRole): bool
     {
-        return $this->hasRole($userRole, self::ROLE_REQUESTER);
+        return $this->hasRole($userRole, self::ROLE_AUDITOR);
     }
 
     /**

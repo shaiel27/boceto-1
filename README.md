@@ -85,6 +85,7 @@ npx expo start
 | tech2@alcaldia.gob | password123 | Técnico |
 | jefe1@alcaldia.gob | password123 | Jefe |
 | jefe2@alcaldia.gob | password123 | Jefe |
+| auditor@alcaldia.gob | password123 | Auditor |
 
 ## Endpoints principales
 
@@ -109,6 +110,7 @@ npx expo start
 - **Admin** — Acceso completo al sistema
 - **Técnico** — Visualiza y gestiona tickets asignados
 - **Jefe** — Crea solicitudes desde su oficina
+- **Auditor** — Solo lectura del módulo de auditoría
 
 ## Stack tecnológico
 

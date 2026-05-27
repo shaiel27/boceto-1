@@ -66,7 +66,7 @@ class User {
                     $isSystem = isset($row['is_system_user']) ? (int)$row['is_system_user'] : 0;
                     $roleId = isset($row['ID_Role']) ? (int)$row['ID_Role'] : null;
 
-                    $allowedRoles = [1, 2, 3]; // Admin, Tecnico, Jefe
+                    $allowedRoles = [1, 2, 3, 4]; // Admin, Tecnico, Jefe, Auditor
                     $allowed = ($isSystem === 1) || ($roleId !== null && in_array($roleId, $allowedRoles, true));
 
                     if (!$allowed) {
@@ -299,25 +299,6 @@ class User {
                 $stmt->execute();
             }
 
-            // If role is Solicitante (4) and has office_id, create Boss record as requester
-            if ($data->role == 4 && isset($data->office_id)) {
-                $query = "INSERT INTO Boss (Name_Boss, Pronoun, Fk_User)
-                          VALUES (:name_boss, :pronoun, :user_id)";
-                $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(":name_boss", $data->name_boss);
-                $stmt->bindParam(":pronoun", $data->pronoun);
-                $stmt->bindParam(":user_id", $userId);
-                $stmt->execute();
-
-                $bossId = $this->conn->lastInsertId();
-
-                // Update Office to link to this Boss
-                $query = "UPDATE Office SET Fk_Boss_ID = :boss_id WHERE ID_Office = :office_id";
-                $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(":boss_id", $bossId);
-                $stmt->bindParam(":office_id", $data->office_id);
-                $stmt->execute();
-            }
             
             $this->conn->commit();
             return $userId;

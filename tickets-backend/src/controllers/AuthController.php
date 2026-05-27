@@ -221,7 +221,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $user->Email = $data->email;
                     $user->Password = password_hash($data->password, PASSWORD_DEFAULT);
                     $user->Full_Name = $data->full_name ?? $data->username ?? explode('@', $data->email)[0];
-                    $user->Fk_Role = $data->role_id ?? 4; // Default to Solicitante role
+                    $user->Fk_Role = $data->role_id ?? 3; // Default to Jefe role
                     
                     if ($user->create()) {
                         http_response_code(201);

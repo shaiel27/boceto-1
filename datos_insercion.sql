@@ -15,7 +15,8 @@ USE tickets_system;
 INSERT INTO Role (Role, Description) VALUES
 ('Admin', 'Administrador del sistema con acceso total'),
 ('Tecnico', 'Técnico de TI encargado de resolver tickets'),
-('Jefe', 'Jefe de oficina que puede solicitar tickets');
+('Jefe', 'Jefe de oficina que puede solicitar tickets'),
+('Auditor', 'Auditor del sistema con permisos de solo lectura');
 
 -- ==========================================
 -- 2. USUARIOS
@@ -25,7 +26,8 @@ INSERT INTO Users (Fk_Role, Email, Password, Username, Full_Name, is_system_user
 (2, 'tech1@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'carlos_diaz', 'Carlos Diaz', TRUE),
 (2, 'tech2@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'amna_verez', 'Amna Verez', TRUE),
 (3, 'jefe1@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'juan_perez', 'Juan Pérez', TRUE),
-(3, 'jefe2@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'maria_gonzalez', 'María González', TRUE);
+(3, 'jefe2@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'maria_gonzalez', 'María González', TRUE),
+(4, 'auditor@alcaldia.gob', '$2y$10$QKUBXW8Cq9d4SsnRbLUU0esniY1v4dqW0rw.IkapTEzOLCaGry7Sa', 'auditor1', 'Auditor del Sistema', TRUE);
 
 -- ==========================================
 -- 3. JEFES

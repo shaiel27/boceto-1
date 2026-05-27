@@ -174,9 +174,9 @@ switch ($path) {
 
     case '/api/audit':
     case '/api/audit/':
-        if ($_SERVER['AUTH_USER_ROLE'] !== 'Admin') {
+        if ($_SERVER['AUTH_USER_ROLE'] !== 'Auditor') {
             http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Acceso denegado: se requiere rol Admin']);
+            echo json_encode(['success' => false, 'message' => 'Acceso denegado: se requiere rol Auditor']);
             exit;
         }
         require_once __DIR__ . '/../src/controllers/AuditLogController.php';

@@ -12,7 +12,7 @@ interface LoginFormData {
 
 const LoginForm: React.FC = () => {
   const navigate = useNavigate();
-  const { login, isLoading, error, clearError, isAuthenticated, isAdmin, isTechnician, isBoss } = useAuth();
+  const { login, isLoading, error, clearError, isAuthenticated, isAdmin, isTechnician, isBoss, isAuditor } = useAuth();
 
   const [formData, setFormData] = useState<LoginFormData>({
     email: '',
@@ -29,11 +29,13 @@ const LoginForm: React.FC = () => {
         navigate('/technician');
       } else if (isBoss()) {
         navigate('/requester');
+      } else if (isAuditor()) {
+        navigate('/admin/audit');
       } else {
         navigate('/');
       }
     }
-  }, [isAuthenticated, isAdmin, isTechnician, isBoss, navigate]);
+  }, [isAuthenticated, isAdmin, isTechnician, isBoss, isAuditor, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;

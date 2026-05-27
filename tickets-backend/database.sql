@@ -280,7 +280,8 @@ CREATE TABLE IF NOT EXISTS Notifications (
 INSERT INTO Role (Role, Description) VALUES
 ('Admin', 'Administrador del sistema con acceso total'),
 ('Tecnico', 'Técnico de TI encargado de resolver tickets'),
-('Jefe', 'Jefe de oficina que puede solicitar tickets');
+('Jefe', 'Jefe de oficina que puede solicitar tickets'),
+('Auditor', 'Auditor del sistema con permisos de solo lectura');
 
 -- Usuarios
 -- ⚠️ Password debe ser un hash bcrypt. Generar con PHP: password_hash('password123', PASSWORD_DEFAULT)
@@ -292,7 +293,8 @@ INSERT INTO Users (Fk_Role, Email, Password, Username, Full_Name, is_system_user
 (2, 'tech1@alcaldia.gob', 'password_hash_here', 'carlos_diaz', 'Carlos Diaz', TRUE),
 (2, 'tech2@alcaldia.gob', 'password_hash_here', 'amna_verez', 'Amna Verez', TRUE),
 (3, 'jefe1@alcaldia.gob', 'password_hash_here', 'juan_perez', 'Juan Pérez', TRUE),
-(3, 'jefe2@alcaldia.gob', 'password_hash_here', 'maria_gonzalez', 'María González', TRUE);
+(3, 'jefe2@alcaldia.gob', 'password_hash_here', 'maria_gonzalez', 'María González', TRUE),
+(4, 'auditor@alcaldia.gob', 'password_hash_here', 'auditor1', 'Auditor del Sistema', TRUE);
 
 -- Jefes
 INSERT INTO Boss (Name_Boss, Pronoun, Fk_User) VALUES

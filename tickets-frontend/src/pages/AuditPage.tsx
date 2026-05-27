@@ -1,12 +1,12 @@
 import React from 'react';
-import AdminLayout from '../components/layout/AdminLayout';
+import AuditorLayout from '../components/layout/AuditorLayout';
 import AuditLog from '../components/admin/AuditLog';
 
 const AuditPage: React.FC = () => {
   return (
-    <AdminLayout userName="Administrador Municipal">
+    <AuditorLayout>
       <AuditLog />
-    </AdminLayout>
+    </AuditorLayout>
   );
 };
 

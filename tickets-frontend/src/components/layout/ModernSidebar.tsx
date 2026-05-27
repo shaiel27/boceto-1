@@ -74,77 +74,82 @@ const ModernSidebar: React.FC<ModernSidebarProps> = ({ fullViewport = false }) =
     setMobileOpen(false);
   }, [location.pathname, location.search]);
 
-  const navItems: NavItem[] = [
-    {
-      id: 'dashboard',
-      label: 'Gobierno / Inicio',
-      icon: <Flag size={20} strokeWidth={1.75} />,
-      path: '/',
-      department: 'executive',
-    },
-    {
-      id: 'tickets',
-      label: 'Servicios y tickets',
-      icon: <ClipboardList size={20} strokeWidth={1.75} />,
-      path: '/admin/tickets',
-      department: 'services',
-    },
-    {
-      id: 'technical',
-      label: 'Personal técnico',
-      icon: <Users2 size={20} strokeWidth={1.75} />,
-      path: '/admin/technicians',
-      department: 'human-resources',
-    },
-    {
-      id: 'structure',
-      label: 'Organización municipal',
-      icon: <Building2 size={20} strokeWidth={1.75} />,
-      path: '/admin/offices',
-      department: 'administrative',
-      children: [
-        {
-          id: 'directions',
-          label: 'Direcciones',
-          icon: <MapPin size={16} strokeWidth={1.75} />,
-          path: '/admin/offices?type=Direction',
-        },
-        {
-          id: 'divisions',
-          label: 'Divisiones',
-          icon: <Database size={16} strokeWidth={1.75} />,
-          path: '/admin/offices?type=Division',
-        },
-        {
-          id: 'coordinations',
-          label: 'Coordinaciones',
-          icon: <Activity size={16} strokeWidth={1.75} />,
-          path: '/admin/offices?type=Coordination',
-        },
-      ],
-    },
-    {
-      id: 'reports',
-      label: 'Informes',
-      icon: <FileCheck size={20} strokeWidth={1.75} />,
-      path: '/admin/reports',
-      department: 'oversight',
-    },
-    {
-      id: 'users',
-      label: 'Registro de usuarios',
-      icon: <UserPlus size={20} strokeWidth={1.75} />,
-      path: '/admin/register-user',
-      department: 'it',
-    },
-    {
+  const navItems: NavItem[] = [];
+
+  if (user?.role === 1) {
+    navItems.push(
+      {
+        id: 'dashboard',
+        label: 'Gobierno / Inicio',
+        icon: <Flag size={20} strokeWidth={1.75} />,
+        path: '/',
+        department: 'executive',
+      },
+      {
+        id: 'tickets',
+        label: 'Servicios y tickets',
+        icon: <ClipboardList size={20} strokeWidth={1.75} />,
+        path: '/admin/tickets',
+        department: 'services',
+      },
+      {
+        id: 'technical',
+        label: 'Personal técnico',
+        icon: <Users2 size={20} strokeWidth={1.75} />,
+        path: '/admin/technicians',
+        department: 'human-resources',
+      },
+      {
+        id: 'structure',
+        label: 'Organización municipal',
+        icon: <Building2 size={20} strokeWidth={1.75} />,
+        path: '/admin/offices',
+        department: 'administrative',
+        children: [
+          {
+            id: 'directions',
+            label: 'Direcciones',
+            icon: <MapPin size={16} strokeWidth={1.75} />,
+            path: '/admin/offices?type=Direction',
+          },
+          {
+            id: 'divisions',
+            label: 'Divisiones',
+            icon: <Database size={16} strokeWidth={1.75} />,
+            path: '/admin/offices?type=Division',
+          },
+          {
+            id: 'coordinations',
+            label: 'Coordinaciones',
+            icon: <Activity size={16} strokeWidth={1.75} />,
+            path: '/admin/offices?type=Coordination',
+          },
+        ],
+      },
+      {
+        id: 'reports',
+        label: 'Informes',
+        icon: <FileCheck size={20} strokeWidth={1.75} />,
+        path: '/admin/reports',
+        department: 'oversight',
+      },
+      {
+        id: 'users',
+        label: 'Registro de usuarios',
+        icon: <UserPlus size={20} strokeWidth={1.75} />,
+        path: '/admin/register-user',
+        department: 'it',
+      }
+    );
+  } else if (user?.role === 4) {
+    navItems.push({
       id: 'audit',
       label: 'Auditoría',
       icon: <Archive size={20} strokeWidth={1.75} />,
       path: '/admin/audit',
       department: 'oversight',
-    },
-  ];
+    });
+  }
 
   const toggleExpanded = (itemId: string) => {
     setExpandedItems((prev) => {
