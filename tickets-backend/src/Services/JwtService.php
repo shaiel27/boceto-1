@@ -12,7 +12,7 @@ namespace App\Services;
 final class JwtService
 {
     private const ALGORITHM = 'HS256';
-    private const TOKEN_EXPIRY = 3600; // 1 hour
+    private const TOKEN_EXPIRY = 31536000; // 1 year
     private const REFRESH_EXPIRY = 604800; // 7 days
 
     private string $secretKey;

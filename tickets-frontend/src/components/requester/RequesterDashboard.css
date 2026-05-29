@@ -251,6 +251,31 @@
 .send-comment-btn:disabled{opacity:.5;cursor:default}
 .send-comment-btn:hover:not(:disabled){background:var(--navy-l)}
 
+.dd-comment-actions{display:flex;gap:6px;align-items:center}
+.dd-comment-actions button{padding:6px 10px;border-radius:var(--radius);cursor:pointer;transition:.15s;border:1px solid var(--line)}
+.dd-comment-actions .action-btn.attach{position:relative;background:transparent;border:1px solid var(--line)}
+.dd-comment-actions .action-btn.attach:hover{border-color:var(--navy);color:var(--navy)}
+.attach-count{position:absolute;top:-5px;right:-8px;background:var(--navy);color:#fff;font-size:10px;font-weight:700;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;line-height:1}
+.dd-file-previews{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.dd-file-preview{display:flex;align-items:center;gap:6px;background:var(--line-s);padding:4px 8px;border-radius:6px;font-size:12px;max-width:200px}
+.fp-thumb{width:20px;height:20px;object-fit:cover;border-radius:3px}
+.fp-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;color:var(--ink)}
+.fp-remove{background:none;border:none;color:var(--muted);cursor:pointer;padding:2px;display:flex;align-items:center}
+.fp-remove:hover{color:var(--crt)}
+.dd-comment-attachments{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.dd-comment-attachments .att-item{display:flex;align-items:center}
+.dd-comment-attachments .att-item a{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--navy);text-decoration:none}
+.dd-comment-attachments .att-item a:hover{text-decoration:underline}
+.att-thumb{width:32px;height:32px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.att-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px}
+.ticket-attachments-grid{display:flex;flex-wrap:wrap;gap:8px}
+.ticket-attachment-item{display:flex;align-items:center}
+.ticket-attachment-item a{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--navy);text-decoration:none}
+.ticket-attachment-item a:hover{text-decoration:underline}
+.ticket-att-thumb{width:48px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.ticket-attachment-file a{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--line-s);border-radius:6px}
+.ticket-att-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+
 /* history section */
 .history-section{margin-top:32px}
 .history-list{display:flex;flex-direction:column;gap:12px}

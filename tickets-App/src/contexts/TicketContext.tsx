@@ -1,132 +1,99 @@
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { Ticket, TicketComment } from '../types/ticket';
-import { MOCK_TICKETS } from '../mocks/tickets';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { Ticket } from '../types/ticket';
+import {
+  getTechnicianTickets,
+  updateTicketStatus,
+  addComment as addCommentApi,
+} from '../services/ticketService';
+import { useAuth } from '../hooks/useAuth';
 
 interface TicketContextType {
   tickets: Ticket[];
-  getTicketById: (id: number) => Ticket | undefined;
-  takeTicket: (id: number, technicianName: string) => void;
-  resolveTicket: (id: number, notes: string) => void;
-  reopenTicket: (id: number) => void;
-  addComment: (ticketId: number, comment: Omit<TicketComment, 'id' | 'created_at'>) => void;
+  getTicketById: (id: number) => Promise<Ticket | undefined>;
+  takeTicket: (id: number, notes?: string) => Promise<void>;
+  resolveTicket: (id: number, notes: string) => Promise<void>;
+  addComment: (ticketId: number, comment: string, fileUri?: string) => Promise<void>;
+  refreshTickets: () => Promise<void>;
+  isLoading: boolean;
+  error: string | null;
 }
 
 const TicketContext = createContext<TicketContextType | null>(null);
 
-let nextCommentId = 100;
-let nextTimelineId = 100;
-
 export function TicketProvider({ children }: { children: React.ReactNode }) {
-  const [tickets, setTickets] = useState<Ticket[]>(() =>
-    MOCK_TICKETS.map((t) => ({ ...t }))
-  );
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const auth = useAuth();
 
-  const getTicketById = useCallback((id: number) => {
-    return tickets.find((t) => t.id === id);
+  const refreshTickets = useCallback(async () => {
+    if (!auth.isAuthenticated) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    const result = await getTechnicianTickets();
+
+    if (result.success) {
+      setTickets(result.tickets);
+    } else {
+      setError(result.message || 'Error al cargar tickets');
+    }
+    setIsLoading(false);
+  }, [auth.isAuthenticated]);
+
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      refreshTickets();
+    }
+  }, [auth.isAuthenticated, refreshTickets]);
+
+  const getTicketById = useCallback(async (id: number): Promise<Ticket | undefined> => {
+    const cached = tickets.find((t) => t.id === id);
+    if (cached) return cached;
+
+    const { getTicketDetail: fetchTicketDetail } = await import('../services/ticketService');
+    const result = await fetchTicketDetail(id, null);
+    return result.ticket;
   }, [tickets]);
 
-  const takeTicket = useCallback((id: number, technicianName: string) => {
-    setTickets((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        return {
-          ...t,
-          status: 'En Proceso',
-          technician_names: [...new Set([...t.technician_names, technicianName])],
-          timeline: [
-            ...t.timeline,
-            {
-              id: nextTimelineId++,
-              fk_service_request: id,
-              fk_user_actor: 2,
-              action_description: 'Ticket en proceso',
-              old_status: 'Pendiente',
-              new_status: 'En Proceso',
-              event_date: new Date().toISOString(),
-              actor: technicianName,
-            },
-          ],
-        };
-      })
-    );
-  }, []);
+  const takeTicket = useCallback(async (id: number, notes?: string) => {
+    const result = await updateTicketStatus(id, 'En Proceso', notes);
 
-  const resolveTicket = useCallback((id: number, notes: string) => {
-    setTickets((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        return {
-          ...t,
-          status: 'Resuelto',
-          resolved_at: new Date().toISOString(),
-          resolution_notes: notes,
-          timeline: [
-            ...t.timeline,
-            {
-              id: nextTimelineId++,
-              fk_service_request: id,
-              fk_user_actor: 2,
-              action_description: 'Ticket resuelto',
-              old_status: 'En Proceso',
-              new_status: 'Resuelto',
-              event_date: new Date().toISOString(),
-              actor: t.technician_names[0] || 'Técnico',
-            },
-          ],
-        };
-      })
-    );
-  }, []);
+    if (result.success) {
+      refreshTickets();
+    }
+  }, [refreshTickets]);
 
-  const reopenTicket = useCallback((id: number) => {
-    setTickets((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        return {
-          ...t,
-          status: 'En Proceso',
-          resolved_at: null,
-          resolution_notes: null,
-          timeline: [
-            ...t.timeline,
-            {
-              id: nextTimelineId++,
-              fk_service_request: id,
-              fk_user_actor: 2,
-              action_description: 'Ticket reabierto',
-              old_status: 'Resuelto',
-              new_status: 'En Proceso',
-              event_date: new Date().toISOString(),
-              actor: t.technician_names[0] || 'Técnico',
-            },
-          ],
-        };
-      })
-    );
-  }, []);
+  const resolveTicket = useCallback(async (id: number, notes: string) => {
+    const result = await updateTicketStatus(id, 'Resuelto', notes);
 
-  const addComment = useCallback((ticketId: number, comment: Omit<TicketComment, 'id' | 'created_at'>) => {
-    setTickets((prev) =>
-      prev.map((t) => {
-        if (t.id !== ticketId) return t;
-        return {
-          ...t,
-          has_attachments: t.has_attachments || (comment.attachments && comment.attachments.length > 0),
-          comments: [
-            ...t.comments,
-            {
-              ...comment,
-              id: nextCommentId++,
-              created_at: new Date().toISOString(),
-            } as TicketComment,
-          ],
-        };
-      })
-    );
-  }, []);
+    if (result.success) {
+      refreshTickets();
+    }
+  }, [refreshTickets]);
+
+  const addComment = useCallback(async (ticketId: number, comment: string, fileUri?: string) => {
+    const result = await addCommentApi(ticketId, comment, fileUri);
+
+    if (result.success) {
+      refreshTickets();
+    }
+  }, [refreshTickets]);
 
   return (
-    <TicketContext.Provider value={{ tickets, getTicketById, takeTicket, resolveTicket, reopenTicket, addComment }}>
+    <TicketContext.Provider
+      value={{
+        tickets,
+        getTicketById,
+        takeTicket,
+        resolveTicket,
+        addComment,
+        refreshTickets,
+        isLoading,
+        error,
+      }}
+    >
       {children}
     </TicketContext.Provider>
   );

@@ -74,14 +74,16 @@ class User {
                         return false;
                     }
 
-                    // Update last_login_at for auditing (best-effort)
-                    try {
-                        $update = $this->conn->prepare("UPDATE " . $this->table_name . " SET last_login_at = NOW() WHERE ID_Users = :id");
-                        $update->bindParam(':id', $row['ID_Users'], PDO::PARAM_INT);
-                        $update->execute();
-                    } catch (PDOException $e) {
-                        // Don't block login on update failure, just log
-                        error_log("Failed to update last_login_at for user {$row['ID_Users']}: " . $e->getMessage());
+                    // Update last_login_at ONLY for returning users (not first login)
+                    // This preserves NULL in last_login_at so the frontend can detect first-time logins
+                    if ($row['last_login_at'] !== null) {
+                        try {
+                            $update = $this->conn->prepare("UPDATE " . $this->table_name . " SET last_login_at = NOW() WHERE ID_Users = :id");
+                            $update->bindParam(':id', $row['ID_Users'], PDO::PARAM_INT);
+                            $update->execute();
+                        } catch (PDOException $e) {
+                            error_log("Failed to update last_login_at for user {$row['ID_Users']}: " . $e->getMessage());
+                        }
                     }
 
                     // Remove password from response
@@ -434,6 +436,14 @@ class User {
             $updateStmt->bindParam(":id", $userId, PDO::PARAM_INT);
 
             if ($updateStmt->execute()) {
+                // Mark last_login_at so next login won't trigger first-login flow
+                try {
+                    $markStmt = $this->conn->prepare("UPDATE " . $this->table_name . " SET last_login_at = NOW() WHERE ID_Users = :id");
+                    $markStmt->bindParam(":id", $userId, PDO::PARAM_INT);
+                    $markStmt->execute();
+                } catch (PDOException $e) {
+                    error_log("Failed to update last_login_at after password change: " . $e->getMessage());
+                }
                 return [
                     'success' => true,
                     'message' => 'Contraseña cambiada exitosamente'

@@ -1,50 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  User, 
-  Building, 
-  Save, 
-  ArrowLeft, 
-  Plus, 
-  Check, 
-  X, 
-  Search,
-  Shield,
+import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  User,
   Mail,
   Lock,
   Eye,
   EyeOff,
-  UserPlus,
-  Sparkles,
+  Building,
+  ArrowLeft,
   CheckCircle2,
   AlertCircle,
-  MapPin,
+  Shield,
   Briefcase,
-  GraduationCap
+  GraduationCap,
+  MapPin,
+  Search,
+  X,
+  UserPlus,
+  Crown,
+  Loader2
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { sileo } from 'sileo';
 import ModernSidebar from '../layout/ModernSidebar';
 import './UserRegistration.css';
 import ApiService from '../../services/api';
 
 interface FormData {
+  name_boss: string;
+  username: string;
+  pronoun: string;
   email: string;
   password: string;
   confirmPassword: string;
   fk_role: string;
-  name_boss: string;
-  username: string;
-  pronoun: string;
   fk_office: string;
 }
 
 interface FormErrors {
+  name_boss?: string;
+  username?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
   fk_role?: string;
-  name_boss?: string;
-  username?: string;
   fk_office?: string;
 }
 
@@ -60,141 +58,108 @@ interface Office {
   Office_Type: string;
 }
 
+const ROLES: Role[] = [
+  { ID_Role: 1, Role: 'Administrador', Description: 'Acceso completo al sistema' },
+  { ID_Role: 3, Role: 'Jefe', Description: 'Creación y seguimiento de tickets' },
+];
+
+const PRONOUNS = ['Sr.', 'Sra.', 'Lic.', 'Ing.', 'Dr.', 'Dra.'];
+
 const UserRegistration = () => {
   const navigate = useNavigate();
-
   const [formData, setFormData] = useState<FormData>({
-    email: '',
-    password: '',
-    confirmPassword: '',
-    fk_role: '3',
     name_boss: '',
     username: '',
     pronoun: 'Sr.',
-    fk_office: ''
+    email: '',
+    password: '',
+    confirmPassword: '',
+    fk_role: '',
+    fk_office: '',
   });
-
   const [errors, setErrors] = useState<FormErrors>({});
   const [showSuccess, setShowSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isFormValid, setIsFormValid] = useState(false);
+  const [touched, setTouched] = useState<Set<string>>(new Set());
 
-  const [roles] = useState<Role[]>([
-    { ID_Role: 1, Role: 'Administrador', Description: 'Acceso completo al sistema' },
-    { ID_Role: 2, Role: 'Técnico', Description: 'Gestión de tickets asignados' },
-    { ID_Role: 3, Role: 'Jefe', Description: 'Creación y seguimiento de tickets' }
-  ]);
-  
   const [offices, setOffices] = useState<Office[]>([]);
   const [officeSearch, setOfficeSearch] = useState('');
   const [filteredOffices, setFilteredOffices] = useState<Office[]>([]);
   const [showOfficeDropdown, setShowOfficeDropdown] = useState(false);
+  const [officesLoading, setOfficesLoading] = useState(false);
 
-  // Validate form
-  useEffect(() => {
-    const isValid = Boolean(
-      formData.email &&
-      formData.password &&
-      formData.confirmPassword &&
-      formData.name_boss &&
-      formData.username &&
-      formData.fk_office &&
-      formData.password.length >= 6 &&
-      formData.password === formData.confirmPassword &&
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
-    );
-    
-    setIsFormValid(isValid);
-  }, [formData]);
+  const isAdmin = formData.fk_role === '1';
+  const passwordMatch = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword;
 
-  // Cargar roles y oficinas desde el backend
   useEffect(() => {
-    loadOffices();
+    setOfficesLoading(true);
+    ApiService.getOffices()
+      .then(r => {
+        if (r.success && r.data) {
+          setOffices(r.data);
+          setFilteredOffices(r.data);
+        }
+      })
+      .catch(() => sileo.error({ title: 'Error', description: 'Error al cargar oficinas' }))
+      .finally(() => setOfficesLoading(false));
   }, []);
 
-  const loadOffices = async () => {
-    try {
-      const response = await ApiService.getOffices();
-      if (response.success && response.data) {
-        setOffices(response.data);
-        setFilteredOffices(response.data);
-      }
-    } catch (error) {
-      console.error('Error al cargar oficinas:', error);
-      sileo.error({
-        title: 'Error',
-        description: 'Error al cargar las oficinas desde el servidor'
-      });
-    }
-  };
-
-  // Filtrar oficinas basado en búsqueda
   useEffect(() => {
-    if (officeSearch.trim() === '') {
-      setFilteredOffices(offices);
+    if (officeSearch.trim()) {
+      const q = officeSearch.toLowerCase();
+      setFilteredOffices(offices.filter(o =>
+        o.Name_Office.toLowerCase().includes(q) || o.Office_Type.toLowerCase().includes(q)
+      ));
     } else {
-      const searchLower = officeSearch.toLowerCase();
-      const filtered = offices.filter(office =>
-        office.Name_Office.toLowerCase().includes(searchLower) ||
-        office.Office_Type.toLowerCase().includes(searchLower)
-      );
-      setFilteredOffices(filtered);
+      setFilteredOffices(offices);
     }
   }, [officeSearch, offices]);
 
-  const handleOfficeSelect = (office: Office) => {
-    setFormData({ ...formData, fk_office: office.ID_Office.toString() });
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'fk_role') {
+      setFormData(prev => ({ ...prev, fk_office: '' }));
+      setOfficeSearch('');
+    }
+    setErrors(prev => ({ ...prev, [name]: '' }));
+  }, []);
+
+  const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setTouched(prev => new Set(prev).add(e.target.name));
+  }, []);
+
+  const handleOfficeSelect = useCallback((office: Office) => {
+    setFormData(prev => ({ ...prev, fk_office: office.ID_Office.toString() }));
     setOfficeSearch(office.Name_Office);
     setShowOfficeDropdown(false);
-  };
+    setTouched(prev => new Set(prev).add('fk_office'));
+  }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const pronouns = ['Sr.', 'Sra.', 'Lic.', 'Ing.', 'Dr.', 'Dra.'];
+  const validate = useCallback((): FormErrors => {
+    const errs: FormErrors = {};
+    if (!formData.name_boss.trim()) errs.name_boss = 'Requerido';
+    if (!formData.username.trim()) errs.username = 'Requerido';
+    if (!formData.email.trim()) errs.email = 'Requerido';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errs.email = 'Email inválido';
+    if (!formData.password) errs.password = 'Requerido';
+    else if (formData.password.length < 6) errs.password = 'Mínimo 6 caracteres';
+    if (formData.confirmPassword && formData.password !== formData.confirmPassword) errs.confirmPassword = 'No coinciden';
+    if (!formData.fk_role) errs.fk_role = 'Selecciona un rol';
+    if (!isAdmin && !formData.fk_office) errs.fk_office = 'Requerido para este rol';
+    return errs;
+  }, [formData, isAdmin]);
 
-  const validateStep = (step: number): boolean => {
-    switch (step) {
-      case 1:
-        return Boolean(formData.name_boss && formData.username && formData.pronoun);
-      case 2:
-        return Boolean(formData.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email));
-      case 3:
-        return formData.password.length >= 6 && formData.password === formData.confirmPassword;
-      case 4:
-        return Boolean(formData.fk_role && formData.fk_office);
-      default:
-        return false;
-    }
-  };
-
-  const nextStep = () => {
-    if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 5));
-    } else {
-      sileo.error({
-        title: 'Validación',
-        description: 'Por favor completa todos los campos requeridos correctamente'
-      });
-    }
-  };
-
-  const prevStep = () => {
-    setCurrentStep(prev => Math.max(prev - 1, 1));
-  };
+  const isValid = Object.keys(validate()).length === 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!isFormValid) {
-      sileo.error({
-        title: 'Validación',
-        description: 'Por favor completa todos los campos requeridos correctamente'
-      });
-      return;
-    }
-    
+    const errs = validate();
+    setErrors(errs);
+    if (!isValid) return;
+
     setLoading(true);
     try {
       const response = await ApiService.createUserWithOffice({
@@ -205,429 +170,267 @@ const UserRegistration = () => {
         role: parseInt(formData.fk_role),
         name_boss: formData.name_boss,
         pronoun: formData.pronoun,
-        office_id: formData.fk_office ? parseInt(formData.fk_office) : undefined
+        office_id: isAdmin ? undefined : (formData.fk_office ? parseInt(formData.fk_office) : undefined),
       });
 
       if (response.success) {
-        sileo.success({
-          title: '¡Éxito!',
-          description: 'Usuario creado exitosamente'
-        });
         setShowSuccess(true);
-
+        sileo.success({ title: '¡Éxito!', description: 'Usuario creado exitosamente' });
         setTimeout(() => {
           setShowSuccess(false);
           setFormData({
-            email: '',
-            password: '',
-            confirmPassword: '',
-            fk_role: '3',
-            name_boss: '',
-            username: '',
-            pronoun: 'Sr.',
-            fk_office: ''
+            name_boss: '', username: '', pronoun: 'Sr.',
+            email: '', password: '', confirmPassword: '',
+            fk_role: '', fk_office: '',
           });
+          setOfficeSearch('');
           setErrors({});
-          setCurrentStep(1);
-        }, 3000);
+          setTouched(new Set());
+        }, 2500);
       } else {
-        sileo.error({
-          title: 'Error',
-          description: 'Error al crear usuario: ' + (response.message || 'Error desconocido')
-        });
+        sileo.error({ title: 'Error', description: response.message || 'Error desconocido' });
       }
-    } catch (error) {
-      console.error('Error al crear usuario:', error);
-      sileo.error({
-        title: 'Error',
-        description: 'Error de conexión con el servidor'
-      });
+    } catch {
+      sileo.error({ title: 'Error', description: 'Error de conexión con el servidor' });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const selectedRole = ROLES.find(r => r.ID_Role.toString() === formData.fk_role);
+  const selectedOffice = offices.find(o => o.ID_Office.toString() === formData.fk_office);
 
-    // Limpiar errores al escribir
-    if (errors[name as keyof FormErrors]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: ''
-      }));
-    }
-  };
+  return (
+    <div className="ur-container">
+      <ModernSidebar />
+      <div className="ur-content">
+        <button className="ur-back" onClick={() => navigate('/admin/dashboard')}>
+          <ArrowLeft size={18} />
+          Volver al panel
+        </button>
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <div className="step-content">
-            <div className="step-header">
-              <div className="step-number">1</div>
-              <div className="step-info">
-                <h3>Información Personal</h3>
-                <p>Datos básicos del usuario</p>
-              </div>
+        <div className="ur-hero">
+          <div className="ur-hero-icon">
+            <UserPlus size={28} />
+          </div>
+          <div>
+            <h1 className="ur-hero-title">Registro de Usuario</h1>
+            <p className="ur-hero-sub">Alcaldía Municipal de San Cristóbal</p>
+          </div>
+        </div>
+
+        {showSuccess && (
+          <div className="ur-success">
+            <CheckCircle2 size={20} />
+            Usuario creado exitosamente
+            <button className="ur-success-close" onClick={() => setShowSuccess(false)}>
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="ur-form" noValidate>
+          <div className="ur-section">
+            <div className="ur-section-head">
+              <GraduationCap size={18} />
+              <span>Información personal</span>
             </div>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="name_boss" className="form-label">
-                  <User size={16} />
-                  Nombre Completo
-                </label>
+            <div className="ur-grid">
+              <div className="ur-field">
+                <label htmlFor="name_boss">Nombre completo</label>
                 <input
-                  id="name_boss"
-                  name="name_boss"
-                  type="text"
-                  required
-                  value={formData.name_boss}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Juan Pérez"
+                  id="name_boss" name="name_boss" type="text"
+                  value={formData.name_boss} onChange={handleChange} onBlur={handleBlur}
+                  placeholder="Juan Pérez" autoComplete="name"
                 />
+                {touched.has('name_boss') && errors.name_boss && (
+                  <span className="ur-err"><AlertCircle size={12} />{errors.name_boss}</span>
+                )}
               </div>
-              
-              <div className="form-group">
-                <label htmlFor="username" className="form-label">
-                  <User size={16} />
-                  Nombre de Usuario
-                </label>
+              <div className="ur-field">
+                <label htmlFor="username">Nombre de usuario</label>
                 <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="juan.perez"
+                  id="username" name="username" type="text"
+                  value={formData.username} onChange={handleChange} onBlur={handleBlur}
+                  placeholder="juan.perez" autoComplete="username"
                 />
+                {touched.has('username') && errors.username && (
+                  <span className="ur-err"><AlertCircle size={12} />{errors.username}</span>
+                )}
               </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="pronoun" className="form-label">
-                  <GraduationCap size={16} />
-                  Tratamiento
-                </label>
-                <select
-                  id="pronoun"
-                  name="pronoun"
-                  value={formData.pronoun}
-                  onChange={handleInputChange}
-                  className="form-input"
-                >
-                  <option value="Sr.">Sr.</option>
-                  <option value="Sra.">Sra.</option>
-                  <option value="Lic.">Lic.</option>
-                  <option value="Ing.">Ing.</option>
-                  <option value="Dr.">Dr.</option>
-                  <option value="Dra.">Dra.</option>
+              <div className="ur-field">
+                <label htmlFor="pronoun">Tratamiento</label>
+                <select id="pronoun" name="pronoun" value={formData.pronoun} onChange={handleChange}>
+                  {PRONOUNS.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
             </div>
           </div>
-        );
-        
-      case 2:
-        return (
-          <div className="step-content">
-            <div className="step-header">
-              <div className="step-number">2</div>
-              <div className="step-info">
-                <h3>Información de Contacto</h3>
-                <p>Correo electrónico del usuario</p>
-              </div>
+
+          <div className="ur-section">
+            <div className="ur-section-head">
+              <Mail size={18} />
+              <span>Correo electrónico</span>
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="email" className="form-label">
-                <Mail size={16} />
-                Correo Electrónico
-              </label>
+            <div className="ur-field ur-field--wide">
+              <label htmlFor="email">Correo electrónico</label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleInputChange}
-                className="form-input"
-                placeholder="usuario@alcaldia.gob.ve"
+                id="email" name="email" type="email"
+                value={formData.email} onChange={handleChange} onBlur={handleBlur}
+                placeholder="usuario@alcaldia.gob.ve" autoComplete="email"
               />
-            </div>
-          </div>
-        );
-        
-      case 3:
-        return (
-          <div className="step-content">
-            <div className="step-header">
-              <div className="step-number">3</div>
-              <div className="step-info">
-                <h3>Seguridad</h3>
-                <p>Configuración de acceso</p>
-              </div>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="password" className="form-label">
-                <Lock size={16} />
-                Contraseña
-              </label>
-              <div className="input-wrapper">
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Mínimo 6 caracteres"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="password-toggle"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              <div className="password-strength">
-                <div className={`strength-bar ${formData.password.length >= 6 ? 'strong' : 'weak'}`}></div>
-                <span className="strength-text">
-                  {formData.password.length >= 6 ? 'Contraseña segura' : 'Mínimo 6 caracteres'}
-                </span>
-              </div>
-            </div>
-            
-            <div className="form-group">
-              <label htmlFor="confirmPassword" className="form-label">
-                <Lock size={16} />
-                Confirmar Contraseña
-              </label>
-              <div className="input-wrapper">
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Repite tu contraseña"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="password-toggle"
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              {formData.confirmPassword && (
-                <div className={`password-match ${formData.password === formData.confirmPassword ? 'match' : 'no-match'}`}>
-                  {formData.password === formData.confirmPassword ? (
-                    <><CheckCircle2 size={14} /> Las contraseñas coinciden</>
-                  ) : (
-                    <><AlertCircle size={14} /> Las contraseñas no coinciden</>
-                  )}
-                </div>
+              {touched.has('email') && errors.email && (
+                <span className="ur-err"><AlertCircle size={12} />{errors.email}</span>
               )}
             </div>
           </div>
-        );
-        
-      case 4:
-        return (
-          <div className="step-content">
-            <div className="step-header">
-              <div className="step-number">4</div>
-              <div className="step-info">
-                <h3>Rol y Ubicación</h3>
-                <p>Asignación de permisos y oficina</p>
-              </div>
+
+          <div className="ur-section">
+            <div className="ur-section-head">
+              <Lock size={18} />
+              <span>Seguridad</span>
             </div>
-            
-            <div className="form-group">
-              <label htmlFor="fk_role" className="form-label">
-                <Briefcase size={16} />
-                Rol del Usuario
-              </label>
-              <select
-                id="fk_role"
-                name="fk_role"
-                value={formData.fk_role}
-                onChange={handleInputChange}
-                className="form-input"
-              >
-                <option value="">Seleccionar rol</option>
-                {roles.map((role) => (
-                  <option key={role.ID_Role} value={role.ID_Role}>
-                    {role.Role} - {role.Description}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">
-                <MapPin size={16} />
-                Oficina
-              </label>
-              <div className="office-search-container">
-                <div className="search-input-wrapper">
-                  <Search size={16} className="search-icon" />
+            <div className="ur-grid">
+              <div className="ur-field">
+                <label htmlFor="password">Contraseña</label>
+                <div className="ur-pw">
                   <input
-                    type="text"
-                    value={officeSearch}
-                    onChange={(e) => {
-                      setOfficeSearch(e.target.value);
-                      setShowOfficeDropdown(true);
-                    }}
-                    onFocus={() => setShowOfficeDropdown(true)}
-                    className="form-input"
-                    placeholder="Buscar oficina..."
+                    id="password" name="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password} onChange={handleChange} onBlur={handleBlur}
+                    placeholder="Mínimo 6 caracteres" autoComplete="new-password"
                   />
+                  <button type="button" className="ur-pw-toggle" onClick={() => setShowPassword(p => !p)} tabIndex={-1}>
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
-                
-                {showOfficeDropdown && (
-                  <div className="office-dropdown">
-                    {filteredOffices.length > 0 ? (
-                      filteredOffices.map(office => (
-                        <div
-                          key={office.ID_Office}
-                          className="office-option"
-                          onClick={() => handleOfficeSelect(office)}
-                        >
-                          <div className="office-info">
-                            <span className="office-name">{office.Name_Office}</span>
-                            <span className="office-type">{office.Office_Type}</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="no-results">No se encontraron oficinas</div>
-                    )}
+                {formData.password && (
+                  <div className={`ur-strength ${formData.password.length >= 6 ? 'ok' : 'bad'}`}>
+                    <div className="ur-strength-bar"><div style={{ width: formData.password.length >= 6 ? '100%' : '33%' }} /></div>
+                    <span>{formData.password.length >= 6 ? 'Contraseña segura' : 'Mínimo 6 caracteres'}</span>
                   </div>
+                )}
+                {touched.has('password') && errors.password && (
+                  <span className="ur-err"><AlertCircle size={12} />{errors.password}</span>
+                )}
+              </div>
+              <div className="ur-field">
+                <label htmlFor="confirmPassword">Confirmar contraseña</label>
+                <div className="ur-pw">
+                  <input
+                    id="confirmPassword" name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={formData.confirmPassword} onChange={handleChange} onBlur={handleBlur}
+                    placeholder="Repite la contraseña" autoComplete="new-password"
+                  />
+                  <button type="button" className="ur-pw-toggle" onClick={() => setShowConfirmPassword(p => !p)} tabIndex={-1}>
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                {formData.confirmPassword && (
+                  <div className={`ur-match ${passwordMatch ? 'ok' : 'bad'}`}>
+                    {passwordMatch ? <><CheckCircle2 size={12} /> Coinciden</> : <><AlertCircle size={12} /> No coinciden</>}
+                  </div>
+                )}
+                {touched.has('confirmPassword') && errors.confirmPassword && (
+                  <span className="ur-err"><AlertCircle size={12} />{errors.confirmPassword}</span>
                 )}
               </div>
             </div>
           </div>
-        );
-        
-      default:
-        return null;
-    }
-  };
 
-  return (
-    <div className="user-registration-container">
-      <ModernSidebar />
-      
-      <div className="user-registration-content">
-        <div className="registration-header">
-          <button className="back-button" onClick={() => navigate('/admin/dashboard')}>
-            <ArrowLeft size={20} />
-            Volver al Panel
-          </button>
-          
-          <div className="header-info">
-            <div className="institutional-logo">
-              <Building size={32} />
-              <div className="logo-badge">
-                <Shield size={16} />
+          <div className="ur-section">
+            <div className="ur-section-head">
+              <Briefcase size={18} />
+              <span>Rol y oficina</span>
+            </div>
+            <div className="ur-grid">
+              <div className="ur-field">
+                <label htmlFor="fk_role">Rol del usuario</label>
+                <select id="fk_role" name="fk_role" value={formData.fk_role} onChange={handleChange} onBlur={handleBlur}>
+                  <option value="">Seleccionar rol</option>
+                  {ROLES.map(r => (
+                    <option key={r.ID_Role} value={r.ID_Role}>{r.Role} — {r.Description}</option>
+                  ))}
+                </select>
+                {touched.has('fk_role') && errors.fk_role && (
+                  <span className="ur-err"><AlertCircle size={12} />{errors.fk_role}</span>
+                )}
               </div>
-            </div>
-            <div className="header-text">
-              <h1 className="page-title">Registro de Usuario</h1>
-              <p className="page-description">Alcaldía Municipal de San Cristóbal</p>
-            </div>
-          </div>
-          
-          {/* Progress Steps */}
-          <div className="progress-steps">
-            {[1, 2, 3, 4].map((step) => (
-              <div 
-                key={step} 
-                className={`progress-step ${currentStep >= step ? 'completed' : ''} ${currentStep === step ? 'active' : ''}`}
-              >
-                <div className="step-dot">{step}</div>
-                <span className="step-label">
-                  {step === 1 && 'Datos'}
-                  {step === 2 && 'Contacto'}
-                  {step === 3 && 'Seguridad'}
-                  {step === 4 && 'Rol'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="registration-form-container">
-          {showSuccess && (
-            <div className="success-message">
-              <CheckCircle2 size={20} />
-              Usuario creado exitosamente
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="registration-form">
-            {renderStepContent()}
-            
-            {/* Navigation Buttons */}
-            <div className="form-navigation">
-              {currentStep > 1 && (
-                <button
-                  type="button"
-                  onClick={prevStep}
-                  className="nav-btn secondary"
-                  disabled={loading}
-                >
-                  Anterior
-                </button>
-              )}
-              
-              {currentStep < 4 ? (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="nav-btn primary"
-                  disabled={!validateStep(currentStep)}
-                >
-                  Siguiente
-                </button>
-              ) : (
-                <button
-                  type="submit"
-                  className="nav-btn primary submit-btn"
-                  disabled={loading || !isFormValid}
-                >
-                  {loading ? (
-                    <>
-                      <div className="loading-spinner"></div>
-                      Creando usuario...
-                    </>
+              {formData.fk_role && (
+                <div className={`ur-field${isAdmin ? ' ur-field--dim' : ''}`}>
+                  <label htmlFor="fk_office_search">
+                    <MapPin size={14} />
+                    Oficina
+                  </label>
+                  {isAdmin ? (
+                    <div className="ur-office-dim">
+                      <Shield size={16} />
+                      <span>Los administradores no requieren oficina</span>
+                    </div>
                   ) : (
-                    <>
-                      <Sparkles size={16} />
-                      Crear Usuario
-                    </>
+                    <div className="ur-office-search">
+                      <div className="ur-office-input">
+                        <Search size={14} className="ur-office-icon" />
+                        <input
+                          id="fk_office_search"
+                          type="text"
+                          value={officeSearch}
+                          onChange={e => { setOfficeSearch(e.target.value); setShowOfficeDropdown(true); }}
+                          onFocus={() => setShowOfficeDropdown(true)}
+                          placeholder="Buscar oficina..."
+                          autoComplete="off"
+                        />
+                        {selectedOffice && (
+                          <button type="button" className="ur-office-clear" onClick={() => { setFormData(p => ({ ...p, fk_office: '' })); setOfficeSearch(''); setShowOfficeDropdown(false); }} tabIndex={-1}>
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+                      {showOfficeDropdown && (
+                        <div className="ur-office-dropdown">
+                          {officesLoading ? (
+                            <div className="ur-office-empty">Cargando...</div>
+                          ) : filteredOffices.length > 0 ? (
+                            filteredOffices.map(o => (
+                              <div key={o.ID_Office} className="ur-office-opt" onClick={() => handleOfficeSelect(o)}>
+                                <span className="ur-office-name">{o.Name_Office}</span>
+                                <span className="ur-office-type">{o.Office_Type}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="ur-office-empty">Sin resultados</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
-                </button>
+                  {touched.has('fk_office') && errors.fk_office && (
+                    <span className="ur-err"><AlertCircle size={12} />{errors.fk_office}</span>
+                  )}
+                </div>
               )}
             </div>
-          </form>
-        </div>
+
+            {selectedRole && (
+              <div className={`ur-role-badge ${isAdmin ? 'admin' : 'boss'}`}>
+                {isAdmin ? <Crown size={14} /> : <User size={14} />}
+                {selectedRole.Role}
+              </div>
+            )}
+          </div>
+
+          <div className="ur-actions">
+            <button type="submit" className="ur-submit" disabled={loading || !isValid}>
+              {loading ? (
+                <><Loader2 size={18} className="ur-spin" /> Creando...</>
+              ) : (
+                <><UserPlus size={18} /> Crear usuario</>
+              )}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

@@ -172,6 +172,18 @@ switch ($path) {
         require_once __DIR__ . '/../src/controllers/EscalationController.php';
         break;
 
+    case '/api/reports':
+    case '/api/reports/':
+        $user = $authMiddleware->requireAuth();
+        $authMiddleware->setUserContext($user);
+        require_once __DIR__ . '/../src/config/database.php';
+        require_once __DIR__ . '/../src/controllers/ReportController.php';
+        $database = new Database();
+        $db = $database->getConnection();
+        $controller = new ReportController($db, (int)($_SERVER['AUTH_USER_ID'] ?? 0), $_SERVER['AUTH_USER_ROLE'] ?? null);
+        $controller->handleRequest();
+        break;
+
     case '/api/audit':
     case '/api/audit/':
         if ($_SERVER['AUTH_USER_ROLE'] !== 'Auditor') {

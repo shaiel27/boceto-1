@@ -1,70 +1,63 @@
 export const Colors = {
-  // Primary — Institutional Blue (Logo, Nav, Headers)
   primary: '#1a365d',
   primaryLight: '#2a4a7f',
   primaryDark: '#0f2340',
 
-  // Emphasis — Coral Red (Alerts, Shield, Priority High)
   coral: '#e84d4d',
   coralLight: '#fce8e8',
   coralDark: '#c62828',
 
-  // Accent — Gold (Institutional seal, highlights)
   gold: '#c9a227',
   goldLight: '#e8d48b',
 
-  // Backgrounds — Soft Mint / Beige
-  background: '#f2f5f2',
+  background: '#f1f5f9',
   surface: '#ffffff',
   card: '#ffffff',
 
-  // Text
-  text: '#1a1a2e',
-  textSecondary: '#5a6a7a',
-  textLight: '#9aabba',
+  text: '#1e293b',
+  textSecondary: '#64748b',
+  textLight: '#94a3b8',
   textOnPrimary: '#ffffff',
 
-  // Status
-  statusPendiente: '#c9a227',
-  statusPendienteBg: '#fef7e0',
-  statusEnProceso: '#2a4a7f',
-  statusEnProcesoBg: '#e8edf5',
-  statusResuelto: '#2e7d5e',
-  statusResueltoBg: '#e8f5f0',
+  statusPendiente: '#f59e0b',
+  statusPendienteBg: '#fef3c7',
+  statusEnProceso: '#3b82f6',
+  statusEnProcesoBg: '#dbeafe',
+  statusResuelto: '#10b981',
+  statusResueltoBg: '#dcfce7',
 
-  // Priority
-  priorityAlta: '#e84d4d',
-  priorityAltaBg: '#fce8e8',
-  priorityMedia: '#c9a227',
-  priorityMediaBg: '#fef7e0',
-  priorityBaja: '#6b7a8a',
-  priorityBajaBg: '#f0f2f4',
+  priorityAlta: '#ef4444',
+  priorityAltaBg: '#fee2e2',
+  priorityMedia: '#f59e0b',
+  priorityMediaBg: '#fef3c7',
+  priorityBaja: '#6b7280',
+  priorityBajaBg: '#f3f4f6',
 
-  // Borders & Dividers
-  border: '#e0e4e8',
-  divider: '#eef0f2',
+  institutionGold: '#c9a961',
+  navyPrimary: '#1e3a8a',
 
-  // Disabled
-  disabled: '#c0c8d0',
-  disabledText: '#9aabba',
+  badgeHighBg: '#fee2e2', badgeHighText: '#991b1b',
+  badgeMedBg: '#fef3c7', badgeMedText: '#92400e',
+  badgeLowBg: '#dcfce7', badgeLowText: '#166534',
+  badgeBlueBg: '#dbeafe', badgeBlueText: '#1e40af',
 
-  // Overlays & Depth
-  overlay: 'rgba(0, 0, 0, 0.4)',
-  shadow: 'rgba(0, 0, 0, 0.06)',
-  shadowStrong: 'rgba(0, 0, 0, 0.12)',
-  shimmer: '#e8ecef',
+  border: '#e2e8f0',
+  divider: '#f1f5f9',
 
-  // Gradients (as solid pairs for React Native)
-  gradientPrimary: ['#1a365d', '#2a4a7f'],
-  gradientCoral: ['#e84d4d', '#ff6b6b'],
-  gradientGold: ['#c9a227', '#dfb83e'],
+  disabled: '#cbd5e1',
+  disabledText: '#94a3b8',
+
+  overlay: 'rgba(0,0,0,0.4)',
+  shadow: 'rgba(0,0,0,0.04)',
+  shadowStrong: 'rgba(0,0,0,0.1)',
+  shimmer: '#e2e8f0',
 };
 
 export const BorderRadius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  sm: 6,
+  md: 10,
+  lg: 14,
+  xl: 18,
   full: 9999,
 };
 

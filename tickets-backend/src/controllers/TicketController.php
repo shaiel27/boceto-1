@@ -191,8 +191,13 @@ switch ($method) {
                 // Attach files to each comment
                 $allAttachments = $attachment->getByTicket($ticketId);
                 $attachmentsByComment = [];
+                $ticketAttachments = [];
                 foreach ($allAttachments as $att) {
-                    $attachmentsByComment[$att['Fk_Comment']][] = $att;
+                    if ($att['Fk_Comment'] === null) {
+                        $ticketAttachments[] = $att;
+                    } else {
+                        $attachmentsByComment[$att['Fk_Comment']][] = $att;
+                    }
                 }
                 foreach ($comments as &$cmt) {
                     $cmtId = $cmt['ID_Comment'];
@@ -205,7 +210,8 @@ switch ($method) {
                 echo json_encode([
                     'success' => true,
                     'data' => $comments,
-                    'count' => count($comments)
+                    'count' => count($comments),
+                    'ticket_attachments' => $ticketAttachments
                 ]);
                 break;
                 
@@ -564,6 +570,24 @@ switch ($method) {
                     $ticket->updateStatus($ticketId, 'En Proceso');
                 }
 
+                // Notify the assigned technician
+                try {
+                    $techUserData = $technician->getById($technicianId);
+                    if ($techUserData && isset($techUserData['Fk_Users'])) {
+                        $notificationService->createTechnicianAssignedNotification(
+                            technicianUserId: (int)$techUserData['Fk_Users'],
+                            ticketId: $ticketId,
+                            ticketCode: $ticketData['Ticket_Code'] ?? '',
+                            subject: $ticketData['Subject'] ?? '',
+                            officeName: $ticketData['office_name'] ?? '',
+                            serviceName: $ticketData['service_name'] ?? '',
+                            priority: $ticketData['System_Priority'] ?? 'Media'
+                        );
+                    }
+                } catch (\Exception $e) {
+                    error_log("Error notifying technician: " . $e->getMessage());
+                }
+
                 $techName = $ticketData ? ($ticketData['Full_Name'] ?? 'Técnico #' . $technicianId) : ('Técnico #' . $technicianId);
                 $auditService->logAssignment($ticketId, $technicianId, $techName, $currentUserId, 'manual');
                 $timeline->create($ticketId, (int) $currentUserId, "Técnico {$techName} asignado", null, 'En Proceso');
@@ -636,6 +660,26 @@ switch ($method) {
                     $ticket->updateStatus($data->ticket_id, 'En Proceso');
                 }
                 $timeline->create((int) $data->ticket_id, (int) $currentUserId, "{$assignedCount} técnico(s) asignado(s): " . implode(', ', $assignedTechNames), null, 'En Proceso');
+
+                // Notify assigned technicians
+                try {
+                    foreach ($data->technician_ids as $techId) {
+                        $techUserData = $technician->getById((int)$techId);
+                        if ($techUserData && isset($techUserData['Fk_Users'])) {
+                            $notificationService->createTechnicianAssignedNotification(
+                                technicianUserId: (int)$techUserData['Fk_Users'],
+                                ticketId: (int)$data->ticket_id,
+                                ticketCode: $ticketData['Ticket_Code'] ?? '',
+                                subject: $ticketData['Subject'] ?? '',
+                                officeName: $ticketData['office_name'] ?? '',
+                                serviceName: $ticketData['service_name'] ?? '',
+                                priority: $ticketData['System_Priority'] ?? 'Media'
+                            );
+                        }
+                    }
+                } catch (\Exception $e) {
+                    error_log("Error notifying technicians: " . $e->getMessage());
+                }
             }
 
             error_log("Assignment complete: {$assignedCount} assigned, " . count($failedAssignments) . " failed");
@@ -921,6 +965,112 @@ switch ($method) {
                     ]);
                 }
             }
+            break;
+        }
+
+        // Action: upload files to ticket
+        if ($action === 'upload-files') {
+            if (!$currentUserId) {
+                http_response_code(401);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No autenticado'
+                ]);
+                break;
+            }
+
+            $ticketId = isset($data->ticket_id) ? (int)$data->ticket_id : (isset($data->ticketId) ? (int)$data->ticketId : 0);
+
+            if ($ticketId <= 0) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Falta ticket_id'
+                ]);
+                break;
+            }
+
+            $uploadDir = __DIR__ . '/../../public/uploads/tickets/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+
+            $allowedTypes = [
+                'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'application/vnd.ms-excel',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'text/plain', 'text/csv',
+                'application/zip', 'application/x-rar-compressed'
+            ];
+
+            $uploadedFiles = [];
+
+            if (!$isMultipart || empty($_FILES['files'])) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No se recibieron archivos'
+                ]);
+                break;
+            }
+
+            $files = $_FILES['files'];
+            $fileCount = is_array($files['name']) ? count($files['name']) : 1;
+
+            for ($i = 0; $i < $fileCount; $i++) {
+                $fileName = is_array($files['name']) ? $files['name'][$i] : $files['name'];
+                $fileTmpName = is_array($files['tmp_name']) ? $files['tmp_name'][$i] : $files['tmp_name'];
+                $fileSize = is_array($files['size']) ? (int)$files['size'][$i] : (int)$files['size'];
+                $fileType = is_array($files['type']) ? $files['type'][$i] : $files['type'];
+                $fileError = is_array($files['error']) ? $files['error'][$i] : $files['error'];
+
+                if ($fileError !== UPLOAD_ERR_OK) {
+                    continue;
+                }
+
+                $maxSize = 10 * 1024 * 1024;
+                if ($fileSize > $maxSize) {
+                    continue;
+                }
+
+                $ext = pathinfo($fileName, PATHINFO_EXTENSION);
+                $safeName = uniqid('tkt_', true) . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                $destPath = $uploadDir . $safeName;
+
+                if (move_uploaded_file($fileTmpName, $destPath)) {
+                    $attachment->Fk_Service_Request = $ticketId;
+                    $attachment->Fk_Comment = null;
+                    $attachment->Fk_User = (int)$currentUserId;
+                    $attachment->File_Name = $fileName;
+                    $attachment->File_Path = 'uploads/tickets/' . $safeName;
+                    $attachment->File_Type = $fileType;
+                    $attachment->File_Size = $fileSize;
+
+                    if ($attachment->create()) {
+                        $uploadedFiles[] = [
+                            'ID_Attachment' => $attachment->ID_Attachment,
+                            'File_Name' => $fileName,
+                            'File_Path' => 'uploads/tickets/' . $safeName,
+                            'File_Type' => $fileType,
+                            'File_Size' => $fileSize
+                        ];
+                    }
+                }
+            }
+
+            $auditService->logTicketAction('upload_files', $ticketId, count($uploadedFiles) . ' archivos adjuntados al ticket #' . $ticketId);
+
+            echo json_encode([
+                'success' => true,
+                'message' => count($uploadedFiles) . ' archivo(s) subido(s) exitosamente',
+                'data' => [
+                    'ticket_id' => $ticketId,
+                    'files' => $uploadedFiles
+                ]
+            ]);
             break;
         }
 

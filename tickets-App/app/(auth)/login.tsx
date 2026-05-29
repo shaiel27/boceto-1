@@ -33,9 +33,7 @@ export default function LoginScreen() {
 
     try {
       await login(email.trim(), password);
-      // app/index.tsx handles redirect when isAuthenticated changes
     } catch {
-      // handled by AuthContext
     }
   }
 
@@ -48,7 +46,6 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Brand section */}
         <View style={styles.brandSection}>
           <View style={styles.shieldCircle}>
             <Ionicons name="shield-checkmark" size={44} color={Colors.coral} />
@@ -57,7 +54,6 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Alcaldía de San Cristóbal</Text>
         </View>
 
-        {/* Form section */}
         <View style={styles.formSection}>
           <Text style={styles.formTitle}>Iniciar Sesión</Text>
 
@@ -98,15 +94,6 @@ export default function LoginScreen() {
             loading={isLoading}
             style={styles.loginButton}
           />
-
-          <View style={styles.divider} />
-
-          <View style={styles.helpSection}>
-            <Ionicons name="information-circle-outline" size={16} color={Colors.textLight} />
-            <Text style={styles.helperText}>
-              Demo: tech1@alcaldia.gob / password123
-            </Text>
-          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -184,20 +171,5 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: 4,
     height: 52,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: Colors.divider,
-    marginVertical: 20,
-  },
-  helpSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  helperText: {
-    fontSize: 12,
-    color: Colors.textLight,
   },
 });

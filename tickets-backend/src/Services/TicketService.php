@@ -116,8 +116,25 @@ final class TicketService
             $priority = $dto->systemPriority ?? 'Media';
             $technicianName = $assignedTechnician['name'] ?? null;
 
-            // Notify the requester
+            // Notify the assigned technician (for auto-assign)
             if ($assignedTechnician !== null) {
+                try {
+                    $techData = $this->technicianModel->getById($assignedTechnician['id']);
+                    if ($techData && isset($techData['Fk_Users'])) {
+                        $this->notificationService->createTechnicianAssignedNotification(
+                            technicianUserId: (int)$techData['Fk_Users'],
+                            ticketId: $ticketId,
+                            ticketCode: $dto->ticketCode ?? '',
+                            subject: $dto->subject ?? '',
+                            officeName: $officeName,
+                            serviceName: $serviceName,
+                            priority: $priority
+                        );
+                    }
+                } catch (\Exception $e) {
+                    error_log("Error notifying auto-assigned technician: " . $e->getMessage());
+                }
+
                 $this->notificationService->createTicketAssignmentNotification(
                     requesterId: $requesterId,
                     ticketId: $ticketId,

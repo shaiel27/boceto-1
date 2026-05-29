@@ -120,6 +120,7 @@ const TechnicianDashboard: React.FC = () => {
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [comments, setComments] = useState<any[]>([]);
+  const [ticketAttachments, setTicketAttachments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -350,6 +351,7 @@ const TechnicianDashboard: React.FC = () => {
       const response = await ApiService.getTicketComments(parseInt(ticketId));
       if (response.success && response.data) {
         setComments(response.data);
+        setTicketAttachments(response.ticket_attachments || []);
       } else {
         showToast('error', response.message || 'Error al cargar comentarios');
       }
@@ -807,6 +809,35 @@ const TechnicianDashboard: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {ticketAttachments.length > 0 && (
+                <div className="tech-detail-section">
+                  <h3>Archivos adjuntos ({ticketAttachments.length})</h3>
+                  <div className="dd-comment-attachments">
+                    {ticketAttachments.map((att: any) => {
+                      const isImage = att.File_Type?.startsWith('image/');
+                      return isImage ? (
+                        <div key={att.ID_Attachment} className="att-item">
+                          <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={`${API_BASE_URL}/${att.File_Path}`}
+                              alt={att.File_Name}
+                              className="att-thumb"
+                            />
+                          </a>
+                        </div>
+                      ) : (
+                        <div key={att.ID_Attachment} className="att-item att-file">
+                          <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                            <FileText size={14} />
+                            <span className="att-name">{att.File_Name}</span>
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div className="tech-detail-comments">
                 <h3><MessageSquare size={14} /> Comentarios ({comments.length})</h3>

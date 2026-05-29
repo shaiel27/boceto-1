@@ -1,7 +1,7 @@
 import React, { createContext, useReducer, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { User, UserRole } from '../types/user';
-import { mockLogin, mockGetMe } from '../mocks/auth';
+import { User } from '../types/user';
+import { loginUser, getMe } from '../services/authService';
 
 interface AuthState {
   user: User | null;
@@ -87,8 +87,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await AsyncStorage.getItem('auth_user');
 
         if (token && userData) {
-          const user = JSON.parse(userData) as User;
-          dispatch({ type: 'RESTORE_TOKEN', payload: { user, token } });
+          const result = await getMe();
+
+          if (result.success && result.user) {
+            await AsyncStorage.setItem('auth_user', JSON.stringify(result.user));
+            dispatch({ type: 'RESTORE_TOKEN', payload: { user: result.user, token } });
+          } else {
+            await AsyncStorage.removeItem('auth_token');
+            await AsyncStorage.removeItem('auth_user');
+            dispatch({ type: 'LOGOUT' });
+          }
         } else {
           dispatch({ type: 'LOGOUT' });
         }
@@ -101,16 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     dispatch({ type: 'LOGIN_START' });
-    try {
-      const response = await mockLogin(email, password);
-      if (response.success) {
-        const { token, user } = response.data;
-        await AsyncStorage.setItem('auth_token', token);
-        await AsyncStorage.setItem('auth_user', JSON.stringify(user));
-        dispatch({ type: 'LOGIN_SUCCESS', payload: { user, token } });
-      }
-    } catch (err: any) {
-      const message = err?.message || 'Error al iniciar sesión';
+    const result = await loginUser(email, password);
+
+    if (result.success && result.token && result.user) {
+      await AsyncStorage.setItem('auth_token', result.token);
+      await AsyncStorage.setItem('auth_user', JSON.stringify(result.user));
+      dispatch({ type: 'LOGIN_SUCCESS', payload: { user: result.user, token: result.token } });
+    } else {
+      const message = result.message || 'Error al iniciar sesión';
       dispatch({ type: 'LOGIN_FAILURE', payload: message });
       throw new Error(message);
     }

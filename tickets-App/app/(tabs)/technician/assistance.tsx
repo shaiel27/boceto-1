@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
+import { requestAssistance } from '../../../src/services/ticketService';
 import { Button } from '../../../src/components/ui/Button';
 import { Card } from '../../../src/components/ui/Card';
 import { useToast } from '../../../src/contexts/ToastContext';
@@ -28,19 +29,34 @@ export default function AssistanceScreen() {
   const toast = useToast();
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [details, setDetails] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedReason) {
       toast.showToast({ title: 'Selecciona un motivo', message: 'Debes elegir un motivo para solicitar asistencia.', type: 'error' });
       return;
     }
-    const reasonLabel = REASONS.find((r) => r.key === selectedReason)?.label;
-    toast.showToast({
-      title: 'Asistencia solicitada',
-      message: `Motivo: ${reasonLabel}${details ? '. ' + details : ''}`,
-      type: 'warning',
-    });
-    router.back();
+
+    const reasonLabel = REASONS.find((r) => r.key === selectedReason)?.label || selectedReason;
+    setIsSubmitting(true);
+
+    const result = await requestAssistance(Number(id), reasonLabel, details);
+    setIsSubmitting(false);
+
+    if (result.success) {
+      toast.showToast({
+        title: 'Asistencia solicitada',
+        message: `Motivo: ${reasonLabel}${details ? '. ' + details : ''}`,
+        type: 'warning',
+      });
+      router.back();
+    } else {
+      toast.showToast({
+        title: 'Error',
+        message: result.message || 'No se pudo enviar la solicitud',
+        type: 'error',
+      });
+    }
   };
 
   return (
@@ -106,7 +122,8 @@ export default function AssistanceScreen() {
           title="Enviar Solicitud"
           onPress={handleSubmit}
           variant="primary"
-          disabled={!selectedReason}
+          disabled={!selectedReason || isSubmitting}
+          loading={isSubmitting}
           style={styles.actionBtn}
         />
       </View>

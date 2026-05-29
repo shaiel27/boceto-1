@@ -1125,6 +1125,12 @@ final class Technician
                     $updateStmt->execute();
 
                     error_log("Technician {$technicianId} released from ticket {$ticketId} and restored to Disponible");
+
+                    try {
+                        $this->assignPendingTickets();
+                    } catch (\Exception $e) {
+                        error_log("Error assigning pending tickets after release: " . $e->getMessage());
+                    }
                 } else {
                     error_log("Technician {$technicianId} released from ticket {$ticketId} but still has {$activeTickets} active tickets");
                 }
@@ -1166,6 +1172,12 @@ final class Technician
                     $updateStmt = $this->conn->prepare($updateQuery);
                     $updateStmt->bindParam(":technicianId", $technicianId);
                     $updateStmt->execute();
+
+                    try {
+                        $this->assignPendingTickets();
+                    } catch (\Exception $e) {
+                        error_log("Error assigning pending tickets after unassign: " . $e->getMessage());
+                    }
                 }
 
                 return true;
@@ -1439,6 +1451,12 @@ final class Technician
                 }
             }
 
+            try {
+                $this->assignPendingTickets();
+            } catch (\Exception $e) {
+                error_log("Error assigning pending tickets after close: " . $e->getMessage());
+            }
+
             error_log("Ticket {$ticketId} closed successfully with " . count($assignedTechnicians) . " technicians released");
             return true;
 
@@ -1532,7 +1550,6 @@ final class Technician
     public function getTechnicianPerformanceMetrics(?string $startDate = null, ?string $endDate = null): array
     {
         try {
-            // Build date filter conditions
             $dateCondition = "";
             $params = [];
             
@@ -1569,7 +1586,6 @@ final class Technician
 
             $stmt = $this->conn->prepare($query);
             
-            // Bind parameters if they exist
             foreach ($params as $key => $value) {
                 $stmt->bindValue($key, $value);
             }
@@ -1577,7 +1593,6 @@ final class Technician
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Group results by service type
             $groupedResults = [];
             foreach ($results as $row) {
                 $serviceType = $row['service_type'];
@@ -1595,7 +1610,7 @@ final class Technician
                 ];
             }
 
-            error_log("getTechnicianPerformanceMetrics: Retrieved " . count($groupedResults) . " service groups with " . array_sum(array_map('count', $groupedResults)) . " total technicians");
+            error_log("getTechnicianPerformanceMetrics: Retrieved " . count($groupedResults) . " service groups");
             return $groupedResults;
 
         } catch (PDOException $e) {
@@ -1604,6 +1619,70 @@ final class Technician
         } catch (Exception $e) {
             error_log("Exception in getTechnicianPerformanceMetrics: " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Look up technician ID by user ID
+     */
+    public function getTechIdByUserId(int $userId): ?int
+    {
+        $query = "SELECT ID_Technicians FROM " . $this->table_name . " WHERE Fk_Users = :uid LIMIT 1";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(':uid', $userId, PDO::PARAM_INT);
+        $stmt->execute();
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ? (int)$row['ID_Technicians'] : null;
+    }
+
+    /**
+     * Get performance metrics for the currently authenticated technician
+     * Returns resolved tickets today, this week, this month, and average resolution time
+     */
+    public function getMyPerformanceMetrics(int $technicianId): array
+    {
+        try {
+            $query = "SELECT 
+                        COUNT(CASE WHEN sr.Status = 'Cerrado' AND DATE(sr.Resolved_at) = CURDATE() THEN 1 END) as resolved_today,
+                        COUNT(CASE WHEN sr.Status = 'Cerrado' AND sr.Resolved_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as resolved_week,
+                        COUNT(CASE WHEN sr.Status = 'Cerrado' AND sr.Resolved_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as resolved_month,
+                        ROUND(AVG(CASE WHEN sr.Status = 'Cerrado' AND sr.Resolved_at IS NOT NULL 
+                            THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) END), 1) as avg_resolution_hours
+                      FROM Ticket_Technicians tt
+                      INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                      WHERE tt.Fk_Technician = :techId";
+
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':techId', $technicianId, PDO::PARAM_INT);
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$row) {
+                return [
+                    'resolved_today' => 0,
+                    'resolved_week' => 0,
+                    'resolved_month' => 0,
+                    'avg_resolution_time' => '--',
+                ];
+            }
+
+            $avg = $row['avg_resolution_hours'];
+            $avgDisplay = ($avg !== null) ? round((float)$avg, 1) . 'h' : '--';
+
+            return [
+                'resolved_today' => (int)($row['resolved_today'] ?? 0),
+                'resolved_week' => (int)($row['resolved_week'] ?? 0),
+                'resolved_month' => (int)($row['resolved_month'] ?? 0),
+                'avg_resolution_time' => $avgDisplay,
+            ];
+        } catch (PDOException $e) {
+            error_log("PDOException in getMyPerformanceMetrics: " . $e->getMessage());
+            return [
+                'resolved_today' => 0,
+                'resolved_week' => 0,
+                'resolved_month' => 0,
+                'avg_resolution_time' => '--',
+            ];
         }
     }
 }

@@ -24,7 +24,13 @@
       "edgeToEdgeEnabled": true
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#1a365d"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

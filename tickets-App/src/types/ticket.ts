@@ -30,16 +30,27 @@ export interface Ticket {
   has_attachments: boolean;
 }
 
+export interface TicketAttachment {
+  id: number;
+  fk_service_request: number;
+  fk_comment: number | null;
+  fk_user: number;
+  file_name: string;
+  file_path: string;
+  file_type: string;
+  file_size: number;
+  uploaded_at: string;
+}
+
 export interface TicketComment {
   id: number;
   fk_service_request: number;
   fk_user: number;
   comment: string;
   created_at: string;
-  // joined
   user_name: string;
   user_role: string;
-  attachments: string[];
+  attachments: TicketAttachment[];
 }
 
 export interface TimelineEvent {

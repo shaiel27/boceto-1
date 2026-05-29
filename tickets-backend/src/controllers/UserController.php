@@ -69,22 +69,15 @@ switch ($method) {
                 'count' => count($technicians)
             ]);
         } elseif ($action === 'technicians-by-service') {
-            // Get technicians filtered by service ID and availability
-            if (!isset($_GET['service_id'])) {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'service_id es requerido'
-                ]);
-                break;
-            }
-            
-            $serviceId = (int)$_GET['service_id'];
-            error_log("=== technicians-by-service endpoint called ===");
-            error_log("Service ID: {$serviceId}");
+            $serviceId = isset($_GET['service_id']) ? (int)$_GET['service_id'] : 0;
             
             $technicianModel = new Technician($db);
-            $technicians = $technicianModel->getAllTechniciansByService($serviceId);
+            
+            if ($serviceId > 0) {
+                $technicians = $technicianModel->getAllTechniciansByService($serviceId);
+            } else {
+                $technicians = $technicianModel->getAll();
+            }
             
             error_log("Found " . count($technicians) . " technicians for service {$serviceId}");
             

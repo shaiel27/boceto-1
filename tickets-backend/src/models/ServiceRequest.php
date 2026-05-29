@@ -168,15 +168,17 @@ class ServiceRequest {
      */
     public function updateStatus(int $id, string $status, ?int $assigned_to = null): bool
     {
-        $allowedStatuses = ['Pendiente', 'En Proceso', 'Cerrado'];
+        $allowedStatuses = ['Pendiente', 'En Proceso', 'Cerrado', 'Resuelto'];
         if (!in_array($status, $allowedStatuses, true)) {
             error_log("Invalid status: {$status}");
             return false;
         }
         
+        $isClosed = $status === 'Cerrado' || $status === 'Resuelto';
+        
         $query = "UPDATE " . $this->table_name . " SET Status = :Status";
         
-        if ($status === 'Cerrado') {
+        if ($isClosed) {
             $query .= ", Resolved_at = NOW()";
         }
         
@@ -190,8 +192,8 @@ class ServiceRequest {
             $result = $stmt->execute();
             error_log("Update status result: " . ($result ? 'success' : 'failed') . " for ticket {$id} to {$status}");
             
-            // If ticket is closed, release technicians
-            if ($result && $status === 'Cerrado') {
+            // If ticket is closed/resolved, release technicians
+            if ($result && $isClosed) {
                 require_once __DIR__ . '/Technician.php';
                 $technician = new Technician($this->conn);
                 
@@ -310,24 +312,28 @@ class ServiceRequest {
     }
 
     public function getByTechnician($technicianId, $limit = 50, $offset = 0) {
-        $query = "SELECT sr.*,
+        $query = "SELECT DISTINCT sr.ID_Service_Request,
+                         sr.Ticket_Code, sr.Fk_Office, sr.Fk_User_Requester,
+                         sr.Fk_TI_Service, sr.Fk_Problem_Catalog,
+                         sr.Fk_Boss_Requester, sr.Fk_Software_System,
+                         sr.Subject, sr.Property_Number, sr.Description,
+                         sr.System_Priority, sr.Resolution_Notes,
+                         sr.Status, sr.Created_at, sr.Resolved_at,
                          u.Full_Name as user_name,
                          o.Name_Office as office_name,
                          o.Office_Type as office_type,
                          ts.Type_Service as service_type_name,
-                         b.Name_Boss as boss_name,
-                         tt.Is_Lead as is_lead,
-                         tt.Status as assignment_status
-                  FROM " . $this->table_name . " sr
-                  LEFT JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
-                  LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
-                  LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
-                  LEFT JOIN Boss b ON sr.Fk_Boss_Requester = b.ID_Boss
-                  INNER JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request
-                  WHERE tt.Fk_Technician = :technicianId
-                    AND tt.Status IN ('Activo', 'Finalizado')
-                  ORDER BY sr.Created_at DESC
-                  LIMIT :limit OFFSET :offset";
+                         b.Name_Boss as boss_name
+                   FROM " . $this->table_name . " sr
+                   LEFT JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
+                   LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
+                   LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
+                   LEFT JOIN Boss b ON sr.Fk_Boss_Requester = b.ID_Boss
+                   INNER JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request
+                   WHERE tt.Fk_Technician = :technicianId
+                     AND tt.Status IN ('Activo', 'Finalizado')
+                   ORDER BY sr.Created_at DESC
+                   LIMIT :limit OFFSET :offset";
 
         $stmt = $this->conn->prepare($query);
         $stmt->bindParam(":technicianId", $technicianId);

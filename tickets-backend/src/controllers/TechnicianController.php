@@ -74,6 +74,15 @@ try {
                     'success' => true,
                     'data' => $performanceData
                 ]);
+            } elseif ($action === 'my-performance') {
+                $techId = $technician->getTechIdByUserId((int)$currentUserId);
+                if (!$techId) {
+                    http_response_code(404);
+                    echo json_encode(['success' => false, 'message' => 'Perfil de técnico no encontrado']);
+                    break;
+                }
+                $myPerf = $technician->getMyPerformanceMetrics($techId);
+                echo json_encode(['success' => true, 'data' => $myPerf]);
             } else {
                 // Get all technicians
                 $technicians = $technician->getAll();
@@ -210,24 +219,52 @@ try {
 
         $userId = $techData['Fk_Users'];
 
-        // Update user (email and password if provided)
+        // Update user only if email or name is provided
         require_once __DIR__ . '/../models/User.php';
         $user = new User($db);
         $userData = new stdClass();
-        $userData->Email = $data->email;
-        $userData->Full_Name = $data->first_name . ' ' . $data->last_name;
+        $hasUserData = false;
+        if (isset($data->email)) {
+            $userData->Email = $data->email;
+            $hasUserData = true;
+        }
+        if (isset($data->first_name) && isset($data->last_name)) {
+            $userData->Full_Name = $data->first_name . ' ' . $data->last_name;
+            $hasUserData = true;
+        }
         if (!empty($data->password)) {
             $userData->Password = $data->password;
+            $hasUserData = true;
         }
-        $user->update($userId, $userData);
+        if ($hasUserData) {
+            $user->update($userId, $userData);
+        }
 
         // Update technician data
         $techUpdateData = new stdClass();
-        $techUpdateData->First_Name = $data->first_name;
-        $techUpdateData->Last_Name = $data->last_name;
-        $techUpdateData->Fk_Lunch_Block = $data->lunch_block ? intval($data->lunch_block) : null;
+        if (isset($data->first_name)) {
+            $techUpdateData->First_Name = $data->first_name;
+        }
+        if (isset($data->last_name)) {
+            $techUpdateData->Last_Name = $data->last_name;
+        }
+        if (isset($data->lunch_block)) {
+            $techUpdateData->Fk_Lunch_Block = intval($data->lunch_block);
+        }
+        if (isset($data->status)) {
+            $techUpdateData->Status = $data->status;
+        }
 
         if ($technician->update($id, $techUpdateData)) {
+            // If admin set technician to Disponible, try to assign pending tickets
+            if (isset($data->status) && $data->status === 'Disponible') {
+                try {
+                    $technician->assignPendingTickets();
+                } catch (\Exception $e) {
+                    error_log("Error assigning pending tickets after status change: " . $e->getMessage());
+                }
+            }
+
             // Update services if provided
             if (isset($data->services) && is_array($data->services)) {
                 error_log("Services to update: " . json_encode($data->services));
@@ -256,7 +293,7 @@ try {
             $auditService->logUserAction(
                 'update_user',
                 (int)$userId,
-                "Técnico #{$id} actualizado: {$data->first_name} {$data->last_name}"
+                "Técnico #{$id} actualizado" . (isset($data->first_name) ? ": {$data->first_name} {$data->last_name}" : "")
             );
         } else {
             echo json_encode([

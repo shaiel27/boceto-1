@@ -1,0 +1,135 @@
+[28-May-2026 17:03:49 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:03:49 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:03:52 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:03:52 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:04:28 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:04:28 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:04:32 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:04:32 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:07:24 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:07:27 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:07:53 Europe/Berlin] JWT signature invalid
+[28-May-2026 17:09:02 Europe/Berlin] Authenticated user: {"iat":1779980942,"exp":1811516942,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:09:02 America/Caracas] Database connection established successfully
+[28-May-2026 17:09:02 Europe/Berlin] Authenticated user: {"iat":1779980942,"exp":1811516942,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:09:02 America/Caracas] Database connection established successfully
+[28-May-2026 17:14:00 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:14:00 America/Caracas] Database connection established successfully
+[28-May-2026 17:14:00 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:14:00 America/Caracas] Database connection established successfully
+[28-May-2026 17:15:17 Europe/Berlin] Authenticated user: {"iat":1779981316,"exp":1811517316,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:15:17 America/Caracas] Database connection established successfully
+[28-May-2026 17:17:54 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:17:54 America/Caracas] Database connection established successfully
+[28-May-2026 17:17:54 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:17:54 America/Caracas] Database connection established successfully
+[28-May-2026 17:17:55 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:17:55 America/Caracas] Database connection established successfully
+[28-May-2026 17:17:55 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:17:55 America/Caracas] Database connection established successfully
+[28-May-2026 17:18:08 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:18:08 America/Caracas] Database connection established successfully
+[28-May-2026 17:18:08 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:18:08 America/Caracas] Database connection established successfully
+[28-May-2026 17:18:16 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:18:16 America/Caracas] Database connection established successfully
+[28-May-2026 17:18:16 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:18:16 America/Caracas] Database connection established successfully
+[28-May-2026 17:18:27 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:18:27 America/Caracas] Database connection established successfully
+[28-May-2026 17:18:27 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:18:27 America/Caracas] Database connection established successfully
+[28-May-2026 17:22:36 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:22:36 America/Caracas] Database connection established successfully
+[28-May-2026 17:22:36 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:22:36 America/Caracas] Database connection established successfully
+[28-May-2026 17:28:14 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:28:14 America/Caracas] Database connection established successfully
+[28-May-2026 17:28:14 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:28:14 America/Caracas] Database connection established successfully
+[28-May-2026 17:28:36 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:28:36 America/Caracas] Database connection established successfully
+[28-May-2026 17:28:36 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:28:36 America/Caracas] Database connection established successfully
+[28-May-2026 17:37:32 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:37:32 America/Caracas] Database connection established successfully
+[28-May-2026 17:37:32 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:37:32 America/Caracas] Database connection established successfully
+[28-May-2026 17:38:20 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:38:20 America/Caracas] Database connection established successfully
+[28-May-2026 17:38:20 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:38:20 America/Caracas] Database connection established successfully
+[28-May-2026 17:45:38 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:45:38 America/Caracas] Database connection established successfully
+[28-May-2026 17:45:38 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:45:38 America/Caracas] Database connection established successfully
+[28-May-2026 17:47:53 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:47:53 America/Caracas] Database connection established successfully
+[28-May-2026 17:47:53 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:47:53 America/Caracas] Database connection established successfully
+[28-May-2026 17:48:14 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:48:14 America/Caracas] Database connection established successfully
+[28-May-2026 17:48:14 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:48:14 America/Caracas] Database connection established successfully
+[28-May-2026 17:48:33 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:48:33 America/Caracas] Database connection established successfully
+[28-May-2026 17:48:33 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:48:33 America/Caracas] Database connection established successfully
+[28-May-2026 17:49:02 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:49:02 America/Caracas] Database connection established successfully
+[28-May-2026 17:49:02 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:49:02 America/Caracas] Database connection established successfully
+[28-May-2026 17:49:38 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:49:38 America/Caracas] Database connection established successfully
+[28-May-2026 17:49:38 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:49:38 America/Caracas] Database connection established successfully
+[28-May-2026 17:50:06 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:50:06 America/Caracas] Database connection established successfully
+[28-May-2026 17:50:06 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:50:06 America/Caracas] Database connection established successfully
+[28-May-2026 17:50:20 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:50:20 America/Caracas] Database connection established successfully
+[28-May-2026 17:50:20 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 11:50:20 America/Caracas] Database connection established successfully
+[28-May-2026 19:31:05 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:31:05 America/Caracas] Database connection established successfully
+[28-May-2026 19:31:05 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:31:05 America/Caracas] Database connection established successfully
+[28-May-2026 19:36:28 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:36:28 America/Caracas] Database connection established successfully
+[28-May-2026 19:36:28 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:36:28 America/Caracas] Database connection established successfully
+[28-May-2026 19:39:56 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:39:56 America/Caracas] Database connection established successfully
+[28-May-2026 19:39:56 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:39:56 America/Caracas] Database connection established successfully
+[28-May-2026 19:40:09 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:40:09 America/Caracas] Database connection established successfully
+[28-May-2026 19:40:09 Europe/Berlin] Authenticated user: {"iat":1779980629,"exp":1811516629,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:40:09 America/Caracas] Database connection established successfully
+[28-May-2026 19:40:42 Europe/Berlin] Authenticated user: {"iat":1779990041,"exp":1811526041,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:40:42 America/Caracas] Database connection established successfully
+[28-May-2026 19:40:42 Europe/Berlin] Authenticated user: {"iat":1779990041,"exp":1811526041,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[28-May-2026 13:40:42 America/Caracas] Database connection established successfully
+[29-May-2026 15:01:27 Europe/Berlin] Authenticated user: {"iat":1780059686,"exp":1811595686,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 09:01:27 America/Caracas] Database connection established successfully
+[29-May-2026 16:40:59 Europe/Berlin] Authenticated user: {"iat":1779990041,"exp":1811526041,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 10:40:59 America/Caracas] Database connection established successfully
+[29-May-2026 16:40:59 Europe/Berlin] Authenticated user: {"iat":1779990041,"exp":1811526041,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 10:40:59 America/Caracas] Database connection established successfully
+[29-May-2026 17:33:45 Europe/Berlin] Authenticated user: {"iat":1780068824,"exp":1811604824,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 11:33:45 America/Caracas] Database connection established successfully
+[29-May-2026 17:33:45 Europe/Berlin] Authenticated user: {"iat":1780068824,"exp":1811604824,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 11:33:45 America/Caracas] Database connection established successfully
+[29-May-2026 17:39:19 Europe/Berlin] Authenticated user: {"iat":1780068824,"exp":1811604824,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 11:39:19 America/Caracas] Database connection established successfully
+[29-May-2026 17:39:19 Europe/Berlin] Authenticated user: {"iat":1780068824,"exp":1811604824,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 11:39:19 America/Caracas] Database connection established successfully
+[29-May-2026 17:39:30 Europe/Berlin] Authenticated user: {"iat":1780068824,"exp":1811604824,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 11:39:30 America/Caracas] Database connection established successfully
+[29-May-2026 17:39:30 Europe/Berlin] Authenticated user: {"iat":1780068824,"exp":1811604824,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 11:39:30 America/Caracas] Database connection established successfully
+[29-May-2026 17:43:06 Europe/Berlin] Authenticated user: {"iat":1780068824,"exp":1811604824,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 11:43:06 America/Caracas] Database connection established successfully
+[29-May-2026 17:43:06 Europe/Berlin] Authenticated user: {"iat":1780068824,"exp":1811604824,"sub":1,"email":"admin@alcaldia.gob","role_id":1,"role":"Admin"}
+[29-May-2026 11:43:06 America/Caracas] Database connection established successfully

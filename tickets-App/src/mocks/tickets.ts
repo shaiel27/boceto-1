@@ -99,7 +99,7 @@ export const MOCK_TICKETS: Ticket[] = [
         created_at: '2026-05-23T15:30:00',
         user_name: 'Carlos Técnico',
         user_role: 'Tecnico',
-        attachments: ['fuente_poder.jpg'],
+        attachments: [{ id: 1, fk_service_request: 2, fk_comment: 2, fk_user: 2, file_name: 'fuente_poder.jpg', file_path: '', file_type: 'image/jpeg', file_size: 204800, uploaded_at: '2026-05-23T15:30:00' }],
       },
     ],
     timeline: [
@@ -210,7 +210,7 @@ export const MOCK_TICKETS: Ticket[] = [
         created_at: '2026-05-24T07:45:00',
         user_name: 'Carlos Técnico',
         user_role: 'Tecnico',
-        attachments: ['rodillo.jpg'],
+        attachments: [{ id: 2, fk_service_request: 5, fk_comment: 4, fk_user: 2, file_name: 'rodillo.jpg', file_path: '', file_type: 'image/jpeg', file_size: 153600, uploaded_at: '2026-05-24T07:45:00' }],
       },
     ],
     timeline: [

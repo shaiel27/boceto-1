@@ -55,14 +55,18 @@ final class AdminDashboardController
                     THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) 
                     ELSE NULL END) as avg_resolution_hours,
                 COUNT(DISTINCT sr.Fk_Office) as active_offices,
-                COUNT(DISTINCT t.ID_Technicians) as active_technicians,
+                (
+                    SELECT COUNT(DISTINCT tt2.Fk_Technician)
+                    FROM Ticket_Technicians tt2
+                    INNER JOIN Service_Request sr2 ON tt2.Fk_Service_Request = sr2.ID_Service_Request
+                    WHERE sr2.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                      AND tt2.Status = 'Activo'
+                ) as active_technicians,
                 ROUND(
                     COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) * 100.0 / 
                     NULLIF(COUNT(*), 0), 1
                 ) as resolution_rate
             FROM Service_Request sr
-            LEFT JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request
-            LEFT JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
             WHERE sr.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         ";
 
@@ -162,14 +166,26 @@ final class AdminDashboardController
                 COUNT(DISTINCT sr.Fk_Office) as active_offices,
                 COUNT(DISTINCT CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN sr.Fk_Office END) as offices_this_week,
                 
-                -- Technician metrics
-                COUNT(DISTINCT t.ID_Technicians) as active_technicians,
-                COUNT(DISTINCT CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN t.ID_Technicians END) as technicians_this_week,
+                -- Technician metrics (subquery to avoid duplicate counting from joins)
+                (
+                    SELECT COUNT(DISTINCT tt2.Fk_Technician)
+                    FROM Ticket_Technicians tt2
+                    INNER JOIN Service_Request sr2 ON tt2.Fk_Service_Request = sr2.ID_Service_Request
+                    WHERE sr2.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                      AND tt2.Status = 'Activo'
+                ) as active_technicians,
+                (
+                    SELECT COUNT(DISTINCT tt3.Fk_Technician)
+                    FROM Ticket_Technicians tt3
+                    INNER JOIN Service_Request sr3 ON tt3.Fk_Service_Request = sr3.ID_Service_Request
+                    WHERE sr3.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                      AND tt3.Status = 'Activo'
+                ) as technicians_this_week,
                 
                 -- Service type metrics
                 COUNT(DISTINCT sr.Fk_TI_Service) as active_services,
                 
-                -- Trend metrics (comparisons with previous period)
+                -- Trend metrics
                 COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 END) as tickets_today,
                 COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as tickets_this_week,
                 COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as tickets_this_month,
@@ -187,8 +203,6 @@ final class AdminDashboardController
                 ) as critical_resolution_rate_percent
                 
             FROM Service_Request sr
-            LEFT JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request
-            LEFT JOIN Technicians t ON tt.Fk_Technician = t.ID_Technicians
             WHERE sr.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
         ";
 

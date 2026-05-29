@@ -273,6 +273,16 @@ const TicketForm: React.FC = () => {
       if (response.success) {
         setSubmitStatus('success');
 
+        const ticketId = response.data?.ticket_id;
+        let filesUploaded = 0;
+
+        if (ticketId && formData.attachments.length > 0) {
+          const uploadResponse = await ApiService.uploadTicketFiles(ticketId, formData.attachments);
+          if (uploadResponse.success) {
+            filesUploaded = uploadResponse.data?.files?.length || 0;
+          }
+        }
+
         // Guardar datos del ticket creado para mostrar en el resumen
         const officeName = offices.find(o => o.id === formData.fkOffice)?.name || 'No asignado';
         const serviceName = tiServices.find(s => s.id === formData.fkTiService)?.name || 'No asignado';
@@ -291,13 +301,14 @@ const TicketForm: React.FC = () => {
           problemName: problemName,
           priority: systemPriority,
           technicianAssigned: technicianAssigned,
-          technicianName: technicianName
+          technicianName: technicianName,
+          filesUploaded: filesUploaded
         });
 
         // Show Sileo notification with ticket details including technician
         const notificationDescription = technicianAssigned
-          ? `Técnico: ${technicianName}\nServicio: ${serviceName}\nOficina: ${officeName}\nPrioridad: ${systemPriority}`
-          : `Servicio: ${serviceName}\nOficina: ${officeName}\nPrioridad: ${systemPriority}\n\nPendiente de asignación de técnico`;
+          ? `Técnico: ${technicianName}\nServicio: ${serviceName}\nOficina: ${officeName}\nPrioridad: ${systemPriority}${filesUploaded > 0 ? '\nArchivos: ' + filesUploaded : ''}`
+          : `Servicio: ${serviceName}\nOficina: ${officeName}\nPrioridad: ${systemPriority}\n\nPendiente de asignación de técnico${filesUploaded > 0 ? '\nArchivos adjuntos: ' + filesUploaded : ''}`;
 
         sileo.success({
           title: technicianAssigned ? '¡Ticket Creado y Técnico Asignado!' : '¡Ticket Creado Exitosamente!',
@@ -767,6 +778,9 @@ const TicketForm: React.FC = () => {
               <div className="tkt-done-row"><span>Prioridad</span><span className={`tkt-p-badge ${createdTicket.priority.toLowerCase()}`}>{createdTicket.priority}</span></div>
               {createdTicket.technicianAssigned && (
                 <div className="tkt-done-row"><span>Técnico</span><strong>{createdTicket.technicianName}</strong></div>
+              )}
+              {createdTicket.filesUploaded > 0 && (
+                <div className="tkt-done-row"><span>Archivos</span><strong>{createdTicket.filesUploaded} adjunto(s)</strong></div>
               )}
             </div>
             <p className="tkt-done-msg">Redirigiendo al dashboard...</p>

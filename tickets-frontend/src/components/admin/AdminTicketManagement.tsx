@@ -26,10 +26,11 @@ import {
   Flag,
   Star,
   Wrench,
-  Lock
+  Lock,
+  Paperclip
 } from 'lucide-react';
 import './AdminTicketManagement.css';
-import ApiService from '../../services/api';
+import ApiService, { API_BASE_URL } from '../../services/api';
 
 interface TicketTechnician {
   readonly ID_Ticket_Technician: string;
@@ -95,6 +96,13 @@ interface Comment {
   Created_at: string;
   User_Name?: string;
   User_Role?: 'Admin' | 'Technician' | 'Coordinator';
+  attachments?: Array<{
+    ID_Attachment: string;
+    File_Name: string;
+    File_Path: string;
+    File_Type: string;
+    File_Size: number;
+  }>;
 }
 
 interface Attachment {
@@ -141,6 +149,8 @@ const AdminTicketManagement: React.FC = () => {
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [commentType, setCommentType] = useState<'public' | 'internal'>('public');
 
   const [newPriority, setNewPriority] = useState<'Baja' | 'Media' | 'Alta' | 'Crítica'>('Media');
@@ -442,15 +452,19 @@ const AdminTicketManagement: React.FC = () => {
           Comment_Type: comment.Comment_Type || 'public',
           Created_By: comment.Created_By,
           Created_at: comment.Created_at,
-          User_Name: comment.User_Name || 'Usuario'
+          User_Name: comment.User_Name || 'Usuario',
+          attachments: comment.attachments || []
         }));
         setComments(formattedComments);
+        setAttachments(commentsResponse.ticket_attachments || []);
       } else {
         setComments([]);
+        setAttachments([]);
       }
     } catch (error) {
       console.error('Error loading comments:', error);
       setComments([]);
+      setAttachments([]);
     }
 
     try {
@@ -534,21 +548,39 @@ const AdminTicketManagement: React.FC = () => {
     }
   };
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024;
+    const validFiles = files.filter(f => f.size <= maxSize);
+    if (validFiles.length !== files.length) {
+      showNotification('error', 'Algunos archivos exceden el límite de 10MB');
+    }
+    setSelectedFiles(prev => [...prev, ...validFiles].slice(0, 5));
+    if (e.target) e.target.value = '';
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
   const handleSendComment = async () => {
     if (!selectedTicket || !newComment.trim()) return;
 
     setLoading(true);
 
     try {
+      const hasFiles = selectedFiles.length > 0;
       const response = await ApiService.addComment(
         parseInt(selectedTicket.ID_Service_Request),
-        newComment
+        newComment,
+        hasFiles ? selectedFiles : undefined
       );
 
       if (response.success) {
         await loadTicketDetails(selectedTicket);
         setNewComment('');
-        showNotification('success', 'Comentario agregado exitosamente');
+        setSelectedFiles([]);
+        showNotification('success', `Comentario agregado${hasFiles ? ' con archivos' : ''}`);
       } else {
         showNotification('error', response.message);
       }
@@ -923,6 +955,34 @@ const AdminTicketManagement: React.FC = () => {
                     )}
                   </div>
                 </div>
+                {attachments.length > 0 && (
+                  <div className="gvt-det-sec">
+                    <h4 className="gvt-det-h"><FileText size={13} /> Archivos adjuntos ({attachments.length})</h4>
+                    <div className="gvt-ticket-attachments">
+                      {attachments.map((att: any) => {
+                        const isImage = att.File_Type?.startsWith('image/');
+                        return isImage ? (
+                          <div key={att.ID_Attachment} className="gvt-att-item">
+                            <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                              <img
+                                src={`${API_BASE_URL}/${att.File_Path}`}
+                                alt={att.File_Name}
+                                className="gvt-att-thumb-lg"
+                              />
+                            </a>
+                          </div>
+                        ) : (
+                          <div key={att.ID_Attachment} className="gvt-att-item gvt-att-file-item">
+                            <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                              <FileText size={14} />
+                              <span className="gvt-att-name-lg">{att.File_Name}</span>
+                            </a>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="gvt-det-sec">
                   <h4 className="gvt-det-h"><History size={13} /> Timeline</h4>
                   {timeline.length === 0 ? (
@@ -983,6 +1043,23 @@ const AdminTicketManagement: React.FC = () => {
                           <div>
                             <div className="gvt-cmt-h"><span className="gvt-cmt-a">{c.User_Name || 'Usuario'}</span><span className="gvt-cmt-d">{new Date(c.Created_at).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>
                             <p className="gvt-cmt-t">{c.Comment_Text}</p>
+                            {c.attachments && c.attachments.length > 0 && (
+                              <div className="gvt-cmt-attachments">
+                                {c.attachments.map((att: any) => {
+                                  const isImage = att.File_Type?.startsWith('image/');
+                                  return isImage ? (
+                                    <a key={att.ID_Attachment} href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer" className="gvt-cmt-att">
+                                      <img src={`${API_BASE_URL}/${att.File_Path}`} alt={att.File_Name} className="gvt-att-thumb" />
+                                    </a>
+                                  ) : (
+                                    <a key={att.ID_Attachment} href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer" className="gvt-cmt-att">
+                                      <FileText size={12} />
+                                      <span className="gvt-att-name">{att.File_Name}</span>
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))
@@ -991,7 +1068,38 @@ const AdminTicketManagement: React.FC = () => {
                   {selectedTicket.Status !== 'Cerrado' ? (
                     <div className="gvt-cmt-f">
                       <textarea value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Escribir comentario..." rows={2} />
-                      <button className="gvt-btn gvt-btn--primary" onClick={handleSendComment} disabled={!newComment.trim() || loading}><Send size={13} /></button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar"
+                        onChange={handleFileSelect}
+                        style={{ display: 'none' }}
+                      />
+                      <div className="gvt-cmt-actions">
+                        <button className="gvt-btn gvt-btn--secondary" onClick={() => fileInputRef.current?.click()} title="Adjuntar archivos">
+                          <Paperclip size={14} />
+                          {selectedFiles.length > 0 && <span className="attach-count">{selectedFiles.length}</span>}
+                        </button>
+                        <button className="gvt-btn gvt-btn--primary" onClick={handleSendComment} disabled={!newComment.trim() || loading}><Send size={13} /></button>
+                      </div>
+                      {selectedFiles.length > 0 && (
+                        <div className="gvt-file-previews">
+                          {selectedFiles.map((file, i) => (
+                            <div key={i} className="gvt-file-preview">
+                              {file.type.startsWith('image/') ? (
+                                <img src={URL.createObjectURL(file)} alt={file.name} className="gvt-fp-thumb" />
+                              ) : (
+                                <FileText size={14} />
+                              )}
+                              <span className="gvt-fp-name">{file.name}</span>
+                              <button className="gvt-fp-remove" onClick={() => removeFile(i)}>
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="gvt-closed">

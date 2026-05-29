@@ -236,4 +236,33 @@ final class NotificationService
         );
         return $this->notificationModel->create($dto);
     }
+
+    /**
+     * Notify technician that they were assigned to a ticket
+     */
+    public function createTechnicianAssignedNotification(
+        int $technicianUserId,
+        int $ticketId,
+        string $ticketCode,
+        string $subject,
+        string $officeName,
+        string $serviceName,
+        string $priority
+    ): bool {
+        $dto = new NotificationDTO(
+            type: 'technician_assigned',
+            title: 'Nuevo Ticket Asignado',
+            message: "Ticket: {$subject}\nOficina: {$officeName}\nServicio: {$serviceName}\nPrioridad: {$priority}",
+            userId: $technicianUserId,
+            ticketId: $ticketId,
+            metadata: [
+                'ticket_code' => $ticketCode ?? "#{$ticketId}",
+                'subject' => $subject,
+                'office_name' => $officeName,
+                'service_name' => $serviceName,
+                'priority' => $priority
+            ]
+        );
+        return $this->notificationModel->create($dto);
+    }
 }

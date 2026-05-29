@@ -505,9 +505,7 @@ const Reports: React.FC = () => {
       serviceIndex++;
     }
 
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
+    addFooterToAllPages(doc, footerImage);
     const filename = `reporte-tecnicos-servicio-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
   };
@@ -658,7 +656,7 @@ const Reports: React.FC = () => {
     const values = Object.values(servicesData) as any[][];
     const totalTechnicians = values.reduce((sum: number, arr: any[]) => sum + arr.length, 0);
     const totalResolvedAll = values.reduce((sum: number, arr: any[]) =>
-      sum + arr.reduce((s: number, t: any) => s + (t.resolved_tickets || t.tickets_resueltos || 0), 0), 0);
+      sum + arr.reduce((s: number, t: any) => s + Number(t.resolved_tickets || t.tickets_resueltos || 0), 0), 0);
 
     doc.setTextColor(50, 50, 50);
     doc.setFont('helvetica', 'normal');
@@ -681,9 +679,7 @@ const Reports: React.FC = () => {
     doc.setTextColor(0, 0, 139);
     doc.text(String(totalResolvedAll), 100, yPosition);
 
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
+    addFooterToAllPages(doc, footerImage);
     const filename = `reporte-desempeno-tecnicos-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
   };
@@ -697,133 +693,115 @@ const Reports: React.FC = () => {
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
     const response = await ApiService.getOfficeReport();
-    const isUsingMockData = !response.success || !response.data;
-    const officeData = response.success && response.data
+    const officeData = (response.success && Array.isArray(response.data))
       ? response.data
-      : ApiService.getMockOfficeReport().data;
+      : (response.success && response.data?.data ? response.data.data : []);
 
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-    }
+    if (headerImage) { doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30); }
+
+    const period = (response.data as any)?.dates || {};
+    const periodText = period.start_date && period.end_date
+      ? `${period.start_date} — ${period.end_date}`
+      : new Date().toLocaleDateString('es-ES');
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Reporte por Oficina', 105, 50, { align: 'center' });
-
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 105, 58, { align: 'center' });
-
+    doc.text(periodText, 105, 58, { align: 'center' });
     yPosition += 20;
 
-    doc.setFillColor(59, 130, 246);
+    doc.setFillColor(26, 54, 93);
     doc.setTextColor(255, 255, 255);
     doc.rect(15, yPosition - 2, 180, 10, 'F');
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
     doc.text('Oficina', 20, yPosition + 4);
-    doc.text('Total', 65, yPosition + 4);
-    doc.text('Resueltos', 95, yPosition + 4);
-    doc.text('Pendientes', 125, yPosition + 4);
-    doc.text('T. Prom.(h)', 160, yPosition + 4);
+    doc.text('Total', 70, yPosition + 4);
+    doc.text('En curso', 90, yPosition + 4);
+    doc.text('Res.', 120, yPosition + 4);
+    doc.text('Pend.', 140, yPosition + 4);
+    doc.text('Prom.(h)', 165, yPosition + 4);
     yPosition += 12;
 
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
 
-    (Array.isArray(officeData) ? officeData : []).forEach((office: any, index: number) => {
-      if (yPosition > 235) {
+    (Array.isArray(officeData) ? officeData : []).forEach((office: any) => {
+      if (yPosition > 258) {
         doc.addPage();
         yPosition = 20;
         if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte por Oficina (cont.)', 105, 50, { align: 'center' });
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+        doc.text('Reporte por Oficina (cont.)', 105, 48, { align: 'center' });
         yPosition += 20;
-        doc.setFillColor(59, 130, 246);
-        doc.setTextColor(255, 255, 255);
+        doc.setFillColor(26, 54, 93); doc.setTextColor(255, 255, 255);
         doc.rect(15, yPosition - 2, 180, 10, 'F');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Oficina', 20, yPosition + 4);
-        doc.text('Total', 65, yPosition + 4);
-        doc.text('Resueltos', 95, yPosition + 4);
-        doc.text('Pendientes', 125, yPosition + 4);
-        doc.text('T. Prom.(h)', 160, yPosition + 4);
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        doc.text('Oficina', 20, yPosition + 4); doc.text('Total', 70, yPosition + 4);
+        doc.text('En curso', 90, yPosition + 4); doc.text('Res.', 120, yPosition + 4);
+        doc.text('Pend.', 140, yPosition + 4); doc.text('Prom.(h)', 165, yPosition + 4);
         yPosition += 12;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
       }
 
-      const name = office.office || office.Name_Office || office.name_office || 'N/A';
-      const total = office.total_tickets || office.ticket_count || 0;
-      const resolved = office.resolved || office.resolved_tickets || 0;
-      const pending = office.pending || office.pending_tickets || 0;
-      const avgTime = office.avg_time || office.avg_resolution_time || 0;
+      const name = (office.office || office.Name_Office || office.name_office || 'N/A');
+      const total = Number(office.total ?? office.total_tickets ?? office.ticket_count ?? 0);
+      const inProgress = Number(office.in_progress ?? office.en_proceso ?? 0);
+      const resolved = Number(office.resolved ?? office.resolved_tickets ?? 0);
+      const pending = Number(office.pending ?? office.pending_tickets ?? 0);
+      const avgH = office.avg_hours ?? office.avg_time ?? office.avg_resolution_time ?? 'N/A';
 
-      const truncatedName = name.length > 18 ? name.substring(0, 18) + '...' : name;
+      const displayName = name.length > 22 ? name.substring(0, 21) + '…' : name;
 
-      doc.setTextColor(0, 0, 0);
-      doc.text(truncatedName, 20, yPosition + 5);
-      doc.text(String(total), 65, yPosition + 5, { align: 'center' });
-      doc.text(String(resolved), 95, yPosition + 5, { align: 'center' });
-      doc.text(String(pending), 125, yPosition + 5, { align: 'center' });
-      doc.text(String(avgTime), 160, yPosition + 5, { align: 'center' });
+      doc.text(displayName, 20, yPosition + 5);
+      doc.setTextColor(0, 0, 0); doc.text(String(total), 70, yPosition + 5, { align: 'center' });
+      doc.setTextColor(59, 130, 246); doc.text(String(inProgress), 90, yPosition + 5, { align: 'center' });
+      doc.setTextColor(16, 185, 129); doc.text(String(resolved), 120, yPosition + 5, { align: 'center' });
+      doc.setTextColor(245, 158, 11); doc.text(String(pending), 140, yPosition + 5, { align: 'center' });
+      doc.setTextColor(0, 0, 0); doc.text(String(avgH), 165, yPosition + 5, { align: 'center' });
 
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.3);
-      doc.rect(15, yPosition, 180, 10);
-
+      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
+      doc.line(15, yPosition + 8, 195, yPosition + 8);
       yPosition += 10;
     });
 
-    yPosition += 15;
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
-    }
+    yPosition += 12;
+    if (yPosition > 240) { doc.addPage(); yPosition = 20; }
 
-    const totalTickets = (Array.isArray(officeData) ? officeData : []).reduce((sum: number, item: any) => sum + (item.total_tickets || item.ticket_count || 0), 0);
-    const totalResolved = (Array.isArray(officeData) ? officeData : []).reduce((sum: number, item: any) => sum + (item.resolved || item.resolved_tickets || 0), 0);
+    const arr = Array.isArray(officeData) ? officeData : [];
+    const totalOffices = arr.length;
+    const totalTickets = arr.reduce((s, o) => s + Number(o.total ?? o.total_tickets ?? o.ticket_count ?? 0), 0);
+    const totalResolved = arr.reduce((s, o) => s + Number(o.resolved ?? o.resolved_tickets ?? 0), 0);
+    const totalInProgress = arr.reduce((s, o) => s + Number(o.in_progress ?? o.en_proceso ?? 0), 0);
 
-    doc.setFillColor(245, 245, 250);
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(15, yPosition - 5, 180, 30, 'FD');
+    yPosition += 12;
+    if (yPosition + 50 > 280) { doc.addPage(); yPosition = 20; }
 
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
+    doc.setFillColor(245, 245, 250); doc.setDrawColor(180, 180, 200);
+    doc.rect(15, yPosition - 5, 180, 40, 'FD');
+    doc.setFillColor(26, 54, 93); doc.setTextColor(255, 255, 255);
     doc.rect(20, yPosition - 3, 60, 8, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
     doc.text('RESUMEN GENERAL', 25, yPosition + 2);
     yPosition += 12;
 
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Oficinas:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String((Array.isArray(officeData) ? officeData : []).length), 95, yPosition);
+    doc.setTextColor(50, 50, 50); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
+    doc.text(`• Total Oficinas:`, 25, yPosition); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 139); doc.text(String(totalOffices), 95, yPosition);
     yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Tickets:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalTickets), 95, yPosition);
+    doc.setTextColor(50, 50, 50); doc.setFont('helvetica', 'normal');
+    doc.text(`• Total Tickets:`, 25, yPosition); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 139); doc.text(String(totalTickets), 95, yPosition);
+    yPosition += 7;
+    doc.setTextColor(50, 50, 50); doc.setFont('helvetica', 'normal');
+    doc.text(`• Resueltos:`, 25, yPosition); doc.setFont('helvetica', 'bold'); doc.setTextColor(16, 185, 129); doc.text(String(totalResolved), 95, yPosition);
+    yPosition += 7;
+    doc.setTextColor(50, 50, 50); doc.setFont('helvetica', 'normal');
+    doc.text(`• En Proceso:`, 25, yPosition); doc.setFont('helvetica', 'bold'); doc.setTextColor(59, 130, 246); doc.text(String(totalInProgress), 95, yPosition);
 
-    if (isUsingMockData) {
-      doc.setTextColor(255, 0, 0);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text('DATOS DE PRUEBA - CONECTAR A BASE DE DATOS', 105, 195, { align: 'center' });
-    }
-
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
-    const filename = `reporte-oficina-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    addFooterToAllPages(doc, footerImage);
+    doc.save(`reporte-oficina-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const generateProblemReportPDF = async (): Promise<void> => {
@@ -933,10 +911,10 @@ const Reports: React.FC = () => {
     }
 
     const totalServices = (Array.isArray(problemData) ? problemData : []).length;
-    const totalTickets = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + (item.total_tickets_mes || item.count || 0), 0);
-    const totalResolved = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + (item.resueltos_mes || 0), 0);
+    const totalTickets = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.total_tickets_mes || item.count || 0), 0);
+    const totalResolved = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.resueltos_mes || 0), 0);
     const avgTime = totalServices > 0
-      ? ((Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + (item.tiempo_promedio_horas_mes || 0), 0) / totalServices).toFixed(2)
+      ? ((Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.tiempo_promedio_horas_mes || 0), 0) / totalServices).toFixed(2)
       : '0.00';
 
     doc.setFillColor(245, 245, 250);
@@ -979,9 +957,7 @@ const Reports: React.FC = () => {
     doc.setTextColor(0, 0, 139);
     doc.text(String(avgTime), 95, yPosition);
 
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
+    addFooterToAllPages(doc, footerImage);
     const filename = `reporte-problemas-servicio-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
   };
@@ -1093,10 +1069,10 @@ const Reports: React.FC = () => {
     }
 
     const totalServices = (Array.isArray(problemData) ? problemData : []).length;
-    const totalTickets = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + (item.total_tickets_mes || 0), 0);
-    const totalResolved = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + (item.resueltos_mes || 0), 0);
+    const totalTickets = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.total_tickets_mes || 0), 0);
+    const totalResolved = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.resueltos_mes || 0), 0);
     const avgTime = totalServices > 0
-      ? ((Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + (item.tiempo_promedio_horas_mes || 0), 0) / totalServices).toFixed(2)
+      ? ((Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.tiempo_promedio_horas_mes || 0), 0) / totalServices).toFixed(2)
       : '0.00';
 
     doc.setFillColor(245, 245, 250);
@@ -1139,9 +1115,7 @@ const Reports: React.FC = () => {
     doc.setTextColor(0, 0, 139);
     doc.text(String(avgTime), 95, yPosition);
 
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
+    addFooterToAllPages(doc, footerImage);
     const filename = `reporte-tipo-servicio-mensual-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
   };
@@ -1240,7 +1214,7 @@ const Reports: React.FC = () => {
     }
 
     const totalSystems = (Array.isArray(systemsData) ? systemsData : []).length;
-    const grandTotalTickets = (Array.isArray(systemsData) ? systemsData : []).reduce((sum: number, item: any) => sum + (item.total_tickets || 0), 0);
+    const grandTotalTickets = (Array.isArray(systemsData) ? systemsData : []).reduce((sum: number, item: any) => sum + Number(item.total_tickets || 0), 0);
 
     doc.setFillColor(245, 245, 250);
     doc.setDrawColor(180, 180, 200);
@@ -1268,9 +1242,7 @@ const Reports: React.FC = () => {
     doc.setTextColor(0, 0, 139);
     doc.text(String(grandTotalTickets), 100, yPosition);
 
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
+    addFooterToAllPages(doc, footerImage);
     const filename = `reporte-sistemas-problematicas-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
   };
@@ -1385,7 +1357,7 @@ const Reports: React.FC = () => {
     yPosition += 12;
 
     const totalServicesCount = (Array.isArray(problemData) ? problemData : []).length;
-    const totalTicketsCount = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + (item.total_tickets_mes || item.count || 0), 0);
+    const totalTicketsCount = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.total_tickets_mes || item.count || 0), 0);
 
     doc.setTextColor(50, 50, 50);
     doc.setFont('helvetica', 'normal');
@@ -1401,9 +1373,7 @@ const Reports: React.FC = () => {
     doc.setTextColor(0, 0, 139);
     doc.text(String(totalTicketsCount), 95, yPosition);
 
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
+    addFooterToAllPages(doc, footerImage);
     const filename = `reporte-tipo-servicio-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
   };
@@ -1581,9 +1551,7 @@ const Reports: React.FC = () => {
     doc.setTextColor(0, 0, 139);
     doc.text(String(totalDays), 100, yPosition);
 
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
+    addFooterToAllPages(doc, footerImage);
     const filename = `reporte-turnos-tecnicos-${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(filename);
   };
@@ -1592,146 +1560,72 @@ const Reports: React.FC = () => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
     let yPosition = 50;
-
     const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
     const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
 
-    const response = await ApiService.getGeneralTicketsReport();
-    if (!response.success || !response.data) {
-      console.warn('[PDF] Sin datos de backend para reporte general de tickets');
-    }
-    const reportData = response.success && response.data
-      ? response.data
+    const response = await ApiService.getGeneralReport();
+    const reportData = (response.success && response.data)
+      ? ((response.data as any).monthly || (response.data as any).data?.monthly || (Array.isArray(response.data) ? response.data : []))
       : [];
 
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-    }
+    if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('Reporte General de Tickets', 105, 50, { align: 'center' });
-
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 105, 58, { align: 'center' });
-    doc.text('Estadísticas mensuales de tickets', 105, 64, { align: 'center' });
-
+    doc.text(`Período: ${(response.data as any)?.dates?.start_date || ''} — ${(response.data as any)?.dates?.end_date || ''}`, 105, 58, { align: 'center' });
     yPosition += 25;
 
-    doc.setFillColor(59, 130, 246);
+    doc.setFillColor(26, 54, 93);
     doc.setTextColor(255, 255, 255);
     doc.rect(15, yPosition - 2, 180, 12, 'F');
     doc.setFontSize(9);
     doc.setFont('helvetica', 'bold');
-    doc.text('Mes', 20, yPosition + 5);
-    doc.text('Total', 60, yPosition + 5);
-    doc.text('Alta Prio.', 100, yPosition + 5);
-    doc.text('Resueltos', 145, yPosition + 5);
+    doc.text('Mes', 20, yPosition + 5); doc.text('Total', 55, yPosition + 5);
+    doc.text('Pend.', 80, yPosition + 5); doc.text('Proc.', 105, yPosition + 5);
+    doc.text('Res.', 130, yPosition + 5); doc.text('Alta', 155, yPosition + 5);
+    doc.text('Prom.(h)', 175, yPosition + 5);
     yPosition += 14;
 
-    doc.setFontSize(8);
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(0, 0, 0);
 
-    (Array.isArray(reportData) ? reportData : []).forEach((row: any, index: number) => {
-      if (yPosition > 250) {
+    (Array.isArray(reportData) ? reportData : []).forEach((row: any) => {
+      if (yPosition > 258) {
         doc.addPage();
         yPosition = 20;
         if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte General de Tickets (cont.)', 105, 50, { align: 'center' });
+        doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+        doc.text('Reporte General de Tickets (cont.)', 105, 48, { align: 'center' });
         yPosition += 10;
-        doc.setFillColor(59, 130, 246);
-        doc.setTextColor(255, 255, 255);
+        doc.setFillColor(26, 54, 93); doc.setTextColor(255, 255, 255);
         doc.rect(15, yPosition - 2, 180, 12, 'F');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Mes', 20, yPosition + 5);
-        doc.text('Total', 60, yPosition + 5);
-        doc.text('Alta Prio.', 100, yPosition + 5);
-        doc.text('Resueltos', 145, yPosition + 5);
+        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+        doc.text('Mes', 20, yPosition + 5); doc.text('Total', 55, yPosition + 5);
+        doc.text('Pend.', 80, yPosition + 5); doc.text('Proc.', 105, yPosition + 5);
+        doc.text('Res.', 130, yPosition + 5); doc.text('Alta', 155, yPosition + 5);
+        doc.text('Prom.(h)', 175, yPosition + 5);
         yPosition += 14;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
       }
-
-      const month = row['Mes'] || row.mes || 'N/A';
-      const totalTickets = row['Total Tickets'] || row.total_tickets || 0;
-      const highPriority = row['Alta Prioridad'] || row.alta_prioridad || 0;
-      const resolved = row['Resueltos'] || row.resueltos || 0;
-
-      doc.setTextColor(0, 0, 0);
-      doc.text(String(month), 20, yPosition + 5);
-      doc.text(String(totalTickets), 60, yPosition + 5);
-      doc.setTextColor(255, 0, 0);
-      doc.text(String(highPriority), 100, yPosition + 5);
-      doc.setTextColor(0, 128, 0);
-      doc.text(String(resolved), 145, yPosition + 5);
-
-      doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.5);
-      doc.rect(15, yPosition - 2, 180, 10);
+      const m = row.month || row['Mes'] || 'N/A';
+      doc.text(String(m), 20, yPosition + 5);
+      doc.text(String(row.total ?? 0), 55, yPosition + 5);
+      doc.setTextColor(245, 158, 11); doc.text(String(row.pending ?? 0), 80, yPosition + 5);
+      doc.setTextColor(59, 130, 246); doc.text(String(row.in_progress ?? 0), 105, yPosition + 5);
+      doc.setTextColor(16, 185, 129); doc.text(String(row.resolved ?? 0), 130, yPosition + 5);
+      doc.setTextColor(239, 68, 68); doc.text(String(row.alta_count ?? row['Alta Prioridad'] ?? row.high_priority ?? 0), 155, yPosition + 5);
+      doc.setTextColor(0, 0, 0); doc.text(String(row.avg_hours ?? 'N/A'), 175, yPosition + 5);
+      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
+      doc.line(15, yPosition + 8, 195, yPosition + 8);
       yPosition += 10;
     });
 
-    yPosition += 15;
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    doc.setFillColor(245, 245, 250);
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(15, yPosition - 5, 180, 50, 'FD');
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(20, yPosition - 3, 50, 8, 'F');
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN', 25, yPosition + 2);
-    yPosition += 12;
-
-    const totalMonths = (Array.isArray(reportData) ? reportData : []).length;
-    const totalTicketsAll = (Array.isArray(reportData) ? reportData : []).reduce((sum: number, row: any) => sum + (row['Total Tickets'] || 0), 0);
-    const totalHighPriority = (Array.isArray(reportData) ? reportData : []).reduce((sum: number, row: any) => sum + (row['Alta Prioridad'] || 0), 0);
-    const totalResolved = (Array.isArray(reportData) ? reportData : []).reduce((sum: number, row: any) => sum + (row['Resueltos'] || 0), 0);
-
-    doc.setFontSize(8);
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Meses:', 20, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalMonths), 75, yPosition);
-    yPosition += 6;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Tickets:', 20, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalTicketsAll), 75, yPosition);
-    yPosition += 6;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Alta Prioridad:', 20, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(255, 0, 0);
-    doc.text(String(totalHighPriority), 75, yPosition);
-    yPosition += 6;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Resueltos:', 20, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 128, 0);
-    doc.text(String(totalResolved), 75, yPosition);
-
-    if (footerImage) {
-      doc.addImage(footerImage, 'JPEG', 10, 270, 190, 20);
-    }
-    const filename = `reporte-general-tickets-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    addFooterToAllPages(doc, footerImage);
+    doc.save(`reporte-general-tickets-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const getMockGroupedTechnicians = (): Record<string, any[]> => {
@@ -1763,6 +1657,24 @@ const Reports: React.FC = () => {
     } catch (error) {
       console.error('Error loading image:', error);
       return '';
+    }
+  };
+
+  const addFooterToAllPages = (doc: any, footerImg: string): void => {
+    const total = doc.internal.pages.length - 1;
+    const pw = doc.internal.pageSize.getWidth();
+    const ph = doc.internal.pageSize.getHeight();
+    for (let i = 1; i <= total; i++) {
+      doc.setPage(i);
+      if (footerImg) {
+        doc.addImage(footerImg, 'JPEG', 10, ph - 25, pw - 20, 18);
+      }
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120, 120, 120);
+      doc.text('Sistema de Gestión de Tickets — Alcaldía de San Cristóbal', pw / 2, ph - 10, { align: 'center' });
+      doc.text(`Página ${i} de ${total}`, pw - 15, ph - 10, { align: 'right' });
+      doc.setTextColor(0, 0, 0);
     }
   };
 

@@ -42,6 +42,8 @@ export interface ApiResponse<T = any> {
 
   errors?: Record<string, string[]>;
 
+  ticket_attachments?: any[];
+
 }
 
 
@@ -2031,130 +2033,92 @@ export class ApiService {
 
 
 
-  // Report endpoints - Mock data
+  // ─── Report endpoints — connected to /api/reports backend ───
 
   static async getGeneralReport(): Promise<ApiResponse> {
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    return {
-
-      success: true,
-
-      message: 'Reporte general obtenido exitosamente',
-
-      data: {}
-
-    };
-
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports?action=general`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      const data = await response.json();
+      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
   }
 
+  static async getResponseTimesReport(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports?action=response-times`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      const data = await response.json();
+      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
+  }
+
+  static async getPriorityReport(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports?action=priority`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      const data = await response.json();
+      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
+  }
+
+  static async getMonthlyReport(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports?action=general`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      const data = await response.json();
+      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
+  }
+
+  static async getServiceReport(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports?action=service`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      const data = await response.json();
+      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
+  }
+
+  static async getReportsList(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/reports`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      const data = await response.json();
+      return data.success ? { success: true, message: '', data: data.reports } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
+  }
+
+  static async getCustomReport(action: string, startDate?: string, endDate?: string): Promise<ApiResponse> {
+    try {
+      const params = new URLSearchParams();
+      params.append('action', action);
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      const response = await fetch(`${API_BASE_URL}/api/reports?${params.toString()}`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      const data = await response.json();
+      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
+  }
 
 
   static async getOfficeReport(): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/office?action=distribution`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-          'Content-Type': 'application/json',
-        }
+      const response = await fetch(`${API_BASE_URL}/api/reports?action=office`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
       });
-
       const data = await response.json();
-
-      if (data.success) {
-        return {
-          success: true,
-          message: data.message,
-          data: data.data
-        };
-      } else {
-        return {
-          success: false,
-          message: data.message || 'Error al obtener reporte por oficina'
-        };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        message: 'Error de conexión con el servidor'
-      };
-    }
+      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
   }
-
-
-
-  static async getResponseTimesReport(): Promise<ApiResponse> {
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    return {
-
-      success: true,
-
-      message: 'Reporte de tiempos de respuesta obtenido exitosamente',
-
-      data: {}
-
-    };
-
-  }
-
-
-
-  static async getPriorityReport(): Promise<ApiResponse> {
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    return {
-
-      success: true,
-
-      message: 'Reporte de prioridad obtenido exitosamente',
-
-      data: {}
-
-    };
-
-  }
-
-
-
-  static async getMonthlyReport(): Promise<ApiResponse> {
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    return {
-
-      success: true,
-
-      message: 'Reporte mensual obtenido exitosamente',
-
-      data: {}
-
-    };
-
-  }
-
-
-
-  static async getServiceReport(): Promise<ApiResponse> {
-
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    return {
-
-      success: true,
-
-      message: 'Reporte por servicio obtenido exitosamente',
-
-      data: {}
-
-    };
-
-  }
-
 
 
   // User management endpoints - Real backend
@@ -2536,6 +2500,32 @@ export class ApiService {
       return {
         success: false,
         message: 'Error al obtener archivos adjuntos'
+      };
+    }
+  }
+
+  static async uploadTicketFiles(ticketId: number, files: File[]): Promise<ApiResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('ticket_id', ticketId.toString());
+      for (const file of files) {
+        formData.append('files[]', file);
+      }
+
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=upload-files`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`
+        },
+        body: formData
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error al subir archivos al ticket'
       };
     }
   }

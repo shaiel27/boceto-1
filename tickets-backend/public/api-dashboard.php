@@ -54,10 +54,7 @@ require_once __DIR__ . '/../src/Services/JwtService.php';
 require_once __DIR__ . '/../src/Middleware/AuthMiddleware.php';
 require_once __DIR__ . '/../src/Controllers/AdminDashboardController.php';
 
-$jwtSecret = getenv('JWT_SECRET');
-if (empty($jwtSecret)) {
-    $jwtSecret = 'your-secret-key-change-in-production-min-32-chars';
-}
+$jwtSecret = getenv('JWT_SECRET') ?: 'change-this-secret-in-production-min-32-chars!!';
 
 $jwtService = new App\Services\JwtService($jwtSecret);
 $authMiddleware = new App\Middleware\AuthMiddleware($jwtService);

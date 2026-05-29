@@ -305,11 +305,13 @@ function getTechnicianProductivityReport($db, $startDate, $endDate) {
     LEFT JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
     LEFT JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
     LEFT JOIN TI_Service tis ON ts.Fk_TI_Service = tis.ID_TI_Service
-    WHERE DATE(sr.Created_at) BETWEEN '{$startDate}' AND '{$endDate}'
+    WHERE DATE(sr.Created_at) BETWEEN :start_date AND :end_date
     GROUP BY t.ID_Technicians, t.First_Name, t.Last_Name, tis.Type_Service
     ORDER BY total_resolved DESC, productivity_rate DESC";
     
     $stmt = $db->prepare($query);
+    $stmt->bindValue(':start_date', $startDate, PDO::PARAM_STR);
+    $stmt->bindValue(':end_date', $endDate, PDO::PARAM_STR);
     $stmt->execute();
     
     $productivity = [];

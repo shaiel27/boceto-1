@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Plus,
@@ -25,11 +25,12 @@ import {
   UserCheck,
   Send,
   X,
-  ArrowLeft
+  ArrowLeft,
+  Paperclip
 } from 'lucide-react';
 import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
-import ApiService from '../../services/api';
+import ApiService, { API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordChangeRequired from '../common/PasswordChangeRequired';
 
@@ -84,10 +85,13 @@ const RequesterDashboard: React.FC = () => {
   const [showNewTicketForm, setShowNewTicketForm] = useState(false);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [showCommentSection, setShowCommentSection] = useState<Record<string, boolean>>({});
+  const [selectedFiles, setSelectedFiles] = useState<Record<string, File[]>>({});
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [showProfile, setShowProfile] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
   const [showTicketDetails, setShowTicketDetails] = useState(false);
   const [ticketComments, setTicketComments] = useState<any[]>([]);
+  const [ticketAttachments, setTicketAttachments] = useState<any[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
 
   useEffect(() => {
@@ -274,7 +278,26 @@ const RequesterDashboard: React.FC = () => {
   const resolvedTickets = myTickets.filter(t => t.Status === 'Cerrado');
 
   const handleAddComment = async (ticketId: string) => {
-    await handleAddCommentToTicket(ticketId);
+    const files = selectedFiles[ticketId] || [];
+    await handleAddCommentToTicket(ticketId, files);
+  };
+
+  const handleFileSelect = (ticketId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxSize = 10 * 1024 * 1024;
+    const validFiles = files.filter(f => f.size <= maxSize);
+    setSelectedFiles(prev => ({
+      ...prev,
+      [ticketId]: [...(prev[ticketId] || []), ...validFiles].slice(0, 5)
+    }));
+    if (e.target) e.target.value = '';
+  };
+
+  const removeFile = (ticketId: string, index: number) => {
+    setSelectedFiles(prev => ({
+      ...prev,
+      [ticketId]: (prev[ticketId] || []).filter((_, i) => i !== index)
+    }));
   };
 
   const toggleCommentSection = (ticketId: string) => {
@@ -289,22 +312,26 @@ const RequesterDashboard: React.FC = () => {
       const commentsResponse = await ApiService.getTicketComments(parseInt(ticket.id));
       if (commentsResponse.success && commentsResponse.data) {
         setTicketComments(commentsResponse.data);
+        setTicketAttachments(commentsResponse.ticket_attachments || []);
       } else {
         setTicketComments([]);
+        setTicketAttachments([]);
       }
     } catch (error) {
       console.error('Error loading comments:', error);
       setTicketComments([]);
+      setTicketAttachments([]);
     } finally {
       setLoadingComments(false);
     }
   };
 
-  const handleAddCommentToTicket = async (ticketId: string) => {
+  const handleAddCommentToTicket = async (ticketId: string, files?: File[]) => {
     const comment = commentInputs[ticketId];
     if (comment && comment.trim()) {
       try {
-        const response = await ApiService.addTicketComment(parseInt(ticketId), comment);
+        const hasFiles = files && files.length > 0;
+        const response = await ApiService.addTicketComment(parseInt(ticketId), comment, hasFiles ? files : undefined);
         if (response.success) {
           const updatedTickets = myTickets.map(ticket => {
             if (ticket.id === ticketId) {
@@ -323,11 +350,13 @@ const RequesterDashboard: React.FC = () => {
               Comment: comment,
               Created_at: new Date().toISOString(),
               User_Name: requesterProfile.name,
-              User_Role: requesterProfile.position
+              User_Role: requesterProfile.position,
+              attachments: hasFiles ? response.data?.files || [] : []
             }]);
           }
           
           setCommentInputs(prev => ({ ...prev, [ticketId]: '' }));
+          setSelectedFiles(prev => ({ ...prev, [ticketId]: [] }));
           setShowCommentSection(prev => ({ ...prev, [ticketId]: false }));
         }
       } catch (error) {
@@ -581,13 +610,41 @@ const RequesterDashboard: React.FC = () => {
                           onChange={(e) => setCommentInputs(prev => ({ ...prev, [ticket.id]: e.target.value }))}
                           rows={3}
                         />
-                        <div className="comment-actions">
-                          <button 
-                            className="cancel-comment-btn"
-                            onClick={() => toggleCommentSection(ticket.id)}
+                        <input
+                          ref={el => { fileInputRefs.current[ticket.id] = el; }}
+                          type="file"
+                          multiple
+                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar"
+                          onChange={(e) => handleFileSelect(ticket.id, e)}
+                          style={{ display: 'none' }}
+                        />
+                        {(selectedFiles[ticket.id]?.length || 0) > 0 && (
+                          <div className="dd-file-previews">
+                            {(selectedFiles[ticket.id] || []).map((file, i) => (
+                              <div key={i} className="dd-file-preview">
+                                {file.type.startsWith('image/') ? (
+                                  <img src={URL.createObjectURL(file)} alt={file.name} className="fp-thumb" />
+                                ) : (
+                                  <FileText size={16} />
+                                )}
+                                <span className="fp-name">{file.name}</span>
+                                <button className="fp-remove" onClick={() => removeFile(ticket.id, i)}>
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <div className="dd-comment-actions">
+                          <button
+                            className="action-btn attach"
+                            onClick={() => fileInputRefs.current[ticket.id]?.click()}
+                            title="Adjuntar archivos"
                           >
-                            <X size={14} />
-                            Cancelar
+                            <Paperclip size={15} />
+                            {(selectedFiles[ticket.id]?.length || 0) > 0 && (
+                              <span className="attach-count">{selectedFiles[ticket.id].length}</span>
+                            )}
                           </button>
                           <button 
                             className="send-comment-btn"
@@ -596,6 +653,18 @@ const RequesterDashboard: React.FC = () => {
                           >
                             <Send size={14} />
                             Enviar
+                          </button>
+                        </div>
+                        <div className="comment-actions">
+                          <button 
+                            className="cancel-comment-btn"
+                            onClick={() => {
+                              toggleCommentSection(ticket.id);
+                              setSelectedFiles(prev => ({ ...prev, [ticket.id]: [] }));
+                            }}
+                          >
+                            <X size={14} />
+                            Cancelar
                           </button>
                         </div>
                       </div>
@@ -718,6 +787,36 @@ const RequesterDashboard: React.FC = () => {
                 <p className="ticket-description-text">{selectedTicket.Description}</p>
               </div>
 
+              {/* Ticket Attachments */}
+              {ticketAttachments.length > 0 && (
+                <div className="ticket-detail-section">
+                  <h4 className="section-label">Archivos adjuntos ({ticketAttachments.length})</h4>
+                  <div className="ticket-attachments-grid">
+                    {ticketAttachments.map((att: any) => {
+                      const isImage = att.File_Type?.startsWith('image/');
+                      return isImage ? (
+                        <div key={att.ID_Attachment} className="ticket-attachment-item">
+                          <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={`${API_BASE_URL}/${att.File_Path}`}
+                              alt={att.File_Name}
+                              className="ticket-att-thumb"
+                            />
+                          </a>
+                        </div>
+                      ) : (
+                        <div key={att.ID_Attachment} className="ticket-attachment-item ticket-attachment-file">
+                          <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                            <FileText size={14} />
+                            <span className="ticket-att-name">{att.File_Name}</span>
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Timeline */}
               <div className="ticket-detail-section">
                 <h4 className="section-label">Estado del Ticket</h4>
@@ -791,6 +890,31 @@ const RequesterDashboard: React.FC = () => {
                             <span className="comment-date">{formatDate(comment.Created_at)}</span>
                           </div>
                           <p className="comment-text">{comment.Comment}</p>
+                          {comment.attachments && comment.attachments.length > 0 && (
+                            <div className="dd-comment-attachments">
+                              {comment.attachments.map((att: any) => {
+                                const isImage = att.File_Type?.startsWith('image/');
+                                return isImage ? (
+                                  <div key={att.ID_Attachment} className="att-item">
+                                    <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                                      <img
+                                        src={`${API_BASE_URL}/${att.File_Path}`}
+                                        alt={att.File_Name}
+                                        className="att-thumb"
+                                      />
+                                    </a>
+                                  </div>
+                                ) : (
+                                  <div key={att.ID_Attachment} className="att-item">
+                                    <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
+                                      <FileText size={14} />
+                                      <span className="att-name">{att.File_Name}</span>
+                                    </a>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -812,14 +936,51 @@ const RequesterDashboard: React.FC = () => {
                       onChange={(e) => setCommentInputs(prev => ({ ...prev, [selectedTicket.id]: e.target.value }))}
                       rows={3}
                     />
-                    <button 
-                      className="send-comment-btn-modal"
-                      onClick={() => handleAddCommentToTicket(selectedTicket.id)}
-                      disabled={!commentInputs[selectedTicket.id]?.trim()}
-                    >
-                      <Send size={16} />
-                      Enviar
-                    </button>
+                    <input
+                      ref={el => { fileInputRefs.current[selectedTicket.id] = el; }}
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar"
+                      onChange={(e) => handleFileSelect(selectedTicket.id, e)}
+                      style={{ display: 'none' }}
+                    />
+                    {(selectedFiles[selectedTicket.id]?.length || 0) > 0 && (
+                      <div className="dd-file-previews">
+                        {(selectedFiles[selectedTicket.id] || []).map((file, i) => (
+                          <div key={i} className="dd-file-preview">
+                            {file.type.startsWith('image/') ? (
+                              <img src={URL.createObjectURL(file)} alt={file.name} className="fp-thumb" />
+                            ) : (
+                              <FileText size={16} />
+                            )}
+                            <span className="fp-name">{file.name}</span>
+                            <button className="fp-remove" onClick={() => removeFile(selectedTicket.id, i)}>
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="dd-comment-actions">
+                      <button
+                        className="action-btn attach"
+                        onClick={() => fileInputRefs.current[selectedTicket.id]?.click()}
+                        title="Adjuntar archivos"
+                      >
+                        <Paperclip size={15} />
+                        {(selectedFiles[selectedTicket.id]?.length || 0) > 0 && (
+                          <span className="attach-count">{selectedFiles[selectedTicket.id].length}</span>
+                        )}
+                      </button>
+                      <button 
+                        className="send-comment-btn-modal"
+                        onClick={() => handleAddCommentToTicket(selectedTicket.id, selectedFiles[selectedTicket.id])}
+                        disabled={!commentInputs[selectedTicket.id]?.trim()}
+                      >
+                        <Send size={16} />
+                        Enviar
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

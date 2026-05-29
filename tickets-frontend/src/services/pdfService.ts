@@ -15,7 +15,7 @@ export class PDFService {
   private pageHeight: number;
   private margin: number = 20;
   private lineHeight: number = 7;
-  private fontSize: number = 12;
+  private fontSize: number = 9;
 
   constructor() {
     this.doc = new jsPDF({
@@ -23,10 +23,8 @@ export class PDFService {
       unit: 'mm',
       format: 'a4'
     });
-    
     this.pageWidth = this.doc.internal.pageSize.getWidth();
     this.pageHeight = this.doc.internal.pageSize.getHeight();
-    
     this.doc.setFont('helvetica');
     this.doc.setFontSize(this.fontSize);
   }
@@ -35,172 +33,150 @@ export class PDFService {
     try {
       const headerImg = new Image();
       headerImg.src = '/pdf-reports/header/cabecera.jpg';
-      
       await new Promise((resolve, reject) => {
         headerImg.onload = resolve;
         headerImg.onerror = reject;
       });
-
       this.doc.addImage(headerImg, 'JPEG', 0, 0, this.pageWidth, 40);
-    } catch (error) {
-      console.warn('Header image not found, using text header');
+    } catch {
       this.doc.setFontSize(16);
       this.doc.setFont('helvetica', 'bold');
-      this.doc.text('MUNICIPIO DE SANTA CRUZ', this.pageWidth / 2, 15, { align: 'center' });
-      this.doc.setFontSize(12);
+      this.doc.text('ALCALDÍA DE SAN CRISTÓBAL', this.pageWidth / 2, 15, { align: 'center' });
       this.doc.setFont('helvetica', 'normal');
     }
   }
 
   private async addFooter(pageNumber: number, totalPages: number): Promise<void> {
-    try {
-      const footerImg = new Image();
-      footerImg.src = '/pdf-reports/footer/pie.jpg';
-      
-      await new Promise((resolve, reject) => {
-        footerImg.onload = resolve;
-        footerImg.onerror = reject;
-      });
+    const y = this.pageHeight - 18;
+    this.doc.setLineWidth(0.3);
+    this.doc.setDrawColor(200, 200, 200);
+    this.doc.line(this.margin, y, this.pageWidth - this.margin, y);
 
-      const footerY = this.pageHeight - 30;
-      this.doc.addImage(footerImg, 'JPEG', 0, footerY, this.pageWidth, 30);
-      
-      this.doc.setFontSize(10);
-      this.doc.setFont('helvetica', 'normal');
-      this.doc.text(`Página ${pageNumber} de ${totalPages}`, this.pageWidth / 2, this.pageHeight - 10, { align: 'center' });
-    } catch (error) {
-      console.warn('Footer image not found, using text footer');
-      const footerY = this.pageHeight - 15;
-      this.doc.setFontSize(10);
-      this.doc.setFont('helvetica', 'normal');
-      this.doc.text(`Página ${pageNumber} de ${totalPages}`, this.pageWidth / 2, footerY, { align: 'center' });
-    }
+    this.doc.setFontSize(8);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.setTextColor(120, 120, 120);
+    this.doc.text(
+      `Sistema de Gestión de Tickets — Alcaldía de San Cristóbal`,
+      this.margin,
+      y + 6
+    );
+    this.doc.text(
+      `Página ${pageNumber} de ${totalPages}`,
+      this.pageWidth - this.margin,
+      y + 6,
+      { align: 'right' }
+    );
+    this.doc.setTextColor(0, 0, 0);
   }
 
   private addTitle(title: string, subtitle?: string): void {
-    let yPosition = 50;
-    
-    this.doc.setFontSize(18);
+    let y = 50;
+    this.doc.setFontSize(16);
     this.doc.setFont('helvetica', 'bold');
-    this.doc.text(title, this.pageWidth / 2, yPosition, { align: 'center' });
-    
+    this.doc.text(title, this.pageWidth / 2, y, { align: 'center' });
+
     if (subtitle) {
-      yPosition += 10;
-      this.doc.setFontSize(12);
+      y += 10;
+      this.doc.setFontSize(10);
       this.doc.setFont('helvetica', 'normal');
-      this.doc.text(subtitle, this.pageWidth / 2, yPosition, { align: 'center' });
+      this.doc.text(subtitle, this.pageWidth / 2, y, { align: 'center' });
     }
   }
 
   private getColumnWidths(totalColumns: number): number[] {
     const tableWidth = this.pageWidth - (this.margin * 2);
-    const columnWidths: number[] = [];
-
     if (totalColumns <= 0) return [];
 
     if (totalColumns === 4) {
-      columnWidths.push(tableWidth * 0.30);
-      columnWidths.push(tableWidth * 0.20);
-      columnWidths.push(tableWidth * 0.25);
-      columnWidths.push(tableWidth * 0.25);
-    } else if (totalColumns === 11) {
-      columnWidths.push(tableWidth * 0.05);
-      columnWidths.push(tableWidth * 0.18);
-      columnWidths.push(tableWidth * 0.08);
-      columnWidths.push(tableWidth * 0.15);
-      columnWidths.push(tableWidth * 0.08);
-      columnWidths.push(tableWidth * 0.08);
-      columnWidths.push(tableWidth * 0.08);
-      columnWidths.push(tableWidth * 0.08);
-      columnWidths.push(tableWidth * 0.10);
-      columnWidths.push(tableWidth * 0.06);
-      columnWidths.push(tableWidth * 0.06);
-    } else {
-      const equalWidth = tableWidth / totalColumns;
-      for (let i = 0; i < totalColumns; i++) {
-        columnWidths.push(equalWidth);
-      }
+      return [tableWidth * 0.20, tableWidth * 0.30, tableWidth * 0.25, tableWidth * 0.25];
+    }
+    if (totalColumns === 5) {
+      return [tableWidth * 0.20, tableWidth * 0.22, tableWidth * 0.22, tableWidth * 0.18, tableWidth * 0.18];
+    }
+    if (totalColumns === 6) {
+      return [tableWidth * 0.18, tableWidth * 0.18, tableWidth * 0.16, tableWidth * 0.16, tableWidth * 0.16, tableWidth * 0.16];
+    }
+    if (totalColumns === 7) {
+      return [tableWidth * 0.16, tableWidth * 0.14, tableWidth * 0.14, tableWidth * 0.14, tableWidth * 0.14, tableWidth * 0.14, tableWidth * 0.14];
+    }
+    if (totalColumns === 11) {
+      return [tableWidth * 0.05, tableWidth * 0.18, tableWidth * 0.08, tableWidth * 0.15, tableWidth * 0.08, tableWidth * 0.08, tableWidth * 0.08, tableWidth * 0.08, tableWidth * 0.10, tableWidth * 0.06, tableWidth * 0.06];
     }
 
-    return columnWidths;
+    const equalWidth = tableWidth / totalColumns;
+    return Array(totalColumns).fill(equalWidth);
   }
 
   private addTableHeader(columns: string[], startY: number): number {
     const columnWidths = this.getColumnWidths(columns.length);
     if (columns.length === 0) return startY;
 
-    let yPosition = startY;
-    
+    let y = startY;
     this.doc.setFont('helvetica', 'bold');
-    this.doc.setFontSize(7);
-    
-    let currentX = this.margin;
-    columns.forEach((column, index) => {
-      this.doc.text(column, currentX, yPosition);
-      currentX += columnWidths[index];
+    this.doc.setFontSize(9);
+
+    let x = this.margin;
+    columns.forEach((col, i) => {
+      this.doc.text(col, x, y);
+      x += columnWidths[i];
     });
-    
-    yPosition += 2;
+
+    y += 2;
     this.doc.setLineWidth(0.5);
-    this.doc.line(this.margin, yPosition, this.pageWidth - this.margin, yPosition);
-    
-    return yPosition + 4;
+    this.doc.line(this.margin, y, this.pageWidth - this.margin, y);
+
+    return y + 5;
   }
 
   private addTableRow(data: any[], columns: string[], startY: number): number {
     const columnWidths = this.getColumnWidths(columns.length);
     if (columns.length === 0 || columnWidths.length === 0) return startY;
 
-    let yPosition = startY;
-    
+    let y = startY;
     this.doc.setFont('helvetica', 'normal');
-    this.doc.setFontSize(6);
-    
-    data.forEach((row) => {
-      if (yPosition > this.pageHeight - 45) {
-        this.doc.addPage();
-        yPosition = 50;
-        this.addHeader();
-        yPosition = this.addTableHeader(columns, yPosition);
-      }
-      
-      let currentX = this.margin;
-      columns.forEach((column, index) => {
-        const cellData = row[column] || '';
-        const text = String(cellData);
-        
-        const maxChars = Math.floor(columnWidths[index] / 1.8);
-        const truncatedText = text.length > maxChars ? text.substring(0, maxChars - 3) + '...' : text;
-        
-        this.doc.text(truncatedText, currentX, yPosition);
-        currentX += columnWidths[index];
-      });
-      
-      yPosition += this.lineHeight;
-    });
-    
-    return yPosition;
-  }
+    this.doc.setFontSize(9);
 
-  private addReportInfo(generatedBy: string, generatedDate: Date): void {
-    const yPosition = this.pageHeight - 40;
-    
-    this.doc.setFontSize(10);
-    this.doc.setFont('helvetica', 'normal');
-    this.doc.text(`Generado por: ${generatedBy}`, this.margin, yPosition);
-    this.doc.text(`Fecha: ${generatedDate.toLocaleDateString('es-ES')}`, this.margin, yPosition + 5);
+    data.forEach((row) => {
+      if (y > this.pageHeight - 35) {
+        this.doc.addPage();
+        y = 50;
+        this.addHeader();
+        y = this.addTableHeader(columns, y);
+      }
+
+      let x = this.margin;
+      columns.forEach((col, i) => {
+        const text = String(row[col] ?? '');
+        const maxChars = Math.floor(columnWidths[i] / 1.7);
+        const display = text.length > maxChars ? text.substring(0, maxChars - 2) + '..' : text;
+        this.doc.text(display, x, y);
+        x += columnWidths[i];
+      });
+
+      y += this.lineHeight;
+    });
+
+    return y;
   }
 
   async generateReport(reportData: PDFReportData): Promise<void> {
     await this.addHeader();
     this.addTitle(reportData.title, reportData.subtitle);
-    
-    let yPosition = 70;
-    yPosition = this.addTableHeader(reportData.columns, yPosition);
-    yPosition = this.addTableRow(reportData.data, reportData.columns, yPosition);
-    
-    this.addReportInfo(reportData.generatedBy, reportData.generatedDate);
-    
+
+    let y = 70;
+    y = this.addTableHeader(reportData.columns, y);
+    y = this.addTableRow(reportData.data, reportData.columns, y);
+
+    // Footer info on last page only
+    y += 10;
+    this.doc.setFontSize(9);
+    this.doc.setFont('helvetica', 'normal');
+    this.doc.text(
+      `Generado por: ${reportData.generatedBy}  |  ${reportData.generatedDate.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`,
+      this.margin, y
+    );
+
+    // Add footer to all pages
     const totalPages = this.doc.internal.pages.length - 1;
     for (let i = 1; i <= totalPages; i++) {
       this.doc.setPage(i);
@@ -208,11 +184,7 @@ export class PDFService {
     }
   }
 
-  save(filename: string): void {
-    this.doc.save(filename);
-  }
+  save(filename: string): void { this.doc.save(filename); }
 
-  getBlob(): Blob {
-    return new Blob([this.doc.output('blob')], { type: 'application/pdf' });
-  }
+  getBlob(): Blob { return new Blob([this.doc.output('blob')], { type: 'application/pdf' }); }
 }
