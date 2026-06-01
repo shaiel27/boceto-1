@@ -23,7 +23,9 @@ class User {
         // Select user by email. We'll enforce is_system_user OR role-based allowance after verifying password.
         $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, u.Password, u.is_system_user, u.last_login_at,
                          r.Role, r.ID_Role,
-                         o.ID_Office as office_id
+                         o.ID_Office as office_id,
+                         o.Name_Office as office_name,
+                         o.Office_Type as office_type
                   FROM " . $this->table_name . " u
                   JOIN Role r ON u.Fk_Role = r.ID_Role
                   LEFT JOIN Boss b ON u.ID_Users = b.Fk_User
@@ -271,11 +273,11 @@ class User {
                       (Fk_Role, Email, Password, Username, Full_Name, is_system_user) 
                       VALUES (:role, :email, :password, :username, :full_name, :is_system_user)";
             $stmt = $this->conn->prepare($query);
-            $stmt->bindParam(":role", $data->role);
-            $stmt->bindParam(":email", $data->email);
-            $stmt->bindParam(":password", $data->password);
-            $stmt->bindParam(":username", $data->username);
-            $stmt->bindParam(":full_name", $data->full_name);
+            $stmt->bindValue(":role", $data->role, PDO::PARAM_INT);
+            $stmt->bindValue(":email", $data->email);
+            $stmt->bindValue(":password", $data->password);
+            $stmt->bindValue(":username", $data->username);
+            $stmt->bindValue(":full_name", $data->full_name);
             $stmt->bindValue(":is_system_user", $isSystem, PDO::PARAM_INT);
             $stmt->execute();
             
@@ -286,9 +288,9 @@ class User {
                 $query = "INSERT INTO Boss (Name_Boss, Pronoun, Fk_User)
                           VALUES (:name_boss, :pronoun, :user_id)";
                 $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(":name_boss", $data->name_boss);
-                $stmt->bindParam(":pronoun", $data->pronoun);
-                $stmt->bindParam(":user_id", $userId);
+                $stmt->bindValue(":name_boss", $data->name_boss);
+                $stmt->bindValue(":pronoun", $data->pronoun);
+                $stmt->bindValue(":user_id", $userId, PDO::PARAM_INT);
                 $stmt->execute();
 
                 $bossId = $this->conn->lastInsertId();
@@ -296,8 +298,8 @@ class User {
                 // Update Office to link to this Boss
                 $query = "UPDATE Office SET Fk_Boss_ID = :boss_id WHERE ID_Office = :office_id";
                 $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(":boss_id", $bossId);
-                $stmt->bindParam(":office_id", $data->office_id);
+                $stmt->bindValue(":boss_id", $bossId, PDO::PARAM_INT);
+                $stmt->bindValue(":office_id", $data->office_id, PDO::PARAM_INT);
                 $stmt->execute();
             }
 

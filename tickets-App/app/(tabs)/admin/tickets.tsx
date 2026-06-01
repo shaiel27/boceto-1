@@ -1,5 +1,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ActivityIndicator, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
@@ -7,10 +16,10 @@ import { getAllTickets, getServices } from '../../../src/services/adminService';
 import { BackendTicket } from '../../../src/types/api';
 
 const STATUS_FILTERS = [
-  { key: '', label: 'Todos' },
-  { key: 'Pendiente', label: 'Pendientes' },
-  { key: 'En Proceso', label: 'En curso' },
-  { key: 'Cerrado', label: 'Cerrados' },
+  { key: '', label: 'Todos', icon: 'layers-outline' as const },
+  { key: 'Pendiente', label: 'Pendientes', color: Colors.statusPendiente },
+  { key: 'En Proceso', label: 'En curso', color: Colors.statusEnProceso },
+  { key: 'Cerrado', label: 'Cerrados', color: Colors.statusResuelto },
 ];
 
 const PAGE_SIZE = 20;
@@ -61,131 +70,280 @@ export default function AdminTicketsScreen() {
 
   return (
     <View style={styles.page}>
-      {/* Status filter row */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterRow}>
-        {STATUS_FILTERS.map((f) => {
-          const active = statusFilter === f.key;
-          return (
-            <TouchableOpacity key={f.key} style={[styles.fTab, active && styles.fTabActive]} onPress={() => setStatusFilter(f.key)} activeOpacity={0.7}>
-              <Text style={[styles.fText, active && styles.fTextActive]}>{f.label}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* Service filter row */}
-      {services.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.serviceRow} contentContainerStyle={styles.serviceInner}>
-          <TouchableOpacity style={[styles.sTab, serviceFilter === 0 && styles.sTabActive]} onPress={() => setServiceFilter(0)} activeOpacity={0.7}>
-            <Ionicons name="layers" size={13} color={serviceFilter === 0 ? Colors.navyPrimary : Colors.textLight} />
-            <Text style={[styles.sText, serviceFilter === 0 && styles.sTextActive]}>Todos</Text>
-          </TouchableOpacity>
-          {services.map((s) => {
-            const active = serviceFilter === s.ID_TI_Service;
+      {/* Filters */}
+      <View style={styles.filterBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          {STATUS_FILTERS.map((f) => {
+            const active = statusFilter === f.key;
+            const color = 'color' in f ? f.color : Colors.text;
             return (
-              <TouchableOpacity key={s.ID_TI_Service} style={[styles.sTab, active && styles.sTabActive]} onPress={() => setServiceFilter(s.ID_TI_Service)} activeOpacity={0.7}>
-                <Text style={[styles.sText, active && styles.sTextActive]}>{s.Type_Service}</Text>
+              <TouchableOpacity
+                key={f.key}
+                style={[styles.fChip, active && { backgroundColor: color + '16', borderColor: color + '35' }]}
+                onPress={() => setStatusFilter(f.key)}
+                activeOpacity={0.7}
+              >
+                {active && <View style={[styles.fDot, { backgroundColor: color }]} />}
+                <Text style={[styles.fText, active && { color, fontWeight: '700' }]}>{f.label}</Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
-      )}
 
+        {services.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.serviceBar} contentContainerStyle={styles.filterScroll}>
+            <TouchableOpacity
+              style={[styles.sChip, serviceFilter === 0 && styles.sChipActive]}
+              onPress={() => setServiceFilter(0)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="layers-outline" size={13} color={serviceFilter === 0 ? Colors.primary : Colors.textLight} />
+              <Text style={[styles.sText, serviceFilter === 0 && styles.sTextActive]}>Todos</Text>
+            </TouchableOpacity>
+            {services.map((s) => {
+              const active = serviceFilter === s.ID_TI_Service;
+              return (
+                <TouchableOpacity
+                  key={s.ID_TI_Service}
+                  style={[styles.sChip, active && styles.sChipActive]}
+                  onPress={() => setServiceFilter(s.ID_TI_Service)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.sText, active && styles.sTextActive]}>{s.Type_Service}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+      </View>
+
+      {/* Ticket List */}
       <FlatList
         data={tickets}
         keyExtractor={(item, index) => String(item.ID_Service_Request ?? `ticket-${index}`)}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.navyPrimary} colors={[Colors.navyPrimary]} progressBackgroundColor={Colors.surface} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={Colors.primary}
+            colors={[Colors.primary]}
+            progressBackgroundColor={Colors.surface}
+          />
+        }
         contentContainerStyle={styles.list}
-        onEndReached={onEndReached} onEndReachedThreshold={0.3}
-        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ padding: 20 }} color={Colors.navyPrimary} /> : null}
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.3}
+        ListFooterComponent={loadingMore ? <ActivityIndicator style={{ padding: 20 }} color={Colors.primary} /> : null}
         renderItem={({ item }) => {
           const prio = item.System_Priority || 'Media';
           const status = item.Status || 'Pendiente';
           return (
-            <TouchableOpacity style={styles.card} activeOpacity={0.6}
-              onPress={() => router.push(`/(tabs)/admin/tickets/${item.ID_Service_Request}` as any)}>
-              <View style={[styles.cardBar, { backgroundColor: barC(prio) }]} />
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.55}
+              onPress={() => router.push(`/(tabs)/admin/tickets/${item.ID_Service_Request}` as any)}
+            >
+              <View style={[styles.cardLeft, { backgroundColor: pColor(prio) }]} />
               <View style={styles.cardBody}>
-                <View style={styles.cardTop}>
-                  <Text style={styles.cardCode}>{item.Ticket_Code || `#${item.ID_Service_Request}`}</Text>
-                  <View style={styles.badges}>
-                    <View style={[styles.badge, { backgroundColor: prioBg(prio) }]}>
-                      <Text style={[styles.badgeText, { color: prioTxt(prio) }]}>{prio}</Text>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardCode} selectable={false}>
+                    {item.Ticket_Code || `#${item.ID_Service_Request}`}
+                  </Text>
+                  <View style={styles.cardBadges}>
+                    <View style={[styles.badge, { backgroundColor: pBg(prio) }]}>
+                      <Text style={[styles.badgeText, { color: pTxt(prio) }]}>{prio}</Text>
                     </View>
-                    <View style={[styles.badge, { backgroundColor: statBg(status) }]}>
-                      <Text style={[styles.badgeText, { color: statTxt(status) }]}>{status === 'En Proceso' ? 'En curso' : status}</Text>
+                    <View style={[styles.badge, { backgroundColor: sBg(status) }]}>
+                      <View style={[styles.sDot, { backgroundColor: sColor(status) }]} />
+                      <Text style={[styles.badgeText, { color: sTxt(status) }]}>
+                        {status === 'En Proceso' ? 'En curso' : status}
+                      </Text>
                     </View>
                   </View>
                 </View>
-                <Text style={styles.cardSubj} numberOfLines={2}>{item.Subject}</Text>
-                <View style={styles.cardMeta}>
-                  <View style={styles.metaItem}>
+
+                <Text style={styles.cardSubject} numberOfLines={2}>
+                  {item.Subject}
+                </Text>
+
+                <View style={styles.cardFooter}>
+                  <View style={styles.cardFooterItem}>
                     <Ionicons name="business-outline" size={11} color={Colors.textLight} />
-                    <Text style={styles.metaText} numberOfLines={1}>{item.office_name || 'Sin oficina'}</Text>
+                    <Text style={styles.cardFooterText} numberOfLines={1}>
+                      {item.office_name || 'Sin oficina'}
+                    </Text>
                   </View>
-                  <View style={styles.metaItem}>
+                  <View style={styles.cardFooterItem}>
                     <Ionicons name="construct-outline" size={11} color={Colors.textLight} />
-                    <Text style={styles.metaText} numberOfLines={1}>{item.service_type_name || '—'}</Text>
+                    <Text style={styles.cardFooterText} numberOfLines={1}>
+                      {item.service_type_name || '—'}
+                    </Text>
                   </View>
+                  {item.technicians && item.technicians.length > 0 && (
+                    <View style={styles.cardFooterItem}>
+                      <Ionicons name="person-outline" size={11} color={Colors.textLight} />
+                      <Text style={styles.cardFooterText} numberOfLines={1}>
+                        {item.technicians.map((t: any) => t.name).filter(Boolean).join(', ') || 'Asignado'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
             </TouchableOpacity>
           );
         }}
-        ListEmptyComponent={loading ? null :
-          <View style={styles.empty}>
-            <Ionicons name="documents-outline" size={40} color={Colors.textLight} />
-            <Text style={styles.emptyTitle}>Sin resultados</Text>
-            <Text style={styles.emptySub}>{statusFilter ? `No hay tickets "${statusFilter}"` : 'No se encontraron tickets'}</Text>
-          </View>
+        ListEmptyComponent={
+          loading ? null : (
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="documents-outline" size={36} color={Colors.textLight} />
+              </View>
+              <Text style={styles.emptyTitle}>Sin tickets</Text>
+              <Text style={styles.emptySub}>
+                {statusFilter
+                  ? `No hay tickets en estado "${statusFilter}"`
+                  : serviceFilter > 0
+                    ? `Sin tickets para el servicio seleccionado`
+                    : 'No se encontraron tickets'}
+              </Text>
+            </View>
+          )
         }
       />
+
+      {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => router.push('/(tabs)/admin/tickets/create' as any)}
-        activeOpacity={0.8}
+        activeOpacity={0.85}
       >
-        <Ionicons name="add" size={28} color={Colors.gold} />
+        <Ionicons name="add" size={26} color={Colors.gold} />
       </TouchableOpacity>
     </View>
   );
 }
 
-function barC(p: string) { return p === 'Alta' ? Colors.priorityAlta : p === 'Media' ? Colors.priorityMedia : Colors.textLight; }
-function prioBg(p: string) { return p === 'Alta' ? Colors.priorityAltaBg : Colors.priorityMediaBg; }
-function prioTxt(p: string) { return p === 'Alta' ? Colors.badgeHighText : Colors.badgeMedText; }
-function statBg(s: string) { return s === 'Pendiente' ? Colors.statusPendienteBg : s === 'En Proceso' ? Colors.statusEnProcesoBg : Colors.statusResueltoBg; }
-function statTxt(s: string) { return s === 'Pendiente' ? Colors.badgeMedText : s === 'En Proceso' ? Colors.badgeBlueText : Colors.badgeLowText; }
+function pColor(p: string) {
+  return p === 'Alta' ? Colors.priorityAlta : p === 'Media' ? Colors.priorityMedia : p === 'Critica' ? Colors.coral : Colors.textLight;
+}
+function pBg(p: string) {
+  return p === 'Alta' ? Colors.priorityAltaBg : p === 'Critica' ? Colors.coralLight : Colors.priorityMediaBg;
+}
+function pTxt(p: string) {
+  return p === 'Alta' ? Colors.badgeHighText : p === 'Critica' ? Colors.coralDark : Colors.badgeMedText;
+}
+function sColor(s: string) {
+  return s === 'Pendiente' ? Colors.statusPendiente : s === 'En Proceso' ? Colors.statusEnProceso : Colors.statusResuelto;
+}
+function sBg(s: string) {
+  return s === 'Pendiente' ? Colors.statusPendienteBg : s === 'En Proceso' ? Colors.statusEnProcesoBg : Colors.statusResueltoBg;
+}
+function sTxt(s: string) {
+  return s === 'Pendiente' ? Colors.badgeMedText : s === 'En Proceso' ? Colors.badgeBlueText : Colors.badgeLowText;
+}
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.background },
-  filterScroll: { maxHeight: 50 },
-  filterRow: { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 10, gap: 6 },
-  fTab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: BorderRadius.sm, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border },
-  fTabActive: { backgroundColor: Colors.navyPrimary, borderColor: Colors.navyPrimary },
-  fText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
-  fTextActive: { color: '#fff' },
-  serviceRow: { maxHeight: 44 },
-  serviceInner: { flexDirection: 'row', paddingHorizontal: 12, paddingBottom: 10, gap: 6 },
-  sTab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.sm, backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border, gap: 5 },
-  sTabActive: { backgroundColor: Colors.navyPrimary + '10', borderColor: Colors.navyPrimary + '40' },
+
+  filterBar: {
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    paddingTop: 8,
+  },
+  filterScroll: { paddingHorizontal: 14, paddingBottom: 10, gap: 8, flexDirection: 'row' },
+  fChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  fDot: { width: 6, height: 6, borderRadius: 3 },
+  fText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  serviceBar: {},
+  sChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  sChipActive: { backgroundColor: Colors.primary + '0C', borderColor: Colors.primary + '35' },
   sText: { fontSize: 11, fontWeight: '500', color: Colors.textSecondary },
-  sTextActive: { color: Colors.navyPrimary, fontWeight: '600' },
-  list: { paddingBottom: 24 },
-  card: { backgroundColor: Colors.surface, marginHorizontal: 12, marginVertical: 3, borderRadius: BorderRadius.md, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },
-  cardBar: { width: 3 },
-  cardBody: { flex: 1, padding: 14 },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardCode: { fontSize: 11, fontWeight: '600', color: Colors.textLight, fontFamily: 'monospace' },
-  badges: { flexDirection: 'row', gap: 5 },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: BorderRadius.sm },
-  badgeText: { fontSize: 9, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
-  cardSubj: { fontSize: 14, fontWeight: '600', color: Colors.text, marginTop: 8, lineHeight: 20 },
-  cardMeta: { flexDirection: 'row', marginTop: 10, gap: 14 },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
-  metaText: { fontSize: 11, color: Colors.textSecondary, flex: 1 },
-  empty: { paddingVertical: 60, alignItems: 'center', gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: Colors.text },
-  emptySub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 30 },
-  fab: { position: 'absolute', bottom: 24, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8 },
+  sTextActive: { color: Colors.primary, fontWeight: '700' },
+
+  list: { padding: 12, paddingBottom: 88 },
+
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    marginBottom: 8,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+  },
+  cardLeft: { width: 4 },
+  cardBody: { flex: 1, padding: 16 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  cardCode: { fontSize: 11, fontWeight: '700', color: Colors.textLight, fontFamily: 'monospace', letterSpacing: 0.4, textTransform: 'uppercase' },
+  cardBadges: { flexDirection: 'row', gap: 6 },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.sm,
+  },
+  badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
+  sDot: { width: 5, height: 5, borderRadius: 3 },
+  cardSubject: { fontSize: 15, fontWeight: '600', color: Colors.text, lineHeight: 21 },
+  cardFooter: { flexDirection: 'row', marginTop: 12, gap: 14 },
+  cardFooterItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+  cardFooterText: { fontSize: 11, color: Colors.textSecondary, flex: 1 },
+
+  empty: { paddingVertical: 80, alignItems: 'center' },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  emptyTitle: { fontSize: 17, fontWeight: '700', color: Colors.text, marginBottom: 6 },
+  emptySub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 40, lineHeight: 18 },
+
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 30,
+    backgroundColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+  },
 });

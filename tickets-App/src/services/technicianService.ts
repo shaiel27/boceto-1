@@ -31,6 +31,9 @@ export async function getTechnicianProfile(): Promise<ProfileResult> {
     is_system_user: true,
     last_login_at: null,
     created_at: raw.created_at || '',
+    office_id: null,
+    office_name: '',
+    office_type: '',
     role_name: 'Tecnico',
     status: raw.status || 'Activo',
   };

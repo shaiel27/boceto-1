@@ -13,6 +13,7 @@ final class CreateTicketDTO
     public ?string $propertyNumber;
     public string $description;
     public string $systemPriority;
+    public ?string $newProblemName;
 
     public function __construct(
         int $fkOffice,
@@ -23,7 +24,8 @@ final class CreateTicketDTO
         string $subject,
         ?string $propertyNumber,
         string $description,
-        string $systemPriority = 'Media'
+        string $systemPriority = 'Media',
+        ?string $newProblemName = null
     ) {
         $this->fkOffice = $fkOffice;
         $this->fkTiService = $fkTiService;
@@ -34,6 +36,7 @@ final class CreateTicketDTO
         $this->propertyNumber = $propertyNumber;
         $this->description = $description;
         $this->systemPriority = $systemPriority;
+        $this->newProblemName = $newProblemName;
 
         $this->validate();
     }
@@ -58,7 +61,8 @@ final class CreateTicketDTO
             htmlspecialchars(strip_tags($data['Subject'] ?? '')),
             isset($data['Property_Number']) ? htmlspecialchars(strip_tags($data['Property_Number'])) : null,
             htmlspecialchars(strip_tags($data['Description'] ?? '')),
-            $data['System_Priority'] ?? 'Media'
+            $data['System_Priority'] ?? 'Media',
+            isset($data['New_Problem_Name']) ? htmlspecialchars(strip_tags($data['New_Problem_Name'])) : null
         );
     }
 }

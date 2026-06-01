@@ -303,4 +303,22 @@ INSERT IGNORE INTO TI_Service (ID_TI_Service, Type_Service, Details) VALUES
 (2, 'Soporte', 'Soporte técnico general de hardware y software'),
 (3, 'Programación', 'Desarrollo y mantenimiento de sistemas de software');
 
+INSERT IGNORE INTO Service_Problems_Catalog (ID_Problem_Catalog, Fk_TI_Service, Problem_Name, Typical_Description, Estimated_Severity) VALUES
+-- Soporte (2)
+(1, 2, 'Equipo no enciende', 'El equipo no responde al presionar el botón de encendido. Posible falla de fuente de poder o batería.', 'Alta'),
+(2, 2, 'Equipo con error de encendido', 'El equipo se enciende pero muestra errores durante el arranque (BSOD, BIOS, etc.).', 'Alta'),
+(3, 2, 'Impresora atascada', 'Papel atascado en la impresora impidiendo la impresión normal.', 'Media'),
+(4, 2, 'Falla en impresora', 'La impresora no funciona correctamente o no imprime. Posible falla mecánica o de conexión.', 'Media'),
+(5, 2, 'Recarga de tinta de impresora', 'Recarga de cartuchos de tinta para impresoras de inyección.', 'Baja'),
+(6, 2, 'Cambio de toner', 'Sustitución de cartucho de tóner en impresora láser.', 'Baja'),
+(7, 2, 'Problemas de software o programas', 'Errores en aplicaciones, instalación/desinstalación de programas, licencias, actualizaciones.', 'Media'),
+-- Programación (3)
+(8, 3, 'Caída de sistema', 'El sistema o aplicación no está disponible o presenta interrupciones del servicio.', 'Alta'),
+(9, 3, 'Error de reporte', 'Los reportes generan errores, datos incorrectos o no se generan.', 'Media'),
+-- Redes (1)
+(10, 1, 'Desconexión de impresora', 'La impresora de red no responde o se ha desconectado.', 'Media'),
+(11, 1, 'Sin internet', 'Falta de conectividad a internet en uno o varios equipos de la oficina.', 'Alta'),
+(12, 1, 'Conectar impresora a red', 'Configuración e instalación de impresora en la red local.', 'Baja'),
+(13, 1, 'Instalación de red interna y cableado por tubería', 'Tendido de cableado estructurado, instalación de puntos de red y configuración de switches/routers.', 'Media');
+
 -- End of final schema

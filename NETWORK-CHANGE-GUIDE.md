@@ -1,95 +1,120 @@
-# Guia de Cambio de Red — Sistema de Tickets
+# Guía de Cambio de Red — Sistema de Tickets
 
-## Direccion actual (se detecta automaticamente)
+## Dirección actual (se detecta automáticamente)
 ```
-http://192.168.5.156:3000
+http://192.168.5.98:3000   ← Web
+http://192.168.5.98:8000   ← Backend API
 ```
 
-## Cuando cambias de red (WiFi, Ethernet, ubicacion)
+## Cuando cambias de red (WiFi, Ethernet, ubicación)
 
-**NO necesitas modificar ningun archivo.** El sistema ahora detecta automaticamente el host desde el navegador.
+### App Web (React) — Automático
+**NO necesitas modificar nada.** El frontend web usa `window.location.hostname` para resolver el backend. El CORS es dinámico.
 
-El CORS es dinamico (acepta cualquier origen del mismo host) y las URLs del backend se resuelven usando `window.location.hostname`.
+### App Móvil (Expo/React Native) — Manual
+La app móvil tiene el IP hardcodeado. Debes actualizar **1 archivo**:
 
-## Sintomas (si algo falla)
-- `net::ERR_CONNECTION_TIMED_OUT`
-- `CORS policy: No 'Access-Control-Allow-Origin' header`
-- Frontend carga pero no conecta con backend
+**`tickets-App/src/constants/config.ts`:**
+```ts
+export const API_BASE_URL = 'http://TU_IP:8000';
+export const SSE_BASE_URL = 'http://TU_IP:8001';
+```
+
+> Después de cambiar este archivo, reinicia Expo: `Ctrl+C` → `npx expo start`
 
 ---
 
-## Arranque (solo 2 terminales)
+## Síntomas (si algo falla)
 
-Antes necesitabas 3 terminales (API + SSE + Frontend). Ahora solo 2.
+| App | Error | Causa |
+|-----|-------|-------|
+| Web | `ERR_CONNECTION_TIMED_OUT` | Backend no iniciado |
+| Web | `CORS policy error` | Frontend y backend en distintas máquinas |
+| Web | Página en blanco | Frontend no compiló |
+| **Móvil** | **"Error de conexión con el servidor" al hacer login** | **IP cambió, actualizar `config.ts`** |
+| Móvil | Pantalla de carga infinita | Backend no responde en el IP configurado |
+
+---
+
+## Arranque completo (3 terminales)
 
 ### 1. Averiguar tu IP
 
-Ejecuta en PowerShell:
 ```powershell
 ipconfig | Select-String "IPv4"
+# o más específico:
+(Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -like "192.168.*" }).IPAddress
 ```
 
-### 2. Iniciar Backend (1 terminal)
+### 2. Iniciar Backend (Terminal 1)
 
 ```powershell
 cd "C:\Users\Shaiel\Desktop\shaiel\boceto-1\tickets-backend"
-C:\xampp\php\php.exe -S 0.0.0.0:8000 -t public public/router.php
+C:\xampp\php\php.exe -S 0.0.0.0:8000 -t public public\router.php
 ```
 
-### 3. Iniciar Frontend (1 terminal)
+### 3. Iniciar Frontend Web (Terminal 2)
 
 ```powershell
 cd "C:\Users\Shaiel\Desktop\shaiel\boceto-1\tickets-frontend"
 npm start
 ```
 
-### 4. Probar
+### 4. Iniciar App Móvil (Terminal 3)
 
-Abre en el navegador `http://TU_IP:3000` y verifica:
-- Login funciona: `admin@alcaldia.gob` / `password123`
-- Tablero publico: `http://TU_IP:3000/public-board`
+```powershell
+cd "C:\Users\Shaiel\Desktop\shaiel\boceto-1\tickets-App"
+npx expo start
+```
+
+---
+
+## Probar
+
+### Web
+Abre `http://TU_IP:3000` en el navegador:
+- Login: `admin@alcaldia.gob` / `password123`
 - Pestaña Network en DevTools muestra requests a `TU_IP:8000`
 
+### Móvil
+Escanea el QR con Expo Go o conecta por USB:
+- Verifica que el login funcione
+- Si falla: revisa `tickets-App/src/constants/config.ts`
+
 ---
 
-## Arquitectura simplificada (Mayo 2026)
+## Arquitectura
 
-| Componente | Puerto | Descripcion |
+| Componente | Puerto | Descripción |
 |-----------|--------|-------------|
-| Frontend (React) | 3000 | App web con resolucion dinamica de host |
-| Backend API | 8000 | API REST + tablero publico (polling) |
-| ~~SSE Server~~ | ~~8001~~ | **ELIMINADO** - reemplazado por polling |
-
-### Que cambio:
-
-1. **CORS dinamico** (`index.php`): Acepta automaticamente cualquier origen del mismo host. Ya no necesitas agregar IPs al array `$allowedOrigins`.
-
-2. **Resolucion dinamica de URLs** (`api.ts`): El frontend usa `window.location.hostname` para determinar la URL del backend. Si la variable `REACT_APP_API_BASE` esta definida en `.env.local`, esa tiene prioridad.
-
-3. **SSE eliminado**: El servidor SSE (puerto 8001) fue removido. El tablero publico ahora usa polling cada 5 segundos contra la API principal (puerto 8000), resolviendo el problema de bloqueo del servidor PHP single-threaded en Windows.
+| Backend API (PHP) | 8000 | API REST + polling para notificaciones |
+| Frontend Web (React) | 3000 | App web con resolución dinámica de host |
+| App Móvil (Expo) | 8081 | Metro bundler, IP hardcodeado en `config.ts` |
+| ~~SSE Server~~ | ~~8001~~ | **ELIMINADO** — reemplazado por polling |
 
 ---
 
-## Si necesitas forzar una IP especifica
+## Si necesitas forzar una IP en el frontend web
 
 Edita `tickets-frontend/.env.local`:
 ```
 REACT_APP_API_BASE=http://192.168.X.X:8000
 ```
-> El frontend debe reiniciarse (`npm start`) despues de cambiar este archivo.
+> El frontend debe reiniciarse después de cambiar este archivo.
 
 ---
 
 ## Errores comunes
 
-| Error | Causa | Solucion |
+| Error | Causa | Solución |
 |-------|-------|----------|
-| `ERR_CONNECTION_TIMED_OUT` | Backend no iniciado o IP inaccesible | Verificar que el servidor PHP esta corriendo en 0.0.0.0:8000 |
-| `CORS policy error` | Origen no coincide con el host | Verificar que frontend y backend estan en la misma maquina |
-| Pagina en blanco | Frontend no compilo correctamente | Ctrl+C -> `npm start` |
-| Tablero desconectado | API no responde | Verificar puerto 8000 |
+| `ERR_CONNECTION_TIMED_OUT` (web) | Backend no iniciado o IP inaccesible | Verificar `php.exe -S` corriendo en `0.0.0.0:8000` |
+| `CORS policy error` (web) | Origen no coincide con el host | Verificar que frontend y backend están en la misma máquina |
+| "Error de conexión con el servidor" (móvil) | IP cambió por DHCP | Actualizar `tickets-App/src/constants/config.ts` con el nuevo IP |
+| App móvil no carga datos | IP incorrecto en `config.ts` | Revisar con `ipconfig`, actualizar y reiniciar Expo |
+| Página en blanco (web) | Frontend no compiló | `Ctrl+C` → `npm start` |
 
 ---
 
-*Ultima actualizacion: Mayo 2026*
-*Arquitectura: Frontend (React :3000) + Backend (PHP :8000) - sin SSE*
+*Última actualización: Junio 2026*
+*Arquitectura: Backend PHP (:8000) + Frontend Web (:3000) + App Móvil (Expo)*

@@ -1,0 +1,22 @@
+import { Stack } from 'expo-router';
+import { Colors } from '../../../src/constants/colors';
+
+export default function RequesterLayout() {
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: Colors.surface },
+        headerTintColor: Colors.text,
+        headerTitleStyle: { fontWeight: '600', fontSize: 16 },
+        headerBackTitle: 'Volver',
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: Colors.background },
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="history" options={{ title: 'Historial' }} />
+      <Stack.Screen name="create" options={{ title: 'Nuevo Ticket', presentation: 'modal' }} />
+      <Stack.Screen name="[id]" options={{ title: 'Detalle' }} />
+    </Stack>
+  );
+}

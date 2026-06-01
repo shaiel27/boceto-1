@@ -106,7 +106,7 @@ class ServiceRequest {
         return false;
     }
 
-    public function getAll($limit = 50, $offset = 0) {
+    public function getAll(int $limit = 50, int $offset = 0): array {
         $query = "SELECT sr.*, u.Full_Name as user_name, o.Name_Office as office_name,
                          ts.Type_Service as service_type_name, b.Name_Boss as boss_name,
                          ss.System_Name as software_system_name
@@ -134,7 +134,7 @@ class ServiceRequest {
         return $results;
     }
 
-    public function getById($id) {
+    public function getById(int $id): array|null {
         $query = "SELECT sr.*, u.Full_Name as user_name, o.Name_Office as office_name,
                          ts.Type_Service as service_type_name, b.Name_Boss as boss_name,
                          ss.System_Name as software_system_name
@@ -147,7 +147,7 @@ class ServiceRequest {
                   WHERE sr.ID_Service_Request = :id";
 
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $id);
+        $stmt->bindParam(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
 
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -266,7 +266,7 @@ class ServiceRequest {
         return $results;
     }
 
-    public function getTicketTechnicians($ticketId) {
+    public function getTicketTechnicians($ticketId): array {
         $query = "SELECT t.ID_Technicians,
                          CONCAT(t.First_Name, ' ', t.Last_Name) as name,
                          tt.Is_Lead as is_lead,
@@ -281,7 +281,7 @@ class ServiceRequest {
                   ORDER BY tt.Assigned_At ASC";
 
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":ticketId", $ticketId);
+        $stmt->bindValue(":ticketId", (int) $ticketId, PDO::PARAM_INT);
         $stmt->execute();
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

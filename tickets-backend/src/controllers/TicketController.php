@@ -13,6 +13,7 @@ require_once __DIR__ . '/../models/AssistanceRequest.php';
 require_once __DIR__ . '/../models/Technician.php';
 require_once __DIR__ . '/../models/Notification.php';
 require_once __DIR__ . '/../models/AuditLog.php';
+require_once __DIR__ . '/../models/ServiceProblemsCatalog.php';
 require_once __DIR__ . '/../Services/AuditService.php';
 
 use App\Models\Notification;
@@ -55,7 +56,7 @@ try {
 }
 
 // Get authenticated user from middleware context
-$currentUserId = $_SERVER['AUTH_USER_ID'] ?? null;
+$currentUserId = isset($_SERVER['AUTH_USER_ID']) ? (int) $_SERVER['AUTH_USER_ID'] : null;
 $currentUserRole = $_SERVER['AUTH_USER_ROLE'] ?? null;
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -84,7 +85,7 @@ switch ($method) {
                 
             case 'single':
                 if (isset($_GET['id'])) {
-                    $ticket_data = $ticket->getById($_GET['id']);
+                    $ticket_data = $ticket->getById((int) $_GET['id']);
                     
                     if (!$ticket_data) {
                         http_response_code(404);
@@ -1098,7 +1099,7 @@ switch ($method) {
             $result = $ticketService->createTicket($dto, (int) $currentUserId);
 
             $auditService->logTicketAction('create_ticket', $result['ticket_id'], "Ticket creado: {$dto->subject}");
-            $ticketData = $ticket->getById($result['ticket_id']);
+            $ticketData = $ticket->getById((int) $result['ticket_id']);
             $timeline->create($result['ticket_id'], (int) $currentUserId, "Ticket creado por el usuario", null, 'Pendiente');
 
             http_response_code(201);

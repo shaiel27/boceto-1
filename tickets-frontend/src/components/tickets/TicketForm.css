@@ -355,6 +355,17 @@ background-repeat:no-repeat;background-position:right 9px center}
 /* old button classes still in step content */
 .btn{display:none}
 
+/* "Otro" option */
+.problem-card-other .problem-content{border-style:dashed;background:var(--gold-s)}
+.problem-card-other:hover .problem-content{border-color:var(--gold);background:var(--gold-l)}
+.problem-card-other.active .problem-content{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.25)}
+.other-problem-input{
+  grid-column:1/-1;padding:12px 0 4px;
+  animation:tkSlide .2s ease
+}
+.other-problem-input label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:6px}
+.other-problem-input .form-input{width:100%}
+
 /* responsive */
 @media(max-width:640px){
   .tkt-inner{padding:16px 12px 32px}

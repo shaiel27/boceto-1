@@ -22,6 +22,8 @@ import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import Header from '../layout/Header';
 
+const OTHER_PROBLEM_ID = '-1';
+
 interface TicketFormData {
   subject: string;
   description: string;
@@ -29,6 +31,7 @@ interface TicketFormData {
   fkOffice: string;
   fkTiService: string;
   fkProblemCatalog: string;
+  newProblemName: string;
   fkSoftwareSystem: string;
   attachments: File[];
 }
@@ -61,6 +64,7 @@ const TicketForm: React.FC = () => {
     fkOffice: '',
     fkTiService: '',
     fkProblemCatalog: '',
+    newProblemName: '',
     fkSoftwareSystem: '',
     attachments: []
   });
@@ -208,6 +212,8 @@ const TicketForm: React.FC = () => {
       // Paso 2: Selección de problema del catálogo
       if (!formData.fkProblemCatalog) {
         newErrors.fkProblemCatalog = 'Debe seleccionar un problema del catálogo';
+      } else if (formData.fkProblemCatalog === OTHER_PROBLEM_ID && !formData.newProblemName.trim()) {
+        newErrors.newProblemName = 'Describa el problema que está experimentando';
       }
     }
 
@@ -220,6 +226,14 @@ const TicketForm: React.FC = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleProblemSelect = (problemId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      fkProblemCatalog: problemId,
+      newProblemName: problemId === OTHER_PROBLEM_ID ? prev.newProblemName : ''
+    }));
   };
 
   const handleNext = () => {
@@ -252,20 +266,27 @@ const TicketForm: React.FC = () => {
 
     try {
       // Calcular prioridad del sistema basada en el problema seleccionado
-      const selectedProblem = problemsCatalog.find(p => p.id === formData.fkProblemCatalog);
+      const isOther = formData.fkProblemCatalog === OTHER_PROBLEM_ID;
+      const selectedProblem = isOther ? null : problemsCatalog.find(p => p.id === formData.fkProblemCatalog);
       const systemPriority = selectedProblem?.estimatedSeverity || 'Media';
 
       // Preparar datos del ticket para enviar al backend
-      const ticketData = {
+      const ticketData: Record<string, any> = {
         Subject: formData.subject,
         Description: formData.description,
         Property_Number: formData.propertyNumber,
         Fk_Office: parseInt(formData.fkOffice),
         Fk_TI_Service: parseInt(formData.fkTiService),
-        Fk_Problem_Catalog: parseInt(formData.fkProblemCatalog),
         Fk_Software_System: formData.fkSoftwareSystem ? parseInt(formData.fkSoftwareSystem) : null,
         System_Priority: systemPriority
       };
+
+      // Si seleccionó "Otro", envía el nombre personalizado; si no, envía el ID del catálogo
+      if (isOther) {
+        ticketData.New_Problem_Name = formData.newProblemName.trim();
+      } else {
+        ticketData.Fk_Problem_Catalog = parseInt(formData.fkProblemCatalog);
+      }
 
       // Enviar ticket al backend
       const response = await ApiService.createTicket(ticketData);
@@ -286,7 +307,9 @@ const TicketForm: React.FC = () => {
         // Guardar datos del ticket creado para mostrar en el resumen
         const officeName = offices.find(o => o.id === formData.fkOffice)?.name || 'No asignado';
         const serviceName = tiServices.find(s => s.id === formData.fkTiService)?.name || 'No asignado';
-        const problemName = problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.name || 'No asignado';
+        const problemName = isOther
+          ? formData.newProblemName.trim()
+          : (problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.name || 'No asignado');
 
         // Get technician info from backend response
         const technicianAssigned = response.data?.technician_assigned || false;
@@ -324,6 +347,7 @@ const TicketForm: React.FC = () => {
             fkOffice: '',
             fkTiService: '',
             fkProblemCatalog: '',
+            newProblemName: '',
             fkSoftwareSystem: '',
             attachments: []
           });
@@ -545,7 +569,7 @@ const TicketForm: React.FC = () => {
                         name="problemCatalog"
                         value={problem.id}
                         checked={formData.fkProblemCatalog === problem.id}
-                        onChange={(e) => setFormData(prev => ({ ...prev, fkProblemCatalog: e.target.value }))}
+                        onChange={(e) => handleProblemSelect(e.target.value)}
                       />
                       <div className="problem-content">
                         <div className="problem-header">
@@ -558,6 +582,42 @@ const TicketForm: React.FC = () => {
                       </div>
                     </label>
                   ))}
+                  {/* Opción "Otro" */}
+                  <label
+                    className={`problem-card problem-card-other ${formData.fkProblemCatalog === OTHER_PROBLEM_ID ? 'active' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="problemCatalog"
+                      value={OTHER_PROBLEM_ID}
+                      checked={formData.fkProblemCatalog === OTHER_PROBLEM_ID}
+                      onChange={(e) => handleProblemSelect(e.target.value)}
+                    />
+                    <div className="problem-content">
+                      <div className="problem-header">
+                        <span className="problem-name">Otro</span>
+                        <span className="severity-badge media">Media</span>
+                      </div>
+                      <p className="problem-description">El problema no está en la lista. Especifica el problema manualmente.</p>
+                    </div>
+                  </label>
+                  {formData.fkProblemCatalog === OTHER_PROBLEM_ID && (
+                    <div className="other-problem-input">
+                      <label>
+                        Describe el problema *
+                      </label>
+                      <input
+                        type="text"
+                        className={`form-input ${errors.newProblemName ? 'error' : ''}`}
+                        value={formData.newProblemName}
+                        onChange={(e) => setFormData(prev => ({ ...prev, newProblemName: e.target.value }))}
+                        placeholder="Escribe el problema que estás experimentando..."
+                        maxLength={200}
+                        autoFocus
+                      />
+                      {errors.newProblemName && <span className="error-message">{errors.newProblemName}</span>}
+                    </div>
+                  )}
                 </div>
               )}
               {errors.fkProblemCatalog && <span className="error-message">{errors.fkProblemCatalog}</span>}
@@ -691,12 +751,12 @@ const TicketForm: React.FC = () => {
                 </div>
                 <div className="confirmation-item">
                   <span>Problema:</span>
-                  <span>{problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.name}</span>
+                  <span>{formData.fkProblemCatalog === OTHER_PROBLEM_ID ? formData.newProblemName.trim() : (problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.name || '—')}</span>
                 </div>
                 <div className="confirmation-item">
                   <span>Prioridad del Sistema:</span>
-                  <span className={`priority-badge ${problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.estimatedSeverity?.toLowerCase() || 'media'}`}>
-                    {problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.estimatedSeverity || 'Media'}
+                  <span className={`priority-badge ${formData.fkProblemCatalog === OTHER_PROBLEM_ID ? 'media' : (problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.estimatedSeverity?.toLowerCase() || 'media')}`}>
+                    {formData.fkProblemCatalog === OTHER_PROBLEM_ID ? 'Media' : (problemsCatalog.find(p => p.id === formData.fkProblemCatalog)?.estimatedSeverity || 'Media')}
                   </span>
                 </div>
               </div>

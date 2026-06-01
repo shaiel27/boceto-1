@@ -36,7 +36,11 @@ export default function AdminTicketDetailScreen() {
   useEffect(() => { load(); }, [tid]);
 
   const openAssign = async () => {
-    const r = await getAvailableTechnicians(ticket?.fk_ti_service);
+    if (!ticket?.fk_ti_service) {
+      toast.showToast({ title: 'Sin servicio', message: 'El ticket no tiene un tipo de servicio asignado', type: 'error' });
+      return;
+    }
+    const r = await getAvailableTechnicians(ticket.fk_ti_service);
     if (r.success && r.data) {
       setTechs(r.data);
     } else {

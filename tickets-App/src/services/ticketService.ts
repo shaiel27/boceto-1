@@ -30,6 +30,19 @@ export async function getTechnicianTickets(): Promise<TicketsResult> {
   return { success: true, tickets };
 }
 
+export async function getMyTickets(): Promise<TicketsResult> {
+  const response = await apiClient.get('/api/tickets?action=my-tickets');
+
+  if (!response.success) {
+    return { success: false, tickets: [], message: response.message || 'Error al obtener tickets' };
+  }
+
+  const rawTickets: BackendTicket[] = response.data || [];
+  const tickets = rawTickets.map(mapBackendTicket);
+
+  return { success: true, tickets };
+}
+
 export async function getTicketDetail(
   ticketId: number,
   baseTicket: Ticket | null
@@ -37,9 +50,10 @@ export async function getTicketDetail(
   let ticket = baseTicket;
 
   if (!ticket) {
-    const ticketsResult = await getTechnicianTickets();
-    const found = ticketsResult.tickets.find((t) => t.id === ticketId);
-    ticket = found || null;
+    const singleRes = await apiClient.get(`/api/tickets?action=single&id=${ticketId}`);
+    if (singleRes.success && singleRes.data) {
+      ticket = mapBackendTicket(singleRes.data as BackendTicket);
+    }
   }
 
   const [commentsRes, timelineRes] = await Promise.all([

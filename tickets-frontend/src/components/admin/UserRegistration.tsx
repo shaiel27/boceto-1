@@ -56,6 +56,7 @@ interface Office {
   ID_Office: number;
   Name_Office: string;
   Office_Type: string;
+  Fk_Boss_ID: number | null;
 }
 
 const ROLES: Role[] = [
@@ -91,6 +92,7 @@ const UserRegistration = () => {
   const [officesLoading, setOfficesLoading] = useState(false);
 
   const isAdmin = formData.fk_role === '1';
+  const needsOffice = !isAdmin;
   const passwordMatch = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword;
 
   useEffect(() => {
@@ -119,12 +121,24 @@ const UserRegistration = () => {
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'fk_role') {
+        updated.fk_office = '';
+      }
+      return updated;
+    });
     if (name === 'fk_role') {
-      setFormData(prev => ({ ...prev, fk_office: '' }));
       setOfficeSearch('');
+      setErrors(prev => ({ ...prev, fk_office: '', fk_role: '' }));
+      setTouched(prev => {
+        const next = new Set(prev);
+        next.delete('fk_office');
+        return next;
+      });
+    } else {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
-    setErrors(prev => ({ ...prev, [name]: '' }));
   }, []);
 
   const handleBlur = useCallback((e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -148,9 +162,9 @@ const UserRegistration = () => {
     else if (formData.password.length < 6) errs.password = 'Mínimo 6 caracteres';
     if (formData.confirmPassword && formData.password !== formData.confirmPassword) errs.confirmPassword = 'No coinciden';
     if (!formData.fk_role) errs.fk_role = 'Selecciona un rol';
-    if (!isAdmin && !formData.fk_office) errs.fk_office = 'Requerido para este rol';
+    if (needsOffice && !formData.fk_office) errs.fk_office = 'Requerido para este rol';
     return errs;
-  }, [formData, isAdmin]);
+  }, [formData, needsOffice]);
 
   const isValid = Object.keys(validate()).length === 0;
 
@@ -158,7 +172,7 @@ const UserRegistration = () => {
     e.preventDefault();
     const errs = validate();
     setErrors(errs);
-    if (!isValid) return;
+    if (Object.keys(errs).length > 0) return;
 
     setLoading(true);
     try {
@@ -170,7 +184,7 @@ const UserRegistration = () => {
         role: parseInt(formData.fk_role),
         name_boss: formData.name_boss,
         pronoun: formData.pronoun,
-        office_id: isAdmin ? undefined : (formData.fk_office ? parseInt(formData.fk_office) : undefined),
+        office_id: needsOffice ? (formData.fk_office ? parseInt(formData.fk_office) : undefined) : undefined,
       });
 
       if (response.success) {
@@ -359,12 +373,12 @@ const UserRegistration = () => {
               </div>
 
               {formData.fk_role && (
-                <div className={`ur-field${isAdmin ? ' ur-field--dim' : ''}`}>
+                <div className={`ur-field${!needsOffice ? ' ur-field--dim' : ''}`}>
                   <label htmlFor="fk_office_search">
                     <MapPin size={14} />
                     Oficina
                   </label>
-                  {isAdmin ? (
+                  {!needsOffice ? (
                     <div className="ur-office-dim">
                       <Shield size={16} />
                       <span>Los administradores no requieren oficina</span>
@@ -394,7 +408,11 @@ const UserRegistration = () => {
                             <div className="ur-office-empty">Cargando...</div>
                           ) : filteredOffices.length > 0 ? (
                             filteredOffices.map(o => (
-                              <div key={o.ID_Office} className="ur-office-opt" onClick={() => handleOfficeSelect(o)}>
+                              <div
+                                key={o.ID_Office}
+                                className="ur-office-opt"
+                                onClick={() => handleOfficeSelect(o)}
+                              >
                                 <span className="ur-office-name">{o.Name_Office}</span>
                                 <span className="ur-office-type">{o.Office_Type}</span>
                               </div>

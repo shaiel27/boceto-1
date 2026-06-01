@@ -10,7 +10,7 @@ import { Colors } from '../src/constants/colors';
 import { Loading } from '../src/components/ui/Loading';
 
 function AuthGate({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, isAdmin } = useAuth();
+  const { isAuthenticated, isLoading, isAdmin, isTechnician } = useAuth();
   const wasAuthenticated = useRef(isAuthenticated);
   const initialLoadDone = useRef(false);
   const lastRedirect = useRef<string | null>(null);
@@ -23,9 +23,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       lastRedirect.current = 'login';
       initialLoadDone.current = true;
     } else if (isAuthenticated && !wasAuthenticated.current) {
-      const target = isAdmin ? '/admin' : '/technician';
+      const target = isAdmin ? '/admin' : isTechnician ? '/technician' : '/requester';
       router.replace(`/(tabs)${target}` as any);
-      lastRedirect.current = isAdmin ? 'admin' : 'technician';
+      lastRedirect.current = isAdmin ? 'admin' : isTechnician ? 'technician' : 'requester';
       initialLoadDone.current = true;
     }
 

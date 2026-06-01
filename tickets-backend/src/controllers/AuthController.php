@@ -160,6 +160,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                                 'role_name' => $result['Role'],
                                 'ID_Role' => $result['ID_Role'],
                                 'office_id' => $result['office_id'] ?? null,
+                                'office_name' => $result['office_name'] ?? '',
+                                'office_type' => $result['office_type'] ?? '',
                                 'last_login_at' => $result['last_login_at'] ?? null
                             ],
                             'token' => $token

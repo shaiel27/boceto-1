@@ -17,14 +17,14 @@ try {
     $auditService = new AuditService($auditLog);
 
     // Get authenticated user from middleware context
-    $currentUserId = $_SERVER['AUTH_USER_ID'] ?? null;
+    $currentUserId = isset($_SERVER['AUTH_USER_ID']) ? (int) $_SERVER['AUTH_USER_ID'] : null;
     $currentUserRole = $_SERVER['AUTH_USER_ROLE'] ?? null;
 
     error_log("TechnicianController - User ID: " . ($currentUserId ?? 'null') . ", Role: " . ($currentUserRole ?? 'null'));
 
     $method = $_SERVER['REQUEST_METHOD'];
     $action = $_GET['action'] ?? '';
-    $id = $_GET['id'] ?? '';
+    $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
     // Para PUT/POST, leer action del body JSON si no está en query params
     if (($method === 'PUT' || $method === 'POST') && empty($action)) {

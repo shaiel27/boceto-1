@@ -25,6 +25,21 @@ final class TicketService
         try {
             $this->db->beginTransaction();
 
+            // Handle "Otro" - create a new problem in the catalog if a custom name is provided
+            if ($dto->newProblemName !== null && trim($dto->newProblemName) !== '') {
+                $problemsCatalog = new ServiceProblemsCatalog($this->db);
+                $newProblemId = $problemsCatalog->create(
+                    $dto->fkTiService,
+                    trim($dto->newProblemName),
+                    'Problema personalizado ingresado por el usuario',
+                    'Media'
+                );
+                if ($newProblemId === false) {
+                    throw new \RuntimeException('No se pudo crear el nuevo problema en el catálogo');
+                }
+                $dto->fkProblemCatalog = $newProblemId;
+            }
+
             // Create the ticket
             $ticketId = $this->ticketModel->createWithDTO($dto, $requesterId);
 

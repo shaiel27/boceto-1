@@ -198,7 +198,7 @@ export async function assignTechniciansToTicket(
 export async function getAvailableTechnicians(
   serviceId?: number
 ): Promise<{ success: boolean; data?: any[] }> {
-  const qs = serviceId ? `?service_id=${serviceId}` : '';
+  const qs = serviceId ? `&service_id=${serviceId}` : '';
   const response = await apiClient.get(`/api/users?action=technicians-by-service${qs}`);
   if (!response.success) return { success: false };
   return { success: true, data: response.data };
@@ -217,6 +217,7 @@ export async function createTicket(ticketData: {
   Fk_Office: number;
   Fk_TI_Service: number;
   Fk_Problem_Catalog?: number;
+  New_Problem_Name?: string;
   Fk_Software_System?: number | null;
   Subject: string;
   Property_Number?: string;
@@ -234,7 +235,7 @@ export async function createTicket(ticketData: {
 }
 
 export async function getOffices(): Promise<{ success: boolean; data?: { ID_Office: number; Name_Office: string; Office_Type: string }[] }> {
-  const response = await apiClient.get('/api/offices');
+  const response = await apiClient.get('/api/office?action=all');
   if (!response.success) return { success: false };
   return { success: true, data: response.data };
 }
@@ -246,7 +247,7 @@ export async function getProblems(serviceId: number): Promise<{ success: boolean
 }
 
 export async function getSystems(): Promise<{ success: boolean; data?: { ID_System: number; System_Name: string; Description: string }[] }> {
-  const response = await apiClient.get('/api/service?action=systems');
+  const response = await apiClient.get('/api/service?action=software-systems');
   if (!response.success) return { success: false };
   return { success: true, data: response.data };
 }

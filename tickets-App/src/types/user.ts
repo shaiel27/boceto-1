@@ -9,6 +9,9 @@ export interface User {
   is_system_user: boolean;
   last_login_at: string | null;
   created_at: string;
+  office_id: number | null;
+  office_name: string;
+  office_type: string;
   // joined
   role_name: string;
   status: string;

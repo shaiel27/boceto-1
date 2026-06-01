@@ -34,7 +34,7 @@ try {
 }
 
 // Get authenticated user from middleware context
-$currentUserId = $_SERVER['AUTH_USER_ID'] ?? null;
+$currentUserId = isset($_SERVER['AUTH_USER_ID']) ? (int) $_SERVER['AUTH_USER_ID'] : null;
 $currentUserRole = $_SERVER['AUTH_USER_ROLE'] ?? null;
 
 $method = $_SERVER['REQUEST_METHOD'];

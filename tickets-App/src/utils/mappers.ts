@@ -27,6 +27,9 @@ export function mapBackendUser(raw: BackendUser): User {
     is_system_user: true,
     last_login_at: raw.last_login_at || null,
     created_at: raw.created_at || '',
+    office_id: raw.office_id ? parseInt(String(raw.office_id), 10) : null,
+    office_name: raw.office_name || '',
+    office_type: raw.office_type || '',
     role_name: raw.Role || raw.role || raw.role_name || 'Tecnico',
     status: 'Activo',
   };

@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { Ticket } from '../types/ticket';
 import {
   getTechnicianTickets,
+  getMyTickets,
   updateTicketStatus,
   addComment as addCommentApi,
 } from '../services/ticketService';
@@ -32,7 +33,9 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true);
     setError(null);
 
-    const result = await getTechnicianTickets();
+    const result = auth.isTechnician
+      ? await getTechnicianTickets()
+      : await getMyTickets();
 
     if (result.success) {
       setTickets(result.tickets);
@@ -40,7 +43,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
       setError(result.message || 'Error al cargar tickets');
     }
     setIsLoading(false);
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, auth.isTechnician]);
 
   useEffect(() => {
     if (auth.isAuthenticated) {

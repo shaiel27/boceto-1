@@ -125,7 +125,7 @@ final class Technician
         return $this->calculateStatusReason($isInWorkHours, $isInLunchBlock, $hasActiveTickets);
     }
 
-    public function getById($id) {
+    public function getById(int $id): array|false {
         $query = "SELECT t.ID_Technicians, t.Fk_Users, t.First_Name, t.Last_Name, 
                           t.Fk_Lunch_Block, t.Status, t.created_at,
                           u.Email, u.Username,
@@ -143,13 +143,13 @@ final class Technician
                   LIMIT 1";
         
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $id);
+        $stmt->bindValue(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
         
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function getByUserId($userId) {
+    public function getByUserId(int $userId): array|false {
         $query = "SELECT t.ID_Technicians, t.Fk_Users, t.First_Name, t.Last_Name, 
                           t.Fk_Lunch_Block, t.Status, t.created_at,
                           u.Email, u.Username,
@@ -161,7 +161,7 @@ final class Technician
                   LIMIT 1";
         
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":userId", $userId);
+        $stmt->bindValue(":userId", $userId, PDO::PARAM_INT);
         $stmt->execute();
         
         return $stmt->fetch(PDO::FETCH_ASSOC);
@@ -928,7 +928,7 @@ final class Technician
         }
     }
 
-    public function assignToTicket($ticketId, $technicianId, $assignedBy = null, $isLead = true, $allowCrossService = false) {
+    public function assignToTicket(int $ticketId, int $technicianId, ?int $assignedBy = null, bool $isLead = true, bool $allowCrossService = false): bool {
         try {
             // Validación 1: Verificar si el técnico existe
             $techQuery = "SELECT ID_Technicians, Status FROM " . $this->table_name . " WHERE ID_Technicians = :technicianId";
