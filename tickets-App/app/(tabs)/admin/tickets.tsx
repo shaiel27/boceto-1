@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { getAllTickets, getServices } from '../../../src/services/adminService';
 import { BackendTicket } from '../../../src/types/api';
@@ -58,6 +58,8 @@ export default function AdminTicketsScreen() {
   }, [statusFilter, serviceFilter, offset]);
 
   useEffect(() => { setOffset(0); setHasMore(true); load(true); }, [statusFilter, serviceFilter]);
+
+  useFocusEffect(useCallback(() => { setOffset(0); setHasMore(true); load(true); }, [statusFilter, serviceFilter]));
 
   const onRefresh = async () => {
     setRefreshing(true); setOffset(0); setHasMore(true);
@@ -165,6 +167,13 @@ export default function AdminTicketsScreen() {
                 <Text style={styles.cardSubject} numberOfLines={2}>
                   {item.Subject}
                 </Text>
+
+                {item.Property_Number ? (
+                  <View style={styles.cardProp}>
+                    <Ionicons name="hardware-chip-outline" size={11} color={Colors.navyPrimary} />
+                    <Text style={styles.cardPropText} numberOfLines={1}>Bien {item.Property_Number}</Text>
+                  </View>
+                ) : null}
 
                 <View style={styles.cardFooter}>
                   <View style={styles.cardFooterItem}>
@@ -313,6 +322,8 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.3 },
   sDot: { width: 5, height: 5, borderRadius: 3 },
   cardSubject: { fontSize: 15, fontWeight: '600', color: Colors.text, lineHeight: 21 },
+  cardProp: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, backgroundColor: Colors.navyPrimary + '0D', paddingHorizontal: 9, paddingVertical: 4, borderRadius: BorderRadius.sm, alignSelf: 'flex-start' },
+  cardPropText: { fontSize: 11, fontWeight: '600', color: Colors.navyPrimary },
   cardFooter: { flexDirection: 'row', marginTop: 12, gap: 14 },
   cardFooterItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
   cardFooterText: { fontSize: 11, color: Colors.textSecondary, flex: 1 },

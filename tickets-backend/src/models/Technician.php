@@ -46,10 +46,10 @@ final class Technician
                           lb.Block_Name, lb.Start_Time, lb.End_Time,
                           (SELECT COUNT(*) FROM Ticket_Technicians tt
                            JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status != 'Cerrado') as Tickets_Assigned,
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Tickets_Assigned,
                           (SELECT COUNT(*) FROM Ticket_Technicians tt
                            JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status = 'Cerrado') as Tickets_Resolved
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status IN ('Cerrado', 'Resuelto')) as Tickets_Resolved
                   FROM " . $this->table_name . " t
                   LEFT JOIN Users u ON t.Fk_Users = u.ID_Users
                   LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
@@ -79,7 +79,7 @@ final class Technician
                           INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                           WHERE tt.Fk_Technician = :techIdSub
                           AND tt.Status = 'Activo'
-                          AND sr.Status != 'Cerrado') as Active_Tickets_Count
+                          AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Active_Tickets_Count
                   FROM " . $this->table_name . " t
                   LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
                   LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = :currentDay
@@ -132,10 +132,10 @@ final class Technician
                           lb.Block_Name, lb.Start_Time, lb.End_Time,
                           (SELECT COUNT(*) FROM Ticket_Technicians tt 
                            JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
-                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status != 'Cerrado') as Tickets_Assigned,
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND tt.Status = 'Activo' AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Tickets_Assigned,
                           (SELECT COUNT(*) FROM Ticket_Technicians tt 
                            JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request 
-                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status = 'Cerrado') as Tickets_Resolved
+                           WHERE tt.Fk_Technician = t.ID_Technicians AND sr.Status IN ('Cerrado', 'Resuelto')) as Tickets_Resolved
                   FROM " . $this->table_name . " t
                   LEFT JOIN Users u ON t.Fk_Users = u.ID_Users
                   LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
@@ -421,7 +421,7 @@ final class Technician
                              INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                              WHERE tt.Fk_Technician = t.ID_Technicians
                              AND tt.Status = 'Activo'
-                             AND sr.Status != 'Cerrado') as Active_Tickets_Count,
+                             AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Active_Tickets_Count,
                              (SELECT COUNT(*)
                              FROM Ticket_Technicians tt
                              WHERE tt.Fk_Technician = t.ID_Technicians
@@ -430,7 +430,7 @@ final class Technician
                              FROM Ticket_Technicians tt
                              INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                              WHERE tt.Fk_Technician = t.ID_Technicians
-                             AND sr.Status = 'Cerrado'
+                             AND sr.Status IN ('Cerrado', 'Resuelto')
                              AND sr.Resolved_at IS NOT NULL) as Avg_Resolution_Hours
                     FROM " . $this->table_name . " t
                     INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
@@ -488,7 +488,7 @@ final class Technician
                                          INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                                          WHERE tt.Fk_Technician = t.ID_Technicians
                                          AND tt.Status = 'Activo'
-                                         AND sr.Status != 'Cerrado') as Active_Tickets_Count,
+                                         AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Active_Tickets_Count,
                                          (SELECT COUNT(*)
                                          FROM Ticket_Technicians tt
                                          WHERE tt.Fk_Technician = t.ID_Technicians
@@ -591,7 +591,7 @@ final class Technician
                              INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                              WHERE tt.Fk_Technician = t.ID_Technicians
                              AND tt.Status = 'Activo'
-                             AND sr.Status != 'Cerrado') as Active_Tickets_Count
+                             AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Active_Tickets_Count
                     FROM " . $this->table_name . " t
                     INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
                     LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
@@ -777,7 +777,7 @@ final class Technician
                               INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                               WHERE tt.Fk_Technician = t.ID_Technicians
                               AND tt.Status = 'Activo'
-                              AND sr.Status != 'Cerrado') as Active_Tickets_Count
+                              AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Active_Tickets_Count
                       FROM " . $this->table_name . " t
                       LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
                       LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = :currentDay";
@@ -893,13 +893,13 @@ final class Technician
                           FROM Ticket_Technicians tt
                           INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                           WHERE tt.Fk_Technician = t.ID_Technicians
-                          AND sr.Status = 'Cerrado') as Tickets_Resolved,
+                          AND sr.Status IN ('Cerrado', 'Resuelto')) as Tickets_Resolved,
                          (SELECT COUNT(*)
                           FROM Ticket_Technicians tt
                           INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                           WHERE tt.Fk_Technician = t.ID_Technicians
                           AND tt.Status = 'Activo'
-                          AND sr.Status != 'Cerrado') as Active_Tickets
+                          AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Active_Tickets
                   FROM " . $this->table_name . " t
                   INNER JOIN Users u ON t.Fk_Users = u.ID_Users
                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
@@ -1023,7 +1023,7 @@ final class Technician
                                        INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                                        WHERE tt.Fk_Technician = :technicianId
                                          AND tt.Status = 'Activo'
-                                         AND sr.Status != 'Cerrado' FOR UPDATE";
+                                         AND sr.Status NOT IN ('Cerrado', 'Resuelto') FOR UPDATE";
 
                 $checkStmt = $this->conn->prepare($checkCapacityQuery);
                 $checkStmt->bindParam(":technicianId", $technicianId, PDO::PARAM_INT);
@@ -1108,7 +1108,7 @@ final class Technician
                               JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                               WHERE tt.Fk_Technician = :technicianId
                               AND tt.Status = 'Activo'
-                              AND sr.Status != 'Cerrado'";
+                              AND sr.Status NOT IN ('Cerrado', 'Resuelto')";
 
                 $checkStmt = $this->conn->prepare($checkQuery);
                 $checkStmt->bindParam(":technicianId", $technicianId);
@@ -1160,7 +1160,7 @@ final class Technician
                              INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                              WHERE tt.Fk_Technician = :technicianId
                                AND tt.Status = 'Activo'
-                               AND sr.Status != 'Cerrado'";
+                               AND sr.Status NOT IN ('Cerrado', 'Resuelto')";
                 $checkStmt = $this->conn->prepare($checkQuery);
                 $checkStmt->bindParam(":technicianId", $technicianId);
                 $checkStmt->execute();
@@ -1433,7 +1433,7 @@ final class Technician
                               INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                               WHERE tt.Fk_Technician = :technicianId
                                 AND tt.Status = 'Activo'
-                                AND sr.Status != 'Cerrado'";
+                                AND sr.Status NOT IN ('Cerrado', 'Resuelto')";
                 $checkStmt = $this->conn->prepare($checkQuery);
                 $checkStmt->bindParam(":technicianId", $technicianId);
                 $checkStmt->execute();
@@ -1500,13 +1500,13 @@ final class Technician
                           FROM Ticket_Technicians tt
                           INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                           WHERE tt.Fk_Technician = t.ID_Technicians
-                          AND sr.Status = 'Cerrado') as Tickets_Resolved,
+                          AND sr.Status IN ('Cerrado', 'Resuelto')) as Tickets_Resolved,
                          (SELECT COUNT(*)
                           FROM Ticket_Technicians tt
                           INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                           WHERE tt.Fk_Technician = t.ID_Technicians
                           AND tt.Status = 'Activo'
-                          AND sr.Status != 'Cerrado') as Active_Tickets
+                          AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Active_Tickets
                   FROM " . $this->table_name . " t
                   INNER JOIN Users u ON t.Fk_Users = u.ID_Users
                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
@@ -1567,9 +1567,9 @@ final class Technician
                      t.ID_Technicians,
                      CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
                      s.Type_Service as service_type,
-                     COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_tickets,
+                     COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) as resolved_tickets,
                      AVG(CASE 
-                         WHEN sr.Status = 'Cerrado' AND sr.Resolved_at IS NOT NULL 
+                         WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at IS NOT NULL 
                          THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)
                          ELSE NULL 
                      END) as avg_resolution_hours
@@ -1643,10 +1643,10 @@ final class Technician
     {
         try {
             $query = "SELECT 
-                        COUNT(CASE WHEN sr.Status = 'Cerrado' AND DATE(sr.Resolved_at) = CURDATE() THEN 1 END) as resolved_today,
-                        COUNT(CASE WHEN sr.Status = 'Cerrado' AND sr.Resolved_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as resolved_week,
-                        COUNT(CASE WHEN sr.Status = 'Cerrado' AND sr.Resolved_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as resolved_month,
-                        ROUND(AVG(CASE WHEN sr.Status = 'Cerrado' AND sr.Resolved_at IS NOT NULL 
+                        COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') AND DATE(sr.Resolved_at) = CURDATE() THEN 1 END) as resolved_today,
+                        COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as resolved_week,
+                        COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as resolved_month,
+                        ROUND(AVG(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at IS NOT NULL 
                             THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) END), 1) as avg_resolution_hours
                       FROM Ticket_Technicians tt
                       INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request

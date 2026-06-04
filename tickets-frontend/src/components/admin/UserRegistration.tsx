@@ -55,7 +55,6 @@ interface Role {
 interface Office {
   ID_Office: number;
   Name_Office: string;
-  Office_Type: string;
   Fk_Boss_ID: number | null;
 }
 
@@ -112,7 +111,7 @@ const UserRegistration = () => {
     if (officeSearch.trim()) {
       const q = officeSearch.toLowerCase();
       setFilteredOffices(offices.filter(o =>
-        o.Name_Office.toLowerCase().includes(q) || o.Office_Type.toLowerCase().includes(q)
+        o.Name_Office.toLowerCase().includes(q)
       ));
     } else {
       setFilteredOffices(offices);
@@ -414,7 +413,6 @@ const UserRegistration = () => {
                                 onClick={() => handleOfficeSelect(o)}
                               >
                                 <span className="ur-office-name">{o.Name_Office}</span>
-                                <span className="ur-office-type">{o.Office_Type}</span>
                               </div>
                             ))
                           ) : (

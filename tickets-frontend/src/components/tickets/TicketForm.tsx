@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Send,
   AlertCircle,
@@ -14,13 +14,27 @@ import {
   ArrowRight,
   Check,
   Layers,
-  AlertTriangle
+  AlertTriangle,
+  Wrench,
+  Package
 } from 'lucide-react';
 import { sileo } from 'sileo';
 import './TicketForm.css';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { fetchBienes } from '../../services/bienesApi';
 import Header from '../layout/Header';
+
+const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+function normalizePropertyCode(code: string): string {
+  const t = (code || '').trim();
+  const numOnly = /^\d+$/.test(t);
+  if (numOnly) return String(Number(t));
+  const prefixMatch = t.match(/^([A-Za-z]+[_-]?)(\d+)$/);
+  if (prefixMatch) return prefixMatch[1] + String(Number(prefixMatch[2]));
+  return t;
+}
 
 const OTHER_PROBLEM_ID = '-1';
 
@@ -52,6 +66,12 @@ interface SoftwareSystem {
 const TicketForm: React.FC = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const prefilled = location.state as {
+    propertyNumber?: string;
+    bienDescription?: string;
+    officeName?: string;
+  } | null;
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
@@ -76,8 +96,7 @@ const TicketForm: React.FC = () => {
 
   // Filter offices based on search term
   const filteredOffices = offices.filter(office =>
-    office.name.toLowerCase().includes(officeSearchTerm.toLowerCase()) ||
-    office.type.toLowerCase().includes(officeSearchTerm.toLowerCase())
+    (office.name || '').toLowerCase().includes(officeSearchTerm.toLowerCase())
   );
 
   // Fetch offices on component mount
@@ -88,9 +107,8 @@ const TicketForm: React.FC = () => {
         const response = await ApiService.getOffices();
         if (response.success && response.data) {
           const formattedOffices = response.data.map((office: any) => ({
-            id: office.ID_Office?.toString() || office.id?.toString(),
-            name: office.Name_Office || office.Office_Name || office.name,
-            type: office.Office_Type || office.Office_Type || office.type || 'Direction'
+            id: office.ID_Office?.toString() || office.id?.toString() || '',
+            name: office.Name_Office || office.Office_Name || office.name || '',
           }));
           setOffices(formattedOffices);
         }
@@ -111,6 +129,85 @@ const TicketForm: React.FC = () => {
       setFormData(prev => ({ ...prev, fkOffice: officeIdStr }));
     }
   }, [user, offices]);
+
+  // Pre-fill property number from navigation state (bien-to-ticket flow)
+  useEffect(() => {
+    if (prefilled?.propertyNumber) {
+      setFormData(prev => ({ ...prev, propertyNumber: prefilled.propertyNumber || '' }));
+    }
+  }, [prefilled?.propertyNumber]);
+
+  // Pre-fill office for admin users from bien data navigation state
+  useEffect(() => {
+    if (prefilled?.officeName && offices.length > 0 && isAdmin()) {
+      const match = offices.find(
+        o => o.name.toLowerCase() === (prefilled.officeName || '').toLowerCase()
+      );
+      if (match && !formData.fkOffice) {
+        setFormData(prev => ({ ...prev, fkOffice: match.id }));
+      }
+    }
+  }, [offices, prefilled, isAdmin, formData.fkOffice]);
+
+  // Bien auto-lookup by property number: when matched and belongs to selected office, show its description
+  const [matchedBien, setMatchedBien] = useState<{ codact: string; denact: string; denuniadm: string } | null>(null);
+  const [bienLookupState, setBienLookupState] = useState<'idle' | 'loading' | 'match' | 'nomatch' | 'otheroffice'>('idle');
+  const bienDebounceRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (bienDebounceRef.current) {
+      window.clearTimeout(bienDebounceRef.current);
+    }
+    const code = formData.propertyNumber.trim();
+    if (!code) {
+      setMatchedBien(null);
+      setBienLookupState('idle');
+      return;
+    }
+    if (!formData.fkOffice) {
+      setBienLookupState('idle');
+      return;
+    }
+    setBienLookupState('loading');
+    bienDebounceRef.current = window.setTimeout(async () => {
+      try {
+        const res = await fetchBienes({ query: code, limit: 10 });
+        const items: any[] = res.results || [];
+        const normCode = normalizePropertyCode(code);
+        const exact = items.find((it: any) => normalizePropertyCode(String(it.codact || '')) === normCode);
+        const chosen = exact ?? items[0];
+        if (!chosen) {
+          setMatchedBien(null);
+          setBienLookupState('nomatch');
+          return;
+        }
+        const selectedOfficeName = offices.find(o => o.id === formData.fkOffice)?.name || '';
+        if (normalize(String(chosen.denuniadm || '')) === normalize(selectedOfficeName)) {
+          setMatchedBien({
+            codact: String(chosen.codact || ''),
+            denact: String(chosen.denact || ''),
+            denuniadm: String(chosen.denuniadm || '')
+          });
+          setBienLookupState('match');
+        } else {
+          setMatchedBien({
+            codact: String(chosen.codact || ''),
+            denact: '',
+            denuniadm: ''
+          });
+          setBienLookupState('otheroffice');
+        }
+      } catch {
+        setMatchedBien(null);
+        setBienLookupState('nomatch');
+      }
+    }, 450);
+    return () => {
+      if (bienDebounceRef.current) {
+        window.clearTimeout(bienDebounceRef.current);
+      }
+    };
+  }, [formData.propertyNumber, formData.fkOffice, offices]);
 
   // Catálogo de problemas por tipo de servicio
   const [problemsCatalog, setProblemsCatalog] = useState<ProblemCatalog[]>([]);
@@ -417,6 +514,30 @@ const TicketForm: React.FC = () => {
                     />
                   </div>
                   <small>Opcional - Identificación del equipo</small>
+                  {bienLookupState === 'loading' && (
+                    <div className="tkt-bien tkt-bien--loading">
+                      <span className="tkt-bien-spin" /> Buscando bien en el sistema...
+                    </div>
+                  )}
+                  {bienLookupState === 'match' && matchedBien && (
+                    <div className="tkt-bien tkt-bien--match">
+                      <Wrench size={13} />
+                      <span className="tkt-bien-label">Bien encontrado:</span>
+                      <strong>{matchedBien.denact}</strong>
+                    </div>
+                  )}
+                  {bienLookupState === 'otheroffice' && matchedBien && (
+                    <div className="tkt-bien tkt-bien--warn">
+                      <Package size={13} />
+                      <span>Este bien no pertenece a la oficina seleccionada.</span>
+                    </div>
+                  )}
+                  {bienLookupState === 'nomatch' && (
+                    <div className="tkt-bien tkt-bien--dim">
+                      <AlertCircle size={13} />
+                      No se encontró un bien con este código. El ticket se creará con el número indicado.
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-field">
@@ -480,7 +601,7 @@ const TicketForm: React.FC = () => {
                       <option value="">Selecciona tu oficina</option>
                       {(isAdmin() ? filteredOffices : offices).map(office => (
                         <option key={office.id} value={office.id}>
-                          {office.name} ({office.type})
+                          {office.name}
                         </option>
                       ))}
                     </select>
@@ -766,10 +887,6 @@ const TicketForm: React.FC = () => {
                 <div className="confirmation-item">
                   <span>Oficina:</span>
                   <span>{offices.find(o => o.id === formData.fkOffice)?.name}</span>
-                </div>
-                <div className="confirmation-item">
-                  <span>Tipo:</span>
-                  <span>{offices.find(o => o.id === formData.fkOffice)?.type}</span>
                 </div>
               </div>
 

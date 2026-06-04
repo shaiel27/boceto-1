@@ -1,175 +1,202 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, BorderRadius } from '../../src/constants/colors';
 import { useAuth } from '../../src/hooks/useAuth';
-import { Input } from '../../src/components/ui/Input';
-import { Button } from '../../src/components/ui/Button';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [emailError, setEmailError] = useState('');
   const { login, isLoading, error, clearError } = useAuth();
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(40)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   async function handleLogin() {
     setEmailError('');
     clearError();
-
-    if (!email.trim()) {
-      setEmailError('El correo es requerido');
-      return;
-    }
-    if (!password) {
-      return;
-    }
-
-    try {
-      await login(email.trim(), password);
-    } catch {
-    }
+    if (!email.trim()) { setEmailError('El correo es requerido'); return; }
+    if (!password) return;
+    try { await login(email.trim(), password); } catch {}
   }
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.brandSection}>
-          <View style={styles.shieldCircle}>
-            <Ionicons name="shield-checkmark" size={44} color={Colors.coral} />
-          </View>
-          <Text style={styles.title}>Sistema de Tickets</Text>
-          <Text style={styles.subtitle}>Alcaldía de San Cristóbal</Text>
-        </View>
-
-        <View style={styles.formSection}>
-          <Text style={styles.formTitle}>Iniciar Sesión</Text>
-
-          <Input
-            label="Correo Electrónico"
-            icon="mail-outline"
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              if (error) clearError();
-            }}
-            placeholder="correo@alcaldia.gob"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            error={emailError}
-          />
-
-          <Input
-            label="Contraseña"
-            icon="lock-closed-outline"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            secureTextEntry
-            isPassword
-          />
-
-          {error && (
-            <View style={styles.errorBox}>
-              <Ionicons name="alert-circle" size={18} color={Colors.coral} />
-              <Text style={styles.errorText}>{error}</Text>
+      <View style={styles.topSection}>
+        <View style={styles.topGradient}>
+          <View style={styles.crestOuter}>
+            <View style={styles.crestInner}>
+              <Ionicons name="business" size={34} color={Colors.gold} />
             </View>
-          )}
-
-          <Button
-            title="Iniciar Sesión"
-            onPress={handleLogin}
-            loading={isLoading}
-            style={styles.loginButton}
-          />
+          </View>
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], alignItems: 'center' }}>
+            <Text style={styles.brandLabel}>ALCALDÍA DEL MUNICIPIO</Text>
+            <Text style={styles.brandName}>San Cristóbal</Text>
+            <View style={styles.brandRule} />
+            <Text style={styles.brandDesc}>Sistema de Gestión de Tickets</Text>
+          </Animated.View>
         </View>
-      </ScrollView>
+      </View>
+
+      <View style={styles.formWrap}>
+        <Text style={styles.formTitle}>Iniciar sesión</Text>
+        <Text style={styles.formSub}>Ingrese sus credenciales</Text>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Correo electrónico</Text>
+          <View style={styles.inputRow}>
+            <Ionicons name="mail-outline" size={17} color={Colors.textLight} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={t => { setEmail(t); if (error) clearError(); }}
+              placeholder="correo@alcaldia.gob"
+              placeholderTextColor={Colors.placeholder}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>Contraseña</Text>
+          <View style={styles.inputRow}>
+            <Ionicons name="lock-closed-outline" size={17} color={Colors.textLight} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              placeholderTextColor={Colors.placeholder}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.toggleBtn}>
+              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textLight} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {emailError ? (
+          <View style={styles.errBox}>
+            <Ionicons name="alert-circle" size={16} color={Colors.coral} />
+            <Text style={styles.errText}>{emailError}</Text>
+          </View>
+        ) : null}
+
+        {error ? (
+          <View style={styles.errBox}>
+            <Ionicons name="alert-circle" size={16} color={Colors.coral} />
+            <Text style={styles.errText}>{error}</Text>
+          </View>
+        ) : null}
+
+        <TouchableOpacity
+          style={[styles.submit, isLoading && styles.submitDisabled]}
+          onPress={handleLogin}
+          disabled={isLoading}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.submitText}>{isLoading ? 'Verificando...' : 'Ingresar'}</Text>
+          <Ionicons name="chevron-forward" size={18} color={Colors.gold} />
+        </TouchableOpacity>
+      </View>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.primary,
+  root: { flex: 1, backgroundColor: Colors.navyPrimary },
+  topSection: { flex: 1, justifyContent: 'center' },
+  topGradient: { alignItems: 'center', paddingTop: 60, paddingBottom: 40, paddingHorizontal: 32 },
+  crestOuter: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: 'rgba(201,168,76,0.08)',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(201,168,76,0.3)',
+    marginBottom: 28,
   },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'flex-end',
-  },
-  brandSection: {
-    alignItems: 'center',
-    paddingTop: 80,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-  },
-  shieldCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    backgroundColor: Colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    borderWidth: 2.5,
-    borderColor: Colors.coral,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: Colors.textOnPrimary,
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: Colors.goldLight,
-    marginTop: 4,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-  },
-  formSection: {
+  crestInner: { justifyContent: 'center', alignItems: 'center' },
+  brandLabel: { fontSize: 10, letterSpacing: 3, color: '#94845c', textTransform: 'uppercase', fontWeight: '600' },
+  brandName: { fontSize: 28, fontWeight: '300', color: Colors.gold, marginTop: 6, letterSpacing: 1 },
+  brandRule: { width: 32, height: 1, backgroundColor: Colors.gold, marginVertical: 14, opacity: 0.5 },
+  brandDesc: { fontSize: 12, color: '#94845c', letterSpacing: 2, textTransform: 'uppercase', fontWeight: '500' },
+
+  formWrap: {
     backgroundColor: Colors.surface,
-    borderTopLeftRadius: BorderRadius.xl,
-    borderTopRightRadius: BorderRadius.xl,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingTop: 32,
+    paddingBottom: 40,
   },
-  formTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.text,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  errorBox: {
+  formTitle: { fontSize: 22, fontWeight: '600', color: Colors.text, marginBottom: 2 },
+  formSub: { fontSize: 13, color: Colors.textSecondary, marginBottom: 28 },
+
+  field: { marginBottom: 16 },
+  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: Colors.textSecondary, marginBottom: 6 },
+  inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.coralLight,
-    padding: 12,
-    borderRadius: BorderRadius.md,
-    marginBottom: 16,
-    gap: 10,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.sm,
+    height: 50,
   },
-  errorText: {
-    fontSize: 13,
-    color: Colors.coralDark,
+  inputIcon: { marginLeft: 14 },
+  input: {
     flex: 1,
-    fontWeight: '500',
+    fontSize: 15,
+    color: Colors.text,
+    paddingHorizontal: 10,
+    paddingVertical: 14,
   },
-  loginButton: {
-    marginTop: 4,
+  toggleBtn: { paddingHorizontal: 14 },
+
+  errBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fef3f2',
+    padding: 12,
+    borderRadius: BorderRadius.sm,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#fecdc9',
+  },
+  errText: { fontSize: 13, color: '#b91c1c', flex: 1, fontWeight: '500' },
+
+  submit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.navyPrimary,
     height: 52,
+    borderRadius: BorderRadius.sm,
+    marginTop: 12,
   },
+  submitDisabled: { opacity: 0.5 },
+  submitText: { fontSize: 15, fontWeight: '600', color: Colors.gold, letterSpacing: 0.5 },
 });

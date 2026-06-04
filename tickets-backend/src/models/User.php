@@ -24,8 +24,7 @@ class User {
         $query = "SELECT u.ID_Users, u.Username, u.Email, u.Full_Name, u.Password, u.is_system_user, u.last_login_at,
                          r.Role, r.ID_Role,
                          o.ID_Office as office_id,
-                         o.Name_Office as office_name,
-                         o.Office_Type as office_type
+                         o.Name_Office as office_name
                   FROM " . $this->table_name . " u
                   JOIN Role r ON u.Fk_Role = r.ID_Role
                   LEFT JOIN Boss b ON u.ID_Users = b.Fk_User
@@ -239,7 +238,6 @@ class User {
         $query = "SELECT u.ID_Users, u.Full_Name, u.Email, u.created_at, u.last_login_at,
                          COALESCE(o.ID_Office, NULL) as office_id,
                          COALESCE(o.Name_Office, '') as office_name,
-                         COALESCE(o.Office_Type, '') as office_type,
                          r.Role as role_name
                   FROM " . $this->table_name . " u
                   LEFT JOIN Boss b ON u.ID_Users = b.Fk_User
@@ -318,8 +316,7 @@ class User {
                          r.Description as role_description,
                          b.Name_Boss as boss_name,
                          b.Pronoun as boss_pronoun,
-                         o.Name_Office as office_name,
-                         o.Office_Type as office_type
+                         o.Name_Office as office_name
                   FROM " . $this->table_name . " u
                   LEFT JOIN Role r ON u.Fk_Role = r.ID_Role
                   LEFT JOIN Boss b ON u.ID_Users = b.Fk_User

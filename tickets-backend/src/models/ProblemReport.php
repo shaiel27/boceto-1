@@ -48,8 +48,8 @@ class ProblemReport
                      COUNT(sr.ID_Service_Request) as total_tickets_mes,
                      SUM(CASE WHEN sr.Status = 'Pendiente' THEN 1 ELSE 0 END) as pendientes_mes,
                      SUM(CASE WHEN sr.Status = 'En Proceso' THEN 1 ELSE 0 END) as en_proceso_mes,
-                     SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) as resueltos_mes,
-                     SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) as cerrados_mes,
+                     SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) as resueltos_mes,
+                     SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) as cerrados_mes,
                      COUNT(DISTINCT sr.Fk_Office) as oficinas_atendidas_mes,
                      COUNT(DISTINCT tt.Fk_Technician) as tecnicos_involucrados_mes,
                      (

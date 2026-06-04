@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../models/Office.php';
+require_once __DIR__ . '/../Services/OfficeSyncService.php';
 require_once __DIR__ . '/../config/database.php';
 
 class OfficeController {
@@ -31,6 +32,9 @@ class OfficeController {
                 case 'all':
                     $this->getAllOffices();
                     break;
+                case 'sync':
+                    $this->syncOffices();
+                    break;
                 default:
                     http_response_code(400);
                     echo json_encode([
@@ -47,6 +51,12 @@ class OfficeController {
                 'message' => 'Error interno del servidor'
             ]);
         }
+    }
+
+    private function syncOffices() {
+        $syncService = new OfficeSyncService($this->conn);
+        $result = $syncService->sync();
+        echo json_encode($result);
     }
 
     private function getAllOffices() {

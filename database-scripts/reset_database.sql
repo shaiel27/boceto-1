@@ -44,11 +44,9 @@ CREATE TABLE Boss (
 CREATE TABLE Office (
     ID_Office INT AUTO_INCREMENT PRIMARY KEY,
     Name_Office VARCHAR(100) NOT NULL,
-    Office_Type VARCHAR(20) NOT NULL COMMENT 'Direction, Coordination, Division',
-    Fk_Parent_Office INT NULL COMMENT 'ID de la oficina superior',
+    coduniadm VARCHAR(20) UNIQUE NULL COMMENT 'Código SIFA de la unidad administrativa',
     Fk_Boss_ID INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (Fk_Parent_Office) REFERENCES Office(ID_Office) ON DELETE SET NULL,
     FOREIGN KEY (Fk_Boss_ID) REFERENCES Boss(ID_Boss) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -231,9 +229,8 @@ CREATE INDEX idx_user_email ON Users(Email);
 CREATE INDEX idx_user_role ON Users(Fk_Role);
 
 -- Índices en Office
-CREATE INDEX idx_office_type ON Office(Office_Type);
-CREATE INDEX idx_office_parent ON Office(Fk_Parent_Office);
 CREATE INDEX idx_office_boss ON Office(Fk_Boss_ID);
+CREATE INDEX idx_office_coduniadm ON Office(coduniadm);
 
 -- Índices en Service_Request
 CREATE INDEX idx_ticket_code ON Service_Request(Ticket_Code);
@@ -296,8 +293,6 @@ SELECT
     u.Email AS Solicitante_Email,
     boss_requester.Name_Boss AS Jefe_Solicitante,
     o.Name_Office AS Oficina_Origen,
-    o.Office_Type AS Tipo_Oficina,
-    parent_o.Name_Office AS Oficina_Padre,
     ts.Type_Service AS Tipo_Servicio,
     spc.Problem_Name AS Tipo_Problema,
     spc.Estimated_Severity AS Severidad_Estimada,
@@ -309,7 +304,6 @@ JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
 JOIN Boss b ON u.ID_Users = b.Fk_User
 JOIN Boss boss_requester ON sr.Fk_Boss_Requester = boss_requester.ID_Boss
 JOIN Office o ON sr.Fk_Office = o.ID_Office
-LEFT JOIN Office parent_o ON o.Fk_Parent_Office = parent_o.ID_Office
 JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
 JOIN Service_Problems_Catalog spc ON sr.Fk_Problem_Catalog = spc.ID_Problem_Catalog
 LEFT JOIN Software_Systems ss ON sr.Fk_Software_System = ss.ID_System
@@ -353,20 +347,11 @@ CREATE VIEW v_estructura_oficinas AS
 SELECT 
     o.ID_Office,
     o.Name_Office,
-    o.Office_Type,
-    parent_o.Name_Office AS Oficina_Padre,
     b.Name_Boss AS Jefe,
     o.created_at
 FROM Office o
-LEFT JOIN Office parent_o ON o.Fk_Parent_Office = parent_o.ID_Office
 LEFT JOIN Boss b ON o.Fk_Boss_ID = b.ID_Boss
-ORDER BY 
-    CASE o.Office_Type
-        WHEN 'Direction' THEN 1
-        WHEN 'Division' THEN 2
-        WHEN 'Coordination' THEN 3
-    END,
-    o.Name_Office;
+ORDER BY o.Name_Office;
 
 -- Vista de horarios de técnicos
 CREATE VIEW v_horarios_tecnicos AS
@@ -444,7 +429,7 @@ CREATE TRIGGER tr_update_resolved_at
 BEFORE UPDATE ON Service_Request
 FOR EACH ROW
 BEGIN
-    IF NEW.Status = 'Resuelto' AND OLD.Status != 'Resuelto' THEN
+    IF NEW.Status IN ('Cerrado', 'Resuelto') AND OLD.Status NOT IN ('Cerrado', 'Resuelto') THEN
         SET NEW.Resolved_at = NOW();
     END IF;
 END//

@@ -43,6 +43,7 @@ export interface BackendTicket {
   Created_at: string;
   Resolved_at: string | null;
   user_name: string;
+  user_email?: string;
   office_name: string;
   office_type: string;
   service_type_name: string;

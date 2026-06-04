@@ -92,7 +92,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'role_name' => $userData['role_name'],
                 'role' => strtolower($userData['role_name']),
                 'office_name' => $userData['office_name'] ?? '',
-                'office_type' => $userData['office_type'] ?? '',
                 'office_id' => $userData['office_id'] ?? null,
                 'created_at' => $userData['created_at'] ?? date('Y-m-d H:i:s'),
                 'last_login_at' => $userData['last_login_at'] ?? null
@@ -161,7 +160,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                                 'ID_Role' => $result['ID_Role'],
                                 'office_id' => $result['office_id'] ?? null,
                                 'office_name' => $result['office_name'] ?? '',
-                                'office_type' => $result['office_type'] ?? '',
                                 'last_login_at' => $result['last_login_at'] ?? null
                             ],
                             'token' => $token

@@ -85,7 +85,7 @@ function getComprehensiveTechnicianReport($db, $days, $technicianId = null) {
         COUNT(DISTINCT CASE WHEN t.Status = 'Activo' THEN t.ID_Technicians END) as active_technicians,
         COUNT(DISTINCT CASE WHEN t.Status = 'Inactivo' THEN t.ID_Technicians END) as inactive_technicians,
         COUNT(DISTINCT sr.ID_Service_Request) as total_tickets,
-        COUNT(DISTINCT CASE WHEN sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) as resolved_tickets,
+        COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as resolved_tickets,
         AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)) as avg_resolution_time
     FROM Technicians t
     LEFT JOIN Ticket_Technicians tt ON t.ID_Technicians = tt.Fk_Technician
@@ -103,13 +103,13 @@ function getComprehensiveTechnicianReport($db, $days, $technicianId = null) {
         t.Status as technician_status,
         tis.Type_Service as primary_service,
         COUNT(DISTINCT sr.ID_Service_Request) as total_tickets_assigned,
-        COUNT(DISTINCT CASE WHEN sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) as tickets_resolved,
+        COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as tickets_resolved,
         COUNT(DISTINCT CASE WHEN sr.Status = 'En Proceso' THEN sr.ID_Service_Request END) as tickets_in_progress,
         COUNT(DISTINCT CASE WHEN sr.Status = 'Pendiente' THEN sr.ID_Service_Request END) as pending_tickets,
         AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)) as avg_resolution_time,
-        (COUNT(DISTINCT CASE WHEN sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) * 100.0 / 
+        (COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) * 100.0 / 
          NULLIF(COUNT(DISTINCT sr.ID_Service_Request), 0)) as resolution_rate,
-        COUNT(DISTINCT CASE WHEN sr.System_Priority = 'Alta' AND sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) as high_priority_resolved,
+        COUNT(DISTINCT CASE WHEN sr.System_Priority = 'Alta' AND sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as high_priority_resolved,
         COUNT(DISTINCT tt.ID_Ticket_Technicians) as total_assignments
     FROM Technicians t
     LEFT JOIN Ticket_Technicians tt ON t.ID_Technicians = tt.Fk_Technician
@@ -203,11 +203,11 @@ function getTechnicianPerformanceReport($db, $days, $technicianId = null) {
         CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
         t.Status as status,
         COUNT(DISTINCT sr.ID_Service_Request) as total_tickets,
-        COUNT(DISTINCT CASE WHEN sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) as resolved_tickets,
+        COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as resolved_tickets,
         AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)) as avg_resolution_hours,
         COUNT(DISTINCT CASE WHEN sr.System_Priority = 'Alta' THEN sr.ID_Service_Request END) as high_priority_tickets,
-        COUNT(DISTINCT CASE WHEN sr.System_Priority = 'Alta' AND sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) as high_priority_resolved,
-        (COUNT(DISTINCT CASE WHEN sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) * 100.0 / 
+        COUNT(DISTINCT CASE WHEN sr.System_Priority = 'Alta' AND sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as high_priority_resolved,
+        (COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) * 100.0 / 
          NULLIF(COUNT(DISTINCT sr.ID_Service_Request), 0)) as success_rate,
         DATE_FORMAT(sr.Created_at, '%Y-%m') as month,
         COUNT(DISTINCT sr.ID_Service_Request) as monthly_tickets
@@ -253,13 +253,13 @@ function getTechnicianWorkloadReport($db, $days) {
         t.Status as status,
         COUNT(DISTINCT CASE WHEN sr.Status = 'Pendiente' THEN sr.ID_Service_Request END) as pending_tickets,
         COUNT(DISTINCT CASE WHEN sr.Status = 'En Proceso' THEN sr.ID_Service_Request END) as in_progress_tickets,
-        COUNT(DISTINCT CASE WHEN sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) as completed_today,
+        COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as completed_today,
         COUNT(DISTINCT sr.ID_Service_Request) as total_active,
         AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, NOW())) as avg_pending_hours,
         tis.Type_Service as service_type
     FROM Technicians t
     LEFT JOIN Ticket_Technicians tt ON t.ID_Technicians = tt.Fk_Technician
-    LEFT JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request AND sr.Status != 'Cerrado'
+    LEFT JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request AND sr.Status NOT IN ('Cerrado', 'Resuelto')
     LEFT JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
     LEFT JOIN TI_Service tis ON ts.Fk_TI_Service = tis.ID_TI_Service
     WHERE t.Status = 'Activo' {$dateCondition}
@@ -293,12 +293,12 @@ function getTechnicianProductivityReport($db, $startDate, $endDate) {
         t.ID_Technicians as technician_id,
         CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
         COUNT(DISTINCT sr.ID_Service_Request) as total_handled,
-        COUNT(DISTINCT CASE WHEN sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) as total_resolved,
+        COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as total_resolved,
         AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)) as avg_resolution_time,
-        COUNT(DISTINCT CASE WHEN DATE(sr.Created_at) = DATE(sr.Resolved_at) AND sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) as same_day_resolutions,
+        COUNT(DISTINCT CASE WHEN DATE(sr.Created_at) = DATE(sr.Resolved_at) AND sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as same_day_resolutions,
         COUNT(DISTINCT CASE WHEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) <= 2 THEN sr.ID_Service_Request END) as quick_resolutions,
         tis.Type_Service as specialization,
-        (COUNT(DISTINCT CASE WHEN sr.Status = 'Cerrado' THEN sr.ID_Service_Request END) * 100.0 / 
+        (COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) * 100.0 / 
          NULLIF(COUNT(DISTINCT sr.ID_Service_Request), 0)) as productivity_rate
     FROM Technicians t
     LEFT JOIN Ticket_Technicians tt ON t.ID_Technicians = tt.Fk_Technician

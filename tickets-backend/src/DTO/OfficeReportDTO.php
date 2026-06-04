@@ -15,7 +15,6 @@ final class OfficeReportDTO
     public int $id;
     public string $name;
     public string $displayName;
-    public string $type;
     public int $resolvedCount;
     public float $avgResolutionTime;
 
@@ -23,14 +22,12 @@ final class OfficeReportDTO
         int $id,
         string $name,
         string $displayName,
-        string $type,
         int $resolvedCount,
         float $avgResolutionTime
     ) {
         $this->id = $id;
         $this->name = $name;
         $this->displayName = $displayName;
-        $this->type = $type;
         $this->resolvedCount = $resolvedCount;
         $this->avgResolutionTime = $avgResolutionTime;
     }
@@ -42,7 +39,6 @@ final class OfficeReportDTO
     public static function fromArray(array $data): self
     {
         $name = $data['name'] ?? '';
-        $type = $data['type'] ?? '';
         $resolvedCount = (int)($data['resolved_count'] ?? 0);
         $avgResolutionTime = (float)($data['avg_resolution_time'] ?? 0.0);
 
@@ -50,7 +46,6 @@ final class OfficeReportDTO
             id: (int)($data['id'] ?? 0),
             name: $name,
             displayName: self::abbreviateName($name),
-            type: $type,
             resolvedCount: $resolvedCount,
             avgResolutionTime: $avgResolutionTime
         );
@@ -112,7 +107,6 @@ final class OfficeReportDTO
             'id' => $this->id,
             'name' => $this->name,
             'display_name' => $this->displayName,
-            'type' => $this->type,
             'resolved_count' => $this->resolvedCount,
             'avg_resolution_time' => $this->avgResolutionTime
         ];

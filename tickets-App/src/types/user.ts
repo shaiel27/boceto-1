@@ -59,8 +59,7 @@ export interface TechnicianMetrics {
 export interface Office {
   id: number;
   name_office: string;
-  office_type: string;
-  fk_parent_office: number | null;
+  coduniadm: string;
   fk_boss_id: number | null;
 }
 

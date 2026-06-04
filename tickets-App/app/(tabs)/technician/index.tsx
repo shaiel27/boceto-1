@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useTickets } from '../../../src/contexts/TicketContext';
 import { useAuth } from '../../../src/hooks/useAuth';
@@ -48,6 +48,15 @@ export default function TechnicianDashboard() {
       if (r.success && r.data) setPerf(r.data);
     });
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshTickets();
+      getTechnicianPerformance().then((r) => {
+        if (r.success && r.data) setPerf(r.data);
+      });
+    }, [refreshTickets])
+  );
 
   const filtered = useMemo(() => {
     let r = tickets;

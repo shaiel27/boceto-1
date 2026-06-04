@@ -17,6 +17,7 @@ import { useTickets } from '../../../src/contexts/TicketContext';
 import { getTicketDetail } from '../../../src/services/ticketService';
 import { Ticket } from '../../../src/types/ticket';
 import { CommentItem } from '../../../src/components/technician/CommentItem';
+import { findBienByCode } from '../../../src/services/bienesService';
 
 const PRIO_COL: Record<string, string> = { Alta: Colors.priorityAlta, Media: Colors.priorityMedia, Baja: Colors.textLight };
 
@@ -39,6 +40,16 @@ export default function RequesterTicketDetail() {
     setLoading(false);
   };
   useEffect(() => { load(); }, [tid]);
+
+  const [bienDesc, setBienDesc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!ticket?.property_number) { setBienDesc(null); return; }
+    let cancelled = false;
+    findBienByCode(ticket.property_number).then((b) => {
+      if (!cancelled) setBienDesc(b ? String(b.denact || '') : null);
+    });
+    return () => { cancelled = true; };
+  }, [ticket?.property_number]);
 
   const handleComment = async () => {
     if (!comment.trim() && !image) return;
@@ -81,11 +92,24 @@ export default function RequesterTicketDetail() {
             </View>
           </View>
           <Text style={styles.subject}>{ticket.subject}</Text>
-          {ticket.property_number ? <Text style={styles.prop}>Bien N° {ticket.property_number}</Text> : null}
+          {ticket.property_number ? (
+            <View style={styles.bienBlock}>
+              <View style={styles.bienRow}>
+                <Ionicons name="hardware-chip-outline" size={12} color={Colors.navyPrimary} />
+                <Text style={styles.prop}>Bien N° {ticket.property_number}</Text>
+              </View>
+              {bienDesc ? (
+                <Text style={styles.bienDesc}>{bienDesc}</Text>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.divider} />
           <View style={styles.grid}>
             <Row icon="business-outline" label="Oficina" v={ticket.office_name} />
             <Row icon="person-outline" label="Solicitante" v={ticket.citizen_name} />
+            {ticket.citizen_email ? (
+              <Row icon="mail-outline" label="Email" v={ticket.citizen_email} />
+            ) : null}
             <Row icon="construct-outline" label="Servicio" v={ticket.service_name} />
             <Row icon="calendar-outline" label="Creado" v={fmt(ticket.created_at)} />
             {ticket.technician_names.length > 0 && (
@@ -178,7 +202,10 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: BorderRadius.sm },
   badgeText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
   subject: { fontSize: 18, fontWeight: '600', color: Colors.text, lineHeight: 24 },
-  prop: { fontSize: 11, color: Colors.textSecondary, fontStyle: 'italic', marginTop: 4 },
+  prop: { fontSize: 12, color: Colors.navyPrimary, fontWeight: '600', letterSpacing: 0.2 },
+  bienBlock: { marginTop: 6, backgroundColor: Colors.navyPrimary + '08', borderRadius: BorderRadius.md, padding: 10, borderWidth: 1, borderColor: Colors.navyPrimary + '18' },
+  bienRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bienDesc: { fontSize: 12, color: Colors.text, marginTop: 4, paddingLeft: 18, lineHeight: 17 },
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 14 },
   grid: { gap: 12 },
   sHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },

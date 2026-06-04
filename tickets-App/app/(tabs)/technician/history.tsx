@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useTickets } from '../../../src/contexts/TicketContext';
 import { TicketCard } from '../../../src/components/technician/TicketCard';
@@ -26,6 +26,15 @@ export default function HistoryScreen() {
       if (r.success && r.data) setPerf(r.data);
     });
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshTickets();
+      getTechnicianPerformance().then((r) => {
+        if (r.success && r.data) setPerf(r.data);
+      });
+    }, [refreshTickets])
+  );
 
   const resolved = useMemo(() => {
     let r = tickets.filter((t) => t.status === 'Resuelto');

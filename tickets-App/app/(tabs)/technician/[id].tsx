@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, LayoutAnimation, Platform, UIManager, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { Ticket } from '../../../src/types/ticket';
 import { useTickets } from '../../../src/contexts/TicketContext';
-import { getTicketDetail } from '../../../src/services/ticketService';
+import { getTicketDetail, requestAssistance } from '../../../src/services/ticketService';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { CommentItem } from '../../../src/components/technician/CommentItem';
 import { Button } from '../../../src/components/ui/Button';
 import { useToast } from '../../../src/contexts/ToastContext';
-import { TicketCard } from '../../../src/components/technician/TicketCard';
+import { findBienByCode } from '../../../src/services/bienesService';
 
 try {
   if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -21,6 +21,11 @@ try {
 
 const PRIO_COL: Record<string, string> = { Alta: Colors.priorityAlta, Media: Colors.priorityMedia, Baja: Colors.textLight };
 const QUICK = ['Recibido, comenzaré.', 'Necesito más información.', 'Repuesto solicitado.', 'Problema resuelto.'];
+const ASSIST_REASONS = [
+  'Necesito ayuda con este ticket',
+  'Requiero autorización',
+  'Otro',
+];
 
 export default function TicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -31,6 +36,10 @@ export default function TicketDetailScreen() {
   const [image, setImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({ description: true, timeline: true, comments: true });
+  const [showAssistance, setShowAssistance] = useState(false);
+  const [assistReason, setAssistReason] = useState('');
+  const [assistDetails, setAssistDetails] = useState('');
+  const [assistSending, setAssistSending] = useState(false);
   const toast = useToast();
   const { user } = useAuth();
   const { tickets, takeTicket, resolveTicket, addComment } = useTickets();
@@ -44,6 +53,16 @@ export default function TicketDetailScreen() {
     setLoading(false);
   };
   useEffect(() => { load(); }, [tid]);
+
+  const [bienDesc, setBienDesc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!ticket?.property_number) { setBienDesc(null); return; }
+    let cancelled = false;
+    findBienByCode(ticket.property_number).then((b) => {
+      if (!cancelled) setBienDesc(b ? String(b.denact || '') : null);
+    });
+    return () => { cancelled = true; };
+  }, [ticket?.property_number]);
 
   const toggle = (k: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -82,6 +101,21 @@ export default function TicketDetailScreen() {
     if (!result.canceled && result.assets[0]) setImage(result.assets[0].uri);
   };
 
+  const handleAssistance = async () => {
+    if (!assistReason) return;
+    setAssistSending(true);
+    const result = await requestAssistance(tid, assistReason, assistDetails);
+    setAssistSending(false);
+    if (result.success) {
+      toast.showToast({ title: 'Asistencia solicitada', message: assistReason, type: 'warning' });
+      setShowAssistance(false);
+      setAssistReason('');
+      setAssistDetails('');
+    } else {
+      toast.showToast({ title: 'Error', message: result.message || 'No se pudo enviar', type: 'error' });
+    }
+  };
+
   if (loading) return <View style={styles.ctr}><Text style={styles.ctrText}>Cargando...</Text></View>;
   if (!ticket) return <View style={styles.ctr}><Ionicons name="alert-circle" size={40} color={Colors.priorityAlta} /><Text style={styles.ctrTitle}>No encontrado</Text><Button title="Volver" onPress={() => router.back()} variant="outline" /></View>;
 
@@ -107,11 +141,24 @@ export default function TicketDetailScreen() {
             </View>
           </View>
           <Text style={styles.subject}>{ticket.subject}</Text>
-          {ticket.property_number ? <Text style={styles.prop}>Bien N° {ticket.property_number}</Text> : null}
+          {ticket.property_number ? (
+            <View style={styles.bienBlock}>
+              <View style={styles.bienRow}>
+                <Ionicons name="hardware-chip-outline" size={12} color={Colors.navyPrimary} />
+                <Text style={styles.prop}>Bien N° {ticket.property_number}</Text>
+              </View>
+              {bienDesc ? (
+                <Text style={styles.bienDesc}>{bienDesc}</Text>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.divider} />
           <View style={styles.grid}>
             <Row icon="business-outline" label="Oficina" v={ticket.office_name} />
             <Row icon="person-outline" label="Solicitante" v={ticket.citizen_name} />
+            {ticket.citizen_email ? (
+              <Row icon="mail-outline" label="Email" v={ticket.citizen_email} />
+            ) : null}
             <Row icon="construct-outline" label="Servicio" v={ticket.service_name} />
             <Row icon="calendar-outline" label="Creado" v={fmt(ticket.created_at)} />
           </View>
@@ -178,7 +225,7 @@ export default function TicketDetailScreen() {
           <View style={styles.actions}>
             {ticket.status === 'Pendiente' && <Button title="Tomar Ticket" onPress={handleTake} style={{ flex: 1 }} />}
             {ticket.status === 'En Proceso' && <Button title="Marcar Resuelto" onPress={handleResolve} variant="secondary" style={{ flex: 1 }} />}
-            <Button title="Ayuda" onPress={() => router.push(`/(tabs)/technician/assistance?id=${ticket.id}`)} variant="outline" style={{ flex: 1 }} />
+            <Button title="Ayuda" onPress={() => setShowAssistance(true)} variant="outline" style={{ flex: 1 }} />
           </View>
         )}
 
@@ -190,6 +237,47 @@ export default function TicketDetailScreen() {
         )}
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      <Modal visible={showAssistance} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAssistance(false)}>
+        <View style={styles.assistPage}>
+          <View style={styles.assistHead}>
+            <View style={styles.assistHeadIcon}>
+              <Ionicons name="hand-left-outline" size={20} color={Colors.coral} />
+            </View>
+            <Text style={styles.assistHeadTitle}>Solicitar Asistencia</Text>
+            <TouchableOpacity onPress={() => setShowAssistance(false)} style={{ marginLeft: 'auto' }}>
+              <Ionicons name="close" size={22} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {ASSIST_REASONS.map((r) => (
+            <TouchableOpacity
+              key={r}
+              style={[styles.assistBtn, assistReason === r && styles.assistBtnActive]}
+              onPress={async () => {
+                setAssistSending(true);
+                const result = await requestAssistance(tid, r, '');
+                setAssistSending(false);
+                if (result.success) {
+                  toast.showToast({ title: 'Asistencia solicitada', message: r, type: 'warning' });
+                  setShowAssistance(false);
+                  setAssistReason('');
+                } else {
+                  toast.showToast({ title: 'Error', message: result.message || 'No se pudo enviar', type: 'error' });
+                }
+              }}
+              activeOpacity={0.6}
+            >
+              {assistReason === r && assistSending ? (
+                <ActivityIndicator size="small" color={Colors.primary} style={{ marginRight: 8 }} />
+              ) : (
+                <Ionicons name="send-outline" size={18} color={assistReason === r ? Colors.primary : Colors.textLight} style={{ marginRight: 8 }} />
+              )}
+              <Text style={[styles.assistBtnText]}>{r}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -234,7 +322,10 @@ const styles = StyleSheet.create({
   badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: BorderRadius.sm },
   badgeText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
   subject: { fontSize: 18, fontWeight: '600', color: Colors.text, lineHeight: 24 },
-  prop: { fontSize: 11, color: Colors.textSecondary, fontStyle: 'italic', marginTop: 4 },
+  prop: { fontSize: 12, color: Colors.navyPrimary, fontWeight: '600', letterSpacing: 0.2 },
+  bienBlock: { marginTop: 6, backgroundColor: Colors.navyPrimary + '08', borderRadius: BorderRadius.md, padding: 10, borderWidth: 1, borderColor: Colors.navyPrimary + '18' },
+  bienRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bienDesc: { fontSize: 12, color: Colors.text, marginTop: 4, paddingLeft: 18, lineHeight: 17 },
   divider: { height: 1, backgroundColor: Colors.border, marginVertical: 14 },
   grid: { gap: 12 },
   sHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -269,4 +360,15 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 10, paddingTop: 4 },
   resolvedBanner: { backgroundColor: Colors.statusResueltoBg, borderRadius: BorderRadius.md, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   resolvedText: { flex: 1, fontSize: 12, color: Colors.statusResuelto, fontWeight: '500' },
+
+  assistPage: { flex: 1, backgroundColor: Colors.background, padding: 20 },
+  assistHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20, marginTop: 8 },
+  assistHeadIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.coralLight, justifyContent: 'center', alignItems: 'center' },
+  assistHeadTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, flex: 1 },
+  assistBtn: {
+    flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, marginBottom: 8,
+  },
+  assistBtnActive: { backgroundColor: Colors.primary + '06', borderColor: Colors.primary + '25' },
+  assistBtnText: { fontSize: 14, fontWeight: '500', color: Colors.text },
 });

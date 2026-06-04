@@ -33,7 +33,6 @@ interface User {
   Boss_Name?: string;
   Boss_Pronoun?: string;
   Office_Name?: string;
-  Office_Type?: string;
 }
 
 interface Role {
@@ -45,7 +44,6 @@ interface Role {
 interface Office {
   ID_Office: number;
   Name_Office: string;
-  Office_Type: string;
 }
 
 const UserManagement: React.FC = () => {
@@ -57,7 +55,7 @@ const UserManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [officeFilter, setOfficeFilter] = useState<string>('all');
+
   
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -96,7 +94,6 @@ const UserManagement: React.FC = () => {
         const formattedOffices: Office[] = officesResponse.data.map((office: any) => ({
           ID_Office: office.ID_Office,
           Name_Office: office.Name_Office,
-          Office_Type: office.Office_Type
         }));
         setOffices(formattedOffices);
       }
@@ -115,7 +112,6 @@ const UserManagement: React.FC = () => {
           Boss_Name: user.boss_name,
           Boss_Pronoun: user.boss_pronoun,
           Office_Name: user.office_name,
-          Office_Type: user.office_type
         }));
         setUsers(formattedUsers);
       }
@@ -130,8 +126,7 @@ const UserManagement: React.FC = () => {
     const matchesSearch = user.Email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (user.Boss_Name && user.Boss_Name.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesRole = roleFilter === 'all' || user.Fk_Role === parseInt(roleFilter);
-    const matchesOffice = officeFilter === 'all' || user.Office_Type === officeFilter;
-    return matchesSearch && matchesRole && matchesOffice;
+    return matchesSearch && matchesRole;
   });
 
   const getRoleIcon = (roleName: string) => {
@@ -155,19 +150,6 @@ const UserManagement: React.FC = () => {
         return '#3b82f6';
       case 'Jefe':
         return '#10b981';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const getOfficeTypeColor = (officeType: string) => {
-    switch (officeType) {
-      case 'Direction':
-        return '#3b82f6';
-      case 'Division':
-        return '#10b981';
-      case 'Coordination':
-        return '#f59e0b';
       default:
         return '#6b7280';
     }
@@ -226,7 +208,6 @@ const UserManagement: React.FC = () => {
       Boss_Name: formData.name_boss,
       Boss_Pronoun: formData.pronoun,
       Office_Name: office?.Name_Office,
-      Office_Type: office?.Office_Type
     };
 
     setUsers(prev => prev.map(u => u.ID_Users === selectedUser.ID_Users ? updatedUser : u));
@@ -382,19 +363,6 @@ const UserManagement: React.FC = () => {
               </select>
             </div>
             
-            <div className="filter-group">
-              <label>Tipo de Oficina</label>
-              <select
-                value={officeFilter}
-                onChange={(e) => setOfficeFilter(e.target.value)}
-                className="filter-select"
-              >
-                <option value="all">Todos los tipos</option>
-                <option value="Direction">Direcciones</option>
-                <option value="Division">Divisiones</option>
-                <option value="Coordination">Coordinaciones</option>
-              </select>
-            </div>
           </div>
         </section>
 
@@ -449,12 +417,6 @@ const UserManagement: React.FC = () => {
                         <div className="office-info">
                           <Building size={14} />
                           <span>{user.Office_Name}</span>
-                          <span 
-                            className="office-type-badge"
-                            style={{ backgroundColor: getOfficeTypeColor(user.Office_Type || '') }}
-                          >
-                            {user.Office_Type}
-                          </span>
                         </div>
                       </td>
                       <td className="date-cell">
@@ -601,7 +563,7 @@ const UserManagement: React.FC = () => {
                     <option value="">Seleccionar oficina...</option>
                     {offices.map(office => (
                       <option key={office.ID_Office} value={office.ID_Office}>
-                        {office.Name_Office} ({office.Office_Type})
+                        {office.Name_Office}
                       </option>
                     ))}
                   </select>
@@ -710,7 +672,7 @@ const UserManagement: React.FC = () => {
                   >
                     {offices.map(office => (
                       <option key={office.ID_Office} value={office.ID_Office}>
-                        {office.Name_Office} ({office.Office_Type})
+                        {office.Name_Office}
                       </option>
                     ))}
                   </select>
@@ -771,7 +733,7 @@ const UserManagement: React.FC = () => {
                       <span>Nombre: {selectedUser.Boss_Pronoun} {selectedUser.Boss_Name}</span>
                     </div>
                     <div className="detail-item">
-                      <span>Oficina: {selectedUser.Office_Name} ({selectedUser.Office_Type})</span>
+                      <span>Oficina: {selectedUser.Office_Name}</span>
                     </div>
                   </div>
                 </div>

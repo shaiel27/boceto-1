@@ -266,6 +266,21 @@ background-repeat:no-repeat;background-position:right 9px center}
 .info-message{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;margin-top:2px}
 .info-message.success{color:var(--low);font-weight:500}
 
+.tkt-bien{display:flex;align-items:center;gap:6px;margin-top:6px;padding:7px 10px;border-radius:6px;font-size:12px;line-height:1.4}
+.tkt-bien svg{flex-shrink:0}
+.tkt-bien-label{color:var(--muted);text-transform:uppercase;letter-spacing:.04em;font-size:10px;font-weight:600}
+.tkt-bien strong{color:var(--ink);font-weight:600}
+.tkt-bien--match{background:#ecfdf5;border:1px solid #a7f3d0;color:var(--low)}
+.tkt-bien--match .tkt-bien-label{color:var(--low)}
+.tkt-bien--match strong{color:var(--ink)}
+.tkt-bien--warn{background:#fffbeb;border:1px solid #fde68a;color:#b45309}
+.tkt-bien--warn strong{color:#92400e}
+.tkt-bien--dim{background:var(--soft);border:1px solid var(--line);color:var(--muted)}
+.tkt-bien--loading{background:var(--soft);border:1px solid var(--line);color:var(--muted)}
+.tkt-bien-spin{width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--prog);border-radius:50%;animation:tkt-spin .8s linear infinite;flex-shrink:0}
+.tkt-bien-line{font-size:11px;color:#b45309;margin-bottom:2px}
+@keyframes tkt-spin{to{transform:rotate(360deg)}}
+
 /* service required / no problems */
 .service-required-message,.no-problems-message{
   display:flex;flex-direction:column;align-items:center;gap:8px;

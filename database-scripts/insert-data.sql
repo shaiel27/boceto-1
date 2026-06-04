@@ -36,29 +36,23 @@ INSERT INTO Boss (Name_Boss, pronoun, Fk_User) VALUES
 -- 2. INFRAESTRUCTURA INSTITUCIONAL (UNIFICADA)
 -- ==========================================
 
--- Insertar Direcciones (nivel superior)
-INSERT INTO Office (Name_Office, Office_Type, Fk_Parent_Office, Fk_Boss_ID) VALUES
-('Dirección de Vialidad', 'Direction', NULL, 1),
-('Dirección de Salud', 'Direction', NULL, 2),
-('Dirección de Educación', 'Direction', NULL, 3);
-
--- Insertar Divisiones (nivel medio)
-INSERT INTO Office (Name_Office, Office_Type, Fk_Parent_Office, Fk_Boss_ID) VALUES
-('División de Mantenimiento', 'Division', 1, NULL),
-('División de Infraestructura', 'Division', 1, NULL),
-('División de Atención Primaria', 'Division', 2, NULL),
-('División de Hospitales', 'Division', 2, NULL),
-('División de Escuelas', 'Division', 3, NULL),
-('División de Programas Educativos', 'Division', 3, NULL);
-
--- Insertar Coordinaciones (nivel inferior)
-INSERT INTO Office (Name_Office, Office_Type, Fk_Parent_Office, Fk_Boss_ID) VALUES
-('Coordinación de Equipos', 'Coordination', 4, NULL),
-('Coordinación de Vehículos', 'Coordination', 4, NULL),
-('Coordinación de Clínicas Rurales', 'Coordination', 7, NULL),
-('Coordinación de Centros de Salud', 'Coordination', 7, NULL),
-('Coordinación de Educación Básica', 'Coordination', 9, NULL),
-('Coordinación de Educación Media', 'Coordination', 9, NULL);
+-- Insertar Oficinas (planas, sin jerarquía)
+INSERT INTO Office (Name_Office, Fk_Boss_ID) VALUES
+('Dirección de Vialidad', 1),
+('Dirección de Salud', 2),
+('Dirección de Educación', 3),
+('División de Mantenimiento', NULL),
+('División de Infraestructura', NULL),
+('División de Atención Primaria', NULL),
+('División de Hospitales', NULL),
+('División de Escuelas', NULL),
+('División de Programas Educativos', NULL),
+('Coordinación de Equipos', NULL),
+('Coordinación de Vehículos', NULL),
+('Coordinación de Clínicas Rurales', NULL),
+('Coordinación de Centros de Salud', NULL),
+('Coordinación de Educación Básica', NULL),
+('Coordinación de Educación Media', NULL);
 
 -- ==========================================
 -- 3. TÉCNICOS Y SERVICIOS TI

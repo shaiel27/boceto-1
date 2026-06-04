@@ -38,12 +38,10 @@ CREATE TABLE IF NOT EXISTS Boss (
 CREATE TABLE IF NOT EXISTS Office (
     ID_Office INT AUTO_INCREMENT PRIMARY KEY,
     Name_Office VARCHAR(100) NOT NULL,
-    Office_Type VARCHAR(20) NOT NULL,
-    Fk_Parent_Office INT NULL,
+    coduniadm VARCHAR(20) UNIQUE NULL COMMENT 'ID de la API de bienes (spg_unidadadministrativa)',
     Fk_Boss_ID INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (Fk_Boss_ID) REFERENCES Boss(ID_Boss),
-    FOREIGN KEY (Fk_Parent_Office) REFERENCES Office(ID_Office)
+    FOREIGN KEY (Fk_Boss_ID) REFERENCES Boss(ID_Boss)
 );
 
 -- 3. Technicians and services

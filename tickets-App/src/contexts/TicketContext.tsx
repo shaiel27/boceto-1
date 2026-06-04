@@ -69,7 +69,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
   }, [refreshTickets]);
 
   const resolveTicket = useCallback(async (id: number, notes: string) => {
-    const result = await updateTicketStatus(id, 'Resuelto', notes);
+    const result = await updateTicketStatus(id, 'Cerrado', notes);
 
     if (result.success) {
       refreshTickets();

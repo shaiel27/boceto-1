@@ -69,6 +69,7 @@ export function mapBackendTicket(raw: BackendTicket): Ticket {
     resolved_at: raw.Resolved_at || null,
     office_name: raw.office_name || '',
     citizen_name: raw.citizen_name || raw.user_name || '',
+    citizen_email: raw.user_email || '',
     service_name: raw.service_type_name || '',
     problem_name: raw.problem_name || '',
     technician_names: techNames,

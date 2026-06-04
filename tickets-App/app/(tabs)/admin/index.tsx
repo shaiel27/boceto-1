@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { getDashboardStats, getRecentTickets, DashboardStats, AdminRecentTicket } from '../../../src/services/adminService';
@@ -20,6 +20,7 @@ export default function AdminDashboardScreen() {
     setIsLoading(false);
   }, []);
   useEffect(() => { load(); }, [load]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const pct = (n: number) => Math.round((n / (stats?.total_tickets || 1)) * 100);

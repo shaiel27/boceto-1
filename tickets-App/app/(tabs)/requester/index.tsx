@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useTickets } from '../../../src/contexts/TicketContext';
 import { useAuth } from '../../../src/hooks/useAuth';
@@ -24,6 +24,12 @@ export default function RequesterDashboard() {
   const displayed = activeTab === 'active' ? activeTickets : tickets;
 
   const onRefresh = async () => { setRefreshing(true); await refreshTickets(); setRefreshing(false); };
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshTickets();
+    }, [refreshTickets])
+  );
 
   const office = user?.office_name || '';
 
@@ -112,6 +118,12 @@ export default function RequesterDashboard() {
                 </View>
               </View>
               <Text style={styles.cardSubject} numberOfLines={2}>{item.subject}</Text>
+              {item.property_number ? (
+                <View style={styles.cardProp}>
+                  <Ionicons name="hardware-chip-outline" size={10} color={Colors.navyPrimary} />
+                  <Text style={styles.cardPropText} numberOfLines={1}>Bien {item.property_number}</Text>
+                </View>
+              ) : null}
               <View style={styles.cardMeta}>
                 <Ionicons name="construct-outline" size={11} color={Colors.textLight} />
                 <Text style={styles.cardMetaText}>{item.service_name}</Text>
@@ -189,6 +201,8 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   sDot: { width: 5, height: 5, borderRadius: 3 },
   cardSubject: { fontSize: 14, fontWeight: '600', color: Colors.text, lineHeight: 20 },
+  cardProp: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, backgroundColor: Colors.navyPrimary + '0D', paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.sm, alignSelf: 'flex-start' },
+  cardPropText: { fontSize: 10, fontWeight: '600', color: Colors.navyPrimary },
   cardMeta: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 },
   cardMetaText: { fontSize: 11, color: Colors.textSecondary },
 

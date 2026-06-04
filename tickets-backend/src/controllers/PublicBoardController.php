@@ -254,7 +254,7 @@ LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
 LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
 LEFT JOIN Service_Problems_Catalog spc ON sr.Fk_Problem_Catalog = spc.ID_Problem_Catalog
 WHERE sr.Status IN ('En Proceso', 'Pendiente')
-  AND sr.Status != 'Cerrado'
+  AND sr.Status NOT IN ('Cerrado', 'Resuelto')
 ORDER BY FIELD(sr.Status, 'Pendiente', 'En Proceso'), sr.Created_at ASC
 SQL;
         $stmt = $this->db->query($sql);
@@ -275,7 +275,7 @@ SELECT
   (SELECT COUNT(*) FROM Ticket_Technicians tt
      JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
      WHERE tt.Fk_Technician = t.ID_Technicians
-       AND tt.Status = 'Activo' AND sr.Status != 'Cerrado') as active_tickets_count
+       AND tt.Status = 'Activo' AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as active_tickets_count
 FROM Technicians t
 LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
 ORDER BY t.First_Name
@@ -331,10 +331,10 @@ SQL;
                  (SELECT COUNT(*) FROM Service_Request WHERE Status = 'Pendiente') as pending,
                  (SELECT COUNT(*) FROM Service_Request WHERE Status = 'En Proceso') as in_progress,
                  (SELECT COUNT(*) FROM Service_Request WHERE DATE(Created_at) = CURDATE()) as today_created,
-                 (SELECT COUNT(*) FROM Service_Request WHERE Status = 'Cerrado' AND DATE(Created_at) = CURDATE()) as closed_today,
+                 (SELECT COUNT(*) FROM Service_Request WHERE Status IN ('Cerrado', 'Resuelto') AND DATE(Created_at) = CURDATE()) as closed_today,
                  (SELECT COUNT(*) FROM Service_Request sr
                   WHERE sr.Status IN ('Pendiente','En Proceso')
-                    AND sr.Status != 'Cerrado'
+                    AND sr.Status NOT IN ('Cerrado', 'Resuelto')
                     AND NOT EXISTS (
                       SELECT 1 FROM Ticket_Technicians tt
                       WHERE tt.Fk_Service_Request = sr.ID_Service_Request AND tt.Status = 'Activo'
@@ -359,7 +359,7 @@ SQL;
                   JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                   WHERE tt.Fk_Technician = t.ID_Technicians
                     AND tt.Status = 'Activo'
-                    AND sr.Status != 'Cerrado') as active_tickets_count
+                    AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as active_tickets_count
                 FROM TI_Service ts
                 INNER JOIN Technicians_Service tsvc ON ts.ID_TI_Service = tsvc.Fk_TI_Service
                 INNER JOIN Technicians t ON tsvc.Fk_Technicians = t.ID_Technicians
@@ -410,7 +410,7 @@ SQL;
                 LEFT JOIN Office o ON sr.Fk_Office = o.ID_Office
                 LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
                 LEFT JOIN Service_Problems_Catalog spc ON sr.Fk_Problem_Catalog = spc.ID_Problem_Catalog
-                WHERE sr.Created_at > :since AND sr.Status != 'Cerrado'
+                WHERE sr.Created_at > :since AND sr.Status NOT IN ('Cerrado', 'Resuelto')
                 ORDER BY sr.Created_at ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);
@@ -439,7 +439,7 @@ SQL;
                  LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
                  LEFT JOIN Service_Problems_Catalog spc ON sr.Fk_Problem_Catalog = spc.ID_Problem_Catalog
                  WHERE sr.Created_at <= :since2
-                   AND sr.Status != 'Cerrado'
+                   AND sr.Status NOT IN ('Cerrado', 'Resuelto')
                    AND (
                      EXISTS (
                        SELECT 1 FROM Ticket_Timeline tt
@@ -489,7 +489,7 @@ SQL;
                        tt.Event_Date as created_at
                 FROM Ticket_Timeline tt
                 JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
-                WHERE tt.New_Status = 'Cerrado' AND tt.Event_Date > :since
+                WHERE tt.New_Status IN ('Cerrado', 'Resuelto') AND tt.Event_Date > :since
                 ORDER BY tt.Event_Date ASC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([':since' => $since->format('Y-m-d H:i:s')]);

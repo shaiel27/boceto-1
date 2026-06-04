@@ -43,7 +43,6 @@ interface Ticket {
   readonly Description: string;
   readonly Property_Number: string;
   readonly Direction_Name: string;
-  readonly Division_Name: string;
   readonly Coordination_Name: string;
   readonly System_Priority: 'Crítica' | 'Alta' | 'Media' | 'Baja';
   readonly Status: 'Pendiente' | 'En Progreso' | 'Cerrado';
@@ -176,7 +175,6 @@ const TechnicianDashboard: React.FC = () => {
             Description: ticket.Description || 'Sin descripción',
             Property_Number: ticket.Property_Number || 'No especificado',
             Direction_Name: ticket.Office_Name || ticket.office_name || 'No asignado',
-            Division_Name: ticket.Office_Type || ticket.office_type || 'No asignado',
             Coordination_Name: ticket.Type_Service || ticket.service_type_name || 'No asignado',
             System_Priority: ticket.System_Priority || 'Media',
             Status: ticket.Status || 'Pendiente',
@@ -412,7 +410,6 @@ const TechnicianDashboard: React.FC = () => {
             Description: ticket.Description || 'Sin descripción',
             Property_Number: ticket.Property_Number || 'No especificado',
             Direction_Name: ticket.Office_Name || ticket.office_name || 'No asignado',
-            Division_Name: ticket.Office_Type || ticket.office_type || 'No asignado',
             Coordination_Name: ticket.Type_Service || ticket.service_type_name || 'No asignado',
             System_Priority: ticket.System_Priority || 'Media',
             Status: ticket.Status || 'Pendiente',
@@ -780,7 +777,7 @@ const TechnicianDashboard: React.FC = () => {
                   <div className="tech-detail-grid">
                     <div className="dd-row">
                       <span className="dd-label">Ubicación</span>
-                      <span className="dd-val">{selectedTicket.Direction_Name} → {selectedTicket.Division_Name}</span>
+                      <span className="dd-val">{selectedTicket.Direction_Name}</span>
                     </div>
                     <div className="dd-row">
                       <span className="dd-label">Número de Bien</span>

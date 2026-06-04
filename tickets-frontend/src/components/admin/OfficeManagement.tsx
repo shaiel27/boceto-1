@@ -1,963 +1,409 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  Building,
-  Building2,
-  Plus,
-  Search,
-  Edit,
-  Trash2,
-  Eye,
-  ArrowLeft,
-  User,
-  X,
-  Layers,
-  MapPin,
-  ChevronRight,
-  ChevronDown
+  Building2, RefreshCw, Search, Users,
+  ArrowLeft, X, Mail, Shield, Hash, ChevronRight,
+  AlertCircle, BadgeCheck, Building, MapPin, Clock
 } from 'lucide-react';
+import ModernSidebar from '../layout/ModernSidebar';
+import { ApiService, API_BASE_URL } from '../../services/api';
 import './OfficeManagement.css';
 
 interface Office {
   ID_Office: number;
   Name_Office: string;
-  Office_Type: 'Direction' | 'Coordination' | 'Division';
-  Fk_Parent_Office: number | null;
+  coduniadm: string | null;
   Fk_Boss_ID: number | null;
   created_at: string;
-  Boss_Name?: string;
-  Boss_Email?: string;
-  Parent_Name?: string | null;
-  Children?: Office[];
-  expanded?: boolean;
+  boss_name: string | null;
+  boss_email: string | null;
+  boss_user_id: number | null;
+  boss_full_name: string | null;
+  has_boss: boolean;
+  technician_count: number;
 }
 
-interface Boss {
-  ID_Boss: number;
-  Name_Boss: string;
-  pronoun: string;
-  Fk_User: number | null;
-  User_Email?: string;
+function getGroup(name: string): string {
+  const l = name.toLowerCase();
+  if (l.startsWith('direcci')) return 'direccion';
+  if (l.startsWith('divisi')) return 'division';
+  if (l.startsWith('coordina')) return 'coordinacion';
+  return 'other';
+}
+
+const GROUP_META: Record<string, { label: string; icon: React.ReactNode }> = {
+  direccion: { label: 'Direcciones', icon: <Building size={15} /> },
+  division: { label: 'Divisiones', icon: <MapPin size={15} /> },
+  coordinacion: { label: 'Coordinaciones', icon: <Users size={15} /> },
+  other: { label: 'Otras Dependencias', icon: <Building2 size={15} /> },
+};
+
+const GROUP_ORDER = ['direccion', 'division', 'coordinacion', 'other'];
+
+function getInitials(name: string): string {
+  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+}
+
+const POOL = [
+  'Educación', 'Salud', 'Seguridad', 'Tecnología', 'Cultura',
+  'Deporte', 'Ambiente', 'Vialidad', 'Tributaria', 'Registro Civil',
+  'Despacho', 'Contratación', 'Talento Humano', 'Servicios Públicos',
+  'Mercado', 'Planificación', 'Protección Civil', 'Obras',
+  'Justicia', 'Administración', 'Informática', 'Transporte',
+  'Catastro', 'Vivienda', 'Hacienda', 'Turismo', 'Comunicación',
+];
+
+function getEmoji(name: string): string {
+  const l = name.toLowerCase();
+  if (l.includes('educacion') || l.includes('docencia') || l.includes('escuela')) return '\u{1F393}';
+  if (l.includes('salud') || l.includes('hospital') || l.includes('medica')) return '\u{1F3E5}';
+  if (l.includes('seguridad') || l.includes('policia') || l.includes('bombero')) return '\u{1F6A8}';
+  if (l.includes('informatica') || l.includes('tecnologia') || l.includes('sistemas')) return '\u{1F4BB}';
+  if (l.includes('cultura') || l.includes('banda') || l.includes('arte')) return '\u{1F3AD}';
+  if (l.includes('deporte') || l.includes('recreacion')) return '\u26BD';
+  if (l.includes('ambiente') || l.includes('vivero')) return '\u{1F33F}';
+  if (l.includes('catastro') || l.includes('urbano') || l.includes('vivienda')) return '\u{1F3D7}';
+  if (l.includes('transito') || l.includes('vialidad') || l.includes('transporte')) return '\u{1F6E3}';
+  if (l.includes('tributaria') || l.includes('tesoreria') || l.includes('renta') || l.includes('hacienda')) return '\u{1F4B0}';
+  if (l.includes('registro civil')) return '\u{1F4DC}';
+  if (l.includes('despacho') || l.includes('alcalde')) return '\u{1F3DB}';
+  if (l.includes('contratacion') || l.includes('compras')) return '\u{1F4CB}';
+  if (l.includes('talento humano') || l.includes('personal')) return '\u{1F465}';
+  if (l.includes('servicios publicos') || l.includes('aseo')) return '\u{1F6E0}';
+  if (l.includes('mercado')) return '\u{1F6CD}';
+  if (l.includes('planificacion') || l.includes('presupuesto')) return '\u{1F4CA}';
+  if (l.includes('proteccion civil') || l.includes('riesgo')) return '\u26A8';
+  if (l.includes('obras') || l.includes('construccion')) return '\u{1F3D7}';
+  if (l.includes('justicia') || l.includes('legal') || l.includes('sindicatura')) return '\u2696';
+  if (l.includes('administracion') || l.includes('general')) return '\u{1F3E2}';
+  if (l.includes('comunicacion') || l.includes('prensa')) return '\u{1F4F0}';
+  if (l.includes('turismo')) return '\u{1F30D}';
+  return '\u{1F3E2}';
 }
 
 const OfficeManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  
   const [offices, setOffices] = useState<Office[]>([]);
-  const [bosses, setBosses] = useState<Boss[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<'all' | 'Direction' | 'Coordination' | 'Division'>('all');
-  
-  const [selectedOffice, setSelectedOffice] = useState<Office | null>(null);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    name_office: '',
-    office_type: 'Direction' as 'Direction' | 'Coordination' | 'Division',
-    fk_parent_office: '',
-    fk_boss_id: ''
-  });
+  const [filterGroup, setFilterGroup] = useState<string | null>(null);
+  const [selectedOffice, setSelectedOffice] = useState<number | null>(null);
+
+  const fetchOffices = async () => {
+    setLoading(true);
+    try {
+      const res = await ApiService.getStructure();
+      if (res.success && res.data) {
+        setOffices(res.data);
+      }
+    } catch (err) {
+      console.error('Error loading offices:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const typeParam = searchParams.get('type');
-    if (typeParam && ['Direction', 'Division', 'Coordination'].includes(typeParam)) {
-      setTypeFilter(typeParam as 'Direction' | 'Division' | 'Coordination');
-    }
-    loadMockData();
-  }, [searchParams]);
+    fetchOffices();
+  }, []);
 
-  const loadMockData = () => {
-    setLoading(true);
-    
-    setTimeout(() => {
-      const mockBosses: Boss[] = [
-        { ID_Boss: 1, Name_Boss: 'Carlos Rodríguez', pronoun: 'Sr.', Fk_User: 1, User_Email: 'carlos.rodriguez@municipio.gob' },
-        { ID_Boss: 2, Name_Boss: 'María González', pronoun: 'Sra.', Fk_User: 2, User_Email: 'maria.gonzalez@municipio.gob' },
-        { ID_Boss: 3, Name_Boss: 'Juan Pérez', pronoun: 'Sr.', Fk_User: 3, User_Email: 'juan.perez@municipio.gob' },
-        { ID_Boss: 4, Name_Boss: 'Ana Martínez', pronoun: 'Sra.', Fk_User: 4, User_Email: 'ana.martinez@municipio.gob' },
-        { ID_Boss: 5, Name_Boss: 'Pedro López', pronoun: 'Sr.', Fk_User: 5, User_Email: 'pedro.lopez@municipio.gob' },
-        { ID_Boss: 6, Name_Boss: 'Laura Sánchez', pronoun: 'Sra.', Fk_User: 6, User_Email: 'laura.sanchez@municipio.gob' },
-        { ID_Boss: 7, Name_Boss: 'Roberto Díaz', pronoun: 'Sr.', Fk_User: 7, User_Email: 'roberto.diaz@municipio.gob' },
-        { ID_Boss: 8, Name_Boss: 'Carmen Ruiz', pronoun: 'Sra.', Fk_User: 8, User_Email: 'carmen.ruiz@municipio.gob' }
-      ];
-
-      const mockOffices: Office[] = [
-        {
-          ID_Office: 1,
-          Name_Office: 'Dirección de Educación',
-          Office_Type: 'Direction',
-          Fk_Parent_Office: null,
-          Fk_Boss_ID: 1,
-          created_at: '2024-01-15T10:00:00',
-          Boss_Name: 'Carlos Rodríguez',
-          Boss_Email: 'carlos.rodriguez@municipio.gob',
-          Parent_Name: null
-        },
-        {
-          ID_Office: 2,
-          Name_Office: 'Dirección de Vialidad',
-          Office_Type: 'Direction',
-          Fk_Parent_Office: null,
-          Fk_Boss_ID: 2,
-          created_at: '2024-02-20T14:30:00',
-          Boss_Name: 'María González',
-          Boss_Email: 'maria.gonzalez@municipio.gob',
-          Parent_Name: null
-        },
-        {
-          ID_Office: 3,
-          Name_Office: 'Dirección de Salud',
-          Office_Type: 'Direction',
-          Fk_Parent_Office: null,
-          Fk_Boss_ID: 3,
-          created_at: '2024-03-10T09:15:00',
-          Boss_Name: 'Juan Pérez',
-          Boss_Email: 'juan.perez@municipio.gob',
-          Parent_Name: null
-        },
-        {
-          ID_Office: 4,
-          Name_Office: 'Dirección de Obras Públicas',
-          Office_Type: 'Direction',
-          Fk_Parent_Office: null,
-          Fk_Boss_ID: 4,
-          created_at: '2024-04-05T16:45:00',
-          Boss_Name: 'Ana Martínez',
-          Boss_Email: 'ana.martinez@municipio.gob',
-          Parent_Name: null
-        },
-        {
-          ID_Office: 5,
-          Name_Office: 'División de Docencia',
-          Office_Type: 'Division',
-          Fk_Parent_Office: 1,
-          Fk_Boss_ID: 5,
-          created_at: '2024-01-20T10:00:00',
-          Boss_Name: 'Pedro López',
-          Boss_Email: 'pedro.lopez@municipio.gob',
-          Parent_Name: 'Dirección de Educación'
-        },
-        {
-          ID_Office: 6,
-          Name_Office: 'División de Administración',
-          Office_Type: 'Division',
-          Fk_Parent_Office: 1,
-          Fk_Boss_ID: 6,
-          created_at: '2024-01-25T14:30:00',
-          Boss_Name: 'Laura Sánchez',
-          Boss_Email: 'laura.sanchez@municipio.gob',
-          Parent_Name: 'Dirección de Educación'
-        },
-        {
-          ID_Office: 7,
-          Name_Office: 'División de Ingeniería',
-          Office_Type: 'Division',
-          Fk_Parent_Office: 2,
-          Fk_Boss_ID: 3,
-          created_at: '2024-02-10T09:15:00',
-          Boss_Name: 'Juan Pérez',
-          Boss_Email: 'juan.perez@municipio.gob',
-          Parent_Name: 'Dirección de Vialidad'
-        },
-        {
-          ID_Office: 8,
-          Name_Office: 'Coordinación de Servicios Tecnológicos',
-          Office_Type: 'Coordination',
-          Fk_Parent_Office: 5,
-          Fk_Boss_ID: 7,
-          created_at: '2024-01-25T10:00:00',
-          Boss_Name: 'Roberto Díaz',
-          Boss_Email: 'roberto.diaz@municipio.gob',
-          Parent_Name: 'División de Docencia'
-        },
-        {
-          ID_Office: 9,
-          Name_Office: 'Coordinación de Recursos Educativos',
-          Office_Type: 'Coordination',
-          Fk_Parent_Office: 5,
-          Fk_Boss_ID: 8,
-          created_at: '2024-02-01T14:30:00',
-          Boss_Name: 'Carmen Ruiz',
-          Boss_Email: 'carmen.ruiz@municipio.gob',
-          Parent_Name: 'División de Docencia'
-        }
-      ];
-
-      setBosses(mockBosses);
-      setOffices(buildOfficeHierarchy(mockOffices));
-      setLoading(false);
-    }, 1000);
-  };
-
-  const buildOfficeHierarchy = (flatOffices: Office[]): Office[] => {
-    const officeMap = new Map<number, Office>();
-    const rootOffices: Office[] = [];
-
-    // First pass: create all offices
-    flatOffices.forEach(office => {
-      officeMap.set(office.ID_Office, { ...office, Children: [] });
-    });
-
-    // Second pass: build hierarchy
-    flatOffices.forEach(office => {
-      const officeNode = officeMap.get(office.ID_Office)!;
-      
-      if (office.Fk_Parent_Office && officeMap.has(office.Fk_Parent_Office)) {
-        const parent = officeMap.get(office.Fk_Parent_Office)!;
-        parent.Children!.push(officeNode);
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncMessage(null);
+    try {
+      const token = sessionStorage.getItem('auth_token');
+      const response = await fetch(`${API_BASE_URL}/api/office?action=sync`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSyncMessage({ type: 'success', text: data.message || 'Oficinas sincronizadas correctamente.' });
+        await fetchOffices();
       } else {
-        rootOffices.push(officeNode);
+        setSyncMessage({ type: 'error', text: data.message || 'Error al sincronizar.' });
       }
-    });
-
-    return rootOffices;
-  };
-
-  const getPageTitle = () => {
-    switch (typeFilter) {
-      case 'Direction':
-        return 'Direcciones Municipales';
-      case 'Division':
-        return 'Divisiones Institucionales';
-      case 'Coordination':
-        return 'Coordinaciones Operativas';
-      default:
-        return 'Estructura Institucional';
+    } catch {
+      setSyncMessage({ type: 'error', text: 'Error de conexión al sincronizar.' });
+    } finally {
+      setSyncing(false);
     }
   };
 
-  const getPageDescription = () => {
-    switch (typeFilter) {
-      case 'Direction':
-        return 'Administra las direcciones principales del municipio';
-      case 'Division':
-        return 'Gestiona las divisiones dependientes de las direcciones';
-      case 'Coordination':
-        return 'Coordina las unidades operativas especializadas';
-      default:
-        return 'Administra toda la estructura organizacional: direcciones, divisiones y coordinaciones';
+  const grouped = useMemo(() => {
+    const groups: Record<string, Office[]> = {};
+    for (const office of offices) {
+      const g = getGroup(office.Name_Office);
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(office);
     }
-  };
+    return GROUP_ORDER.filter(g => groups[g]).map(g => ({
+      key: g,
+      ...GROUP_META[g],
+      offices: groups[g],
+    }));
+  }, [offices]);
 
-  const getOfficeIcon = (type: string) => {
-    switch (type) {
-      case 'Direction':
-        return <Building2 size={20} />;
-      case 'Division':
-        return <Layers size={20} />;
-      case 'Coordination':
-        return <MapPin size={20} />;
-      default:
-        return <Building size={20} />;
+  const filtered = useMemo(() => {
+    let result = grouped;
+    if (filterGroup) {
+      result = result.filter(g => g.key === filterGroup);
     }
-  };
-
-  const getOfficeTypeLabel = (type: string) => {
-    switch (type) {
-      case 'Direction':
-        return 'Dirección';
-      case 'Division':
-        return 'División';
-      case 'Coordination':
-        return 'Coordinación';
-      default:
-        return type;
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
+      result = result
+        .map(g => ({
+          ...g,
+          offices: g.offices.filter(o =>
+            o.Name_Office.toLowerCase().includes(q) ||
+            (o.boss_full_name && o.boss_full_name.toLowerCase().includes(q)) ||
+            (o.boss_email && o.boss_email.toLowerCase().includes(q)) ||
+            (o.coduniadm && o.coduniadm.toLowerCase().includes(q))
+          ),
+        }))
+        .filter(g => g.offices.length > 0);
     }
-  };
-
-  const getOfficeTypeColor = (type: string) => {
-    switch (type) {
-      case 'Direction':
-        return '#3b82f6';
-      case 'Division':
-        return '#10b981';
-      case 'Coordination':
-        return '#f59e0b';
-      default:
-        return '#6b7280';
-    }
-  };
-
-  const filteredOffices = offices.filter(office => {
-    const matchesSearch = office.Name_Office.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (office.Boss_Name && office.Boss_Name.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchesType = typeFilter === 'all' || office.Office_Type === typeFilter;
-    return matchesSearch && matchesType;
-  });
-
-  const getParentOffices = (currentType: string) => {
-    const flatOffices = flattenOffices(offices);
-    return flatOffices.filter(office => {
-      if (currentType === 'Direction') return false; // Directions have no parent
-      if (currentType === 'Division') return office.Office_Type === 'Direction';
-      if (currentType === 'Coordination') return office.Office_Type === 'Division';
-      return false;
-    });
-  };
-
-  const flattenOffices = (offices: Office[]): Office[] => {
-    const result: Office[] = [];
-    offices.forEach(office => {
-      result.push(office);
-      if (office.Children && office.Children.length > 0) {
-        result.push(...flattenOffices(office.Children));
-      }
-    });
     return result;
+  }, [grouped, filterGroup, searchTerm]);
+
+  const stats = useMemo(() => ({
+    total: offices.length,
+    withBoss: offices.filter(o => o.has_boss).length,
+    withoutBoss: offices.filter(o => !o.has_boss).length,
+    totalTechs: offices.reduce((a, o) => a + (o.technician_count || 0), 0),
+  }), [offices]);
+
+  const handleViewDetails = (id: number) => {
+    setSelectedOffice(selectedOffice === id ? null : id);
   };
 
-  const toggleOffice = (officeId: number) => {
-    const toggleRecursive = (offices: Office[]): Office[] => {
-      return offices.map(office => {
-        if (office.ID_Office === officeId) {
-          return { ...office, expanded: !office.expanded };
-        }
-        if (office.Children) {
-          return { ...office, Children: toggleRecursive(office.Children) };
-        }
-        return office;
-      });
-    };
-    setOffices(toggleRecursive(offices));
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
-
-  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const newType = e.target.value as 'Direction' | 'Coordination' | 'Division';
-    setFormData(prev => ({
-      ...prev,
-      office_type: newType,
-      fk_parent_office: '' // Reset parent when type changes
-    }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const boss = bosses.find(b => b.ID_Boss === parseInt(formData.fk_boss_id));
-    const parentOffice = formData.fk_parent_office ? 
-      flattenOffices(offices).find(o => o.ID_Office === parseInt(formData.fk_parent_office)) : null;
-    
-    const newOffice: Office = {
-      ID_Office: Date.now(),
-      Name_Office: formData.name_office,
-      Office_Type: formData.office_type,
-      Fk_Parent_Office: formData.fk_parent_office ? parseInt(formData.fk_parent_office) : null,
-      Fk_Boss_ID: formData.fk_boss_id ? parseInt(formData.fk_boss_id) : null,
-      created_at: new Date().toISOString(),
-      Boss_Name: boss ? boss.Name_Boss : '',
-      Boss_Email: boss ? boss.User_Email : '',
-      Parent_Name: parentOffice ? parentOffice.Name_Office : null,
-      Children: []
-    };
-
-    if (formData.fk_parent_office) {
-      // Add as child to parent
-      const addToParentRecursive = (offices: Office[]): Office[] => {
-        return offices.map(office => {
-          if (office.ID_Office === parseInt(formData.fk_parent_office)) {
-            return { 
-              ...office, 
-              Children: [...(office.Children || []), newOffice] 
-            };
-          }
-          if (office.Children) {
-            return { ...office, Children: addToParentRecursive(office.Children) };
-          }
-          return office;
-        });
-      };
-      setOffices(addToParentRecursive(offices));
-    } else {
-      // Add as root
-      setOffices([...offices, newOffice]);
-    }
-
-    setShowAddModal(false);
-    resetForm();
-  };
-
-  const handleEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedOffice) return;
-
-    const boss = bosses.find(b => b.ID_Boss === parseInt(formData.fk_boss_id));
-    const parentOffice = formData.fk_parent_office ? 
-      flattenOffices(offices).find(o => o.ID_Office === parseInt(formData.fk_parent_office)) : null;
-    
-    const updatedOffice: Office = {
-      ...selectedOffice,
-      Name_Office: formData.name_office,
-      Office_Type: formData.office_type,
-      Fk_Parent_Office: formData.fk_parent_office ? parseInt(formData.fk_parent_office) : null,
-      Fk_Boss_ID: formData.fk_boss_id ? parseInt(formData.fk_boss_id) : null,
-      Boss_Name: boss ? boss.Name_Boss : '',
-      Boss_Email: boss ? boss.User_Email : '',
-      Parent_Name: parentOffice ? parentOffice.Name_Office : null
-    };
-
-    const updateRecursive = (offices: Office[]): Office[] => {
-      return offices.map(office => {
-        if (office.ID_Office === selectedOffice.ID_Office) {
-          return updatedOffice;
-        }
-        if (office.Children) {
-          return { ...office, Children: updateRecursive(office.Children) };
-        }
-        return office;
-      });
-    };
-    setOffices(updateRecursive(offices));
-    setShowEditModal(false);
-    setSelectedOffice(null);
-    resetForm();
-  };
-
-  const handleDelete = () => {
-    if (!selectedOffice) return;
-
-    const deleteRecursive = (offices: Office[]): Office[] => {
-      return offices
-        .filter(office => office.ID_Office !== selectedOffice.ID_Office)
-        .map(office => {
-          if (office.Children) {
-            return { ...office, Children: deleteRecursive(office.Children) };
-          }
-          return office;
-        });
-    };
-    setOffices(deleteRecursive(offices));
-    setShowDeleteModal(false);
-    setSelectedOffice(null);
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name_office: '',
-      office_type: 'Direction',
-      fk_parent_office: '',
-      fk_boss_id: ''
-    });
-  };
-
-  const openEditModal = (office: Office) => {
-    setSelectedOffice(office);
-    setFormData({
-      name_office: office.Name_Office,
-      office_type: office.Office_Type,
-      fk_parent_office: office.Fk_Parent_Office?.toString() || '',
-      fk_boss_id: office.Fk_Boss_ID?.toString() || ''
-    });
-    setShowEditModal(true);
-  };
-
-  const stats = {
-    total: flattenOffices(offices).length,
-    directions: flattenOffices(offices).filter(o => o.Office_Type === 'Direction').length,
-    divisions: flattenOffices(offices).filter(o => o.Office_Type === 'Division').length,
-    coordinations: flattenOffices(offices).filter(o => o.Office_Type === 'Coordination').length
-  };
-
-  const renderOfficeTree = (officeList: Office[], level: number = 0) => {
-    return officeList.map(office => (
-      <div key={office.ID_Office} className="office-tree-item">
-        <div 
-          className="office-item" 
-          style={{ marginLeft: `${level * 20}px` }}
-        >
-          {office.Children && office.Children.length > 0 && (
-            <button 
-              className="expand-btn"
-              onClick={() => toggleOffice(office.ID_Office)}
-            >
-              {office.expanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-            </button>
-          )}
-          
-          <div 
-            className="office-icon" 
-            style={{ backgroundColor: getOfficeTypeColor(office.Office_Type) }}
-          >
-            {getOfficeIcon(office.Office_Type)}
-          </div>
-          
-          <div className="office-info">
-            <h4>{office.Name_Office}</h4>
-            <div className="office-meta">
-              <span className="type-badge" style={{ backgroundColor: getOfficeTypeColor(office.Office_Type) }}>
-                {getOfficeTypeLabel(office.Office_Type)}
-              </span>
-              {office.Boss_Name && (
-                <span className="boss-info">
-                  <User size={12} />
-                  {office.Boss_Name}
-                </span>
-              )}
-              {office.Parent_Name && (
-                <span className="parent-info">
-                  <Building size={12} />
-                  {office.Parent_Name}
-                </span>
-              )}
-            </div>
-          </div>
-          
-          <div className="office-actions">
-            <button
-              className="action-btn-small"
-              onClick={() => {
-                setSelectedOffice(office);
-                setShowDetailModal(true);
-              }}
-              title="Ver detalles"
-            >
-              <Eye size={14} />
-            </button>
-            <button
-              className="action-btn-small"
-              onClick={() => openEditModal(office)}
-              title="Editar"
-            >
-              <Edit size={14} />
-            </button>
-            <button
-              className="action-btn-small danger"
-              onClick={() => {
-                setSelectedOffice(office);
-                setShowDeleteModal(true);
-              }}
-              title="Eliminar"
-            >
-              <Trash2 size={14} />
-            </button>
+  if (loading) {
+    return (
+      <div className="page-container">
+        <ModernSidebar />
+        <div className="om-body">
+          <div className="om-loading">
+            <div className="om-spinner" />
+            <p>Cargando estructura municipal...</p>
           </div>
         </div>
-        
-        {office.expanded && office.Children && (
-          <div className="office-children">
-            {renderOfficeTree(office.Children, level + 1)}
-          </div>
-        )}
       </div>
-    ));
-  };
+    );
+  }
 
   return (
-    <div className="office-management">
-      <div className="page-container">
-        <header className="page-header">
-          <div className="header-content">
-            <div className="title-section">
-              <h1 className="page-title">
-                <Building size={28} />
-                {getPageTitle()}
-              </h1>
-              <p className="page-description">{getPageDescription()}</p>
+    <div className="page-container">
+      <ModernSidebar />
+      <div className="om-body">
+
+        {/* Top Bar */}
+        <header className="om-topbar">
+          <div className="om-topbar-left">
+            <div className="om-topbar-icon">
+              <Building2 size={20} />
             </div>
-            
-            <div className="header-stats">
-              <div className="stat-item">
-                <span className="stat-number">{stats.total}</span>
-                <span className="stat-label">Total</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">{stats.directions}</span>
-                <span className="stat-label">Direcciones</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">{stats.divisions}</span>
-                <span className="stat-label">Divisiones</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-number">{stats.coordinations}</span>
-                <span className="stat-label">Coordinaciones</span>
-              </div>
+            <div>
+              <h1 className="om-title">Organización Municipal</h1>
+              <p className="om-subtitle">{stats.total} dependencias registradas</p>
             </div>
           </div>
-          
-          <div className="header-actions">
-            <button className="action-btn secondary" onClick={() => navigate('/')}>
-              <ArrowLeft size={18} />
-              Volver al Panel
+          <div className="om-topbar-right">
+            <button className="om-btn om-btn-ghost" onClick={() => navigate('/admin')}>
+              <ArrowLeft size={16} />
+              <span>Volver</span>
             </button>
-            <button className="action-btn primary" onClick={() => setShowAddModal(true)}>
-              <Plus size={18} />
-              Nueva Oficina
+            <button
+              className="om-btn om-btn-primary"
+              onClick={handleSync}
+              disabled={syncing}
+            >
+              <RefreshCw size={15} className={syncing ? 'om-spin' : ''} />
+              <span>{syncing ? 'Sincronizando...' : 'Sincronizar'}</span>
             </button>
           </div>
         </header>
 
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="stat-icon" style={{ backgroundColor: '#3b82f6' }}>
-              <Building2 size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">{stats.directions}</h3>
-              <p className="stat-label">Direcciones</p>
-            </div>
+        {/* Sync Banner */}
+        {syncMessage && (
+          <div className={`om-banner om-banner--${syncMessage.type}`}>
+            <span className="om-banner-glyph">
+              {syncMessage.type === 'success' ? '\u2713' : '\u26A0'}
+            </span>
+            <span>{syncMessage.text}</span>
+            <button className="om-banner-close" onClick={() => setSyncMessage(null)}>
+              <X size={14} />
+            </button>
           </div>
-          
-          <div className="stat-card">
-            <div className="stat-icon" style={{ backgroundColor: '#10b981' }}>
-              <Layers size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">{stats.divisions}</h3>
-              <p className="stat-label">Divisiones</p>
-            </div>
-          </div>
-          
-          <div className="stat-card">
-            <div className="stat-icon" style={{ backgroundColor: '#f59e0b' }}>
-              <MapPin size={24} />
-            </div>
-            <div className="stat-content">
-              <h3 className="stat-value">{stats.coordinations}</h3>
-              <p className="stat-label">Coordinaciones</p>
-            </div>
-          </div>
-        </div>
+        )}
 
-        <section className="search-filters">
-          <div className="search-bar">
-            <div className="search-input-wrapper">
-              <Search size={18} className="search-icon" />
-              <input
-                type="text"
-                placeholder="Buscar oficina o jefe..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-            </div>
-          </div>
-          
-          <div className="filter-options">
-            <div className="filter-group">
-              <label>Tipo de Oficina</label>
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value as any)}
-                className="filter-select"
-              >
-                <option value="all">Todos los tipos</option>
-                <option value="Direction">Direcciones</option>
-                <option value="Division">Divisiones</option>
-                <option value="Coordination">Coordinaciones</option>
-              </select>
-            </div>
-          </div>
-        </section>
-
-        <div className="office-content">
-          {loading ? (
-            <div className="loading-state">
-              <div className="spinner"></div>
-              <p>Cargando oficinas...</p>
-            </div>
-          ) : (
-            <div className="office-tree">
-              {renderOfficeTree(filteredOffices)}
-              
-              {filteredOffices.length === 0 && (
-                <div className="empty-state">
-                  <Building size={48} className="empty-icon" />
-                  <h3>No se encontraron oficinas</h3>
-                  <p>No hay oficinas que coincidan con los filtros.</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {showAddModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Agregar Nueva Oficina</h2>
-              <button className="close-btn" onClick={() => setShowAddModal(false)}>
-                <X size={20} />
+        {/* Search + Filters */}
+        <div className="om-toolbar">
+          <div className="om-search">
+            <Search size={15} className="om-search-icon" />
+            <input
+              type="text"
+              className="om-search-input"
+              placeholder="Buscar dependencia, responsable o código..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button className="om-search-clear" onClick={() => setSearchTerm('')}>
+                <X size={14} />
               </button>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="office-form">
-              <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>Nombre de la Oficina</label>
-                  <input
-                    type="text"
-                    name="name_office"
-                    value={formData.name_office}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="Ej: Dirección de Educación"
-                  />
-                </div>
-                
-                <div className="form-group full-width">
-                  <label>Tipo de Oficina</label>
-                  <select
-                    name="office_type"
-                    value={formData.office_type}
-                    onChange={handleTypeChange}
-                    required
-                  >
-                    <option value="Direction">Dirección</option>
-                    <option value="Division">División</option>
-                    <option value="Coordination">Coordinación</option>
-                  </select>
-                </div>
-                
-                {formData.office_type !== 'Direction' && (
-                  <div className="form-group full-width">
-                    <label>Oficina Superior</label>
-                    <select
-                      name="fk_parent_office"
-                      value={formData.fk_parent_office}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Seleccionar oficina superior...</option>
-                      {getParentOffices(formData.office_type).map(office => (
-                        <option key={office.ID_Office} value={office.ID_Office}>
-                          {office.Name_Office}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                
-                <div className="form-group full-width">
-                  <label>Jefe de Oficina</label>
-                  <select
-                    name="fk_boss_id"
-                    value={formData.fk_boss_id}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Seleccionar jefe...</option>
-                    {bosses.map(boss => (
-                      <option key={boss.ID_Boss} value={boss.ID_Boss}>
-                        {boss.pronoun} {boss.Name_Boss} ({boss.User_Email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowAddModal(false)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <Plus size={16} />
-                  Agregar Oficina
-                </button>
-              </div>
-            </form>
+            )}
           </div>
-        </div>
-      )}
-
-      {showEditModal && selectedOffice && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2>Editar Oficina</h2>
-              <button className="close-btn" onClick={() => setShowEditModal(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleEdit} className="office-form">
-              <div className="form-grid">
-                <div className="form-group full-width">
-                  <label>Nombre de la Oficina</label>
-                  <input
-                    type="text"
-                    name="name_office"
-                    value={formData.name_office}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                
-                <div className="form-group full-width">
-                  <label>Tipo de Oficina</label>
-                  <select
-                    name="office_type"
-                    value={formData.office_type}
-                    onChange={handleTypeChange}
-                    required
-                  >
-                    <option value="Direction">Dirección</option>
-                    <option value="Division">División</option>
-                    <option value="Coordination">Coordinación</option>
-                  </select>
-                </div>
-                
-                {formData.office_type !== 'Direction' && (
-                  <div className="form-group full-width">
-                    <label>Oficina Superior</label>
-                    <select
-                      name="fk_parent_office"
-                      value={formData.fk_parent_office}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Seleccionar oficina superior...</option>
-                      {getParentOffices(formData.office_type).map(office => (
-                        <option key={office.ID_Office} value={office.ID_Office}>
-                          {office.Name_Office}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                
-                <div className="form-group full-width">
-                  <label>Jefe de Oficina</label>
-                  <select
-                    name="fk_boss_id"
-                    value={formData.fk_boss_id}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="">Seleccionar jefe...</option>
-                    {bosses.map(boss => (
-                      <option key={boss.ID_Boss} value={boss.ID_Boss}>
-                        {boss.pronoun} {boss.Name_Boss} ({boss.User_Email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              <div className="form-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowEditModal(false)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  <Edit size={16} />
-                  Guardar Cambios
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {showDetailModal && selectedOffice && (
-        <div className="modal-overlay">
-          <div className="modal-content large">
-            <div className="modal-header">
-              <h2>Detalles de la Oficina</h2>
-              <button className="close-btn" onClick={() => setShowDetailModal(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="office-detail">
-              <div className="detail-header">
-                <div 
-                  className="detail-icon" 
-                  style={{ backgroundColor: getOfficeTypeColor(selectedOffice.Office_Type) }}
+          <div className="om-filters">
+            {GROUP_ORDER.map(g => {
+              const meta = GROUP_META[g];
+              const active = filterGroup === g;
+              return (
+                <button
+                  key={g}
+                  className={`om-chip ${active ? 'om-chip--active' : ''}`}
+                  onClick={() => setFilterGroup(active ? null : g)}
                 >
-                  {getOfficeIcon(selectedOffice.Office_Type)}
-                </div>
-                <div className="detail-summary">
-                  <h3>{selectedOffice.Name_Office}</h3>
-                  <p>ID: {selectedOffice.ID_Office}</p>
-                  <span className="type-badge" style={{ backgroundColor: getOfficeTypeColor(selectedOffice.Office_Type) }}>
-                    {getOfficeTypeLabel(selectedOffice.Office_Type)}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="detail-grid">
-                <div className="detail-section">
-                  <h4>Información de la Oficina</h4>
-                  <div className="detail-list">
-                    {selectedOffice.Parent_Name && (
-                      <div className="detail-item">
-                        <Building size={16} />
-                        <span>Oficina Superior: {selectedOffice.Parent_Name}</span>
-                      </div>
-                    )}
-                    <div className="detail-item">
-                      <User size={16} />
-                      <span>Jefe: {selectedOffice.Boss_Name || 'Sin asignar'}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span>Email Jefe: {selectedOffice.Boss_Email || '-'}</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="detail-section">
-                  <h4>Estadísticas</h4>
-                  <div className="detail-list">
-                    <div className="detail-item">
-                      <span>Sub-oficinas: {selectedOffice.Children?.length || 0}</span>
-                    </div>
-                    <div className="detail-item">
-                      <span>Creado: {new Date(selectedOffice.created_at).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  {meta.icon}
+                  <span>{meta.label}</span>
+                </button>
+              );
+            })}
+            <button className="om-chip om-chip--stat"><Users size={13} />{stats.totalTechs} técnicos</button>
+            <span className="om-chip om-chip--stat om-chip--muted">
+              {stats.withoutBoss} sin responsable
+            </span>
           </div>
         </div>
-      )}
 
-      {showDeleteModal && selectedOffice && (
-        <div className="modal-overlay">
-          <div className="modal-content small">
-            <div className="modal-header">
-              <h2>Eliminar Oficina</h2>
-              <button className="close-btn" onClick={() => setShowDeleteModal(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="delete-confirmation">
-              <Trash2 size={48} className="warning-icon" />
-              <p>¿Estás seguro de eliminar la oficina?</p>
-              <p className="warning-text">{selectedOffice.Name_Office}</p>
-              <p className="warning-subtext">
-                {selectedOffice.Children && selectedOffice.Children.length > 0 
-                  ? 'Esta acción también eliminará todas las sub-oficinas asociadas.' 
-                  : 'Esta acción no se puede deshacer.'}
-              </p>
-            </div>
-            
-            <div className="modal-actions">
-              <button className="btn btn-secondary" onClick={() => setShowDeleteModal(false)}>
-                Cancelar
-              </button>
-              <button className="btn btn-danger" onClick={handleDelete}>
-                <Trash2 size={16} />
-                Eliminar
-              </button>
-            </div>
+        {/* Content */}
+        {filtered.length === 0 ? (
+          <div className="om-empty">
+            <Building2 size={36} />
+            <h3>Sin resultados</h3>
+            <p>No se encontraron dependencias con ese criterio de búsqueda</p>
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="om-sections">
+            {filtered.map(group => (
+              <section key={group.key} className="om-section">
+                <header className="om-section-hd">
+                  <div className="om-section-hd-left">
+                    <span className="om-section-icon">{group.icon}</span>
+                    <h2 className="om-section-title">{group.label}</h2>
+                    <span className="om-section-count">{group.offices.length}</span>
+                  </div>
+                </header>
+                <div className="om-grid">
+                  {group.offices.map((office, i) => {
+                    const isOpen = selectedOffice === office.ID_Office;
+                    return (
+                      <article
+                        key={office.ID_Office}
+                        className={`om-office ${isOpen ? 'om-office--open' : ''}`}
+                        style={{ animationDelay: `${i * 0.03}s` }}
+                      >
+                        <div className="om-office-main" onClick={() => handleViewDetails(office.ID_Office)}>
+                          <span className="om-office-emoji">{getEmoji(office.Name_Office)}</span>
+                          <div className="om-office-info">
+                            <h3 className="om-office-name">{office.Name_Office}</h3>
+                            <div className="om-office-tags">
+                              {office.coduniadm && (
+                                <span className="om-tag om-tag--code">#{office.coduniadm}</span>
+                              )}
+                              {office.has_boss ? (
+                                <span className="om-tag om-tag--boss">
+                                  <BadgeCheck size={10} />
+                                  {office.boss_full_name || office.boss_name}
+                                </span>
+                              ) : (
+                                <span className="om-tag om-tag--empty">Sin responsable</span>
+                              )}
+                              {office.technician_count > 0 && (
+                                <span className="om-tag om-tag--tech">
+                                  <Users size={10} />
+                                  {office.technician_count} téc.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRight
+                            size={14}
+                            className={`om-chevron ${isOpen ? 'om-chevron--open' : ''}`}
+                          />
+                        </div>
+
+                        {isOpen && (
+                          <div className="om-detail">
+                            <div className="om-detail-grid">
+                              {office.has_boss ? (
+                                <div className="om-detail-block">
+                                  <div className="om-detail-lbl">
+                                    <Shield size={11} />
+                                    Responsable
+                                  </div>
+                                  <div className="om-detail-val">
+                                    <span className="om-detail-avatar">
+                                      {getInitials(office.boss_full_name || office.boss_name || '')}
+                                    </span>
+                                    <div>
+                                      <strong>{office.boss_full_name || office.boss_name}</strong>
+                                      {office.boss_email && (
+                                        <span className="om-detail-email">
+                                          <Mail size={10} />
+                                          {office.boss_email}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="om-detail-block om-detail-block--empty">
+                                  <AlertCircle size={13} />
+                                  <span>Sin responsable asignado</span>
+                                </div>
+                              )}
+                              <div className="om-detail-block">
+                                <div className="om-detail-lbl">
+                                  <Hash size={11} />
+                                  Código SIFA
+                                </div>
+                                <div className="om-detail-val">
+                                  <code className="om-code">{office.coduniadm || '—'}</code>
+                                </div>
+                              </div>
+                              <div className="om-detail-block">
+                                <div className="om-detail-lbl">
+                                  <Users size={11} />
+                                  Técnicos
+                                </div>
+                                <div className="om-detail-val">
+                                  {office.technician_count || 0} asignados
+                                </div>
+                              </div>
+                              <div className="om-detail-block">
+                                <div className="om-detail-lbl">
+                                  <Clock size={11} />
+                                  Registro
+                                </div>
+                                <div className="om-detail-val">
+                                  {new Date(office.created_at).toLocaleDateString('es-ES', {
+                                    day: 'numeric', month: 'short', year: 'numeric'
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

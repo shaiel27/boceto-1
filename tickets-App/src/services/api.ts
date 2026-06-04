@@ -2,6 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../constants/config';
 import { ApiResponse } from '../types/api';
 
+const FETCH_TIMEOUT = 8000;
+
+function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+  return Promise.race([
+    fetch(url, options),
+    new Promise<Response>((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), FETCH_TIMEOUT),
+    ),
+  ]);
+}
+
 class ApiClient {
   private async getToken(): Promise<string | null> {
     return AsyncStorage.getItem('auth_token');
@@ -21,7 +32,7 @@ class ApiClient {
 
   async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'GET',
         headers: await this.headers(false),
       });
@@ -32,14 +43,17 @@ class ApiClient {
 
       const data = await response.json();
       return data;
-    } catch {
+    } catch (e: any) {
+      if (e?.message === 'TIMEOUT') {
+        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
+      }
       return { success: false, message: 'Error de conexión con el servidor' };
     }
   }
 
   async post<T = any>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: await this.headers(),
         body: body ? JSON.stringify(body) : undefined,
@@ -51,14 +65,17 @@ class ApiClient {
 
       const data = await response.json();
       return data;
-    } catch {
+    } catch (e: any) {
+      if (e?.message === 'TIMEOUT') {
+        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
+      }
       return { success: false, message: 'Error de conexión con el servidor' };
     }
   }
 
   async put<T = any>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'PUT',
         headers: await this.headers(),
         body: body ? JSON.stringify(body) : undefined,
@@ -70,7 +87,10 @@ class ApiClient {
 
       const data = await response.json();
       return data;
-    } catch {
+    } catch (e: any) {
+      if (e?.message === 'TIMEOUT') {
+        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
+      }
       return { success: false, message: 'Error de conexión con el servidor' };
     }
   }
@@ -78,7 +98,7 @@ class ApiClient {
   async upload<T = any>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
     try {
       const token = await this.getToken();
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
@@ -90,14 +110,17 @@ class ApiClient {
 
       const data = await response.json();
       return data;
-    } catch {
+    } catch (e: any) {
+      if (e?.message === 'TIMEOUT') {
+        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
+      }
       return { success: false, message: 'Error de conexión con el servidor' };
     }
   }
 
   async delete<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'DELETE',
         headers: await this.headers(false),
       });
@@ -108,7 +131,10 @@ class ApiClient {
 
       const data = await response.json();
       return data;
-    } catch {
+    } catch (e: any) {
+      if (e?.message === 'TIMEOUT') {
+        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
+      }
       return { success: false, message: 'Error de conexión con el servidor' };
     }
   }

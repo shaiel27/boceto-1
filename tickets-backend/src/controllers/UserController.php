@@ -162,7 +162,7 @@ switch ($method) {
                             INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                             WHERE tt.Fk_Technician = :techId
                             AND tt.Status = 'Activo'
-                            AND sr.Status != 'Cerrado'";
+                            AND sr.Status NOT IN ('Cerrado', 'Resuelto')";
             
             $ticketsStmt = $db->prepare($ticketsQuery);
             $ticketsStmt->bindParam(":techId", $techId);

@@ -19,6 +19,8 @@ import AuditPage from './pages/AuditPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PublicBoardPage from './pages/PublicBoardPage';
+import BienesPage from './pages/BienesPage';
+import BienesTest from './components/bienes/BienesTest';
 import TicketForm from './components/tickets/TicketForm';
 import './styles/variables.css';
 
@@ -39,6 +41,8 @@ const router = createBrowserRouter([
   { path: '/new-ticket', element: <ProtectedRoute allowedRoles={[1, 3]}><TicketForm /></ProtectedRoute> },
   { path: '/pdf-test', element: <PDFTestReport /> },
   { path: '/public-board', element: <PublicBoardPage /> },
+  { path: '/bienes', element: <ProtectedRoute allowedRoles={[1, 2, 3, 4]}><BienesPage /></ProtectedRoute> },
+  { path: '/bienes-test', element: <BienesTest /> },
 ]);
 
 function App() {

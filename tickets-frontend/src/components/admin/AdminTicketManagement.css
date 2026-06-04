@@ -317,6 +317,8 @@
 .gvt-det-f:last-child{margin-bottom:0}
 .gvt-det-f label{display:block;font-size:10.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
 .gvt-det-f p{font-size:13px;color:var(--ink);margin:0;line-height:1.5;display:flex;align-items:center;gap:4px}
+.gvt-mono{font-family:'SF Mono',ui-monospace,monospace;font-size:12px;background:var(--soft);padding:2px 8px;border-radius:4px}
+.gvt-bien-desc{font-size:12.5px;color:var(--navy);background:#eef2ff;padding:4px 10px;border-radius:6px;display:inline-flex!important}
 .gvt-det-g{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 @media(max-width:600px){.gvt-det-g{grid-template-columns:1fr}}
 

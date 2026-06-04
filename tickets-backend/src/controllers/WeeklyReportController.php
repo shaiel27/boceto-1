@@ -84,8 +84,8 @@ function getWeeklyStats($db, $startDate, $endDate) {
     // Resolved tickets in the week
     $resolvedQuery = "SELECT COUNT(*) as resolved 
                      FROM Service_Request 
-                     WHERE Status = 'Cerrado'
-                     AND DATE(Created_at) BETWEEN :start_date AND :end_date
+WHERE Status IN ('Cerrado', 'Resuelto')
+                      AND DATE(Created_at) BETWEEN :start_date AND :end_date
                      AND DAYOFWEEK(Created_at) BETWEEN 2 AND 6";
     $stmt = $db->prepare($resolvedQuery);
     $stmt->bindParam(':start_date', $startDate);
@@ -121,14 +121,14 @@ function getTechnicianWeeklyData($db, $startDate, $endDate, $technicianId = null
     $query = "SELECT
                 t.ID_Technicians as id,
                 CONCAT(t.First_Name, ' ', t.Last_Name) as nombre,
-                COUNT(CASE WHEN sr.Status = 'Cerrado' 
+                COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') 
                           AND DAYOFWEEK(sr.Created_at) BETWEEN 2 AND 6
                           THEN 1 END) as tickets_resueltos,
-                AVG(CASE WHEN sr.Status = 'Cerrado' 
+                AVG(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') 
                          AND DAYOFWEEK(sr.Created_at) BETWEEN 2 AND 6
                          THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) 
                          END) as tiempo_promedio,
-                (COUNT(CASE WHEN sr.Status = 'Cerrado' 
+                (COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') 
                            AND DAYOFWEEK(sr.Created_at) BETWEEN 2 AND 6
                            THEN 1 END) * 100.0 / 
                  NULLIF(COUNT(CASE WHEN DAYOFWEEK(sr.Created_at) BETWEEN 2 AND 6 THEN 1 END), 0)) as eficiencia,

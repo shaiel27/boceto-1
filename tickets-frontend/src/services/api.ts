@@ -2110,6 +2110,16 @@ export class ApiService {
   }
 
 
+  static async getStructure(): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/structure?action=full`, {
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
+      });
+      const data = await response.json();
+      return data.success ? { success: true, message: '', data: data.data } : { success: false, message: data.message };
+    } catch { return { success: false, message: 'Error de conexión' }; }
+  }
+
   static async getOfficeReport(): Promise<ApiResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/reports?action=office`, {

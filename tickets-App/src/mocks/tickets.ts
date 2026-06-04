@@ -2,13 +2,13 @@ import { Ticket } from '../types/ticket';
 import { Technician, Office, TI_Service, ServiceProblem } from '../types/user';
 
 export const MOCK_OFFICES: Office[] = [
-  { id: 1, name_office: 'Dirección de Administración', office_type: 'Dirección', fk_parent_office: null, fk_boss_id: 1 },
-  { id: 2, name_office: 'División de Recursos Humanos', office_type: 'División', fk_parent_office: 1, fk_boss_id: 2 },
-  { id: 3, name_office: 'Coordinación de Tecnología', office_type: 'Coordinación', fk_parent_office: 2, fk_boss_id: null },
-  { id: 4, name_office: 'Dirección de Finanzas', office_type: 'Dirección', fk_parent_office: null, fk_boss_id: 3 },
-  { id: 5, name_office: 'División de Sistemas', office_type: 'División', fk_parent_office: 1, fk_boss_id: null },
-  { id: 6, name_office: 'Coordinación de Archivo', office_type: 'Coordinación', fk_parent_office: 2, fk_boss_id: null },
-  { id: 7, name_office: 'División de Personal', office_type: 'División', fk_parent_office: 4, fk_boss_id: null },
+  { id: 1, name_office: 'Dirección de Administración', coduniadm: '0000000001', fk_boss_id: 1 },
+  { id: 2, name_office: 'División de Recursos Humanos', coduniadm: '0000000002', fk_boss_id: 2 },
+  { id: 3, name_office: 'Coordinación de Tecnología', coduniadm: '0000000003', fk_boss_id: null },
+  { id: 4, name_office: 'Dirección de Finanzas', coduniadm: '0000000004', fk_boss_id: 3 },
+  { id: 5, name_office: 'División de Sistemas', coduniadm: '0000000005', fk_boss_id: null },
+  { id: 6, name_office: 'Coordinación de Archivo', coduniadm: '0000000006', fk_boss_id: null },
+  { id: 7, name_office: 'División de Personal', coduniadm: '0000000007', fk_boss_id: null },
 ];
 
 export const MOCK_SERVICES: TI_Service[] = [

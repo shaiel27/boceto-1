@@ -107,7 +107,7 @@ class ServiceRequest {
     }
 
     public function getAll(int $limit = 50, int $offset = 0): array {
-        $query = "SELECT sr.*, u.Full_Name as user_name, o.Name_Office as office_name,
+        $query = "SELECT sr.*, u.Full_Name as user_name, u.Email as user_email, o.Name_Office as office_name,
                          ts.Type_Service as service_type_name, b.Name_Boss as boss_name,
                          ss.System_Name as software_system_name
                   FROM " . $this->table_name . " sr
@@ -135,7 +135,7 @@ class ServiceRequest {
     }
 
     public function getById(int $id): array|null {
-        $query = "SELECT sr.*, u.Full_Name as user_name, o.Name_Office as office_name,
+        $query = "SELECT sr.*, u.Full_Name as user_name, u.Email as user_email, o.Name_Office as office_name,
                          ts.Type_Service as service_type_name, b.Name_Boss as boss_name,
                          ss.System_Name as software_system_name
                   FROM " . $this->table_name . " sr
@@ -225,7 +225,7 @@ class ServiceRequest {
                     COUNT(*) as total_tickets,
                     SUM(CASE WHEN Status = 'Pendiente' THEN 1 ELSE 0 END) as pending,
                     SUM(CASE WHEN Status = 'En Proceso' THEN 1 ELSE 0 END) as in_progress,
-                    SUM(CASE WHEN Status = 'Cerrado' THEN 1 ELSE 0 END) as resolved
+                    SUM(CASE WHEN Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) as resolved
                   FROM " . $this->table_name;
         
         $stmt = $this->conn->prepare($query);
@@ -235,11 +235,11 @@ class ServiceRequest {
     }
 
     public function getByUser($userId, $limit = 50, $offset = 0) {
-        $query = "SELECT sr.*, 
-                         u.Full_Name as user_name, 
+        $query = "SELECT sr.*,
+                         u.Full_Name as user_name,
+                         u.Email as user_email,
                          o.Name_Office as office_name,
-                         o.Office_Type as office_type,
-                         ts.Type_Service as service_type_name, 
+                         ts.Type_Service as service_type_name,
                          b.Name_Boss as boss_name
                   FROM " . $this->table_name . " sr
                   LEFT JOIN Users u ON sr.Fk_User_Requester = u.ID_Users
@@ -247,7 +247,7 @@ class ServiceRequest {
                   LEFT JOIN TI_Service ts ON sr.Fk_TI_Service = ts.ID_TI_Service
                   LEFT JOIN Boss b ON sr.Fk_Boss_Requester = b.ID_Boss
                   WHERE sr.Fk_User_Requester = :userId
-                  ORDER BY sr.Created_at DESC 
+                  ORDER BY sr.Created_at DESC
                   LIMIT :limit OFFSET :offset";
         
         $stmt = $this->conn->prepare($query);
@@ -320,8 +320,8 @@ class ServiceRequest {
                          sr.System_Priority, sr.Resolution_Notes,
                          sr.Status, sr.Created_at, sr.Resolved_at,
                          u.Full_Name as user_name,
+                         u.Email as user_email,
                          o.Name_Office as office_name,
-                         o.Office_Type as office_type,
                          ts.Type_Service as service_type_name,
                          b.Name_Boss as boss_name
                    FROM " . $this->table_name . " sr
@@ -354,8 +354,8 @@ class ServiceRequest {
     public function getFiltered($status = null, $serviceId = null, $priority = null, $limit = 50, $offset = 0) {
         $query = "SELECT sr.*,
                          u.Full_Name as user_name,
+                         u.Email as user_email,
                          o.Name_Office as office_name,
-                         o.Office_Type as office_type,
                          ts.Type_Service as service_type_name,
                          b.Name_Boss as boss_name
                   FROM " . $this->table_name . " sr

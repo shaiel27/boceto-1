@@ -91,7 +91,7 @@ function getOverviewStats($db, $days) {
     $totalTickets = $stmt->fetch(PDO::FETCH_ASSOC)['total'];
 
     // Resolved tickets
-    $resolvedQuery = "SELECT COUNT(*) as resolved FROM Service_Request WHERE Status = 'Cerrado'";
+    $resolvedQuery = "SELECT COUNT(*) as resolved FROM Service_Request WHERE Status IN ('Cerrado', 'Resuelto')";
     $stmt = $db->prepare($resolvedQuery);
     $stmt->execute();
     $resolved = $stmt->fetch(PDO::FETCH_ASSOC)['resolved'];
@@ -102,7 +102,7 @@ function getOverviewStats($db, $days) {
     // Average resolution time (in hours)
     $avgTimeQuery = "SELECT AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)) as avg_time
                      FROM Service_Request sr
-                     WHERE sr.Status = 'Cerrado'
+                     WHERE sr.Status IN ('Cerrado', 'Resuelto')
                      AND sr.Resolved_at IS NOT NULL";
     $stmt = $db->prepare($avgTimeQuery);
     $stmt->execute();
@@ -129,7 +129,7 @@ function getServiceDistribution($db, $days) {
                 tis.Type_Service as service_name,
                 COUNT(DISTINCT ts.Fk_Technicians) as technician_count,
                 COUNT(sr.ID_Service_Request) as ticket_count,
-                (COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) * 100.0 / NULLIF(COUNT(sr.ID_Service_Request), 0)) as resolution_rate
+                (COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) * 100.0 / NULLIF(COUNT(sr.ID_Service_Request), 0)) as resolution_rate
               FROM TI_Service tis
               LEFT JOIN Technicians_Service ts ON tis.ID_TI_Service = ts.Fk_TI_Service
               LEFT JOIN Ticket_Technicians tt ON ts.Fk_Technicians = tt.Fk_Technician
@@ -161,9 +161,9 @@ function getTopPerformers($db, $days) {
     $query = "SELECT
                 t.ID_Technicians as technician_id,
                 CONCAT(t.First_Name, ' ', t.Last_Name) as name,
-                COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as tickets_resolved,
+                COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) as tickets_resolved,
                 AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)) as avg_resolution_time,
-                (COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) * 100.0 / NULLIF(COUNT(sr.ID_Service_Request), 0)) as efficiency
+                (COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) * 100.0 / NULLIF(COUNT(sr.ID_Service_Request), 0)) as efficiency
               FROM Technicians t
               LEFT JOIN Ticket_Technicians tt ON t.ID_Technicians = tt.Fk_Technician
               LEFT JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request $dateCondition

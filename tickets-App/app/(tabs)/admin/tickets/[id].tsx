@@ -12,6 +12,7 @@ import { useAuth } from '../../../../src/hooks/useAuth';
 import { StatusBadge } from '../../../../src/components/technician/StatusBadge';
 import { CommentItem } from '../../../../src/components/technician/CommentItem';
 import { Button } from '../../../../src/components/ui/Button';
+import { findBienByCode } from '../../../../src/services/bienesService';
 
 const PRIORITIES = ['Alta', 'Media', 'Baja'];
 const PC: Record<string, string> = { Alta: Colors.priorityAlta, Media: Colors.priorityMedia, Baja: Colors.priorityBaja };
@@ -34,6 +35,16 @@ export default function AdminTicketDetailScreen() {
 
   const load = async () => { setLoading(true); const r = await getAdminTicketDetail(tid); if (r.success && r.ticket) setTicket(r.ticket); setLoading(false); };
   useEffect(() => { load(); }, [tid]);
+
+  const [bienDesc, setBienDesc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!ticket?.property_number) { setBienDesc(null); return; }
+    let cancelled = false;
+    findBienByCode(ticket.property_number).then((b) => {
+      if (!cancelled) setBienDesc(b ? String(b.denact || '') : null);
+    });
+    return () => { cancelled = true; };
+  }, [ticket?.property_number]);
 
   const openAssign = async () => {
     if (!ticket?.fk_ti_service) {
@@ -101,10 +112,24 @@ export default function AdminTicketDetailScreen() {
             <View style={{ flex: 1 }} /><StatusBadge status={ticket.status} />
           </View>
           <Text style={styles.subject}>{ticket.subject}</Text>
+          {ticket.property_number ? (
+            <View style={styles.bienBlock}>
+              <View style={styles.bienRow}>
+                <Ionicons name="hardware-chip-outline" size={12} color={Colors.navyPrimary} />
+                <Text style={styles.prop}>N° de Bien: {ticket.property_number}</Text>
+              </View>
+              {bienDesc ? (
+                <Text style={styles.bienDesc}>{bienDesc}</Text>
+              ) : null}
+            </View>
+          ) : null}
           <View style={styles.div} />
           <View style={styles.grid}>
             <Meta icon="business-outline" label="Oficina" value={ticket.office_name} />
             <Meta icon="person-outline" label="Solicitante" value={ticket.citizen_name} />
+            {ticket.citizen_email ? (
+              <Meta icon="mail-outline" label="Email" value={ticket.citizen_email} />
+            ) : null}
             <Meta icon="construct-outline" label="Servicio" value={ticket.service_name} />
             <Meta icon="flag-outline" label="Prioridad" value={ticket.system_priority} color={PC[ticket.system_priority]} />
             <Meta icon="calendar-outline" label="Creado" value={fmt(ticket.created_at)} />
@@ -278,6 +303,10 @@ const styles = StyleSheet.create({
   codeDot: { width: 8, height: 8, borderRadius: 4 },
   code: { fontSize: 13, fontWeight: '700', color: Colors.navyPrimary, fontFamily: 'monospace' },
   subject: { fontSize: 19, fontWeight: '600', color: Colors.text, lineHeight: 26 },
+  prop: { fontSize: 12, color: Colors.navyPrimary, fontWeight: '600', letterSpacing: 0.2 },
+  bienBlock: { marginTop: 6, backgroundColor: Colors.navyPrimary + '08', borderRadius: BorderRadius.md, padding: 10, borderWidth: 1, borderColor: Colors.navyPrimary + '18' },
+  bienRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  bienDesc: { fontSize: 12, color: Colors.text, marginTop: 4, paddingLeft: 18, lineHeight: 17 },
   div: { height: 1, backgroundColor: Colors.border, marginVertical: 14 },
   grid: { gap: 12 },
   sTitle: { fontSize: 13, fontWeight: '600', color: Colors.text, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },

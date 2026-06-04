@@ -46,6 +46,12 @@ export function TicketCard({ ticket, onPress, index = 0 }: TicketCardProps) {
             <StatusDot status={ticket.status} />
           </View>
           <Text style={styles.subject} numberOfLines={2}>{ticket.subject}</Text>
+          {ticket.property_number ? (
+            <View style={styles.propRow}>
+              <Ionicons name="hardware-chip-outline" size={10} color={Colors.navyPrimary} />
+              <Text style={styles.propText} numberOfLines={1}>Bien {ticket.property_number}</Text>
+            </View>
+          ) : null}
           <View style={styles.meta}>
             <Meta icon="business-outline" text={ticket.office_name} />
             <Meta icon="construct-outline" text={ticket.service_name} />
@@ -100,6 +106,8 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 3.5 },
   dotText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.4 },
   subject: { fontSize: 15, fontWeight: '600', color: Colors.text, lineHeight: 21 },
+  propRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, backgroundColor: Colors.navyPrimary + '0D', paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.sm, alignSelf: 'flex-start' },
+  propText: { fontSize: 10, fontWeight: '600', color: Colors.navyPrimary },
   meta: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 12 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
   metaText: { fontSize: 11, color: Colors.textSecondary, flex: 1 },

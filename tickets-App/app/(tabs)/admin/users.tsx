@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { getUsersWithOffice, AdminUser, ROLE_COLORS } from '../../../src/services/adminService';
 
@@ -15,6 +16,7 @@ export default function AdminUsersScreen() {
 
   const load = useCallback(async () => { setLoading(true); const r = await getUsersWithOffice(); if (r.success && r.users) setUsers(r.users); setLoading(false); }, []);
   useEffect(() => { load(); }, [load]);
+  useFocusEffect(useCallback(() => { load(); }, [load]));
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
   const filtered = role === 0 ? users : users.filter((u) => u.Fk_Role === role);
 

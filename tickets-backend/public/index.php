@@ -144,6 +144,13 @@ switch ($path) {
         require_once __DIR__ . '/../src/controllers/TechnicianReportController.php';
         break;
 
+    case '/api/structure':
+    case '/api/structure/':
+        require_once __DIR__ . '/../src/controllers/StructureController.php';
+        $controller = new StructureController();
+        $controller->handleRequest();
+        break;
+
     case '/api/office':
     case '/api/office/':
         require_once __DIR__ . '/../src/controllers/OfficeController.php';
@@ -193,6 +200,51 @@ switch ($path) {
         }
         require_once __DIR__ . '/../src/controllers/AuditLogController.php';
         break;
+
+    case '/api/bienes':
+    case '/api/bienes/':
+        $qs = $_SERVER['QUERY_STRING'] ?? '';
+        $target = 'http://127.0.0.1:8012/bienes/bienes.php' . ($qs ? '?' . $qs : '');
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => $method,
+                'header' => "Accept: application/json\r\n",
+                'timeout' => 30,
+            ],
+        ]);
+        $body = @file_get_contents($target, false, $ctx);
+        if ($body === false) {
+            http_response_code(502);
+            echo json_encode([
+                'success' => false,
+                'message' => 'No se pudo conectar con el servicio de bienes (SIFA)',
+                'data' => [],
+                'total' => 0,
+            ]);
+            exit;
+        }
+        echo $body;
+        exit;
+
+    case '/api/unidades':
+    case '/api/unidades/':
+        $qs = $_SERVER['QUERY_STRING'] ?? '';
+        $target = 'http://127.0.0.1:8012/bienes/unidades.php' . ($qs ? '?' . $qs : '');
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => $method,
+                'header' => "Accept: application/json\r\n",
+                'timeout' => 30,
+            ],
+        ]);
+        $body = @file_get_contents($target, false, $ctx);
+        if ($body === false) {
+            http_response_code(502);
+            echo json_encode(['success' => false, 'message' => 'No se pudo conectar con el servicio de unidades (SIFA)']);
+            exit;
+        }
+        echo $body;
+        exit;
 
     default:
         http_response_code(404);

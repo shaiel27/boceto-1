@@ -11,6 +11,7 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { getTechniciansGrouped, deleteTechnician } from '../../../src/services/adminService';
 import { useToast } from '../../../src/contexts/ToastContext';
@@ -37,6 +38,8 @@ export default function AdminTechniciansScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
 
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 

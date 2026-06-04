@@ -337,7 +337,7 @@ switch ($method) {
                     DATE_FORMAT(sr.Created_at, '%Y-%m') AS 'Mes',
                     CAST(COUNT(*) AS UNSIGNED) AS 'Total Tickets',
                     CAST(SUM(CASE WHEN sr.System_Priority = 'Alta' THEN 1 ELSE 0 END) AS UNSIGNED) AS 'Alta Prioridad',
-                    CAST(SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) AS UNSIGNED) AS 'Resueltos'
+                    CAST(SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) AS UNSIGNED) AS 'Resueltos'
                 FROM
                     Service_Request sr
                 GROUP BY

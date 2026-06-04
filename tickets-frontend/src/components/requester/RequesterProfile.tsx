@@ -22,7 +22,6 @@ interface RequesterProfileData {
   position: string;
   hireDate: string;
   office_name: string;
-  office_type: string;
   supervisor: string;
 }
 
@@ -213,7 +212,7 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
                   <Building size={14} />
                   Oficina
                 </label>
-                <p className="info-value">{profile.office_type} - {profile.office_name}</p>
+                <p className="info-value">{profile.office_name}</p>
               </div>
             )}
             <div className="info-item">

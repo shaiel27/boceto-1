@@ -8,8 +8,7 @@ class Office {
 
     public $ID_Office;
     public $Name_Office;
-    public $Office_Type;
-    public $Fk_Parent_Office;
+    public $coduniadm;
     public $Fk_Boss_ID;
     public $created_at;
 
@@ -18,7 +17,7 @@ class Office {
     }
 
     public function getAll() {
-        $query = "SELECT ID_Office, Name_Office, Office_Type, Fk_Parent_Office, Fk_Boss_ID, created_at
+        $query = "SELECT ID_Office, Name_Office, coduniadm, Fk_Boss_ID, created_at
                   FROM " . $this->table_name . " 
                   ORDER BY Name_Office ASC";
         
@@ -29,7 +28,7 @@ class Office {
     }
 
     public function getById($id) {
-        $query = "SELECT ID_Office, Name_Office, Office_Type, Fk_Parent_Office, Fk_Boss_ID, created_at
+        $query = "SELECT ID_Office, Name_Office, coduniadm, Fk_Boss_ID, created_at
                   FROM " . $this->table_name . " 
                   WHERE ID_Office = :id";
         
@@ -38,6 +37,23 @@ class Office {
         $stmt->execute();
         
         return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Upsert office by coduniadm: updates Name_Office if exists, inserts if not
+     */
+    public function upsertByCoduniadm(string $coduniadm, string $nameOffice): int
+    {
+        $query = "INSERT INTO " . $this->table_name . " (coduniadm, Name_Office, created_at)
+                  VALUES (:coduniadm, :name, NOW())
+                  ON DUPLICATE KEY UPDATE Name_Office = :name2";
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindValue(":coduniadm", $coduniadm);
+        $stmt->bindValue(":name", $nameOffice);
+        $stmt->bindValue(":name2", $nameOffice);
+        $stmt->execute();
+        
+        return (int)$this->conn->lastInsertId();
     }
 
     /**
@@ -52,7 +68,7 @@ class Office {
     {
         try {
             // Build join conditions for LEFT JOIN (all offices, count only matching tickets)
-            $joinCondition = "sr.Status = 'Cerrado' AND sr.Resolved_at IS NOT NULL";
+            $joinCondition = "sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at IS NOT NULL";
             $params = [];
             
             if ($startDate) {
@@ -69,17 +85,16 @@ class Office {
             $query = "SELECT 
                      o.ID_Office,
                      o.Name_Office,
-                     o.Office_Type,
-                     COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_count,
+                     COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) as resolved_count,
                      AVG(CASE 
-                         WHEN sr.Status = 'Cerrado' AND sr.Resolved_at IS NOT NULL 
+                         WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at IS NOT NULL 
                          THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)
                          ELSE NULL 
                      END) as avg_resolution_hours
                      FROM " . $this->table_name . " o
                      LEFT JOIN Service_Request sr ON o.ID_Office = sr.Fk_Office
                      AND {$joinCondition}
-                     GROUP BY o.ID_Office, o.Name_Office, o.Office_Type
+                     GROUP BY o.ID_Office, o.Name_Office
                      ORDER BY resolved_count DESC, o.Name_Office ASC";
 
             $stmt = $this->conn->prepare($query);
@@ -105,7 +120,6 @@ class Office {
                     'id' => (int)$row['ID_Office'],
                     'name' => $row['Name_Office'],
                     'display_name' => $row['display_name'],
-                    'type' => $row['Office_Type'],
                     'resolved_count' => (int)$row['resolved_count'],
                     'avg_resolution_time' => round((float)$row['avg_resolution_hours'], 2)
                 ];

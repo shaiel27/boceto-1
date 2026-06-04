@@ -1,918 +1,471 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Plus,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  MessageSquare,
-  FileText,
-  User,
-  Users,
-  Bell,
-  LogOut,
-  ChevronRight,
-  Calendar,
-  MapPin,
-  Settings,
-  TrendingUp,
-  Building,
-  Mail,
-  Briefcase,
-  Award,
-  CalendarDays,
-  MapPinned,
-  UserCheck,
-  Send,
-  X,
-  ArrowLeft,
-  Paperclip
+  Plus, Clock, CheckCircle, AlertCircle, MessageSquare,
+  FileText, User, Users, LogOut, ChevronRight, Calendar,
+  MapPin, Wrench, Building, Mail, Send, X, ArrowLeft,
+  Paperclip, TrendingUp, Search, Shield,
 } from 'lucide-react';
 import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
 import ApiService, { API_BASE_URL } from '../../services/api';
+import { fetchBienes, normalizePropertyCode } from '../../services/bienesApi';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordChangeRequired from '../common/PasswordChangeRequired';
 
 interface Ticket {
-  id: string;
-  Code: string;
-  Subject: string;
-  Description: string;
-  office_name: string;
-  office_type: string;
-  System_Priority: string;
-  Status: string;
-  Created_at: string;
-  Resolved_at?: string;
-  Solution?: string;
-  Technicians: Array<{
-    Name: string;
-    Is_Lead: boolean;
-  }>;
+  id: string; Code: string; Subject: string; Description: string;
+  Property_Number?: string | null; office_name: string;
+  System_Priority: string; Status: string; Created_at: string;
+  Resolved_at?: string; Solution?: string;
+  Technicians: Array<{ Name: string; Is_Lead: boolean }>;
   Comments_Count: number;
 }
 
-interface RequesterProfile {
-  id: string;
-  name: string;
-  email: string;
-  position: string;
-  hireDate: string;
-  office_name: string;
-  office_type: string;
-  supervisor: string;
+interface RequesterProfileData {
+  id: string; name: string; email: string; position: string;
+  hireDate: string; office_name: string; supervisor: string;
 }
+
+const PrioClass: Record<string, string> = {
+  'Crítica': 'rq-pr-c', Alta: 'rq-pr-h', Media: 'rq-pr-m', Baja: 'rq-pr-l',
+};
 
 const RequesterDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
   const [firstLogin, setFirstLogin] = useState(false);
-  const [requesterProfile, setRequesterProfile] = useState<RequesterProfile>({
-    id: '',
-    name: '',
-    email: '',
-    position: '',
-    hireDate: '',
-    office_name: '',
-    office_type: '',
-    supervisor: ''
-  });
-
-  const [myTickets, setMyTickets] = useState<Ticket[]>([]);
-
-  const [showNewTicketForm, setShowNewTicketForm] = useState(false);
+  const [profile, setProfile] = useState<RequesterProfileData>({ id: '', name: '', email: '', position: '', hireDate: '', office_name: '', supervisor: '' });
+  const [tickets, setTickets] = useState<Ticket[]>([]);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
-  const [showCommentSection, setShowCommentSection] = useState<Record<string, boolean>>({});
-  const [selectedFiles, setSelectedFiles] = useState<Record<string, File[]>>({});
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [showComment, setShowComment] = useState<Record<string, boolean>>({});
+  const [selFiles, setSelFiles] = useState<Record<string, File[]>>({});
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [showProfile, setShowProfile] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
-  const [showTicketDetails, setShowTicketDetails] = useState(false);
-  const [ticketComments, setTicketComments] = useState<any[]>([]);
-  const [ticketAttachments, setTicketAttachments] = useState<any[]>([]);
-  const [loadingComments, setLoadingComments] = useState(false);
+  const [selected, setSelected] = useState<Ticket | null>(null);
+  const [showDetail, setShowDetail] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [loadComments, setLoadComments] = useState(false);
 
+  useEffect(() => { loadData(); }, []);
+
+  const [bienDesc, setBienDesc] = useState<string | null>(null);
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (!selected?.Property_Number) { setBienDesc(null); return; }
+    let c = false;
+    fetchBienes({ query: selected.Property_Number, limit: 10 }).then(r => {
+      if (c) return;
+      const items = r.results || [];
+      const norm = normalizePropertyCode(selected.Property_Number!);
+      const exact = items.find((it: any) => normalizePropertyCode(String(it.codact || '')) === norm);
+      setBienDesc((exact ?? items[0]) ? String(((exact ?? items[0]) as any).denact || '') : null);
+    });
+    return () => { c = true; };
+  }, [selected]);
 
-  const loadDashboardData = async () => {
+  const loadData = async () => {
     setLoading(true);
     try {
       const token = sessionStorage.getItem('auth_token');
-      if (!token) {
-        navigate('/login');
-        return;
-      }
-
-      const userResponse = await ApiService.getMe();
-      
-      if (userResponse.success && userResponse.data) {
-        const userId = userResponse.data.id;
-
-        // Detectar primer inicio de sesión
-        if (!userResponse.data.last_login_at) {
-          setFirstLogin(true);
-          setLoading(false);
-          return;
-        }
-        
+      if (!token) { navigate('/login'); return; }
+      const ur = await ApiService.getMe();
+      if (ur.success && ur.data) {
+        const uid = ur.data.id;
+        if (!ur.data.last_login_at) { setFirstLogin(true); setLoading(false); return; }
         try {
-          const profileResponse = await ApiService.getUserProfile(userId);
-          
-          if (profileResponse.success && profileResponse.data) {
-            const profileData = profileResponse.data;
-            
-            setRequesterProfile({
-              id: userId.toString(),
-              name: profileData.Full_Name || userResponse.data.full_name || 'Usuario',
-              email: profileData.Email || userResponse.data.email || '',
-              position: profileData.role_name || userResponse.data.role_name || 'Solicitante',
-              hireDate: new Date().toISOString().split('T')[0],
-              office_name: profileData.office_name || '',
-              office_type: profileData.office_type || '',
-              supervisor: profileData.supervisor || 'No asignado'
-            });
+          const pr = await ApiService.getUserProfile(uid);
+          if (pr.success && pr.data) {
+            setProfile({ id: String(uid), name: pr.data.Full_Name || ur.data.full_name || 'Usuario', email: pr.data.Email || ur.data.email || '', position: pr.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: pr.data.office_name || '', supervisor: pr.data.supervisor || 'No asignado' });
           } else {
-            console.error('Profile response not successful');
-            // Use basic user data as fallback
-            setRequesterProfile({
-              id: userId.toString(),
-              name: userResponse.data.full_name || 'Usuario',
-              email: userResponse.data.email || '',
-              position: userResponse.data.role_name || 'Solicitante',
-              hireDate: new Date().toISOString().split('T')[0],
-              office_name: '',
-              office_type: '',
-              supervisor: 'No asignado'
-            });
+            setProfile({ id: String(uid), name: ur.data.full_name || 'Usuario', email: ur.data.email || '', position: ur.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: '', supervisor: 'No asignado' });
           }
-        } catch (error) {
-          console.error('Error loading profile:', error);
-          // Use basic user data as fallback
-          setRequesterProfile({
-            id: userId.toString(),
-            name: userResponse.data.full_name || 'Usuario',
-            email: userResponse.data.email || '',
-            position: userResponse.data.role_name || 'Solicitante',
-            hireDate: new Date().toISOString().split('T')[0],
-            office_name: '',
-            office_type: '',
-            supervisor: 'No asignado'
-          });
+        } catch {
+          setProfile({ id: String(uid), name: ur.data.full_name || 'Usuario', email: ur.data.email || '', position: ur.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: '', supervisor: 'No asignado' });
         }
-
         try {
-          const ticketsResponse = await ApiService.getMyTickets(userId);
-          if (ticketsResponse.success && ticketsResponse.data && ticketsResponse.data.length > 0) {
-            const formattedTickets = ticketsResponse.data.map((ticket: any) => ({
-              id: ticket.ID_Service_Request.toString(),
-              Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
-              Subject: ticket.Subject || 'Sin asunto',
-              Description: ticket.Description || 'Sin descripción',
-              office_name: ticket.office_name || 'No asignado',
-              office_type: ticket.office_type || 'No asignado',
-              System_Priority: ticket.System_Priority || 'Media',
-              Status: ticket.Status || 'Pendiente',
-              Created_at: ticket.Created_at || new Date().toISOString(),
-              Resolved_at: ticket.Resolved_at,
-              Solution: ticket.Resolution_Notes,
-              Technicians: ticket.technicians?.map((tech: any) => ({
-                Name: tech.name,
-                Is_Lead: tech.is_lead
-              })) || [],
-              Comments_Count: 0
-            }));
-            setMyTickets(formattedTickets);
-          } else {
-            setMyTickets([]);
-          }
-        } catch (error) {
-          console.error('Error loading tickets:', error);
-          setMyTickets([]);
-        }
-      } else {
-        console.error('User authentication failed');
-        setRequesterProfile({
-          id: '',
-          name: '',
-          email: '',
-          position: '',
-          hireDate: '',
-          office_name: '',
-          office_type: '',
-          supervisor: ''
-        });
-        setMyTickets([]);
-      }
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      setRequesterProfile({
-        id: '',
-        name: '',
-        email: '',
-        position: '',
-        hireDate: '',
-        office_name: '',
-        office_type: '',
-        supervisor: ''
-      });
-      setMyTickets([]);
-    } finally {
-      setLoading(false);
-    }
+          const tr = await ApiService.getMyTickets(uid);
+          if (tr.success && tr.data && tr.data.length > 0) {
+            setTickets(tr.data.map((t: any) => ({
+              id: String(t.ID_Service_Request), Code: t.Ticket_Code || `TICK-${t.ID_Service_Request}`,
+              Subject: t.Subject || 'Sin asunto', Description: t.Description || '',
+              Property_Number: t.Property_Number || null,
+              office_name: t.office_name || '', System_Priority: t.System_Priority || 'Media',
+              Status: t.Status || 'Pendiente', Created_at: t.Created_at || new Date().toISOString(),
+              Resolved_at: t.Resolved_at, Solution: t.Resolution_Notes,
+              Technicians: (t.technicians || []).map((x: any) => ({ Name: x.name, Is_Lead: x.is_lead })),
+              Comments_Count: 0,
+            })));
+          } else setTickets([]);
+        } catch { setTickets([]); }
+      } else { setTickets([]); }
+    } catch { setTickets([]); }
+    finally { setLoading(false); }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'Crítica':
-        return 'critic';
-      case 'Alta':
-        return 'high';
-      case 'Media':
-        return 'medium';
-      case 'Baja':
-        return 'low';
-      default:
-        return '';
-    }
-  };
+  const active = tickets.filter(t => t.Status !== 'Cerrado');
+  const resolved = tickets.filter(t => t.Status === 'Cerrado');
+  const totalComments = tickets.reduce((a, t) => a + t.Comments_Count, 0);
 
-  const getStatusStep = (status: string) => {
-    switch (status) {
-      case 'Pendiente':
-        return 1;
-      case 'En Proceso':
-        return 2;
-      case 'Cerrado':
-        return 3;
-      default:
-        return 1;
-    }
-  };
+  const fmt = (d: string) => new Date(d).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const getStep = (s: string) => s === 'Pendiente' ? 1 : s === 'En Proceso' ? 2 : 3;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const calculateYearsOfService = (hireDate: string) => {
-    const hire = new Date(hireDate);
-    const now = new Date();
-    const years = now.getFullYear() - hire.getFullYear();
-    const months = now.getMonth() - hire.getMonth();
-    if (months < 0 || (months === 0 && now.getDate() < hire.getDate())) {
-      return years - 1;
-    }
-    return years;
-  };
-
-  const activeTickets = myTickets.filter(t => t.Status !== 'Cerrado');
-  const resolvedTickets = myTickets.filter(t => t.Status === 'Cerrado');
-
-  const handleAddComment = async (ticketId: string) => {
-    const files = selectedFiles[ticketId] || [];
-    await handleAddCommentToTicket(ticketId, files);
-  };
-
-  const handleFileSelect = (ticketId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const maxSize = 10 * 1024 * 1024;
-    const validFiles = files.filter(f => f.size <= maxSize);
-    setSelectedFiles(prev => ({
-      ...prev,
-      [ticketId]: [...(prev[ticketId] || []), ...validFiles].slice(0, 5)
-    }));
-    if (e.target) e.target.value = '';
-  };
-
-  const removeFile = (ticketId: string, index: number) => {
-    setSelectedFiles(prev => ({
-      ...prev,
-      [ticketId]: (prev[ticketId] || []).filter((_, i) => i !== index)
-    }));
-  };
-
-  const toggleCommentSection = (ticketId: string) => {
-    setShowCommentSection(prev => ({ ...prev, [ticketId]: !prev[ticketId] }));
-  };
-
-  const handleViewTicketDetails = async (ticket: Ticket) => {
-    setSelectedTicket(ticket);
-    setShowTicketDetails(true);
-    setLoadingComments(true);
+  const handleView = async (t: Ticket) => {
+    setSelected(t); setShowDetail(true); setLoadComments(true);
     try {
-      const commentsResponse = await ApiService.getTicketComments(parseInt(ticket.id));
-      if (commentsResponse.success && commentsResponse.data) {
-        setTicketComments(commentsResponse.data);
-        setTicketAttachments(commentsResponse.ticket_attachments || []);
-      } else {
-        setTicketComments([]);
-        setTicketAttachments([]);
-      }
-    } catch (error) {
-      console.error('Error loading comments:', error);
-      setTicketComments([]);
-      setTicketAttachments([]);
-    } finally {
-      setLoadingComments(false);
-    }
+      const r = await ApiService.getTicketComments(parseInt(t.id));
+      if (r.success && r.data) { setComments(r.data); setAttachments(r.ticket_attachments || []); }
+      else { setComments([]); setAttachments([]); }
+    } catch { setComments([]); setAttachments([]); }
+    finally { setLoadComments(false); }
   };
 
-  const handleAddCommentToTicket = async (ticketId: string, files?: File[]) => {
-    const comment = commentInputs[ticketId];
-    if (comment && comment.trim()) {
-      try {
-        const hasFiles = files && files.length > 0;
-        const response = await ApiService.addTicketComment(parseInt(ticketId), comment, hasFiles ? files : undefined);
-        if (response.success) {
-          const updatedTickets = myTickets.map(ticket => {
-            if (ticket.id === ticketId) {
-              return {
-                ...ticket,
-                Comments_Count: ticket.Comments_Count + 1
-              };
-            }
-            return ticket;
-          });
-          setMyTickets(updatedTickets);
-          
-          if (selectedTicket && selectedTicket.id === ticketId) {
-            setTicketComments(prev => [...prev, {
-              ID_Comment: Date.now(),
-              Comment: comment,
-              Created_at: new Date().toISOString(),
-              User_Name: requesterProfile.name,
-              User_Role: requesterProfile.position,
-              attachments: hasFiles ? response.data?.files || [] : []
-            }]);
-          }
-          
-          setCommentInputs(prev => ({ ...prev, [ticketId]: '' }));
-          setSelectedFiles(prev => ({ ...prev, [ticketId]: [] }));
-          setShowCommentSection(prev => ({ ...prev, [ticketId]: false }));
+  const handleComment = async (tid: string, files?: File[]) => {
+    const txt = commentInputs[tid];
+    if (!txt?.trim()) return;
+    try {
+      const hasFiles = files && files.length > 0;
+      const r = await ApiService.addTicketComment(parseInt(tid), txt, hasFiles ? files : undefined);
+      if (r.success) {
+        setTickets(prev => prev.map(t => t.id === tid ? { ...t, Comments_Count: t.Comments_Count + 1 } : t));
+        if (selected && selected.id === tid) {
+          setComments(prev => [...prev, { ID_Comment: Date.now(), Comment: txt, Created_at: new Date().toISOString(), User_Name: profile.name, User_Role: profile.position, attachments: hasFiles ? r.data?.files || [] : [] }]);
         }
-      } catch (error) {
-        console.error('Error adding comment:', error);
+        setCommentInputs(p => ({ ...p, [tid]: '' }));
+        setSelFiles(p => ({ ...p, [tid]: [] }));
+        setShowComment(p => ({ ...p, [tid]: false }));
       }
-    }
+    } catch {}
   };
 
-  if (firstLogin) {
-    return <PasswordChangeRequired onComplete={() => setFirstLogin(false)} />;
-  }
+  const handleFiles = (tid: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const fs = Array.from(e.target.files || []).filter(f => f.size <= 10 * 1024 * 1024);
+    setSelFiles(p => ({ ...p, [tid]: [...(p[tid] || []), ...fs].slice(0, 5) }));
+    e.target.value = '';
+  };
+
+  const rmFile = (tid: string, i: number) => setSelFiles(p => ({ ...p, [tid]: (p[tid] || []).filter((_, j) => j !== i) }));
+
+  if (firstLogin) return <PasswordChangeRequired onComplete={() => setFirstLogin(false)} />;
 
   return (
-    <div className="requester-dashboard">
+    <div className="rq">
       {loading ? (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p>Cargando datos...</p>
-        </div>
+        <div className="rq-load"><div className="rq-spin" /><p>Cargando...</p></div>
       ) : (
-      <main className="req-main">
-        {/* Profile Actions */}
-        <div className="profile-actions-bar">
-          <div className="profile-info-display">
-            <User size={20} />
-            <span>{requesterProfile.name}</span>
-            {requesterProfile.office_type && <span className="dept-badge">{requesterProfile.office_type}</span>}
-          </div>
-          <div className="action-buttons">
-            <button className="action-btn dashboard-back" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft size={18} />
-              Dashboard
-            </button>
-            <button className="action-btn profile" onClick={() => setShowProfile(true)}>
-              <User size={18} />
-              Mi Perfil
-            </button>
-            <button className="action-btn logout" onClick={async () => {
-              await logout();
-              navigate('/login');
-            }}>
-              <LogOut size={18} />
-              Cerrar Sesión
-            </button>
-          </div>
-        </div>
-
-        {/* Profile Information Card - Minimalist */}
-        <section className="profile-info-section">
-          <div className="profile-card-minimal">
-            <div className="profile-content">
-              <div className="profile-avatar">
-                <User size={32} />
-              </div>
-              <div className="profile-info">
-                <h2 className="profile-name">{requesterProfile.name}</h2>
-                <p className="profile-position">{requesterProfile.position}</p>
-                <div className="profile-details">
-                  {requesterProfile.office_name && (
-                    <span className="profile-detail">
-                      <Building size={14} />
-                      {requesterProfile.office_type} - {requesterProfile.office_name}
-                    </span>
-                  )}
-                  <span className="profile-detail">
-                    <Mail size={14} />
-                    {requesterProfile.email}
-                  </span>
-                </div>
+        <main className="rq-main">
+          {/* Header bar */}
+          <header className="rq-hdr">
+            <div className="rq-hdr-l">
+              <button className="rq-btn-ghost" onClick={() => navigate('/dashboard')}><ArrowLeft size={17} /></button>
+              <div className="rq-avatar"><User size={20} /></div>
+              <div>
+                <h2 className="rq-hdr-name">{profile.name}</h2>
+                <p className="rq-hdr-role">{profile.position}</p>
               </div>
             </div>
-          </div>
-        </section>
+            <div className="rq-hdr-r">
+              <button className="rq-btn-ghost" onClick={() => setShowProfile(true)}><User size={17} /><span>Perfil</span></button>
+              <button className="rq-btn-ghost rq-btn-out" onClick={async () => { await logout(); navigate('/login'); }}><LogOut size={17} /><span>Salir</span></button>
+            </div>
+          </header>
 
-        {/* Stats Overview */}
-        <div className="stats-overview">
-          <div className="stat-card active">
-            <div className="stat-icon">
-              <AlertCircle size={28} />
-            </div>
-            <div className="stat-info">
-              <h3 className="stat-value">{activeTickets.length}</h3>
-              <p className="stat-label">Activos</p>
-            </div>
-          </div>
-          
-          <div className="stat-card resolved">
-            <div className="stat-icon">
-              <CheckCircle size={28} />
-            </div>
-            <div className="stat-info">
-              <h3 className="stat-value">{resolvedTickets.length}</h3>
-              <p className="stat-label">Resueltos</p>
-            </div>
-          </div>
-          
-          <div className="stat-card comments">
-            <div className="stat-icon">
-              <MessageSquare size={28} />
-            </div>
-            <div className="stat-info">
-              <h3 className="stat-value">{myTickets.reduce((acc, t) => acc + t.Comments_Count, 0)}</h3>
-              <p className="stat-label">Comentarios</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Nueva Solicitud Button */}
-        <div className="new-ticket-section">
-          <button 
-            className="new-ticket-btn"
-            onClick={() => navigate('/new-ticket')}
-          >
-            <Plus size={24} />
-            <span>Nueva Solicitud</span>
-            <ChevronRight size={20} />
-          </button>
-        </div>
-
-        {/* Estado de mis Solicitudes */}
-        <section className="tickets-section">
-          <div className="section-header">
-            <h2 className="section-title">
-              <FileText size={24} />
-              Estado de Mis Solicitudes
-            </h2>
-            <span className="ticket-count">{activeTickets.length} activas</span>
-          </div>
-
-          <div className="tickets-list">
-            {activeTickets.map((ticket) => (
-              <div key={ticket.id} className="ticket-card">
-                <div className="ticket-header">
-                  <div className="ticket-code">
-                    <span className="code-label">Código:</span>
-                    <span className="code-value">{ticket.Code}</span>
-                  </div>
-                  <div className="ticket-priority">
-                    <span className={`priority-badge ${getPriorityColor(ticket.System_Priority)}`}>
-                      {ticket.System_Priority}
-                    </span>
+          <div className="rq-body">
+            {/* Context card */}
+            <div className="rq-ctx">
+              <div className="rq-ctx-main">
+                <div className="rq-ctx-avatar"><User size={28} /></div>
+                <div>
+                  <h1 className="rq-ctx-name">{profile.name}</h1>
+                  <div className="rq-ctx-meta">
+                    {profile.office_name && <span className="rq-ctx-tag"><Building size={12} />{profile.office_name}</span>}
+                    <span className="rq-ctx-tag"><Mail size={12} />{profile.email}</span>
                   </div>
                 </div>
+              </div>
+              <button className="rq-cta" onClick={() => navigate('/new-ticket')}>
+                <Plus size={20} />
+                <span>Nueva solicitud</span>
+                <ChevronRight size={16} />
+              </button>
+            </div>
 
-                {/* Timeline */}
-                <div className="ticket-timeline">
-                  <div className="timeline-step completed">
-                    <div className="step-indicator">
-                      <CheckCircle size={16} />
-                    </div>
-                    <div className="step-label">Pendiente</div>
-                  </div>
-                  <div className="timeline-connector completed"></div>
-                  
-                  <div className={`timeline-step ${getStatusStep(ticket.Status) >= 2 ? 'completed' : 'pending'}`}>
-                    <div className="step-indicator">
-                      {getStatusStep(ticket.Status) >= 2 ? <Users size={16} /> : <div className="step-dot"></div>}
-                    </div>
-                    <div className="step-label">En Proceso</div>
-                  </div>
-                  <div className={`timeline-connector ${getStatusStep(ticket.Status) >= 2 ? 'completed' : ''}`}></div>
+            {/* Stats */}
+            <div className="rq-stats">
+              <div className="rq-stat"><div className="rq-stat-n">{active.length}</div><div className="rq-stat-l">Activos</div></div>
+              <div className="rq-stat"><div className="rq-stat-n">{resolved.length}</div><div className="rq-stat-l">Resueltos</div></div>
+              <div className="rq-stat"><div className="rq-stat-n">{totalComments}</div><div className="rq-stat-l">Comentarios</div></div>
+            </div>
 
-                  <div className={`timeline-step ${getStatusStep(ticket.Status) >= 3 ? 'completed' : 'pending'}`}>
-                    <div className="step-indicator">
-                      {getStatusStep(ticket.Status) >= 3 ? <CheckCircle size={16} /> : <div className="step-dot"></div>}
+            {/* Active tickets */}
+            <section className="rq-sec">
+              <div className="rq-sec-h"><FileText size={18} /><h3>Mis solicitudes activas</h3><span className="rq-badge">{active.length}</span></div>
+              <div className="rq-list">
+                {active.map(t => (
+                  <article key={t.id} className="rq-ticket">
+                    <div className="rq-t-top">
+                      <span className="rq-t-code">{t.Code}</span>
+                      <span className={`rq-t-prio ${PrioClass[t.System_Priority] || ''}`}>{t.System_Priority}</span>
+                      <span className={`rq-t-st rq-t-st--${t.Status === 'En Proceso' ? 'prog' : 'pend'}`}>
+                        {t.Status === 'En Proceso' ? 'En curso' : t.Status}
+                      </span>
                     </div>
-                    <div className="step-label">Cerrado</div>
-                  </div>
-                </div>
 
-                <div className="ticket-body">
-                  <h3 className="ticket-subject">{ticket.Subject}</h3>
-                  <p className="ticket-description">{ticket.Description}</p>
-                  
-                  {ticket.office_name && (
-                    <div className="ticket-location">
-                      <MapPin size={16} />
-                      <div className="location-hierarchy">
-                        <span className="location-item">{ticket.office_type} - {ticket.office_name}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="ticket-meta">
-                    <div className="meta-item">
-                      <Calendar size={14} />
-                      <span>Creado: {formatDate(ticket.Created_at)}</span>
-                    </div>
-                    {ticket.Comments_Count > 0 && (
-                      <div className="meta-item comments-alert">
-                        <MessageSquare size={14} />
-                        <span>{ticket.Comments_Count} comentarios nuevos</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Equipo Técnico Asignado */}
-                <div className="ticket-footer">
-                  <div className="technicians-assigned">
-                    <h4 className="tech-assigned-title">Equipo Técnico:</h4>
-                    {ticket.Technicians.length > 0 ? (
-                      <div className="tech-list">
-                        {ticket.Technicians.map((tech, index) => (
-                          <div key={index} className="tech-item">
-                            {tech.Is_Lead && <span className="lead-badge">Principal</span>}
-                            <span className="tech-name">{tech.Name}</span>
-                            {index < ticket.Technicians.length - 1 && <span className="tech-separator">•</span>}
+                    <div className="rq-t-timeline">
+                      {[
+                        { label: 'Pendiente', step: 1 },
+                        { label: 'En Proceso', step: 2 },
+                        { label: 'Cerrado', step: 3 },
+                      ].map((s, i) => (
+                        <React.Fragment key={s.step}>
+                          <div className={`rq-tl-step ${getStep(t.Status) >= s.step ? 'rq-tl-done' : ''}`}>
+                            <div className="rq-tl-dot">{getStep(t.Status) >= s.step ? <CheckCircle size={10} /> : null}</div>
+                            <span className="rq-tl-lbl">{s.label}</span>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="no-tech">Sin técnicos asignados</span>
-                    )}
-                  </div>
-                  
-                  <button 
-                    className="view-details-btn"
-                    onClick={() => handleViewTicketDetails(ticket)}
-                  >
-                    Ver Detalles
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
+                          {i < 2 && <div className={`rq-tl-line ${getStep(t.Status) > s.step ? 'rq-tl-done' : ''}`} />}
+                        </React.Fragment>
+                      ))}
+                    </div>
 
-                {/* Sección de Comentarios - Solo para tickets en proceso */}
-                {ticket.Status === 'En Proceso' && (
-                  <div className="ticket-comments-section">
-                    <div className="comments-header">
-                      <h4 className="comments-title">
-                        <MessageSquare size={16} />
-                        Comentarios ({ticket.Comments_Count})
-                      </h4>
-                      {!showCommentSection[ticket.id] && (
-                        <button 
-                          className="add-comment-btn"
-                          onClick={() => toggleCommentSection(ticket.id)}
-                        >
-                          <MessageSquare size={14} />
-                          Agregar Comentario
-                        </button>
+                    <h4 className="rq-t-subj">{t.Subject}</h4>
+                    {t.Description && <p className="rq-t-desc">{t.Description}</p>}
+
+                    <div className="rq-t-tags">
+                      {t.Property_Number && <span className="rq-tag-bien"><Wrench size={11} />Bien {t.Property_Number}</span>}
+                      {t.office_name && <span className="rq-tag"><MapPin size={11} />{t.office_name}</span>}
+                    </div>
+
+                    <div className="rq-t-meta">
+                      <span className="rq-t-date"><Calendar size={12} />{fmt(t.Created_at)}</span>
+                      {t.Comments_Count > 0 && <span className="rq-t-cmts"><MessageSquare size={12} />{t.Comments_Count}</span>}
+                      {t.Technicians.length > 0 && (
+                        <span className="rq-t-techs"><Users size={12} />{t.Technicians.map(x => x.Name).join(', ')}</span>
                       )}
                     </div>
-                    
-                    {showCommentSection[ticket.id] && (
-                      <div className="comment-input-container">
-                        <textarea
-                          className="comment-textarea"
-                          placeholder="Escribe tu comentario aquí..."
-                          value={commentInputs[ticket.id] || ''}
-                          onChange={(e) => setCommentInputs(prev => ({ ...prev, [ticket.id]: e.target.value }))}
-                          rows={3}
-                        />
-                        <input
-                          ref={el => { fileInputRefs.current[ticket.id] = el; }}
-                          type="file"
-                          multiple
-                          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar"
-                          onChange={(e) => handleFileSelect(ticket.id, e)}
-                          style={{ display: 'none' }}
-                        />
-                        {(selectedFiles[ticket.id]?.length || 0) > 0 && (
-                          <div className="dd-file-previews">
-                            {(selectedFiles[ticket.id] || []).map((file, i) => (
-                              <div key={i} className="dd-file-preview">
-                                {file.type.startsWith('image/') ? (
-                                  <img src={URL.createObjectURL(file)} alt={file.name} className="fp-thumb" />
-                                ) : (
-                                  <FileText size={16} />
-                                )}
-                                <span className="fp-name">{file.name}</span>
-                                <button className="fp-remove" onClick={() => removeFile(ticket.id, i)}>
-                                  <X size={12} />
+
+                    <div className="rq-t-foot">
+                      {t.Technicians.length > 0 && (
+                        <div className="rq-t-tech-list">
+                          {t.Technicians.map((tech, i) => (
+                            <span key={i} className="rq-tech-chip">
+                              {tech.Is_Lead && <Shield size={10} />}
+                              {tech.Name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <button className="rq-t-detail" onClick={() => handleView(t)}>
+                        Ver detalles <ChevronRight size={14} />
+                      </button>
+                    </div>
+
+                    {t.Status === 'En Proceso' && (
+                      <div className="rq-cmt-wrap">
+                        {!showComment[t.id] ? (
+                          <button className="rq-cmt-trigger" onClick={() => setShowComment(p => ({ ...p, [t.id]: true }))}>
+                            <MessageSquare size={13} />Agregar comentario
+                          </button>
+                        ) : (
+                          <div className="rq-cmt-form">
+                            <textarea
+                              className="rq-cmt-ta" rows={3}
+                              placeholder="Escribe tu comentario..."
+                              value={commentInputs[t.id] || ''}
+                              onChange={e => setCommentInputs(p => ({ ...p, [t.id]: e.target.value }))}
+                            />
+                            <input
+                              ref={el => { fileRefs.current[t.id] = el; }} type="file" multiple
+                              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar"
+                              onChange={e => handleFiles(t.id, e)} style={{ display: 'none' }}
+                            />
+                            {(selFiles[t.id]?.length || 0) > 0 && (
+                              <div className="rq-files">
+                                {(selFiles[t.id] || []).map((f, i) => (
+                                  <div key={i} className="rq-file">
+                                    <FileText size={12} /><span>{f.name}</span>
+                                    <button onClick={() => rmFile(t.id, i)}><X size={11} /></button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <div className="rq-cmt-acts">
+                              <button className="rq-cmt-attach" onClick={() => fileRefs.current[t.id]?.click()}>
+                                <Paperclip size={14} />{(selFiles[t.id]?.length || 0) > 0 && <span>{selFiles[t.id].length}</span>}
+                              </button>
+                              <div className="rq-cmt-acts-r">
+                                <button className="rq-btn-ghost rq-btn-sm" onClick={() => { setShowComment(p => ({ ...p, [t.id]: false })); setSelFiles(p => ({ ...p, [t.id]: [] })); }}>
+                                  Cancelar
+                                </button>
+                                <button className="rq-cmt-send" disabled={!commentInputs[t.id]?.trim()} onClick={() => handleComment(t.id, selFiles[t.id])}>
+                                  <Send size={13} />Enviar
                                 </button>
                               </div>
-                            ))}
+                            </div>
                           </div>
                         )}
-                        <div className="dd-comment-actions">
-                          <button
-                            className="action-btn attach"
-                            onClick={() => fileInputRefs.current[ticket.id]?.click()}
-                            title="Adjuntar archivos"
-                          >
-                            <Paperclip size={15} />
-                            {(selectedFiles[ticket.id]?.length || 0) > 0 && (
-                              <span className="attach-count">{selectedFiles[ticket.id].length}</span>
-                            )}
-                          </button>
-                          <button 
-                            className="send-comment-btn"
-                            onClick={() => handleAddComment(ticket.id)}
-                            disabled={!commentInputs[ticket.id]?.trim()}
-                          >
-                            <Send size={14} />
-                            Enviar
-                          </button>
-                        </div>
-                        <div className="comment-actions">
-                          <button 
-                            className="cancel-comment-btn"
-                            onClick={() => {
-                              toggleCommentSection(ticket.id);
-                              setSelectedFiles(prev => ({ ...prev, [ticket.id]: [] }));
-                            }}
-                          >
-                            <X size={14} />
-                            Cancelar
-                          </button>
-                        </div>
                       </div>
                     )}
+                  </article>
+                ))}
+                {active.length === 0 && (
+                  <div className="rq-empty">
+                    <FileText size={36} strokeWidth={1} />
+                    <h4>Sin solicitudes activas</h4>
+                    <p>Crea una nueva solicitud para comenzar</p>
                   </div>
                 )}
               </div>
-            ))}
-          </div>
-        </section>
+            </section>
 
-        {/* Historial de Soluciones */}
-        <section className="history-section">
-          <div className="section-header">
-            <h2 className="section-title">
-              <TrendingUp size={24} />
-              Historial de Soluciones
-            </h2>
-            <span className="ticket-count">{resolvedTickets.length} resueltos</span>
+            {/* History */}
+            {resolved.length > 0 && (
+              <section className="rq-sec">
+                <div className="rq-sec-h"><TrendingUp size={18} /><h3>Historial de soluciones</h3><span className="rq-badge">{resolved.length}</span></div>
+                <div className="rq-list">
+                  {resolved.map(t => (
+                    <article key={t.id} className="rq-ticket rq-ticket--done">
+                      <div className="rq-t-top">
+                        <span className="rq-t-code">{t.Code}</span>
+                        {t.Resolved_at && <span className="rq-t-date"><Calendar size={11} />{fmt(t.Resolved_at)}</span>}
+                      </div>
+                      <h4 className="rq-t-subj">{t.Subject}</h4>
+                      {t.Solution && (
+                        <div className="rq-sol">
+                          <p className="rq-sol-title">Solución aplicada</p>
+                          <p className="rq-sol-text">{t.Solution}</p>
+                        </div>
+                      )}
+                      {t.Technicians.length > 0 && (
+                        <div className="rq-t-meta">
+                          <span className="rq-t-techs"><Users size={12} />Resuelto por: {t.Technicians.map(x => x.Name).join(', ')}</span>
+                        </div>
+                      )}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
-
-          <div className="history-list">
-            {resolvedTickets.map((ticket) => (
-              <div key={ticket.id} className="history-card">
-                <div className="history-header">
-                  <div className="history-code">
-                    <span className="code-value">{ticket.Code}</span>
-                  </div>
-                  <div className="history-date">
-                    <Calendar size={14} />
-                    {ticket.Resolved_at && formatDate(ticket.Resolved_at)}
-                  </div>
-                </div>
-                
-                <h3 className="history-subject">{ticket.Subject}</h3>
-                
-                <div className="history-solution">
-                  <h4 className="solution-title">Solución Aplicada:</h4>
-                  <p className="solution-text">{ticket.Solution || 'Sin descripción de solución'}</p>
-                </div>
-                
-                <div className="history-technicians">
-                  <span className="tech-label">Resuelto por:</span>
-                  <span className="tech-names">
-                    {ticket.Technicians.map(t => t.Name).join(', ')}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      </main>
+        </main>
       )}
 
-      {/* Modal de Perfil */}
+      {/* Profile modal */}
       {showProfile && (
-        <div className="modal-overlay">
-          <div className="modal-content large">
-            <div className="modal-header">
-              <h2>Mi Perfil</h2>
-              <button className="close-btn" onClick={() => setShowProfile(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <RequesterProfile 
-                profile={requesterProfile}
-                onUpdate={(updatedProfile) => setRequesterProfile(updatedProfile)}
-              />
+        <div className="rq-overlay" onClick={() => setShowProfile(false)}>
+          <div className="rq-modal" onClick={e => e.stopPropagation()}>
+            <div className="rq-modal-h"><h3>Mi Perfil</h3><button className="rq-btn-ghost" onClick={() => setShowProfile(false)}><X size={18} /></button></div>
+            <div className="rq-modal-b">
+              <RequesterProfile profile={profile} onUpdate={setProfile} />
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal de Detalles del Ticket - PHP-PRO Backend Integrated */}
-      {showTicketDetails && selectedTicket && (
-        <div className="modal-overlay" onClick={() => setShowTicketDetails(false)}>
-          <div className="ticket-details-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="ticket-details-header">
-              <div className="ticket-details-title">
-                <FileText size={24} />
-                <div>
-                  <h2>{selectedTicket.Code}</h2>
-                  <p className="ticket-subject-text">{selectedTicket.Subject}</p>
-                </div>
+      {/* Detail modal */}
+      {showDetail && selected && (
+        <div className="rq-overlay" onClick={() => setShowDetail(false)}>
+          <div className="rq-modal rq-modal--wide" onClick={e => e.stopPropagation()}>
+            <div className="rq-modal-h rq-modal-h--det">
+              <div>
+                <span className="rq-det-code">{selected.Code}</span>
+                <h3 className="rq-det-subj">{selected.Subject}</h3>
               </div>
-              <button className="close-btn" onClick={() => setShowTicketDetails(false)}>
-                <X size={20} />
-              </button>
+              <button className="rq-btn-ghost" onClick={() => setShowDetail(false)}><X size={18} /></button>
             </div>
-
-            <div className="ticket-details-body">
-              {/* Ticket Info Grid */}
-              <div className="ticket-info-grid">
-                <div className="ticket-info-item">
-                  <span className="ticket-info-label">Estado</span>
-                  <span className={`ticket-status-badge status-${selectedTicket.Status.toLowerCase().replace(' ', '-')}`}>
-                    {selectedTicket.Status}
-                  </span>
-                </div>
-                <div className="ticket-info-item">
-                  <span className="ticket-info-label">Prioridad</span>
-                  <span className={`priority-badge ${getPriorityColor(selectedTicket.System_Priority)}`}>
-                    {selectedTicket.System_Priority}
-                  </span>
-                </div>
-                <div className="ticket-info-item">
-                  <span className="ticket-info-label">Oficina</span>
-                  <span className="ticket-info-value">{selectedTicket.office_type} - {selectedTicket.office_name}</span>
-                </div>
-                <div className="ticket-info-item">
-                  <span className="ticket-info-label">Creado</span>
-                  <span className="ticket-info-value">{formatDate(selectedTicket.Created_at)}</span>
-                </div>
+            <div className="rq-modal-b">
+              <div className="rq-det-grid">
+                <div className="rq-det-item"><span className="rq-det-lbl">Estado</span><span className={`rq-t-st rq-t-st--${selected.Status === 'En Proceso' ? 'prog' : selected.Status === 'Cerrado' ? 'done' : 'pend'}`}>{selected.Status === 'En Proceso' ? 'En curso' : selected.Status}</span></div>
+                <div className="rq-det-item"><span className="rq-det-lbl">Prioridad</span><span className={`rq-t-prio ${PrioClass[selected.System_Priority] || ''}`}>{selected.System_Priority}</span></div>
+                <div className="rq-det-item"><span className="rq-det-lbl">Oficina</span><span className="rq-det-val">{selected.office_name}</span></div>
+                {selected.Property_Number && (
+                  <div className="rq-det-item"><span className="rq-det-lbl">N° de Bien</span><span className="rq-det-val rq-det-mono">{selected.Property_Number}</span></div>
+                )}
+                {bienDesc && (
+                  <div className="rq-det-item rq-det-full"><span className="rq-det-lbl">Descripción del Bien</span><span className="rq-det-val rq-det-bien">{bienDesc}</span></div>
+                )}
+                <div className="rq-det-item"><span className="rq-det-lbl">Creado</span><span className="rq-det-val">{fmt(selected.Created_at)}</span></div>
               </div>
 
-              {/* Description */}
-              <div className="ticket-detail-section">
-                <h4 className="section-label">Descripción</h4>
-                <p className="ticket-description-text">{selectedTicket.Description}</p>
+              <div className="rq-det-sec">
+                <h4>Descripción</h4>
+                <p className="rq-det-desc">{selected.Description || 'Sin descripción'}</p>
               </div>
 
-              {/* Ticket Attachments */}
-              {ticketAttachments.length > 0 && (
-                <div className="ticket-detail-section">
-                  <h4 className="section-label">Archivos adjuntos ({ticketAttachments.length})</h4>
-                  <div className="ticket-attachments-grid">
-                    {ticketAttachments.map((att: any) => {
-                      const isImage = att.File_Type?.startsWith('image/');
-                      return isImage ? (
-                        <div key={att.ID_Attachment} className="ticket-attachment-item">
-                          <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
-                            <img
-                              src={`${API_BASE_URL}/${att.File_Path}`}
-                              alt={att.File_Name}
-                              className="ticket-att-thumb"
-                            />
-                          </a>
-                        </div>
-                      ) : (
-                        <div key={att.ID_Attachment} className="ticket-attachment-item ticket-attachment-file">
-                          <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
-                            <FileText size={14} />
-                            <span className="ticket-att-name">{att.File_Name}</span>
-                          </a>
-                        </div>
-                      );
-                    })}
+              {attachments.length > 0 && (
+                <div className="rq-det-sec">
+                  <h4>Archivos ({attachments.length})</h4>
+                  <div className="rq-det-att">
+                    {attachments.map((att: any) => (
+                      <a key={att.ID_Attachment} href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer" className="rq-det-att-link">
+                        {att.File_Type?.startsWith('image/') ? (
+                          <img src={`${API_BASE_URL}/${att.File_Path}`} alt={att.File_Name} className="rq-det-thumb" />
+                        ) : (
+                          <><FileText size={14} /><span>{att.File_Name}</span></>
+                        )}
+                      </a>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* Timeline */}
-              <div className="ticket-detail-section">
-                <h4 className="section-label">Estado del Ticket</h4>
-                <div className="ticket-timeline-modal">
-                  <div className="timeline-step completed">
-                    <div className="step-indicator">
-                      <CheckCircle size={16} />
-                    </div>
-                    <div className="step-label">Pendiente</div>
-                  </div>
-                  <div className={`timeline-connector ${getStatusStep(selectedTicket.Status) >= 2 ? 'completed' : ''}`}></div>
-                  <div className={`timeline-step ${getStatusStep(selectedTicket.Status) >= 2 ? 'completed' : 'pending'}`}>
-                    <div className="step-indicator">
-                      {getStatusStep(selectedTicket.Status) >= 2 ? <Users size={16} /> : <div className="step-dot"></div>}
-                    </div>
-                    <div className="step-label">En Proceso</div>
-                  </div>
-                  <div className={`timeline-connector ${getStatusStep(selectedTicket.Status) >= 3 ? 'completed' : ''}`}></div>
-                  <div className={`timeline-step ${getStatusStep(selectedTicket.Status) >= 3 ? 'completed' : 'pending'}`}>
-                    <div className="step-indicator">
-                      {getStatusStep(selectedTicket.Status) >= 3 ? <CheckCircle size={16} /> : <div className="step-dot"></div>}
-                    </div>
-                    <div className="step-label">Cerrado</div>
-                  </div>
+              <div className="rq-det-sec">
+                <h4>Estado del ticket</h4>
+                <div className="rq-det-tl">
+                  {[
+                    { label: 'Pendiente', step: 1 },
+                    { label: 'En Proceso', step: 2 },
+                    { label: 'Cerrado', step: 3 },
+                  ].map((s, i) => (
+                    <React.Fragment key={s.step}>
+                      <div className={`rq-det-tl-step ${getStep(selected.Status) >= s.step ? 'rq-det-tl-done' : ''}`}>
+                        <div className="rq-det-tl-dot">{getStep(selected.Status) >= s.step ? <CheckCircle size={10} /> : null}</div>
+                        <span>{s.label}</span>
+                      </div>
+                      {i < 2 && <div className={`rq-det-tl-line ${getStep(selected.Status) > s.step ? 'rq-det-tl-done' : ''}`} />}
+                    </React.Fragment>
+                  ))}
                 </div>
               </div>
 
-              {/* Technicians */}
-              {selectedTicket.Technicians.length > 0 && (
-                <div className="ticket-detail-section">
-                  <h4 className="section-label">Equipo Técnico Asignado</h4>
-                  <div className="technicians-list-modal">
-                    {selectedTicket.Technicians.map((tech, index) => (
-                      <div key={index} className="tech-item-modal">
-                        <div className="tech-avatar">
-                          <Users size={16} />
-                        </div>
-                        <span className="tech-name-modal">{tech.Name}</span>
-                        {tech.Is_Lead && <span className="lead-badge-modal">Principal</span>}
+              {selected.Technicians.length > 0 && (
+                <div className="rq-det-sec">
+                  <h4>Equipo técnico asignado</h4>
+                  <div className="rq-det-techs">
+                    {selected.Technicians.map((tech, i) => (
+                      <div key={i} className="rq-det-tech">
+                        <div className="rq-det-tech-avatar"><User size={14} /></div>
+                        <span>{tech.Name}</span>
+                        {tech.Is_Lead && <span className="rq-det-lead">Principal</span>}
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Comments Section */}
-              <div className="ticket-detail-section comments-section-modal">
-                <div className="comments-header-modal">
-                  <h4 className="section-label">
-                    <MessageSquare size={18} />
-                    Comentarios ({ticketComments.length})
-                  </h4>
-                </div>
-
-                {loadingComments ? (
-                  <div className="loading-comments">
-                    <div className="loading-spinner small"></div>
-                    <span>Cargando comentarios...</span>
-                  </div>
-                ) : ticketComments.length > 0 ? (
-                  <div className="comments-list-modal">
-                    {ticketComments.map((comment, index) => (
-                      <div key={comment.ID_Comment || index} className="comment-item-modal">
-                        <div className="comment-avatar">
-                          <User size={14} />
-                        </div>
-                        <div className="comment-content">
-                          <div className="comment-header">
-                            <span className="comment-author">{comment.User_Name}</span>
-                            <span className="comment-role">{comment.User_Role}</span>
-                            <span className="comment-date">{formatDate(comment.Created_at)}</span>
+              <div className="rq-det-sec">
+                <h4>Comentarios ({comments.length})</h4>
+                {loadComments ? (
+                  <div className="rq-det-load"><div className="rq-spin rq-spin-sm" /></div>
+                ) : comments.length > 0 ? (
+                  <div className="rq-det-cmts">
+                    {comments.map((c, i) => (
+                      <div key={c.ID_Comment || i} className="rq-det-cmt">
+                        <div className="rq-det-cmt-avatar"><User size={12} /></div>
+                        <div>
+                          <div className="rq-det-cmt-hdr">
+                            <strong>{c.User_Name}</strong>
+                            <span className="rq-det-cmt-role">{c.User_Role}</span>
+                            <time>{fmt(c.Created_at)}</time>
                           </div>
-                          <p className="comment-text">{comment.Comment}</p>
-                          {comment.attachments && comment.attachments.length > 0 && (
-                            <div className="dd-comment-attachments">
-                              {comment.attachments.map((att: any) => {
-                                const isImage = att.File_Type?.startsWith('image/');
-                                return isImage ? (
-                                  <div key={att.ID_Attachment} className="att-item">
-                                    <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
-                                      <img
-                                        src={`${API_BASE_URL}/${att.File_Path}`}
-                                        alt={att.File_Name}
-                                        className="att-thumb"
-                                      />
-                                    </a>
-                                  </div>
-                                ) : (
-                                  <div key={att.ID_Attachment} className="att-item">
-                                    <a href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer">
-                                      <FileText size={14} />
-                                      <span className="att-name">{att.File_Name}</span>
-                                    </a>
-                                  </div>
-                                );
-                              })}
+                          <p>{c.Comment}</p>
+                          {c.attachments?.length > 0 && (
+                            <div className="rq-det-cmt-att">
+                              {c.attachments.map((a: any) => (
+                                <a key={a.ID_Attachment} href={`${API_BASE_URL}/${a.File_Path}`} target="_blank" rel="noopener noreferrer">
+                                  <FileText size={12} />{a.File_Name}
+                                </a>
+                              ))}
                             </div>
                           )}
                         </div>
@@ -920,66 +473,37 @@ const RequesterDashboard: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <div className="no-comments">
-                    <MessageSquare size={24} />
-                    <span>No hay comentarios aún</span>
-                  </div>
+                  <p className="rq-det-none">Sin comentarios aún</p>
                 )}
 
-                {/* Add Comment Form */}
-                {selectedTicket.Status === 'En Proceso' && (
-                  <div className="add-comment-modal">
+                {selected.Status === 'En Proceso' && (
+                  <div className="rq-cmt-form" style={{ marginTop: 16 }}>
                     <textarea
-                      className="comment-textarea-modal"
+                      className="rq-cmt-ta" rows={3}
                       placeholder="Escribe un comentario..."
-                      value={commentInputs[selectedTicket.id] || ''}
-                      onChange={(e) => setCommentInputs(prev => ({ ...prev, [selectedTicket.id]: e.target.value }))}
-                      rows={3}
+                      value={commentInputs[selected.id] || ''}
+                      onChange={e => setCommentInputs(p => ({ ...p, [selected.id]: e.target.value }))}
                     />
-                    <input
-                      ref={el => { fileInputRefs.current[selectedTicket.id] = el; }}
-                      type="file"
-                      multiple
+                    <input ref={el => { fileRefs.current[selected.id] = el; }} type="file" multiple
                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar"
-                      onChange={(e) => handleFileSelect(selectedTicket.id, e)}
-                      style={{ display: 'none' }}
+                      onChange={e => handleFiles(selected.id, e)} style={{ display: 'none' }}
                     />
-                    {(selectedFiles[selectedTicket.id]?.length || 0) > 0 && (
-                      <div className="dd-file-previews">
-                        {(selectedFiles[selectedTicket.id] || []).map((file, i) => (
-                          <div key={i} className="dd-file-preview">
-                            {file.type.startsWith('image/') ? (
-                              <img src={URL.createObjectURL(file)} alt={file.name} className="fp-thumb" />
-                            ) : (
-                              <FileText size={16} />
-                            )}
-                            <span className="fp-name">{file.name}</span>
-                            <button className="fp-remove" onClick={() => removeFile(selectedTicket.id, i)}>
-                              <X size={12} />
-                            </button>
-                          </div>
+                    {(selFiles[selected.id]?.length || 0) > 0 && (
+                      <div className="rq-files">
+                        {(selFiles[selected.id] || []).map((f, i) => (
+                          <div key={i} className="rq-file"><FileText size={12} /><span>{f.name}</span><button onClick={() => rmFile(selected.id, i)}><X size={11} /></button></div>
                         ))}
                       </div>
                     )}
-                    <div className="dd-comment-actions">
-                      <button
-                        className="action-btn attach"
-                        onClick={() => fileInputRefs.current[selectedTicket.id]?.click()}
-                        title="Adjuntar archivos"
-                      >
-                        <Paperclip size={15} />
-                        {(selectedFiles[selectedTicket.id]?.length || 0) > 0 && (
-                          <span className="attach-count">{selectedFiles[selectedTicket.id].length}</span>
-                        )}
+                    <div className="rq-cmt-acts">
+                      <button className="rq-cmt-attach" onClick={() => fileRefs.current[selected.id]?.click()}>
+                        <Paperclip size={14} />{(selFiles[selected.id]?.length || 0) > 0 && <span>{selFiles[selected.id].length}</span>}
                       </button>
-                      <button 
-                        className="send-comment-btn-modal"
-                        onClick={() => handleAddCommentToTicket(selectedTicket.id, selectedFiles[selectedTicket.id])}
-                        disabled={!commentInputs[selectedTicket.id]?.trim()}
-                      >
-                        <Send size={16} />
-                        Enviar
-                      </button>
+                      <div className="rq-cmt-acts-r">
+                        <button className="rq-cmt-send" disabled={!commentInputs[selected.id]?.trim()} onClick={() => handleComment(selected.id, selFiles[selected.id])}>
+                          <Send size={13} />Enviar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

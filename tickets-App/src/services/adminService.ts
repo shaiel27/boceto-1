@@ -20,7 +20,7 @@ export interface ReportData {
 export async function getReportsList(): Promise<{ success: boolean; reports?: ReportItem[] }> {
   const r = await apiClient.get('/api/reports');
   if (!r.success) return { success: false };
-  return { success: true, reports: r.reports as ReportItem[] };
+  return { success: true, reports: r.data as ReportItem[] };
 }
 
 export async function getReport(
@@ -36,7 +36,7 @@ export async function getReport(
   if (endDate) params.append('end_date', endDate);
   const r = await apiClient.get(`/api/reports?${params.toString()}`);
   if (!r.success) return { success: false, message: r.message };
-  return { success: true, data: r.data, title: r.title };
+  return { success: true, data: r.data as ReportData, title: (r.data as any)?.title };
 }
 
 export interface DashboardStats {
@@ -234,7 +234,7 @@ export async function createTicket(ticketData: {
   };
 }
 
-export async function getOffices(): Promise<{ success: boolean; data?: { ID_Office: number; Name_Office: string; Office_Type: string }[] }> {
+export async function getOffices(): Promise<{ success: boolean; data?: { ID_Office: number; Name_Office: string }[] }> {
   const response = await apiClient.get('/api/office?action=all');
   if (!response.success) return { success: false };
   return { success: true, data: response.data };

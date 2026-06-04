@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import './AdminTicketManagement.css';
 import ApiService, { API_BASE_URL } from '../../services/api';
+import { fetchBienes, normalizePropertyCode } from '../../services/bienesApi';
 
 interface TicketTechnician {
   readonly ID_Ticket_Technician: string;
@@ -47,6 +48,7 @@ interface Ticket {
   readonly Ticket_Code: string;
   readonly Subject: string;
   readonly Description: string;
+  readonly Property_Number?: string | null;
   readonly Fk_Direction: string;
   readonly Fk_Division: string;
   readonly Fk_Coordination: string;
@@ -56,10 +58,11 @@ interface Ticket {
   readonly Created_at: string;
   readonly Resolved_at: string | null;
   readonly Direction_Name?: string;
-  readonly Division_Name?: string;
   readonly Coordination_Name?: string;
   readonly Service_Name?: string;
   readonly Software_System_Name?: string;
+  readonly Requester_Name?: string;
+  readonly Requester_Email?: string;
   readonly Technicians: readonly TicketTechnician[];
   readonly Attachments_Count?: number;
   readonly Comments_Count?: number;
@@ -152,6 +155,21 @@ const AdminTicketManagement: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [commentType, setCommentType] = useState<'public' | 'internal'>('public');
+  const [bienDesc, setBienDesc] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedTicket?.Property_Number) { setBienDesc(null); return; }
+    let cancelled = false;
+    fetchBienes({ query: selectedTicket.Property_Number, limit: 10 }).then((r) => {
+      if (cancelled) return;
+      const items = r.results || [];
+      const norm = normalizePropertyCode(selectedTicket.Property_Number!);
+      const exact = items.find((it: any) => normalizePropertyCode(String(it.codact || '')) === norm);
+      const chosen = exact ?? items[0];
+      setBienDesc(chosen ? String((chosen as any).denact || '') : null);
+    });
+    return () => { cancelled = true; };
+  }, [selectedTicket?.Property_Number, selectedTicket]);
 
   const [newPriority, setNewPriority] = useState<'Baja' | 'Media' | 'Alta' | 'Crítica'>('Media');
 
@@ -229,6 +247,7 @@ const AdminTicketManagement: React.FC = () => {
           Ticket_Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
           Subject: ticket.Subject || 'Sin asunto',
           Description: ticket.Description || 'Sin descripción',
+          Property_Number: ticket.Property_Number || null,
           Fk_Direction: ticket.Fk_Office || '',
           Fk_Division: '',
           Fk_Coordination: '',
@@ -238,10 +257,11 @@ const AdminTicketManagement: React.FC = () => {
           Created_at: ticket.Created_at || new Date().toISOString(),
           Resolved_at: ticket.Resolved_at || null,
           Direction_Name: ticket.office_name || 'No asignado',
-          Division_Name: ticket.office_type || 'No asignado',
           Coordination_Name: ticket.service_type_name || 'No asignado',
           Service_Name: ticket.service_type_name || 'No asignado',
           Software_System_Name: ticket.software_system_name || null,
+          Requester_Name: ticket.user_name || 'No asignado',
+          Requester_Email: ticket.user_email || null,
           Technicians: ticket.technicians?.map((t: any) => ({
             ID_Ticket_Technician: t.id?.toString() || '',
             Fk_Technician: t.id?.toString() || '',
@@ -276,6 +296,7 @@ const AdminTicketManagement: React.FC = () => {
           Ticket_Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
           Subject: ticket.Subject || 'Sin asunto',
           Description: ticket.Description || 'Sin descripción',
+          Property_Number: ticket.Property_Number || null,
           Fk_Direction: ticket.Fk_Office || '',
           Fk_Division: '',
           Fk_Coordination: '',
@@ -285,10 +306,11 @@ const AdminTicketManagement: React.FC = () => {
           Created_at: ticket.Created_at || new Date().toISOString(),
           Resolved_at: ticket.Resolved_at || null,
           Direction_Name: ticket.office_name || 'No asignado',
-          Division_Name: ticket.office_type || 'No asignado',
           Coordination_Name: ticket.service_type_name || 'No asignado',
           Service_Name: ticket.service_type_name || 'No asignado',
           Software_System_Name: ticket.software_system_name || null,
+          Requester_Name: ticket.user_name || 'No asignado',
+          Requester_Email: ticket.user_email || null,
           Technicians: ticket.technicians?.map((t: any) => ({
             ID_Ticket_Technician: t.id?.toString() || '',
             Fk_Technician: t.id?.toString() || '',
@@ -938,12 +960,21 @@ const AdminTicketManagement: React.FC = () => {
                   <h4 className="gvt-det-h"><FileText size={13} /> Información</h4>
                   <div className="gvt-det-f"><label>Asunto</label><p>{selectedTicket.Subject}</p></div>
                   <div className="gvt-det-f"><label>Descripción</label><p>{selectedTicket.Description}</p></div>
+                  {selectedTicket.Property_Number && (
+                    <div className="gvt-det-f"><label>N° de Bien</label><p><Wrench size={12} /> <span className="gvt-mono">{selectedTicket.Property_Number}</span></p></div>
+                  )}
+                  {bienDesc && (
+                    <div className="gvt-det-f"><label>Descripción del Bien</label><p className="gvt-bien-desc">{bienDesc}</p></div>
+                  )}
+                  <div className="gvt-det-f"><label>Solicitante</label><p><User size={12} /> {selectedTicket.Requester_Name || 'No asignado'}</p></div>
+                  {selectedTicket.Requester_Email && (
+                    <div className="gvt-det-f"><label>Email</label><p className="gvt-mono">{selectedTicket.Requester_Email}</p></div>
+                  )}
                 </div>
                 <div className="gvt-det-sec">
                   <h4 className="gvt-det-h"><MapPin size={13} /> Ubicación y servicio</h4>
                   <div className="gvt-det-g">
                     <div className="gvt-det-f"><label>Dirección</label><p>{selectedTicket.Direction_Name}</p></div>
-                    <div className="gvt-det-f"><label>División</label><p>{selectedTicket.Division_Name}</p></div>
                     <div className="gvt-det-f"><label>Coordinación</label><p>{selectedTicket.Coordination_Name}</p></div>
                     <div className="gvt-det-f"><label>Servicio</label><p>{selectedTicket.Service_Name}</p></div>
                     {selectedTicket.Software_System_Name && (

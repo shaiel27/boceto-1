@@ -47,7 +47,7 @@ final class AdminDashboardController
                 COUNT(*) as total_tickets,
                 COUNT(CASE WHEN sr.Status = 'Pendiente' THEN 1 END) as pending_count,
                 COUNT(CASE WHEN sr.Status = 'En Proceso' THEN 1 END) as in_progress_count,
-                COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_count,
+                COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) as resolved_count,
                 COUNT(CASE WHEN sr.System_Priority = 'Crítica' THEN 1 END) as critical_count,
                 COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 24 HOUR) THEN 1 END) as today_count,
                 COUNT(CASE WHEN sr.Created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as week_count,
@@ -63,7 +63,7 @@ final class AdminDashboardController
                       AND tt2.Status = 'Activo'
                 ) as active_technicians,
                 ROUND(
-                    COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) * 100.0 / 
+                    COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) * 100.0 / 
                     NULLIF(COUNT(*), 0), 1
                 ) as resolution_rate
             FROM Service_Request sr
@@ -116,7 +116,7 @@ final class AdminDashboardController
                 COUNT(sr.ID_Service_Request) as ticket_count,
                 COUNT(CASE WHEN sr.Status = 'Pendiente' THEN 1 END) as pending_count,
                 COUNT(CASE WHEN sr.Status = 'En Proceso' THEN 1 END) as in_progress_count,
-                COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_count
+                COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) as resolved_count
             FROM Office o
             LEFT JOIN Service_Request sr ON o.ID_Office = sr.Fk_Office 
                 AND sr.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
@@ -141,7 +141,7 @@ final class AdminDashboardController
             SELECT 
                 -- Total tickets metrics
                 COUNT(*) as total_tickets,
-                COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_tickets,
+                COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) as resolved_tickets,
                 COUNT(CASE WHEN sr.Status = 'Pendiente' THEN 1 END) as pending_tickets,
                 COUNT(CASE WHEN sr.Status = 'En Proceso' THEN 1 END) as in_progress_tickets,
                 
@@ -192,13 +192,13 @@ final class AdminDashboardController
                 
                 -- Resolution rate
                 ROUND(
-                    COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) * 100.0 / 
+                    COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) * 100.0 / 
                     NULLIF(COUNT(*), 0), 2
                 ) as resolution_rate_percent,
                 
                 -- Critical tickets resolution rate
                 ROUND(
-                    COUNT(CASE WHEN sr.System_Priority = 'Crítica' AND sr.Status = 'Cerrado' THEN 1 END) * 100.0 / 
+                    COUNT(CASE WHEN sr.System_Priority = 'Crítica' AND sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) * 100.0 / 
                     NULLIF(COUNT(CASE WHEN sr.System_Priority = 'Crítica' THEN 1 END), 0), 2
                 ) as critical_resolution_rate_percent
                 
@@ -214,7 +214,7 @@ final class AdminDashboardController
         $previousPeriodQuery = "
             SELECT 
                 COUNT(*) as previous_month_tickets,
-                COUNT(CASE WHEN Status = 'Cerrado' THEN 1 END) as previous_resolved,
+                COUNT(CASE WHEN Status IN ('Cerrado', 'Resuelto') THEN 1 END) as previous_resolved,
                 AVG(CASE WHEN Resolved_at IS NOT NULL 
                     THEN TIMESTAMPDIFF(HOUR, Created_at, Resolved_at) 
                     ELSE NULL END) as previous_avg_hours
@@ -289,7 +289,7 @@ final class AdminDashboardController
                 CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
                 u.Email,
                 COUNT(tt.Fk_Service_Request) as assigned_tickets,
-                COUNT(CASE WHEN sr.Status = 'Cerrado' THEN 1 END) as resolved_tickets,
+                COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) as resolved_tickets,
                 AVG(CASE WHEN sr.Resolved_at IS NOT NULL 
                     THEN TIMESTAMPDIFF(HOUR, tt.Assigned_At, sr.Resolved_at) 
                     ELSE NULL END) as avg_resolution_hours,
@@ -374,7 +374,7 @@ final class AdminDashboardController
             SELECT 
                 DATE(sr.Created_at) as date,
                 COUNT(*) as created_count,
-                COUNT(CASE WHEN sr.Status = 'Cerrado' AND sr.Resolved_at >= DATE(sr.Created_at) THEN 1 END) as resolved_count,
+                COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at >= DATE(sr.Created_at) THEN 1 END) as resolved_count,
                 COUNT(CASE WHEN sr.System_Priority IN ('Crítica', 'Alta') THEN 1 END) as high_priority_count
             FROM Service_Request sr
             WHERE sr.Created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)

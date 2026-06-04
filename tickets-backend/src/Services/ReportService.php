@@ -112,9 +112,8 @@ final class ReportService
         $stmt = $this->db->prepare("
             SELECT
                 o.Name_Office AS office,
-                o.Office_Type AS office_type,
                 COUNT(sr.ID_Service_Request) AS total,
-                SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) AS resolved,
+                SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) AS resolved,
                 SUM(CASE WHEN sr.Status = 'En Proceso' THEN 1 ELSE 0 END) AS in_progress,
                 SUM(CASE WHEN sr.Status = 'Pendiente' THEN 1 ELSE 0 END) AS pending,
                 ROUND(AVG(CASE WHEN sr.Resolved_at IS NOT NULL
@@ -122,7 +121,7 @@ final class ReportService
             FROM Office o
             LEFT JOIN Service_Request sr ON o.ID_Office = sr.Fk_Office
                 AND sr.Created_at BETWEEN :start AND :end
-            GROUP BY o.ID_Office, o.Name_Office, o.Office_Type
+            GROUP BY o.ID_Office, o.Name_Office
             HAVING total > 0
             ORDER BY total DESC
         ");
@@ -138,7 +137,7 @@ final class ReportService
             SELECT
                 System_Priority AS priority,
                 COUNT(*) AS total,
-                SUM(CASE WHEN Status = 'Cerrado' THEN 1 ELSE 0 END) AS resolved,
+                SUM(CASE WHEN Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) AS resolved,
                 SUM(CASE WHEN Status = 'En Proceso' THEN 1 ELSE 0 END) AS in_progress,
                 SUM(CASE WHEN Status = 'Pendiente' THEN 1 ELSE 0 END) AS pending,
                 ROUND(AVG(CASE WHEN Resolved_at IS NOT NULL
@@ -164,7 +163,7 @@ final class ReportService
                 CONCAT(t.First_Name, ' ', t.Last_Name) AS technician,
                 u.Email AS email,
                 COUNT(tt.Fk_Service_Request) AS total_assigned,
-                SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) AS resolved,
+                SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) AS resolved,
                 SUM(CASE WHEN sr.Status = 'En Proceso' THEN 1 ELSE 0 END) AS in_progress,
                 SUM(CASE WHEN sr.Status = 'Pendiente' THEN 1 ELSE 0 END) AS pending,
                 ROUND(AVG(CASE WHEN sr.Resolved_at IS NOT NULL
@@ -204,7 +203,7 @@ final class ReportService
                 DAYNAME(sr.Created_at) AS day_name,
                 DATE(sr.Created_at) AS date,
                 COUNT(*) AS total,
-                SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) AS resolved
+                SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) AS resolved
             FROM Service_Request sr
             WHERE sr.Created_at BETWEEN :start AND :end
               AND DAYOFWEEK(sr.Created_at) BETWEEN 2 AND 6
@@ -219,7 +218,7 @@ final class ReportService
             SELECT
                 CONCAT(t.First_Name, ' ', t.Last_Name) AS technician,
                 COUNT(tt.Fk_Service_Request) AS assigned,
-                SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) AS resolved
+                SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) AS resolved
             FROM Ticket_Technicians tt
             INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                 AND sr.Created_at BETWEEN :start AND :end
@@ -247,12 +246,12 @@ final class ReportService
             SELECT
                 ts.Type_Service AS service,
                 COUNT(sr.ID_Service_Request) AS total,
-                SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) AS resolved,
+                SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) AS resolved,
                 SUM(CASE WHEN sr.Status = 'En Proceso' THEN 1 ELSE 0 END) AS in_progress,
                 SUM(CASE WHEN sr.Status = 'Pendiente' THEN 1 ELSE 0 END) AS pending,
                 ROUND(AVG(CASE WHEN sr.Resolved_at IS NOT NULL
                     THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) END), 1) AS avg_hours,
-                ROUND(SUM(CASE WHEN sr.Status = 'Cerrado' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS resolution_rate
+                ROUND(SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS resolution_rate
             FROM TI_Service ts
             LEFT JOIN Service_Request sr ON ts.ID_TI_Service = sr.Fk_TI_Service
                 AND sr.Created_at BETWEEN :start AND :end

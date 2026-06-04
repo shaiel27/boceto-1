@@ -22,6 +22,7 @@ export interface Ticket {
   // Joined fields
   office_name: string;
   citizen_name: string;
+  citizen_email?: string;
   service_name: string;
   problem_name: string;
   technician_names: string[];

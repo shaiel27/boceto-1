@@ -60,7 +60,7 @@ try {
         
         // Calculate statistics
         $totalTickets = count($tickets);
-        $resolvedTickets = array_filter($tickets, function($t) { return $t['Status'] === 'Cerrado'; });
+        $resolvedTickets = array_filter($tickets, function($t) { return $t['Status'] === 'Cerrado' || $t['Status'] === 'Resuelto'; });
         $resolvedThisMonth = array_filter($resolvedTickets, function($t) use ($currentMonth, $currentYear) {
             $resolvedDate = new DateTime($t['Resolved_at'] ?? $t['Created_at']);
             return $resolvedDate->format('m') == $currentMonth && $resolvedDate->format('Y') == $currentYear;
@@ -96,7 +96,7 @@ try {
             });
             
             $monthResolved = array_filter($monthTickets, function($t) {
-                return $t['Status'] === 'Cerrado';
+                return $t['Status'] === 'Cerrado' || $t['Status'] === 'Resuelto';
             });
             
             $months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];

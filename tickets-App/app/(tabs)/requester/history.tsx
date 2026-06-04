@@ -1,14 +1,20 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useTickets } from '../../../src/contexts/TicketContext';
 
 function pColor(p: string) { return p === 'Alta' ? Colors.priorityAlta : p === 'Media' ? Colors.priorityMedia : p === 'Critica' ? Colors.coral : Colors.textLight; }
 
 export default function RequesterHistory() {
-  const { tickets } = useTickets();
+  const { tickets, refreshTickets } = useTickets();
+
+  useFocusEffect(
+    useCallback(() => {
+      refreshTickets();
+    }, [refreshTickets])
+  );
 
   const resolved = useMemo(
     () => tickets.filter((t) => t.status === 'Resuelto').sort((a, b) => new Date(b.resolved_at || b.created_at).getTime() - new Date(a.resolved_at || a.created_at).getTime()),

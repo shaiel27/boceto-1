@@ -82,6 +82,9 @@ export function mockLogin(email: string, password: string): Promise<MockLoginRes
               created_at: '2026-01-15T08:00:00',
               role_name: found.role_name,
               status: found.status,
+              office_id: null,
+              office_name: '',
+              office_type: '',
             },
           },
         });
@@ -111,6 +114,9 @@ export function mockGetMe(): Promise<MockLoginResponse> {
         created_at: '2026-01-15T08:00:00',
         role_name: 'Tecnico',
         status: 'Activo',
+        office_id: null,
+        office_name: '',
+        office_type: '',
       },
     },
   });
