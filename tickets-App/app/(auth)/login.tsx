@@ -1,27 +1,30 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  TextInput,
   TouchableOpacity,
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Colors, BorderRadius } from '../../src/constants/colors';
-import { useAuth } from '../../src/hooks/useAuth';
+import { useAuthStore } from '../../src/stores/authStore';
+import { loginSchema, LoginFormData } from '../../src/utils/validation';
+import { FormField } from '../../src/components/ui/FormField';
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [emailError, setEmailError] = useState('');
-  const { login, isLoading, error, clearError } = useAuth();
-
+  const { login, isLoading, error, clearError } = useAuthStore();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(40)).current;
+
+  const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
   useEffect(() => {
     Animated.parallel([
@@ -30,13 +33,11 @@ export default function LoginScreen() {
     ]).start();
   }, []);
 
-  async function handleLogin() {
-    setEmailError('');
-    clearError();
-    if (!email.trim()) { setEmailError('El correo es requerido'); return; }
-    if (!password) return;
-    try { await login(email.trim(), password); } catch {}
-  }
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      await login(data.email.trim(), data.password);
+    } catch {}
+  };
 
   return (
     <KeyboardAvoidingView
@@ -63,61 +64,45 @@ export default function LoginScreen() {
         <Text style={styles.formTitle}>Iniciar sesión</Text>
         <Text style={styles.formSub}>Ingrese sus credenciales</Text>
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Correo electrónico</Text>
-          <View style={styles.inputRow}>
-            <Ionicons name="mail-outline" size={17} color={Colors.textLight} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={t => { setEmail(t); if (error) clearError(); }}
-              placeholder="correo@alcaldia.gob"
-              placeholderTextColor={Colors.placeholder}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-          </View>
-        </View>
+        <FormField
+          name="email"
+          control={control}
+          label="Correo electrónico"
+          icon="mail-outline"
+          placeholder="correo@alcaldia.gob"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoComplete="email"
+          error={errors.email}
+        />
 
-        <View style={styles.field}>
-          <Text style={styles.label}>Contraseña</Text>
-          <View style={styles.inputRow}>
-            <Ionicons name="lock-closed-outline" size={17} color={Colors.textLight} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              placeholderTextColor={Colors.placeholder}
-              secureTextEntry={!showPassword}
-            />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.toggleBtn}>
-              <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={Colors.textLight} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <FormField
+          name="password"
+          control={control}
+          label="Contraseña"
+          icon="lock-closed-outline"
+          placeholder="••••••••"
+          isPassword
+          autoComplete="password"
+          error={errors.password}
+        />
 
-        {emailError ? (
-          <View style={styles.errBox}>
-            <Ionicons name="alert-circle" size={16} color={Colors.coral} />
-            <Text style={styles.errText}>{emailError}</Text>
-          </View>
-        ) : null}
-
-        {error ? (
+        {error && (
           <View style={styles.errBox}>
             <Ionicons name="alert-circle" size={16} color={Colors.coral} />
             <Text style={styles.errText}>{error}</Text>
           </View>
-        ) : null}
+        )}
 
         <TouchableOpacity
           style={[styles.submit, isLoading && styles.submitDisabled]}
-          onPress={handleLogin}
+          onPress={handleSubmit(onSubmit)}
           disabled={isLoading}
           activeOpacity={0.8}
         >
-          <Text style={styles.submitText}>{isLoading ? 'Verificando...' : 'Ingresar'}</Text>
+          <Text style={styles.submitText}>
+            {isLoading ? 'Verificando...' : 'Ingresar'}
+          </Text>
           <Ionicons name="chevron-forward" size={18} color={Colors.gold} />
         </TouchableOpacity>
       </View>
@@ -152,27 +137,6 @@ const styles = StyleSheet.create({
   },
   formTitle: { fontSize: 22, fontWeight: '600', color: Colors.text, marginBottom: 2 },
   formSub: { fontSize: 13, color: Colors.textSecondary, marginBottom: 28 },
-
-  field: { marginBottom: 16 },
-  label: { fontSize: 11, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase', color: Colors.textSecondary, marginBottom: 6 },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.background,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.sm,
-    height: 50,
-  },
-  inputIcon: { marginLeft: 14 },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.text,
-    paddingHorizontal: 10,
-    paddingVertical: 14,
-  },
-  toggleBtn: { paddingHorizontal: 14 },
 
   errBox: {
     flexDirection: 'row',

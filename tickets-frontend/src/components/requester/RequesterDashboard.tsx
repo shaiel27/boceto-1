@@ -9,7 +9,7 @@ import {
 import './RequesterDashboard.css';
 import RequesterProfile from './RequesterProfile';
 import ApiService, { API_BASE_URL } from '../../services/api';
-import { fetchBienes, normalizePropertyCode } from '../../services/bienesApi';
+import { findBienByCode } from '../../services/bienesApi';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordChangeRequired from '../common/PasswordChangeRequired';
 
@@ -54,13 +54,10 @@ const RequesterDashboard: React.FC = () => {
   const [bienDesc, setBienDesc] = useState<string | null>(null);
   useEffect(() => {
     if (!selected?.Property_Number) { setBienDesc(null); return; }
+    setBienDesc(null);
     let c = false;
-    fetchBienes({ query: selected.Property_Number, limit: 10 }).then(r => {
-      if (c) return;
-      const items = r.results || [];
-      const norm = normalizePropertyCode(selected.Property_Number!);
-      const exact = items.find((it: any) => normalizePropertyCode(String(it.codact || '')) === norm);
-      setBienDesc((exact ?? items[0]) ? String(((exact ?? items[0]) as any).denact || '') : null);
+    findBienByCode(selected.Property_Number).then(b => {
+      if (!c) setBienDesc(b ? String((b as any).denact || '') : null);
     });
     return () => { c = true; };
   }, [selected]);
@@ -341,6 +338,12 @@ const RequesterDashboard: React.FC = () => {
                           <span className="rq-t-techs"><Users size={12} />Resuelto por: {t.Technicians.map(x => x.Name).join(', ')}</span>
                         </div>
                       )}
+                      <div className="rq-t-foot">
+                        <div className="rq-t-tech-list" />
+                        <button className="rq-t-detail" onClick={() => handleView(t)}>
+                          Ver detalles <ChevronRight size={14} />
+                        </button>
+                      </div>
                     </article>
                   ))}
                 </div>

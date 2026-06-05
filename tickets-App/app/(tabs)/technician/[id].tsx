@@ -57,6 +57,7 @@ export default function TicketDetailScreen() {
   const [bienDesc, setBienDesc] = useState<string | null>(null);
   useEffect(() => {
     if (!ticket?.property_number) { setBienDesc(null); return; }
+    setBienDesc(null);
     let cancelled = false;
     findBienByCode(ticket.property_number).then((b) => {
       if (!cancelled) setBienDesc(b ? String(b.denact || '') : null);

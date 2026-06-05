@@ -614,118 +614,74 @@ const TechnicianManagement: React.FC = () => {
       <div className="tm-container">
         {/* ─── Header ─── */}
         <header className="tm-header">
-          <div className="tm-header-row">
-            <div className="tm-header-left">
-              <button className="tm-back-btn" onClick={() => navigate('/')}>
-                <ArrowLeft size={16} />
-                <span>Dashboard</span>
-              </button>
-              <div className="tm-header-icon-wrap">
-                <BadgeCheck size={22} />
+          <div className="tm-head-top">
+            <div className="tm-head-left">
+              <div className="tm-emblem">
+                <BadgeCheck size={19} />
               </div>
-              <div className="tm-header-info">
-                <h1 className="tm-header-title">
+              <div>
+                <h1 className="tm-head-title">
                   {isTechnician() ? 'Mi Perfil Técnico' : 'Equipo Técnico Municipal'}
                 </h1>
-                <p className="tm-header-subtitle">
-                  {isTechnician() ? 'Gestiona tu información personal y horarios' : 'Conoce y gestiona a los profesionales que mantienen nuestra ciudad funcionando'}
+                <p className="tm-head-sub">
+                  {isTechnician()
+                    ? 'Gestiona tu información personal y horarios'
+                    : 'Profesionales de TI — Alcaldía del Municipio San Cristóbal'}
                 </p>
               </div>
             </div>
-
-            <div className="tm-header-pills">
-              {isTechnician() && currentUserTechnician ? (
-                <>
-                  <div className="tm-pill">
-                    <div className="tm-pill-icon assigned">
-                      <Ticket size={14} />
-                    </div>
-                    <div className="tm-pill-info">
-                      <span className="tm-pill-value">{currentUserTechnician.Tickets_Assigned || 0}</span>
-                      <span className="tm-pill-label">Asignados</span>
-                    </div>
-                  </div>
-                  <div className="tm-pill">
-                    <div className="tm-pill-icon resolved">
-                      <CheckCircle size={14} />
-                    </div>
-                    <div className="tm-pill-info">
-                      <span className="tm-pill-value">{currentUserTechnician.Tickets_Resolved || 0}</span>
-                      <span className="tm-pill-label">Resueltos</span>
-                    </div>
-                  </div>
-                  <div className="tm-pill">
-                    <div className="tm-pill-icon schedule">
-                      <Calendar size={14} />
-                    </div>
-                    <div className="tm-pill-info">
-                      <span className="tm-pill-value">{currentUserTechnician.Schedules?.length || 0}</span>
-                      <span className="tm-pill-label">Días</span>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="tm-pill">
-                    <div className="tm-pill-icon total">
-                      <Users size={14} />
-                    </div>
-                    <div className="tm-pill-info">
-                      <span className="tm-pill-value">{stats.total}</span>
-                      <span className="tm-pill-label">Total</span>
-                    </div>
-                  </div>
-                  <div className="tm-pill">
-                    <div className="tm-pill-icon available">
-                      <CheckCircle size={14} />
-                    </div>
-                    <div className="tm-pill-info">
-                      <span className="tm-pill-value">{stats.available}</span>
-                      <span className="tm-pill-label">Disponibles</span>
-                    </div>
-                  </div>
-                  <div className="tm-pill">
-                    <div className="tm-pill-icon busy">
-                      <Clock size={14} />
-                    </div>
-                    <div className="tm-pill-info">
-                      <span className="tm-pill-value">{stats.busy}</span>
-                      <span className="tm-pill-label">Ocupados</span>
-                    </div>
-                  </div>
-                </>
+            <div className="tm-head-right">
+              <button className="tm-btn-outline" onClick={() => navigate('/')}>
+                <ArrowLeft size={14} />
+                Dashboard
+              </button>
+              {!isTechnician() && (
+                <button className="tm-btn-primary" onClick={() => setShowAddModal(true)}>
+                  <UserPlus size={14} />
+                  Nuevo Técnico
+                </button>
               )}
             </div>
           </div>
-        </header>
 
-        {/* ─── Stats Bar ─── */}
-        <div className="tm-stats">
-          <div className="tm-stat">
-            <span className="tm-stat-label">Total Técnicos</span>
-            <span className="tm-stat-value">{stats.total}</span>
+          <div className="tm-stat-bar">
+            {isTechnician() && currentUserTechnician ? (
+              <>
+                <div className="tm-stat-card">
+                  <span className="tm-stat-num">{currentUserTechnician.Tickets_Assigned || 0}</span>
+                  <span className="tm-stat-lbl"><Ticket size={11} /> Asignados</span>
+                </div>
+                <div className="tm-stat-card">
+                  <span className="tm-stat-num">{currentUserTechnician.Tickets_Resolved || 0}</span>
+                  <span className="tm-stat-lbl"><CheckCircle size={11} /> Resueltos</span>
+                </div>
+                <div className="tm-stat-card">
+                  <span className="tm-stat-num">{currentUserTechnician.Schedules?.length || 0}</span>
+                  <span className="tm-stat-lbl"><Calendar size={11} /> Días activos</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="tm-stat-card">
+                  <span className="tm-stat-num">{stats.total}</span>
+                  <span className="tm-stat-lbl">Total</span>
+                </div>
+                <div className="tm-stat-card tm-stat-card--ok">
+                  <span className="tm-stat-num">{stats.available}</span>
+                  <span className="tm-stat-lbl">Disponibles</span>
+                </div>
+                <div className="tm-stat-card tm-stat-card--warn">
+                  <span className="tm-stat-num">{stats.busy}</span>
+                  <span className="tm-stat-lbl">Ocupados</span>
+                </div>
+                <div className="tm-stat-card">
+                  <span className="tm-stat-num">{stats.inactive}</span>
+                  <span className="tm-stat-lbl">Inactivos</span>
+                </div>
+              </>
+            )}
           </div>
-          <div className="tm-stat-sep" />
-          <div className="tm-stat success">
-            <span className="tm-stat-label">Disponibles</span>
-            <span className="tm-stat-value">{stats.available}</span>
-          </div>
-          <div className="tm-stat-sep" />
-          <div className="tm-stat warning">
-            <span className="tm-stat-label">Ocupados</span>
-            <span className="tm-stat-value">{stats.busy}</span>
-          </div>
-          <div className="tm-stat-sep" />
-          <div className="tm-stat danger">
-            <span className="tm-stat-label">Inactivos</span>
-            <span className="tm-stat-value">{stats.inactive}</span>
-          </div>
-          <div className="tm-stat-sep" />
-          <div className="tm-stat info">
-            <span className="tm-stat-label">Tickets Asignados</span>
-            <span className="tm-stat-value">{stats.totalTickets}</span>
-          </div>
-        </div>
+        </header>
 
         {/* ─── Toolbar ─── */}
         <div className="tm-toolbar">
@@ -762,14 +718,6 @@ const TechnicianManagement: React.FC = () => {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="tm-toolbar-actions">
-            {!isTechnician() && (
-              <button className="tm-btn tm-btn-primary" onClick={() => setShowAddModal(true)}>
-                <UserPlus size={16} />
-                Nuevo Técnico
-              </button>
-            )}
           </div>
         </div>
 
@@ -830,123 +778,113 @@ const TechnicianManagement: React.FC = () => {
                       </span>
                     </div>
                   </div>
-                  <div className="tm-table-wrap">
-                    <table className="tm-table">
-                      <thead>
-                        <tr>
-                          <th>Técnico</th>
-                          <th>Bloque Almuerzo</th>
-                          <th>Horario Hoy</th>
-                          <th>Estado</th>
-                          <th>Tickets</th>
-                          <th>Acciones</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {techs.map((technician: Technician) => {
-                          const todaySchedule = getTodaySchedule(technician.Schedules);
-                          const todayScheduleText = todaySchedule
-                            ? `${todaySchedule.Work_Start_Time} - ${todaySchedule.Work_End_Time}`
-                            : 'No trabaja';
+                  <div className="tm-card-list">
+                    {techs.map((technician: Technician) => {
+                      const todaySchedule = getTodaySchedule(technician.Schedules);
+                      const todayScheduleText = todaySchedule
+                        ? `${todaySchedule.Work_Start_Time} - ${todaySchedule.Work_End_Time}`
+                        : 'No trabaja';
 
-                          return (
-                            <tr key={technician.ID_Technicians}>
-                              <td className="tm-cell-name">
-                                <div className="tm-profile">
-                                  <div className="tm-avatar">
-                                    {technician.Avatar || `${technician.First_Name[0]}${technician.Last_Name[0]}`}
-                                  </div>
-                                  <div className="tm-name-info">
-                                    <div className="tm-name">
-                                      {technician.First_Name} {technician.Last_Name}
-                                    </div>
-                                    <div className="tm-id">ID: {technician.ID_Technicians}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="tm-cell-lunch">
-                                {technician.Lunch_Block ? (
-                                  <div className="tm-lunch-info">
-                                    <span className="tm-lunch-name">
-                                      <Coffee size={12} style={{ marginRight: '0.25rem', verticalAlign: 'middle', color: '#f59e0b' }} />
-                                      {technician.Lunch_Block.name}
-                                    </span>
-                                    <span className="tm-lunch-hours">{technician.Lunch_Block.hours}</span>
-                                  </div>
-                                ) : (
-                                  <span className="tm-lunch-none">Sin asignar</span>
-                                )}
-                              </td>
-                              <td className="tm-cell-schedule">
-                                <div className="tm-schedule-info">
-                                  <Clock size={13} className="tm-schedule-icon" />
-                                  <span>{todayScheduleText}</span>
-                                </div>
-                              </td>
-                              <td className="tm-cell-status">
-                                <div className={`tm-status-orb ${technician.Status.toLowerCase()}`} title={technician.Status}>
-                                  <span className="tm-status-orb-icon">
-                                    {technician.Status === 'Disponible' && <CheckCircle size={16} />}
-                                    {technician.Status === 'Ocupado' && !technician.Status_Reason && <AlertCircle size={16} />}
-                                    {technician.Status === 'Ocupado' && technician.Status_Reason === 'ticket' && <Ticket size={16} />}
-                                    {technician.Status === 'Ocupado' && technician.Status_Reason === 'lunch' && <Coffee size={16} />}
-                                    {technician.Status === 'Ocupado' && technician.Status_Reason === 'schedule' && <Clock size={16} />}
-                                    {technician.Status === 'Inactivo' && <XCircle size={16} />}
-                                  </span>
-                                  <span className="tm-orb-tooltip">
-                                    {technician.Status}
-                                    {technician.Status_Reason ? ` — ${getStatusReasonLabel(technician.Status_Reason)}` : ''}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="tm-cell-tickets">
-                                <div className="tm-tickets-info">
-                                  <span className="tm-tickets-val">{technician.Tickets_Assigned || 0}</span>
-                                  <span className="tm-tickets-label">{technician.Tickets_Resolved || 0} resueltos</span>
-                                </div>
-                              </td>
-                              <td className="tm-cell-actions">
-                                <div className="tm-actions">
+                      return (
+                        <div key={technician.ID_Technicians} className={`tm-tech-card tm-tech-card--${normalizeText(serviceName).toLowerCase().replace(/\s+/g, '-')}`}>
+                          <div className="tm-tech-left">
+                            <div className="tm-tech-avatar">
+                              {technician.Avatar || `${technician.First_Name[0]}${technician.Last_Name[0]}`}
+                            </div>
+                            <div className="tm-tech-name">
+                              <div className="tm-tech-fullname">
+                                {technician.First_Name} {technician.Last_Name}
+                              </div>
+                              <div className="tm-tech-id">ID: {technician.ID_Technicians}</div>
+                            </div>
+                          </div>
+
+                          <div className="tm-tech-info">
+                            <div className="tm-tech-info-item">
+                              <span className="tm-tech-info-label">Estado</span>
+                              <div className={`tm-tech-status-orb tm-tech-status-orb--${technician.Status.toLowerCase()}`} title={technician.Status}>
+                                <span className="tm-tech-status-icon">
+                                  {technician.Status === 'Disponible' && <CheckCircle size={14} />}
+                                  {technician.Status === 'Ocupado' && !technician.Status_Reason && <AlertCircle size={14} />}
+                                  {technician.Status === 'Ocupado' && technician.Status_Reason === 'ticket' && <Ticket size={14} />}
+                                  {technician.Status === 'Ocupado' && technician.Status_Reason === 'lunch' && <Coffee size={14} />}
+                                  {technician.Status === 'Ocupado' && technician.Status_Reason === 'schedule' && <Clock size={14} />}
+                                  {technician.Status === 'Inactivo' && <XCircle size={14} />}
+                                </span>
+                                <span className="tm-tech-status-tooltip">
+                                  {technician.Status}
+                                  {technician.Status_Reason ? ` — ${getStatusReasonLabel(technician.Status_Reason)}` : ''}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="tm-tech-info-item">
+                              <span className="tm-tech-info-label">Horario Hoy</span>
+                              <span className="tm-tech-info-value tm-tech-schedule">
+                                <Clock size={12} />
+                                {todayScheduleText}
+                              </span>
+                            </div>
+
+                            <div className="tm-tech-info-item">
+                              <span className="tm-tech-info-label">Almuerzo</span>
+                              {technician.Lunch_Block ? (
+                                <span className="tm-tech-info-value tm-tech-lunch">
+                                  <Coffee size={12} style={{ color: '#d97706' }} />
+                                  {technician.Lunch_Block.name} ({technician.Lunch_Block.hours})
+                                </span>
+                              ) : (
+                                <span className="tm-tech-info-value tm-tech-lunch--none">Sin asignar</span>
+                              )}
+                            </div>
+
+                            <div className="tm-tech-info-item">
+                              <span className="tm-tech-info-label">Tickets</span>
+                              <span className="tm-tech-info-value">
+                                <span className="tm-tech-tickets-val">{technician.Tickets_Assigned || 0}</span>
+                                <span className="tm-tech-tickets-solved"> · {technician.Tickets_Resolved || 0} resueltos</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="tm-tech-actions">
+                            <button
+                              className="tm-tech-action-btn"
+                              onClick={() => {
+                                setSelectedTechnician(technician);
+                                setShowDetailModal(true);
+                              }}
+                              title="Ver detalles"
+                            >
+                              <Eye size={14} />
+                            </button>
+                            {!isTechnician() || technician.Fk_Users === user?.id ? (
+                              <>
+                                <button
+                                  className="tm-tech-action-btn"
+                                  onClick={() => handleEdit(technician)}
+                                  title="Editar"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                {!isTechnician() && (
                                   <button
-                                    className="tm-action-btn"
+                                    className="tm-tech-action-btn danger"
                                     onClick={() => {
                                       setSelectedTechnician(technician);
-                                      setShowDetailModal(true);
+                                      setShowDeleteModal(true);
                                     }}
-                                    title="Ver detalles"
+                                    title="Eliminar"
                                   >
-                                    <Eye size={15} />
+                                    <Trash2 size={14} />
                                   </button>
-                                  {!isTechnician() || technician.Fk_Users === user?.id ? (
-                                    <>
-                                      <button
-                                        className="tm-action-btn"
-                                        onClick={() => handleEdit(technician)}
-                                        title="Editar"
-                                      >
-                                        <Edit size={15} />
-                                      </button>
-                                      {!isTechnician() && (
-                                        <button
-                                          className="tm-action-btn danger"
-                                          onClick={() => {
-                                            setSelectedTechnician(technician);
-                                            setShowDeleteModal(true);
-                                          }}
-                                          title="Eliminar"
-                                        >
-                                          <Trash2 size={15} />
-                                        </button>
-                                      )}
-                                    </>
-                                  ) : null}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                )}
+                              </>
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}

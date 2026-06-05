@@ -23,7 +23,7 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(diffMins / 1440)}d`;
 }
 
-export function TicketCard({ ticket, onPress, index = 0 }: TicketCardProps) {
+function TicketCardInner({ ticket, onPress, index = 0 }: TicketCardProps) {
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(16)).current;
 
@@ -35,10 +35,11 @@ export function TicketCard({ ticket, onPress, index = 0 }: TicketCardProps) {
   }, []);
 
   const bar = PRIORITY_BAR[ticket.system_priority];
+  const handlePress = () => onPress(ticket);
 
   return (
     <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
-      <TouchableOpacity style={styles.card} onPress={() => onPress(ticket)} activeOpacity={0.6}>
+      <TouchableOpacity style={styles.card} onPress={handlePress} activeOpacity={0.6}>
         <View style={[styles.leftBar, { backgroundColor: bar }]} />
         <View style={styles.body}>
           <View style={styles.top}>
@@ -62,6 +63,8 @@ export function TicketCard({ ticket, onPress, index = 0 }: TicketCardProps) {
     </Animated.View>
   );
 }
+
+export const TicketCard = React.memo(TicketCardInner);
 
 function Meta({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (

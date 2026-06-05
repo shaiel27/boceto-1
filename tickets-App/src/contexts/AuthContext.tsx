@@ -2,6 +2,7 @@ import React, { createContext, useReducer, useEffect, useCallback, useMemo } fro
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types/user';
 import { loginUser, getMe } from '../services/authService';
+import { prewarmBienesCache } from '../services/bienesService';
 
 interface AuthState {
   user: User | null;
@@ -92,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (result.success && result.user) {
             await AsyncStorage.setItem('auth_user', JSON.stringify(result.user));
             dispatch({ type: 'RESTORE_TOKEN', payload: { user: result.user, token } });
+            prewarmBienesCache();
           } else {
             await AsyncStorage.removeItem('auth_token');
             await AsyncStorage.removeItem('auth_user');
@@ -115,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await AsyncStorage.setItem('auth_token', result.token);
       await AsyncStorage.setItem('auth_user', JSON.stringify(result.user));
       dispatch({ type: 'LOGIN_SUCCESS', payload: { user: result.user, token: result.token } });
+      prewarmBienesCache();
     } else {
       const message = result.message || 'Error al iniciar sesión';
       dispatch({ type: 'LOGIN_FAILURE', payload: message });

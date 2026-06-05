@@ -483,3 +483,12 @@ INSERT INTO Technician_Schedules (Fk_Technician, Day_Of_Week, Work_Start_Time, W
 (2, 'Miercoles', '08:00:00', '17:00:00'),
 (2, 'Jueves', '08:00:00', '17:00:00'),
 (2, 'Viernes', '08:00:00', '17:00:00');
+
+-- Caché de bienes (SIFA) para acelerar consultas repetidas
+CREATE TABLE IF NOT EXISTS bienes_cache (
+    query_key VARCHAR(64) PRIMARY KEY,
+    response MEDIUMTEXT NOT NULL,
+    is_lookup TINYINT(1) NOT NULL DEFAULT 0,
+    cached_at INT UNSIGNED NOT NULL,
+    INDEX idx_cached (cached_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -22,19 +22,10 @@ import { sileo } from 'sileo';
 import './TicketForm.css';
 import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { fetchBienes } from '../../services/bienesApi';
+import { findBienByCode } from '../../services/bienesApi';
 import Header from '../layout/Header';
 
 const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
-
-function normalizePropertyCode(code: string): string {
-  const t = (code || '').trim();
-  const numOnly = /^\d+$/.test(t);
-  if (numOnly) return String(Number(t));
-  const prefixMatch = t.match(/^([A-Za-z]+[_-]?)(\d+)$/);
-  if (prefixMatch) return prefixMatch[1] + String(Number(prefixMatch[2]));
-  return t;
-}
 
 const OTHER_PROBLEM_ID = '-1';
 
@@ -171,11 +162,7 @@ const TicketForm: React.FC = () => {
     setBienLookupState('loading');
     bienDebounceRef.current = window.setTimeout(async () => {
       try {
-        const res = await fetchBienes({ query: code, limit: 10 });
-        const items: any[] = res.results || [];
-        const normCode = normalizePropertyCode(code);
-        const exact = items.find((it: any) => normalizePropertyCode(String(it.codact || '')) === normCode);
-        const chosen = exact ?? items[0];
+        const chosen = await findBienByCode(code);
         if (!chosen) {
           setMatchedBien(null);
           setBienLookupState('nomatch');

@@ -6,18 +6,41 @@ Sistema integral para la gestión de solicitudes de soporte técnico de la Alcal
 
 ```
 boceto-1/
-├── tickets-backend/     API REST PHP (backend)
-├── tickets-frontend/    Aplicación web React (frontend)
-├── tickets-App/         Aplicación móvil React Native / Expo
-├── database-scripts/    Scripts SQL de esquema y datos
-├── docs/                Documentación del sistema
-└── .agents/             Configuración de skills de IA
+├── tickets-backend/        API REST PHP (backend, puerto 8000)
+│   ├── src/Services/       Servicios
+│   ├── src/controllers/    Controladores
+│   ├── src/models/         Modelos (ServiceRequest, etc.)
+│   ├── public/index.php    Router único + proxy bienes
+│   └── router.php          Entry point para PHP built-in server
+├── tickets-frontend/       Aplicación web React (puerto 3000)
+│   ├── src/components/     Componentes por rol
+│   ├── src/services/       API clients (bienesApi, api)
+│   └── src/setupProxy.js   Proxy CRA → XAMPP para bienes
+├── tickets-App/            App móvil React Native / Expo
+│   ├── app/(tabs)/         Pantallas (admin, requester, technician)
+│   └── src/services/       API clients + bienesService
+├── database-scripts/       SQL de esquema y datos
+├── docs/                   Documentación
+└── .agents/                Skills de IA
 ```
+
+### Dependencia externa: SIFA (XAMPP, puerto 8012)
+
+El sistema consulta bienes patrimoniales desde la API SIFA alojada en XAMPP:
+
+```
+tickets-backend (8000) ──proxy──→ XAMPP/SIFA (8012)
+                                  └── /bienes/bienes.php?query=...
+                                  └── /bienes/unidades.php?tabla=...
+```
+
+El frontend web en desarrollo usa `setupProxy.js` para acceder a SIFA directamente en `localhost:8012`. El backend PHP actúa como proxy para la app móvil y para producción web.
 
 ## Requisitos
 
 - **PHP** 8.1+ con extensiones `pdo_mysql`, `mbstring`
 - **MySQL** 8.0+ / MariaDB 10.5+
+- **XAMPP** con Apache en puerto 8012 (para API SIFA de bienes)
 - **Node.js** 18+ (para frontend y app móvil)
 - **Composer** (opcional, el backend no lo requiere)
 
@@ -42,10 +65,10 @@ El archivo `database.sql` incluye el esquema completo y datos de prueba. Tambié
 
 ```bash
 cd tickets-backend
-php -S localhost:8000 -t public
+php -S 0.0.0.0:8000 router.php
 ```
 
-El backend corre en `http://localhost:8000`. Sin autenticación, algunos endpoints requieren token JWT.
+El backend corre en `http://localhost:8000`. Usa `router.php` (no `-t public`) para que el proxy de bienes y el enrutamiento funcionen correctamente.
 
 Variables de entorno (`.env`):
 
@@ -66,7 +89,7 @@ npm install
 npm start
 ```
 
-Se abre en `http://localhost:3000`.
+Se abre en `http://localhost:3000`. El proxy de desarrollo (`setupProxy.js`) redirige `/api/bienes` y `/api/unidades` a XAMPP en `localhost:8012`.
 
 ### 4. App móvil (Expo)
 
@@ -75,6 +98,8 @@ cd tickets-App
 npm install
 npx expo start
 ```
+
+La app se conecta al backend vía `API_BASE_URL` definido en `src/constants/config.ts`. Ajusta la IP según tu red local.
 
 ## Usuarios de prueba
 
@@ -104,6 +129,21 @@ npx expo start
 | POST | /api/users | Crear usuario |
 | GET | /api/problem-report | Reporte de problemas |
 | GET | /api/weekly-report | Reporte semanal de técnicos |
+| GET | /api/bienes | **Proxy a SIFA** — consulta de bienes patrimoniales |
+| GET | /api/unidades | **Proxy a SIFA** — unidades administrativas |
+
+### Endpoint de Bienes
+
+Proxy transparente directo a la API SIFA en XAMPP (`127.0.0.1:8012/bienes/bienes.php`). Sin overhead de servidor — la caché se maneja exclusivamente en el frontend:
+
+| Capa | Mecanismo | TTL general | TTL lookups |
+|---|---|---|---|
+| Web (`bienesApi.ts`) | `Map` en memoria + `findBienByCode` | 5 min | 30 min |
+| Móvil (`bienesService.ts`) | `Map` en memoria + `findBienByCode` | 5 min | 30 min |
+
+`findBienByCode` incluye caché negativo (nulls) para códigos no encontrados.
+
+Parámetros: `?query=`, `?page=`, `?limit=`
 
 ## Roles del sistema
 
@@ -124,6 +164,7 @@ npx expo start
 | Tiempo real | SSE (Server-Sent Events) |
 | PDF | jsPDF (frontend) |
 | Estilos | CSS personalizado + variables CSS |
+| Bienes (SIFA) | Proxy PHP → XAMPP, caché en archivos |
 
 ## Licencia
 

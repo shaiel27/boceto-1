@@ -224,7 +224,7 @@ export async function createTicket(ticketData: {
   Description: string;
   System_Priority?: string;
 }): Promise<{ success: boolean; ticket_id?: number; technician_assigned?: boolean; technician_name?: string; message?: string }> {
-  const response = await apiClient.post('/api/tickets', ticketData);
+  const response = await apiClient.post('/api/tickets', ticketData, 30000);
   if (!response.success) return { success: false, message: response.message };
   return {
     success: true,

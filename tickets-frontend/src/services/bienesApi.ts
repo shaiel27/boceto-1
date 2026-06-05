@@ -1,4 +1,43 @@
 const BIENES_URL = '/api/bienes';
+const MEM_TTL = 300_000; // 5 min general queries
+const LOOKUP_TTL = 1_800_000; // 30 min code lookups (descriptions don't change)
+
+const memCache = new Map<string, { data: BienesResponse; ts: number }>();
+
+function memKey(params: BienesParams): string {
+  return `${params.page ?? ''}|${params.limit ?? ''}|${params.query ?? ''}`;
+}
+
+export function clearBienesCache(): void {
+  memCache.clear();
+  lookupCache.clear();
+}
+
+const lookupCache = new Map<string, { data: Record<string, unknown> | null; ts: number }>();
+
+export async function findBienByCode(code: string): Promise<Record<string, unknown> | null> {
+  const trimmed = (code || '').trim();
+  if (!trimmed) return null;
+
+  const normKey = normalizePropertyCode(trimmed);
+  const cached = lookupCache.get(normKey);
+  if (cached && Date.now() - cached.ts < LOOKUP_TTL) {
+    return cached.data;
+  }
+
+  const r = await fetchBienes({ query: trimmed, limit: 25 });
+  if (r.error || r.results.length === 0) {
+    lookupCache.set(normKey, { data: null, ts: Date.now() });
+    return null;
+  }
+  const norm = normalizePropertyCode(trimmed);
+  const exact = r.results.find(
+    (it: any) => normalizePropertyCode(String(it.codact || '')) === norm
+  );
+  const result = (exact ?? r.results[0] ?? null) as Record<string, unknown> | null;
+  lookupCache.set(normKey, { data: result, ts: Date.now() });
+  return result;
+}
 
 export function normalizePropertyCode(code: string): string {
   const t = (code || '').trim();
@@ -26,6 +65,12 @@ export interface BienesParams {
 export async function fetchBienes(
   params: BienesParams = {}
 ): Promise<BienesResponse> {
+  const key = memKey(params);
+  const cached = memCache.get(key);
+  if (cached && Date.now() - cached.ts < MEM_TTL) {
+    return cached.data;
+  }
+
   const p: Record<string, string> = {};
 
   if (params.page !== undefined) p.page = String(params.page);
@@ -58,7 +103,11 @@ export async function fetchBienes(
     const total = Number(data.total_filas ?? data.total ?? results.length);
     const page = Number(data.page ?? params.page ?? 1);
     const limit = Number(data.limit ?? params.limit ?? 12);
-    return { total, page, limit, results };
+    const result = { total, page, limit, results };
+    if (results.length > 0) {
+      memCache.set(key, { data: result, ts: Date.now() });
+    }
+    return result;
   } catch {
     return { total: 0, page: 1, limit: 12, results: [], error: 'Respuesta no es JSON valido' };
   }

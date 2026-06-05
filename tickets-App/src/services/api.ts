@@ -4,11 +4,12 @@ import { ApiResponse } from '../types/api';
 
 const FETCH_TIMEOUT = 8000;
 
-function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+function fetchWithTimeout(url: string, options: RequestInit, timeout?: number): Promise<Response> {
+  const t = timeout ?? FETCH_TIMEOUT;
   return Promise.race([
     fetch(url, options),
     new Promise<Response>((_, reject) =>
-      setTimeout(() => reject(new Error('TIMEOUT')), FETCH_TIMEOUT),
+      setTimeout(() => reject(new Error('TIMEOUT')), t),
     ),
   ]);
 }
@@ -51,13 +52,13 @@ class ApiClient {
     }
   }
 
-  async post<T = any>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+  async post<T = any>(endpoint: string, body?: any, timeout?: number): Promise<ApiResponse<T>> {
     try {
       const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
         headers: await this.headers(),
         body: body ? JSON.stringify(body) : undefined,
-      });
+      }, timeout);
 
       if (response.status === 401) {
         return { success: false, message: 'Sesión expirada. Inicie sesión nuevamente.' };

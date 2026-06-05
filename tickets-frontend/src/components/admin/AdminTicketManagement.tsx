@@ -31,7 +31,7 @@ import {
 } from 'lucide-react';
 import './AdminTicketManagement.css';
 import ApiService, { API_BASE_URL } from '../../services/api';
-import { fetchBienes, normalizePropertyCode } from '../../services/bienesApi';
+import { findBienByCode } from '../../services/bienesApi';
 
 interface TicketTechnician {
   readonly ID_Ticket_Technician: string;
@@ -159,14 +159,10 @@ const AdminTicketManagement: React.FC = () => {
 
   useEffect(() => {
     if (!selectedTicket?.Property_Number) { setBienDesc(null); return; }
+    setBienDesc(null);
     let cancelled = false;
-    fetchBienes({ query: selectedTicket.Property_Number, limit: 10 }).then((r) => {
-      if (cancelled) return;
-      const items = r.results || [];
-      const norm = normalizePropertyCode(selectedTicket.Property_Number!);
-      const exact = items.find((it: any) => normalizePropertyCode(String(it.codact || '')) === norm);
-      const chosen = exact ?? items[0];
-      setBienDesc(chosen ? String((chosen as any).denact || '') : null);
+    findBienByCode(selectedTicket.Property_Number).then((b) => {
+      if (!cancelled) setBienDesc(b ? String((b as any).denact || '') : null);
     });
     return () => { cancelled = true; };
   }, [selectedTicket?.Property_Number, selectedTicket]);

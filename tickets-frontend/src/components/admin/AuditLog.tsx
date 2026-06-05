@@ -20,8 +20,10 @@ import {
   Trash2,
   Users,
   Building,
-  ChevronDown,
-  Activity
+  Activity,
+  RefreshCw,
+  AlertTriangle,
+  Globe
 } from 'lucide-react';
 import { ApiService } from '../../services/api';
 import './AuditLog.css';
@@ -54,15 +56,15 @@ const EVENT_TYPES: Record<string, { label: string; icon: React.ReactNode; color:
   login: { label: 'Inicio de Sesión', icon: <LogIn size={14} />, color: '#3b82f6' },
   logout: { label: 'Cierre de Sesión', icon: <LogOut size={14} />, color: '#64748b' },
   create_ticket: { label: 'Ticket Creado', icon: <FileText size={14} />, color: '#10b981' },
-  update_ticket: { label: 'Ticket Actualizado', icon: <Edit size={14} />, color: '#f59e0b' },
+  update_ticket: { label: 'Ticket Actualizado', icon: <Edit size={14} />, color: '#d97706' },
   close_ticket: { label: 'Ticket Cerrado', icon: <CheckCircle size={14} />, color: '#16a34a' },
   assign_technician: { label: 'Técnico Asignado', icon: <Users size={14} />, color: '#8b5cf6' },
   unassign_technician: { label: 'Técnico Desasignado', icon: <Users size={14} />, color: '#ef4444' },
   create_user: { label: 'Usuario Creado', icon: <Plus size={14} />, color: '#10b981' },
-  update_user: { label: 'Usuario Actualizado', icon: <Edit size={14} />, color: '#f59e0b' },
+  update_user: { label: 'Usuario Actualizado', icon: <Edit size={14} />, color: '#d97706' },
   delete_user: { label: 'Usuario Eliminado', icon: <Trash2 size={14} />, color: '#ef4444' },
   create_office: { label: 'Oficina Creada', icon: <Building size={14} />, color: '#10b981' },
-  update_office: { label: 'Oficina Actualizada', icon: <Edit size={14} />, color: '#f59e0b' },
+  update_office: { label: 'Oficina Actualizada', icon: <Edit size={14} />, color: '#d97706' },
   delete_office: { label: 'Oficina Eliminada', icon: <Trash2 size={14} />, color: '#ef4444' },
   change_password: { label: 'Contraseña Cambiada', icon: <Shield size={14} />, color: '#8b5cf6' },
   system_config: { label: 'Configuración del Sistema', icon: <Settings size={14} />, color: '#06b6d4' },
@@ -176,31 +178,13 @@ const AuditLog: React.FC = () => {
     <div className="audit-page">
       {/* Header */}
       <header className="audit-header">
-        <div className="audit-header-content">
-          <div className="audit-title-section">
-            <h1 className="audit-title">
-              <Shield size={28} />
-              Auditoría del Sistema
-            </h1>
-            <p className="audit-description">Registro detallado de todos los eventos y movimientos del sistema</p>
+        <div className="audit-title-group">
+          <div className="audit-title-icon">
+            <Shield />
           </div>
-          <div className="audit-header-stats">
-            <div className="audit-stat">
-              <span className="audit-stat-n">{stats.total}</span>
-              <span className="audit-stat-l">Total Eventos</span>
-            </div>
-            <div className="audit-stat">
-              <span className="audit-stat-n">{stats.warning}</span>
-              <span className="audit-stat-l">Advertencias</span>
-            </div>
-            <div className="audit-stat warn">
-              <span className="audit-stat-n">{stats.critical}</span>
-              <span className="audit-stat-l">Críticos</span>
-            </div>
-            <div className="audit-stat">
-              <span className="audit-stat-n">{stats.logins}</span>
-              <span className="audit-stat-l">Accesos</span>
-            </div>
+          <div className="audit-titles">
+            <h1>Auditoría del Sistema</h1>
+            <p>Registro de eventos y movimientos del sistema</p>
           </div>
         </div>
         <div className="audit-header-actions">
@@ -209,16 +193,64 @@ const AuditLog: React.FC = () => {
             Panel Admin
           </button>
           <button className="audit-btn audit-btn--sec" onClick={loadData}>
-            <Clock size={15} />
+            <RefreshCw size={15} />
             Actualizar
           </button>
         </div>
       </header>
 
+      {/* Stats */}
+      <div className="audit-stats">
+        <div className="audit-stat-card">
+          <div className="audit-stat-icon audit-stat-icon--total"><Activity /></div>
+          <div className="audit-stat-body">
+            <span className="audit-stat-num">{stats.total}</span>
+            <span className="audit-stat-label">Total Eventos</span>
+          </div>
+        </div>
+        <div className="audit-stat-card">
+          <div className="audit-stat-icon audit-stat-icon--warning"><AlertTriangle /></div>
+          <div className="audit-stat-body">
+            <span className="audit-stat-num">{stats.warning}</span>
+            <span className="audit-stat-label">Advertencias</span>
+          </div>
+        </div>
+        <div className="audit-stat-card">
+          <div className="audit-stat-icon audit-stat-icon--critical"><AlertCircle /></div>
+          <div className="audit-stat-body">
+            <span className="audit-stat-num">{stats.critical}</span>
+            <span className="audit-stat-label">Críticos</span>
+          </div>
+        </div>
+        <div className="audit-stat-card">
+          <div className="audit-stat-icon audit-stat-icon--logins"><LogIn /></div>
+          <div className="audit-stat-body">
+            <span className="audit-stat-num">{stats.logins}</span>
+            <span className="audit-stat-label">Accesos</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Severity Legend */}
+      <div className="audit-legend">
+        <span className="audit-legend-item">
+          <span className="audit-legend-dot audit-legend-dot--info" />
+          Información
+        </span>
+        <span className="audit-legend-item">
+          <span className="audit-legend-dot audit-legend-dot--warning" />
+          Advertencia
+        </span>
+        <span className="audit-legend-item">
+          <span className="audit-legend-dot audit-legend-dot--critical" />
+          Crítico
+        </span>
+      </div>
+
       {/* Filters */}
       <div className="audit-filters">
-        <div className="audit-search">
-          <Search size={16} />
+        <div className="audit-search-wrap">
+          <Search className="search-icon" />
           <input
             type="text"
             placeholder="Buscar por usuario, descripción, entidad o IP..."
@@ -231,7 +263,7 @@ const AuditLog: React.FC = () => {
             </button>
           )}
         </div>
-        <div className="audit-filter-group">
+        <div className="audit-filter-selects">
           <select value={eventTypeFilter} onChange={(e) => { setEventTypeFilter(e.target.value); setCurrentPage(1); }}>
             <option value="all">Todos los tipos</option>
             {Object.entries(EVENT_TYPES).map(([key, val]) => (
@@ -261,58 +293,68 @@ const AuditLog: React.FC = () => {
         </div>
       ) : auditLogs.length === 0 ? (
         <div className="audit-empty">
-          <Shield size={48} />
+          <Shield className="empty-icon" />
           <h3>Sin resultados</h3>
           <p>No se encontraron eventos con los filtros seleccionados</p>
         </div>
       ) : (
         <>
-          <div className="audit-table-wrap">
-            <table className="audit-table">
-              <thead>
-                <tr>
-                  <th>Fecha/Hora</th>
-                  <th>Tipo</th>
-                  <th>Usuario</th>
-                  <th>Acción</th>
-                  <th>Entidad</th>
-                  <th>IP</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map(entry => {
-                  const typeInfo = formatEventType(entry);
-                  return (
-                    <tr key={entry.id} className={`audit-row audit-row--${entry.severity}`}>
-                      <td className="audit-cell-datetime">
-                        {formatDate(entry.eventDate)}
-                        <span className="dt-time"> {formatTime(entry.eventDate)}</span>
-                      </td>
-                      <td>
-                        <span className="audit-type-badge" style={{ backgroundColor: typeInfo.color + '18', color: typeInfo.color, borderColor: typeInfo.color + '30' }}>
-                          {typeInfo.icon}
-                          {typeInfo.label}
+          <div className="audit-event-list">
+            {auditLogs.map(entry => {
+              const typeInfo = formatEventType(entry);
+              return (
+                <div
+                  key={entry.id}
+                  className={`audit-event-card audit-event-card--${entry.severity}`}
+                >
+                  <div className="audit-card-top">
+                    <div className="audit-card-datetime">
+                      <Calendar size={13} />
+                      <span className="audit-card-date">{formatDate(entry.eventDate)}</span>
+                      <Clock size={13} />
+                      <span className="audit-card-time">{formatTime(entry.eventDate)}</span>
+                    </div>
+                    <div className="audit-card-right">
+                      <span className={`audit-severity-badge audit-severity-badge--${entry.severity}`}>
+                        {entry.severity === 'critical' ? 'Crítico' : entry.severity === 'warning' ? 'Advertencia' : 'Info'}
+                      </span>
+                      <button className="audit-view-btn" onClick={() => handleViewDetail(entry)} title="Ver detalle">
+                        <Eye size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="audit-card-middle">
+                    <span className="audit-type-badge" style={{
+                      backgroundColor: typeInfo.color + '18',
+                      color: typeInfo.color,
+                      borderColor: typeInfo.color + '30'
+                    }}>
+                      {typeInfo.icon}
+                      {typeInfo.label}
+                    </span>
+                    <span className="audit-card-user">
+                      <User size={12} />
+                      {entry.userName}
+                      <span className="audit-card-role">{entry.userRole}</span>
+                    </span>
+                  </div>
+
+                  <div className="audit-card-body">
+                    <span className="audit-card-desc">{entry.description}</span>
+                    <div className="audit-card-meta">
+                      {entry.entityDescription && (
+                        <span className="audit-card-entity">
+                          <FileText size={11} />
+                          {entry.entityDescription}
                         </span>
-                      </td>
-                      <td className="audit-cell-user">
-                        <User size={12} />
-                        {entry.userName}
-                        <span className="audit-user-role">{entry.userRole}</span>
-                      </td>
-                      <td className="audit-cell-desc">{entry.description}</td>
-                      <td className="audit-cell-entity">{entry.entityDescription}</td>
-                      <td className="audit-cell-ip">{entry.ipAddress}</td>
-                      <td>
-                        <button className="audit-view-btn" onClick={() => handleViewDetail(entry)} title="Ver detalle">
-                          <Eye size={15} />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      )}
+                      <span className="audit-card-ip">{entry.ipAddress}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Pagination */}
@@ -329,15 +371,27 @@ const AuditLog: React.FC = () => {
                 >
                   Anterior
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <button
-                    key={page}
-                    className={`audit-pag-btn ${page === currentPage ? 'active' : ''}`}
-                    onClick={() => setCurrentPage(page)}
-                  >
-                    {page}
-                  </button>
-                ))}
+                {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                  let page: number;
+                  if (totalPages <= 7) {
+                    page = i + 1;
+                  } else if (currentPage <= 4) {
+                    page = i + 1;
+                  } else if (currentPage >= totalPages - 3) {
+                    page = totalPages - 6 + i;
+                  } else {
+                    page = currentPage - 3 + i;
+                  }
+                  return (
+                    <button
+                      key={page}
+                      className={`audit-pag-btn ${page === currentPage ? 'active' : ''}`}
+                      onClick={() => setCurrentPage(page)}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
                 <button
                   className="audit-pag-btn"
                   disabled={currentPage === totalPages}
@@ -357,7 +411,7 @@ const AuditLog: React.FC = () => {
           <div className="audit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="audit-modal-header">
               <div className="audit-modal-title">
-                <Shield size={22} />
+                <Shield />
                 <h2>Detalle del Evento</h2>
               </div>
               <button className="audit-modal-close" onClick={() => setShowDetailModal(false)}>
@@ -377,14 +431,18 @@ const AuditLog: React.FC = () => {
                       </div>
                       <div className="audit-detail-section">
                         <h4><Activity size={14} /> Tipo de Evento</h4>
-                        <span className="audit-type-badge" style={{ backgroundColor: typeInfo.color + '18', color: typeInfo.color, borderColor: typeInfo.color + '30' }}>
+                        <span className="audit-type-badge" style={{
+                          backgroundColor: typeInfo.color + '18',
+                          color: typeInfo.color,
+                          borderColor: typeInfo.color + '30'
+                        }}>
                           {typeInfo.icon}
                           {typeInfo.label}
                         </span>
                       </div>
                       <div className="audit-detail-section">
                         <h4><AlertCircle size={14} /> Severidad</h4>
-                        <span className={`audit-severity audit-severity--${selectedEntry.severity}`}>
+                        <span className={`audit-severity-badge audit-severity-badge--${selectedEntry.severity}`}>
                           {selectedEntry.severity === 'critical' ? 'Crítico' : selectedEntry.severity === 'warning' ? 'Advertencia' : 'Información'}
                         </span>
                       </div>
@@ -413,8 +471,8 @@ const AuditLog: React.FC = () => {
 
                     <div className="audit-detail-grid">
                       <div className="audit-detail-section">
-                        <h4><GlobeIcon size={14} /> Dirección IP</h4>
-                        <code className="audit-ip">{selectedEntry.ipAddress}</code>
+                        <h4><Globe size={14} /> Dirección IP</h4>
+                        <code className="audit-ip-code">{selectedEntry.ipAddress}</code>
                       </div>
                       <div className="audit-detail-section audit-detail-section--full">
                         <h4>User Agent</h4>
@@ -446,13 +504,5 @@ const AuditLog: React.FC = () => {
     </div>
   );
 };
-
-const GlobeIcon = ({ size }: { size: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="10" />
-    <line x1="2" y1="12" x2="22" y2="12" />
-    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-  </svg>
-);
 
 export default AuditLog;

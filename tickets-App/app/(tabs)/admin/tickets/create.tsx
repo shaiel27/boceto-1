@@ -121,7 +121,13 @@ export default function CreateTicketScreen() {
       });
       if (result.success) {
         setDone(true);
-        setTimeout(() => router.back(), 2000);
+        setTimeout(() => {
+          if (router.canGoBack()) {
+            router.back();
+          } else {
+            router.replace('/(tabs)/admin');
+          }
+        }, 2000);
       } else {
         toast.showToast({ title: 'Error', message: result.message || 'No se pudo crear el ticket', type: 'error' });
       }

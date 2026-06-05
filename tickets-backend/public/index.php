@@ -208,7 +208,7 @@ switch ($path) {
         $ctx = stream_context_create([
             'http' => [
                 'method' => $method,
-                'header' => "Accept: application/json\r\n",
+                'header' => "Accept: application/json\r\nConnection: keep-alive\r\n",
                 'timeout' => 30,
             ],
         ]);
@@ -222,6 +222,9 @@ switch ($path) {
                 'total' => 0,
             ]);
             exit;
+        }
+        if (ini_get('zlib.output_compression') === '0' && extension_loaded('zlib')) {
+            ob_start('ob_gzhandler');
         }
         echo $body;
         exit;
@@ -254,4 +257,4 @@ switch ($path) {
         ]);
         break;
 }
-?>
+
