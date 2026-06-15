@@ -1,7 +1,7 @@
 import { apiClient } from './api';
-import { Ticket, TicketComment, TimelineEvent } from '../types/ticket';
-import { BackendTicket, BackendComment, BackendTimeline } from '../types/api';
-import { mapBackendTicket, mapBackendComment, mapBackendTimeline } from '../utils/mappers';
+import { Ticket, TicketComment, TicketAttachment, TimelineEvent } from '../types/ticket';
+import { BackendTicket, BackendComment, BackendTimeline, BackendAttachment } from '../types/api';
+import { mapBackendTicket, mapBackendComment, mapBackendTimeline, mapBackendAttachment } from '../utils/mappers';
 
 export interface TicketsResult {
   success: boolean;
@@ -14,6 +14,7 @@ export interface TicketResult {
   ticket?: Ticket;
   comments?: TicketComment[];
   timeline?: TimelineEvent[];
+  ticket_attachments?: TicketAttachment[];
   message?: string;
 }
 
@@ -25,7 +26,7 @@ export async function getTechnicianTickets(): Promise<TicketsResult> {
   }
 
   const rawTickets: BackendTicket[] = response.data || [];
-  const tickets = rawTickets.map(mapBackendTicket);
+  const tickets = rawTickets.map((t) => mapBackendTicket(t));
 
   return { success: true, tickets };
 }
@@ -38,7 +39,7 @@ export async function getMyTickets(): Promise<TicketsResult> {
   }
 
   const rawTickets: BackendTicket[] = response.data || [];
-  const tickets = rawTickets.map(mapBackendTicket);
+  const tickets = rawTickets.map((t) => mapBackendTicket(t));
 
   return { success: true, tickets };
 }
@@ -65,6 +66,13 @@ export async function getTicketDetail(
     return { success: false, message: 'Ticket no encontrado' };
   }
 
+  let ticketAttachments: TicketAttachment[] = [];
+  if (commentsRes.success && (commentsRes as any).ticket_attachments) {
+    ticketAttachments = ((commentsRes as any).ticket_attachments as BackendAttachment[]).map(mapBackendAttachment);
+    ticket.ticket_attachments = ticketAttachments;
+    ticket.has_attachments = ticketAttachments.length > 0;
+  }
+
   if (commentsRes.success && commentsRes.data) {
     ticket.comments = (commentsRes.data as BackendComment[]).map(mapBackendComment);
   }
@@ -73,7 +81,7 @@ export async function getTicketDetail(
     ticket.timeline = (timelineRes.data as BackendTimeline[]).map(mapBackendTimeline);
   }
 
-  return { success: true, ticket, comments: ticket.comments, timeline: ticket.timeline };
+  return { success: true, ticket, comments: ticket.comments, timeline: ticket.timeline, ticket_attachments: ticketAttachments };
 }
 
 export async function updateTicketStatus(

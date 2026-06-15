@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagrama ER — Sistema de Tickets</title>
+<script src="https://d3js.org/d3.v7.min.js">
+</script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #e6e9ef;
+  color: #2c3e50;
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* ── Dot grid background ── */
+#canvas { display: block; }
+#canvas-bg {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(circle, #c8ced8 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.6;
+}
+
+/* ── Top bar ── */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 46px;
+  background: #f8f9fb;
+  border-bottom: 1px solid #d0d5dd;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+#header .brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+#header .brand-icon {
+  width: 24px; height: 24px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #4a90d9, #357abd);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+}
+#header h1 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a2332;
+  letter-spacing: -0.01em;
+}
+#header .sub {
+  font-size: 11px;
+  color: #7a8799;
+  margin-left: 16px;
+  display: inline;
+}
+#header .sub span { color: #4a90d9; font-weight: 600; }
+#header .controls { display: flex; gap: 6px; align-items: center; }
+
+#search-box {
+  padding: 5px 10px 5px 28px;
+  border-radius: 5px;
+  border: 1px solid #d0d5dd;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2399a7b9' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E") 8px center no-repeat;
+  color: #1a2332;
+  font-size: 12px;
+  width: 160px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+#search-box:focus { border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,0.15); }
+#search-box::placeholder { color: #99a7b9; }
+
+#header button, #header .btn {
+  padding: 4px 12px;
+  border-radius: 5px;
+  border: 1px solid #d0d5dd;
+  background: #fff;
+  color: #4a5568;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .12s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+#header button:hover, #header .btn:hover {
+  background: #f0f2f5;
+  border-color: #b0b8c4;
+  color: #1a2332;
+}
+#header .btn-active {
+  background: #e8f0fe;
+  border-color: #4a90d9;
+  color: #2b6cb0;
+}
+#header button svg { width: 14px; height: 14px; }
+
+/* ── Stats pill ── */
+#stats-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #7a8799;
+  background: #f0f2f5;
+  padding: 2px 10px;
+  border-radius: 12px;
+  border: 1px solid #e2e6ec;
+}
+#stats-pill strong { color: #4a5568; font-weight: 600; }
+
+/* ── Legend ── */
+#legend {
+  position: fixed;
+  bottom: 16px; left: 16px;
+  z-index: 1000;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  font-size: 11px;
+  line-height: 1.7;
+  backdrop-filter: blur(8px);
+  max-height: 70vh;
+  overflow-y: auto;
+  min-width: 160px;
+}
+#legend .title {
+  font-weight: 600;
+  color: #7a8799;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 4px;
+  border-bottom: 1px solid #e2e6ec;
+  padding-bottom: 4px;
+}
+#legend .group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 1px 0;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background .12s;
+}
+#legend .group:hover { background: #f0f2f5; }
+#legend .group .swatch {
+  width: 10px; height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+#legend .group .count {
+  color: #b0b8c4;
+  font-size: 10px;
+  margin-left: auto;
+}
+
+/* ── Tooltip ── */
+#tooltip {
+  position: fixed;
+  z-index: 2000;
+  background: #fff;
+  border: 1px solid #d0d5dd;
+  border-radius: 7px;
+  padding: 10px 14px;
+  font-size: 11px;
+  line-height: 1.5;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .12s;
+  max-width: 340px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+#tooltip.visible { opacity: 1; }
+#tooltip .tt-name {
+  font-weight: 600;
+  color: #1a2332;
+  font-size: 13px;
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#tooltip .tt-swatch {
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+#tooltip .tt-col {
+  display: flex;
+  gap: 6px;
+  color: #5a6a7e;
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+}
+#tooltip .tt-col .pk { color: #d4a017; font-weight: 600; }
+#tooltip .tt-col .fk { color: #4a90d9; }
+
+/* ── Detail panel ── */
+#detail-panel {
+  position: fixed;
+  right: -400px; top: 46px; bottom: 0;
+  width: 380px;
+  z-index: 1000;
+  background: #f8f9fb;
+  border-left: 1px solid #d0d5dd;
+  padding: 24px;
+  overflow-y: auto;
+  transition: right .3s cubic-bezier(.4,0,.2,1);
+  box-shadow: -8px 0 24px rgba(0,0,0,0.06);
+}
+#detail-panel.open { right: 0; }
+#detail-panel .close-btn {
+  position: absolute;
+  top: 12px; right: 14px;
+  background: none; border: none;
+  color: #99a7b9; cursor: pointer;
+  font-size: 22px; line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all .12s;
+}
+#detail-panel .close-btn:hover { background: #e2e6ec; color: #1a2332; }
+
+#detail-panel h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  letter-spacing: -0.01em;
+}
+#detail-panel .dp-group {
+  font-size: 12px;
+  color: #7a8799;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#detail-panel .dp-swatch { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+#detail-panel .dp-count {
+  font-size: 11px;
+  color: #99a7b9;
+  margin-bottom: 16px;
+}
+#detail-panel .dp-bar {
+  width: 100%; height: 3px;
+  border-radius: 2px;
+  margin-bottom: 14px;
+}
+#detail-panel table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e2e6ec;
+}
+#detail-panel th {
+  text-align: left;
+  padding: 6px 10px;
+  color: #7a8799;
+  font-weight: 600;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  background: #f0f2f5;
+  border-bottom: 1px solid #e2e6ec;
+}
+#detail-panel td {
+  padding: 5px 10px;
+  border-bottom: 1px solid #f0f2f5;
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  color: #2c3e50;
+}
+#detail-panel td:last-child { color: #7a8799; font-size: 9px; }
+#detail-panel tr:last-child td { border-bottom: none; }
+
+#detail-panel .badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+#detail-panel .badge-pk {
+  background: #fff8e1;
+  color: #b8860b;
+  border: 1px solid #f0d78c;
+}
+#detail-panel .badge-fk {
+  background: #e8f0fe;
+  color: #2b6cb0;
+  border: 1px solid #b8d4f0;
+}
+
+#detail-panel .dp-rels { margin-top: 20px; }
+#detail-panel .dp-rels h3 {
+  font-size: 10px;
+  font-weight: 600;
+  color: #7a8799;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 6px;
+}
+#detail-panel .dp-rel {
+  padding: 3px 0;
+  font-size: 11px;
+  color: #5a6a7e;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#detail-panel .dp-rel .rel-arrow {
+  color: #b0b8c4;
+  font-size: 10px;
+}
+#detail-panel .dp-rel strong { color: #2c3e50; }
+#detail-panel .dp-rel .rel-note {
+  color: #99a7b9;
+  font-size: 9px;
+  font-style: italic;
+}
+
+/* ── Group containers ── */
+.group-box {
+  fill: rgba(255,255,255,0.5);
+  stroke: #d0d5dd;
+  stroke-width: 1;
+  rx: 8; ry: 8;
+  stroke-dasharray: 5,3;
+}
+.group-box-label {
+  font-size: 10px;
+  font-weight: 600;
+  fill: #7a8799;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+/* ── Table nodes ── */
+.node { cursor: pointer; }
+.node .shadow {
+  fill: rgba(0,0,0,0.05);
+  rx: 6; ry: 6;
+}
+.node .body-bg {
+  fill: #fff;
+  rx: 6; ry: 6;
+  stroke-width: 1.5;
+  transition: stroke .15s, box-shadow .15s;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.06));
+}
+.node:hover .body-bg {
+  stroke-width: 2;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.1));
+}
+.node .header-bg {
+  rx: 6; ry: 6;
+}
+.node .table-name {
+  font-size: 11px;
+  font-weight: 700;
+  fill: #fff;
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  letter-spacing: -0.01em;
+}
+.node .col-row {
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 9.5px;
+  fill: #4a5568;
+  pointer-events: none;
+  dominant-baseline: middle;
+}
+.node .col-row.pk { fill: #b8860b; font-weight: 700; }
+.node .col-row.fk { fill: #2b6cb0; }
+.node .col-more {
+  font-size: 8px;
+  fill: #b0b8c4;
+  font-style: italic;
+  pointer-events: none;
+  dominant-baseline: middle;
+}
+.node .col-icon {
+  font-size: 8px;
+  pointer-events: none;
+  dominant-baseline: middle;
+}
+.node .sep-line {
+  stroke: #e2e6ec;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+/* ── Links ── */
+.link { cursor: pointer; }
+.link-path {
+  fill: none;
+  stroke-width: 1.8;
+  transition: stroke .15s, stroke-width .15s;
+}
+.link:hover .link-path { stroke-width: 2.8; }
+.link-label {
+  font-size: 7.5px;
+  fill: #7a8799;
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: middle;
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+}
+.link-note {
+  font-size: 6.5px;
+  fill: #b0b8c4;
+  font-style: italic;
+  pointer-events: none;
+  text-anchor: middle;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  #legend { display: none; }
+  #header .sub { display: none; }
+  #detail-panel { width: 100%; right: -100%; }
+  #search-box { width: 110px; }
+  #stats-pill { display: none; }
+}
+</style>
+</head>
+<body>
+
+<div id="canvas-bg"></div>
+
+<div id="header">
+  <div class="brand">
+    <div class="brand-icon">ER</div>
+    <div>
+      <h1>Diagrama ER — Sistema de Gestión de Tickets</h1>
+      <span class="sub">Boceto TI · <span id="table-count">0</span> tablas · <span id="rel-count">0</span> relaciones</span>
+    </div>
+  </div>
+  <div class="controls">
+    <span id="stats-pill">⏺ <strong id="tables-visible">0</strong>/<span id="tables-total">0</span> tablas</span>
+    <input id="search-box" type="text" placeholder="Buscar tabla..." />
+    <button id="btn-layout" class="btn-active" onclick="toggleLayout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Auto
+    </button>
+    <button onclick="resetZoom()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Reset
+    </button>
+    <button onclick="toggleLegend()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    </button>
+  </div>
+</div>
+
+<div id="legend">
+  <div class="title">Grupos</div>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="detail-panel">
+  <button class="close-btn" onclick="closeDetail()">&times;</button>
+  <div id="dp-content"></div>
+</div>
+
+<svg id="canvas"></svg>
+
+<script>
+// ══════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════
+
+const COLORS = {
+  usuarios:       { fill: '#3b7fd4', light: '#e8f0fe', border: '#b8d4f0' },
+  estructura:     { fill: '#38a169', light: '#e6f7ee', border: '#a8dbbc' },
+  tecnicos:       { fill: '#805ad5', light: '#f0e8ff', border: '#c8b8e8' },
+  permisos:       { fill: '#d69e2e', light: '#fff8e1', border: '#f0d78c' },
+  tickets:        { fill: '#e53e3e', light: '#ffe8e8', border: '#f0b8b8' },
+  auditoria:      { fill: '#d53f8c', light: '#ffe8f0', border: '#f0b8d0' },
+  notificaciones: { fill: '#319795', light: '#e6f7f5', border: '#a8d8d4' },
+  escalacion:     { fill: '#dd6b20', light: '#fff0e6', border: '#f0c8a8' },
+  asistencia:     { fill: '#5a67d8', light: '#e8e8ff', border: '#b8b8f0' },
+  cache:          { fill: '#9f7aea', light: '#f0e8ff', border: '#d0c0e8' },
+};
+
+const GROUPS = [
+  { id: 'usuarios',       name: 'Roles y Usuarios' },
+  { id: 'estructura',     name: 'Estructura Institucional' },
+  { id: 'tecnicos',       name: 'Técnicos y Servicios TI' },
+  { id: 'permisos',       name: 'Permisos y Sistemas' },
+  { id: 'tickets',        name: 'Tickets' },
+  { id: 'auditoria',      name: 'Auditoría' },
+  { id: 'notificaciones', name: 'Notificaciones' },
+  { id: 'escalacion',     name: 'Escalación' },
+  { id: 'asistencia',     name: 'Asistencia entre Técnicos' },
+  { id: 'cache',          name: 'Caché de Bienes (SIFA)' },
+];
+
+const TABLES = [
+  { id:'Role',                    name:'Role',                  group:'usuarios',      cols:[{n:'ID_Role',t:'INT PK'},{n:'Role',t:'VARCHAR(20)'},{n:'Description',t:'TEXT'}] },
+  { id:'Users',                   name:'Users',                 group:'usuarios',      cols:[{n:'ID_Users',t:'INT PK'},{n:'Fk_Role',t:'INT FK'},{n:'Email',t:'VARCHAR(100)'},{n:'Password',t:'VARCHAR(255)'},{n:'Username',t:'VARCHAR(100)'},{n:'Full_Name',t:'VARCHAR(200)'},{n:'is_system_user',t:'BOOLEAN'},{n:'last_login_at',t:'TIMESTAMP'},{n:'created_at',t:'TIMESTAMP'}] },
+  { id:'Boss',                    name:'Boss',                  group:'usuarios',      cols:[{n:'ID_Boss',t:'INT PK'},{n:'Name_Boss',t:'VARCHAR(200)'},{n:'Pronoun',t:'VARCHAR(20)'},{n:'Fk_User',t:'INT FK'}] },
+  { id:'Office',                  name:'Office',                group:'estructura',    cols:[{n:'ID_Office',t:'INT PK'},{n:'Name_Office',t:'VARCHAR(100)'},{n:'coduniadm',t:'VARCHAR(20)'},{n:'Fk_Boss_ID',t:'INT FK'},{n:'created_at',t:'TIMESTAMP'}] },
+  { id:'Technicians',             name:'Technicians',           group:'tecnicos',      cols:[{n:'ID_Technicians',t:'INT PK'},{n:'Fk_Users',t:'INT FK'},{n:'First_Name',t:'VARCHAR(50)'},{n:'Last_Name',t:'VARCHAR(50)'},{n:'Fk_Lunch_Block',t:'INT FK'},{n:'Status',t:'VARCHAR(20)'},{n:'created_at',t:'TIMESTAMP'}] },
+  { id:'TI_Service',              name:'TI_Service',            group:'tecnicos',      cols:[{n:'ID_TI_Service',t:'INT PK'},{n:'Type_Service',t:'VARCHAR(50)'},{n:'Details',t:'TEXT'}] },
+  { id:'Technicians_Service',     name:'Techs_Service',         group:'tecnicos',      cols:[{n:'ID_TS',t:'INT PK'},{n:'Fk_TI_Service',t:'INT FK'},{n:'Fk_Technicians',t:'INT FK'},{n:'Status',t:'VARCHAR(15)'},{n:'created_at',t:'TIMESTAMP'}] },
+  { id:'Service_Problems_Catalog',name:'Problems_Catalog',      group:'tecnicos',      cols:[{n:'ID_Problem',t:'INT PK'},{n:'Fk_TI_Service',t:'INT FK'},{n:'Problem_Name',t:'VARCHAR(200)'},{n:'Typical_Description',t:'TEXT'},{n:'Estimated_Severity',t:'VARCHAR(50)'}] },
+  { id:'Technician_Schedules',    name:'Tech_Schedules',        group:'tecnicos',      cols:[{n:'ID_Schedule',t:'INT PK'},{n:'Fk_Technician',t:'INT FK'},{n:'Day_Of_Week',t:'VARCHAR(20)'},{n:'Work_Start_Time',t:'TIME'},{n:'Work_End_Time',t:'TIME'}] },
+  { id:'Lunch_Blocks',            name:'Lunch_Blocks',          group:'tecnicos',      cols:[{n:'ID_Lunch_Block',t:'INT PK'},{n:'Block_Name',t:'VARCHAR(50)'},{n:'Start_Time',t:'TIME'},{n:'End_Time',t:'TIME'}] },
+  { id:'Service_Permissions',     name:'Serv_Permissions',      group:'permisos',      cols:[{n:'ID_Permission',t:'INT PK'},{n:'Fk_TI_Service',t:'INT FK'},{n:'Fk_Office',t:'INT FK'},{n:'Is_Allowed',t:'BOOLEAN'}] },
+  { id:'Request_Settings',        name:'Request_Settings',      group:'permisos',      cols:[{n:'ID_Setting',t:'INT PK'},{n:'Fk_Office_ID',t:'INT FK'},{n:'Can_Request_Directly',t:'BOOLEAN'},{n:'Must_Be_Approved',t:'BOOLEAN'}] },
+  { id:'Software_Systems',        name:'Software_Systems',      group:'permisos',      cols:[{n:'ID_System',t:'INT PK'},{n:'System_Name',t:'VARCHAR(200)'},{n:'Description',t:'TEXT'},{n:'Status',t:'VARCHAR(20)'}] },
+  { id:'Office_Systems',          name:'Office_Systems',        group:'permisos',      cols:[{n:'ID_OS',t:'INT PK'},{n:'Fk_Office_ID',t:'INT FK'},{n:'Fk_System_ID',t:'INT FK'}] },
+  { id:'Service_Request',         name:'Service_Request',       group:'tickets',       cols:[{n:'ID_SR',t:'INT PK'},{n:'Ticket_Code',t:'VARCHAR(50)'},{n:'Fk_Office',t:'INT FK'},{n:'Fk_User_Req',t:'INT FK'},{n:'Fk_TI_Service',t:'INT FK'},{n:'Fk_Problem',t:'INT FK'},{n:'Fk_Boss_Req',t:'INT FK'},{n:'Fk_System',t:'INT FK'},{n:'Subject',t:'VARCHAR(500)'},{n:'Status',t:'VARCHAR(50)'},{n:'System_Priority',t:'VARCHAR(50)'},{n:'Created_at',t:'TIMESTAMP'},{n:'Resolved_at',t:'TIMESTAMP'}] },
+  { id:'Ticket_Technicians',      name:'Ticket_Technicians',    group:'tickets',       cols:[{n:'ID_TT',t:'INT PK'},{n:'Fk_Service_Req',t:'INT FK'},{n:'Fk_Technician',t:'INT FK'},{n:'Is_Lead',t:'BOOLEAN'},{n:'Assignment_Role',t:'VARCHAR(100)'},{n:'Assigned_At',t:'TIMESTAMP'},{n:'Fk_Assigned_By',t:'INT FK'},{n:'Status',t:'VARCHAR(50)'}] },
+  { id:'Ticket_Comments',         name:'Ticket_Comments',       group:'tickets',       cols:[{n:'ID_Comment',t:'INT PK'},{n:'Fk_Service_Req',t:'INT FK'},{n:'Fk_User',t:'INT FK'},{n:'Comment',t:'TEXT'},{n:'Created_at',t:'TIMESTAMP'}] },
+  { id:'Ticket_Attachments',      name:'Ticket_Attachments',    group:'tickets',       cols:[{n:'ID_Attach',t:'INT PK'},{n:'Fk_Service_Req',t:'INT FK'},{n:'Fk_Comment',t:'INT FK'},{n:'Fk_User',t:'INT FK'},{n:'File_Name',t:'VARCHAR(255)'},{n:'File_Path',t:'VARCHAR(1024)'},{n:'File_Type',t:'VARCHAR(100)'},{n:'File_Size',t:'INT'},{n:'Uploaded_at',t:'TIMESTAMP'}] },
+  { id:'Ticket_Timeline',         name:'Ticket_Timeline',       group:'tickets',       cols:[{n:'ID_Timeline',t:'INT PK'},{n:'Fk_Service_Req',t:'INT FK'},{n:'Fk_User_Actor',t:'INT FK'},{n:'Action_Desc',t:'TEXT'},{n:'Old_Status',t:'VARCHAR(50)'},{n:'New_Status',t:'VARCHAR(50)'},{n:'Event_Date',t:'TIMESTAMP'}] },
+  { id:'audit_logs',              name:'audit_logs',            group:'auditoria',     cols:[{n:'id',t:'INT PK'},{n:'user_id',t:'INT FK'},{n:'email',t:'VARCHAR(100)'},{n:'action',t:'VARCHAR(50)'},{n:'entity_type',t:'VARCHAR(50)'},{n:'entity_id',t:'INT'},{n:'description',t:'TEXT'},{n:'data',t:'JSON'},{n:'severity',t:'ENUM'},{n:'success',t:'TINYINT'},{n:'ip_address',t:'VARCHAR(45)'},{n:'user_agent',t:'VARCHAR(500)'},{n:'created_at',t:'TIMESTAMP'}] },
+  { id:'Notifications',           name:'Notifications',         group:'notificaciones',cols:[{n:'ID_Notif',t:'INT PK'},{n:'Fk_User',t:'INT FK'},{n:'Type',t:'VARCHAR(100)'},{n:'Title',t:'VARCHAR(255)'},{n:'Message',t:'TEXT'},{n:'Fk_Service_Req',t:'INT FK'},{n:'Is_Read',t:'TINYINT'},{n:'Metadata',t:'JSON'},{n:'Created_at',t:'TIMESTAMP'},{n:'Updated_at',t:'TIMESTAMP'}] },
+  { id:'Ticket_Escalations',      name:'Escalations',           group:'escalacion',    cols:[{n:'ID_Esc',t:'INT PK'},{n:'Fk_Service_Req',t:'INT FK'},{n:'Original_Service',t:'INT'},{n:'Escalated_Service',t:'INT'},{n:'Escalated_At',t:'TIMESTAMP'}] },
+  { id:'Pending_Ticket_Alerts',   name:'Pending_Alerts',        group:'escalacion',    cols:[{n:'ID_Alert',t:'INT PK'},{n:'Fk_Service_Req',t:'INT FK'},{n:'Alert_Type',t:'VARCHAR(100)'},{n:'Notified_At',t:'TIMESTAMP'},{n:'Resolved_At',t:'TIMESTAMP'},{n:'Resolution_Notes',t:'VARCHAR(1000)'}] },
+  { id:'Escalation_Config',       name:'Escalation_Config',     group:'escalacion',    cols:[{n:'ID_Config',t:'INT PK'},{n:'Priority_Level',t:'VARCHAR(50)'},{n:'Hours_Threshold',t:'INT'},{n:'Notify_Admins',t:'BOOLEAN'},{n:'Auto_Escalate',t:'BOOLEAN'}] },
+  { id:'Assistance_Requests',     name:'Assistance_Requests',   group:'asistencia',    cols:[{n:'ID_Request',t:'INT PK'},{n:'Fk_Ticket',t:'INT FK'},{n:'Fk_Req_Tech',t:'INT FK'},{n:'Fk_Assigned_Tech',t:'INT FK'},{n:'Status',t:'ENUM'},{n:'Requested_At',t:'TIMESTAMP'},{n:'Updated_At',t:'TIMESTAMP'},{n:'Notif_Count',t:'INT'},{n:'Last_Notified',t:'TIMESTAMP'}] },
+  { id:'bienes_cache',            name:'bienes_cache',          group:'cache',         cols:[{n:'query_key',t:'VARCHAR(64) PK'},{n:'response',t:'MEDIUMTEXT'},{n:'is_lookup',t:'TINYINT(1)'},{n:'cached_at',t:'INT UNSIGNED'}] },
+];
+
+const RELS = [
+  { from:'Users', to:'Role', label:'Fk_Role → ID_Role' },
+  { from:'Boss', to:'Users', label:'Fk_User → ID_Users' },
+  { from:'Office', to:'Boss', label:'Fk_Boss_ID → ID_Boss' },
+  { from:'Technicians', to:'Users', label:'Fk_Users → ID_Users' },
+  { from:'Technicians', to:'Lunch_Blocks', label:'Fk_Lunch_Block → ID_Lunch_Block' },
+  { from:'Technicians_Service', to:'TI_Service', label:'Fk_TI_Service → ID_TI_Service' },
+  { from:'Technicians_Service', to:'Technicians', label:'Fk_Technicians → ID_Technicians' },
+  { from:'Service_Problems_Catalog', to:'TI_Service', label:'Fk_TI_Service → ID_TI_Service' },
+  { from:'Technician_Schedules', to:'Technicians', label:'Fk_Technician → ID_Technicians' },
+  { from:'Service_Permissions', to:'TI_Service', label:'Fk_TI_Service → ID_TI_Service' },
+  { from:'Service_Permissions', to:'Office', label:'Fk_Office → ID_Office' },
+  { from:'Request_Settings', to:'Office', label:'Fk_Office_ID → ID_Office' },
+  { from:'Office_Systems', to:'Office', label:'Fk_Office_ID → ID_Office' },
+  { from:'Office_Systems', to:'Software_Systems', label:'Fk_System_ID → ID_System' },
+  { from:'Service_Request', to:'Office', label:'Fk_Office → ID_Office' },
+  { from:'Service_Request', to:'Users', label:'Fk_User_Req → ID_Users' },
+  { from:'Service_Request', to:'TI_Service', label:'Fk_TI_Service → ID_TI_Service' },
+  { from:'Service_Request', to:'Service_Problems_Catalog', label:'Fk_Problem → ID_Problem' },
+  { from:'Service_Request', to:'Software_Systems', label:'Fk_System → ID_System' },
+  { from:'Service_Request', to:'Boss', label:'Fk_Boss_Req → ID_Boss' },
+  { from:'Ticket_Technicians', to:'Service_Request', label:'Fk_Service_Req → ID_SR' },
+  { from:'Ticket_Technicians', to:'Technicians', label:'Fk_Technician → ID_Technicians' },
+  { from:'Ticket_Technicians', to:'Users', label:'Fk_Assigned_By → ID_Users' },
+  { from:'Ticket_Comments', to:'Service_Request', label:'Fk_Service_Req → ID_SR' },
+  { from:'Ticket_Comments', to:'Users', label:'Fk_User → ID_Users' },
+  { from:'Ticket_Attachments', to:'Service_Request', label:'Fk_Service_Req → ID_SR' },
+  { from:'Ticket_Attachments', to:'Ticket_Comments', label:'Fk_Comment → ID_Comment' },
+  { from:'Ticket_Attachments', to:'Users', label:'Fk_User → ID_Users' },
+  { from:'Ticket_Timeline', to:'Service_Request', label:'Fk_Service_Req → ID_SR' },
+  { from:'Ticket_Timeline', to:'Users', label:'Fk_User_Actor → ID_Users' },
+  { from:'audit_logs', to:'Users', label:'user_id → ID_Users', note:'lógica (sin FK)' },
+  { from:'Notifications', to:'Users', label:'Fk_User → ID_Users [CASCADE]' },
+  { from:'Notifications', to:'Service_Request', label:'Fk_Service_Req → ID_SR [SET NULL]' },
+  { from:'Ticket_Escalations', to:'Service_Request', label:'Fk_Service_Req → ID_SR' },
+  { from:'Pending_Ticket_Alerts', to:'Service_Request', label:'Fk_Service_Req → ID_SR' },
+  { from:'Escalation_Config', to:'Service_Request', label:'Priority_Level → System_Priority', note:'lógica (sin FK)' },
+  { from:'Assistance_Requests', to:'Service_Request', label:'Fk_Ticket → ID_SR' },
+  { from:'Assistance_Requests', to:'Users', label:'Fk_Req_Tech → ID_Users' },
+  { from:'Assistance_Requests', to:'Users', label:'Fk_Assigned_Tech → ID_Users' },
+  { from:'bienes_cache', to:'Office', label:'caché API SIFA → Office', note:'lógica — cachea respuestas API bienes' },
+];
+
+// ── Counts ──
+document.getElementById('table-count').textContent = TABLES.length;
+document.getElementById('rel-count').textContent = RELS.length;
+document.getElementById('tables-total').textContent = TABLES.length;
+
+// ── Lookups ──
+const tableMap = {};
+TABLES.forEach(t => { tableMap[t.id] = t; });
+function getColor(gid) { return COLORS[gid] || { fill:'#7a8799', light:'#f0f2f5', border:'#d0d5dd' }; }
+
+// ── Legend ──
+GROUPS.forEach(g => {
+  const c = getColor(g.id);
+  const count = TABLES.filter(t => t.group === g.id).length;
+  const div = document.createElement('div');
+  div.className = 'group';
+  div.innerHTML = `<span class="swatch" style="background:${c.fill}"></span>${g.name}<span class="count">${count}</span>`;
+  div.addEventListener('click', () => toggleGroupFilter(g.id));
+  document.getElementById('legend').appendChild(div);
+});
+function toggleLegend() { const l = document.getElementById('legend'); l.style.display = l.style.display === 'none' ? 'block' : 'none'; }
+
+// ── D3 Setup ──
+const svg = d3.select('#canvas');
+const W = window.innerWidth, H = window.innerHeight;
+svg.attr('width', W).attr('height', H);
+const gMain = svg.append('g');
+
+// Arrow defs
+const defs = svg.append('defs');
+GROUPS.forEach((g, i) => {
+  const c = getColor(g.id);
+  defs.append('marker')
+    .attr('id', `arrow-${i}`)
+    .attr('viewBox', '0 -5 10 10')
+    .attr('refX', 22)
+    .attr('refY', 0)
+    .attr('markerWidth', 7)
+    .attr('markerHeight', 7)
+    .attr('orient', 'auto')
+    .append('path')
+    .attr('d', 'M0,-5L9,0L0,5')
+    .attr('fill', c.fill);
+});
+
+// ── Dimensions ──
+const BW = 170, BH = 24, RH = 17, CP = 6, MC = 4;
+function nodeH(cols) {
+  const rows = Math.min(cols.length, MC) + (cols.length > MC ? 1 : 0);
+  return BH + CP + rows * RH + CP;
+}
+
+// ── Auto layout ──
+let layoutMode = 'auto';
+let groupFilter = null;
+
+function computeAutoLayout() {
+  const margin = { top: 70, left: 30, right: 30 };
+  const gapX = 40, gapY = 30, tgap = 16;
+  const cols = 5;
+  const rows = Math.ceil(GROUPS.length / cols);
+  const pos = {};
+
+  // Calculate group dimensions
+  const gdims = {};
+  GROUPS.forEach(g => {
+    const tbl = TABLES.filter(t => t.group === g.id).sort((a,b) => a.name.localeCompare(b.name));
+    if (!tbl.length) return;
+    let maxW = 0, totalH = 0;
+    tbl.forEach(t => { const h = nodeH(t.cols); totalH += h + tgap; maxW = Math.max(maxW, BW); });
+    gdims[g.id] = { w: maxW + 30, h: totalH + 30, tables: tbl };
+  });
+
+  // Column widths
+  const cw = [];
+  for (let c = 0; c < cols; c++) {
+    let mw = 0;
+    for (let r = 0; r < rows; r++) {
+      const idx = r * cols + c;
+      if (idx >= GROUPS.length) break;
+      const d = gdims[GROUPS[idx].id];
+      if (d) mw = Math.max(mw, d.w);
+    }
+    cw[c] = mw || 220;
+  }
+  const rh = [];
+  for (let r = 0; r < rows; r++) {
+    let mh = 0;
+    for (let c = 0; c < cols; c++) {
+      const idx = r * cols + c;
+      if (idx >= GROUPS.length) break;
+      const d = gdims[GROUPS[idx].id];
+      if (d) mh = Math.max(mh, d.h);
+    }
+    rh[r] = mh || 200;
+  }
+
+  let yy = margin.top;
+  for (let r = 0; r < rows; r++) {
+    let xx = margin.left;
+    for (let c = 0; c < cols; c++) {
+      const idx = r * cols + c;
+      if (idx >= GROUPS.length) break;
+      const g = GROUPS[idx];
+      const d = gdims[g.id];
+      if (!d) continue;
+      let ty = yy + 30;
+      d.tables.forEach(t => {
+        const h = nodeH(t.cols);
+        pos[t.id] = { x: xx + 15 + BW/2, y: ty + h/2 };
+        ty += h + tgap;
+      });
+      xx += cw[c] + gapX;
+    }
+    yy += rh[r] + gapY;
+  }
+  return pos;
+}
+
+let autoPos = computeAutoLayout();
+
+function getInitPos() {
+  const p = {};
+  TABLES.forEach(t => {
+    if (autoPos[t.id]) p[t.id] = { ...autoPos[t.id] };
+    else p[t.id] = { x: 300 + Math.random()*400, y: 100 + Math.random()*300 };
+  });
+  return p;
+}
+
+const initPos = getInitPos();
+const nodeData = TABLES.map(t => ({ ...t, x: initPos[t.id].x, y: initPos[t.id].y }));
+const linkData = RELS.map(r => {
+  const s = nodeData.find(n => n.id === r.from);
+  const t = nodeData.find(n => n.id === r.to);
+  return { ...r, source: s, target: t };
+});
+
+// ── Draw ──
+
+function drawGroupBoxes() {
+  gMain.selectAll('.group-g').remove();
+  const gg = gMain.append('g').attr('class', 'group-g');
+  GROUPS.forEach(g => {
+    const tbl = nodeData.filter(n => n.group === g.id);
+    if (!tbl.length) return;
+    let x1=Infinity,x2=-Infinity,y1=Infinity,y2=-Infinity;
+    tbl.forEach(t => {
+      const h = nodeH(t.cols);
+      x1 = Math.min(x1, t.x - BW/2 - 14);
+      x2 = Math.max(x2, t.x + BW/2 + 14);
+      y1 = Math.min(y1, t.y - h/2 - 16);
+      y2 = Math.max(y2, t.y + h/2 + 16);
+    });
+    if (x1===Infinity) return;
+    gg.append('rect')
+      .attr('x', x1).attr('y', y1)
+      .attr('width', x2-x1).attr('height', y2-y1)
+      .attr('class', 'group-box')
+      .attr('stroke', getColor(g.id).border);
+    gg.append('text')
+      .attr('x', x1+12).attr('y', y1+16)
+      .attr('class', 'group-box-label')
+      .attr('fill', getColor(g.id).fill)
+      .text(g.name.toUpperCase());
+  });
+}
+
+drawGroupBoxes();
+
+// Links
+const link = gMain.selectAll('.link').data(linkData).join('g').attr('class', 'link');
+const linkPath = link.append('path').attr('class', 'link-path').attr('stroke', '#b0b8c4');
+link.append('title').text(d => `${d.from} → ${d.to}: ${d.label}`);
+
+// Nodes
+const node = gMain.selectAll('.node').data(nodeData).join('g').attr('class', 'node');
+
+node.each(function(d) {
+  const el = d3.select(this);
+  const c = getColor(d.group);
+  const h = nodeH(d.cols);
+  const pcols = d.cols.slice(0, MC);
+  const extra = d.cols.length - MC;
+  const bodyRows = pcols.length + (extra > 0 ? 1 : 0);
+  const bodyH = bodyRows * RH;
+
+  // Shadow
+  el.append('rect').attr('class','shadow')
+    .attr('x', -BW/2+2).attr('y', -h/2+2)
+    .attr('width', BW).attr('height', h);
+
+  // Body
+  el.append('rect').attr('class','body-bg')
+    .attr('x', -BW/2).attr('y', -h/2)
+    .attr('width', BW).attr('height', h)
+    .attr('stroke', c.border);
+
+  // Header
+  el.append('rect').attr('class','header-bg')
+    .attr('x', -BW/2).attr('y', -h/2)
+    .attr('width', BW).attr('height', BH)
+    .attr('fill', c.fill);
+
+  // Clip header bottom corners
+  el.append('rect')
+    .attr('x', -BW/2).attr('y', -h/2 + BH - 3)
+    .attr('width', BW).attr('height', 3)
+    .attr('fill', c.fill);
+
+  // Table name
+  d3.select(this).append('text').attr('class','table-name')
+    .attr('x',0).attr('y', -h/2 + BH/2)
+    .text(d.name);
+
+  // Separator line
+  el.append('line').attr('class','sep-line')
+    .attr('x1', -BW/2 + 8).attr('y1', -h/2 + BH + CP/2)
+    .attr('x2', BW/2 - 8).attr('y2', -h/2 + BH + CP/2);
+
+  // Columns
+  pcols.forEach((col, i) => {
+    const isPk = col.t.includes('PK');
+    const isFk = col.t.includes('FK');
+    const yp = -h/2 + BH + CP + i * RH + RH/2;
+
+    const grp = el.append('g');
+    // PK/FK icon
+    if (isPk) {
+      grp.append('text').attr('class','col-icon').attr('fill','#b8860b')
+        .attr('x', -BW/2 + 10).attr('y', yp)
+        .text('\u{1F511} '); // key emoji
+    } else if (isFk) {
+      grp.append('text').attr('class','col-icon').attr('fill','#4a90d9')
+        .attr('x', -BW/2 + 10).attr('y', yp)
+        .text('\u25C7 '); // diamond ◇
+    } else {
+      grp.append('text').attr('class','col-icon')
+        .attr('x', -BW/2 + 10).attr('y', yp)
+        .attr('fill', 'transparent').text('\u2003');
+    }
+
+    const txt = grp.append('text').attr('class','col-row' + (isPk?' pk':'') + (isFk?' fk':''))
+      .attr('x', -BW/2 + (isPk||isFk ? 26 : 14))
+      .attr('y', yp);
+    txt.append('tspan').text(col.n);
+  });
+
+  if (extra > 0) {
+    const yp = -h/2 + BH + CP + pcols.length * RH + RH/2;
+    el.append('text').attr('class','col-more')
+      .attr('x', -BW/2 + 14).attr('y', yp)
+      .text(`+${extra} columnas m\u00E1s`);
+  }
+});
+
+// Drag
+const drag = d3.drag()
+  .on('start', (ev, d) => {
+    if (!ev.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x; d.fy = d.y;
+  })
+  .on('drag', (ev, d) => { d.fx = ev.x; d.fy = ev.y; })
+  .on('end', (ev, d) => {
+    if (!ev.active) simulation.alphaTarget(0);
+    if (layoutMode === 'free') { d.fx = null; d.fy = null; }
+  });
+node.call(drag);
+
+node.on('click', function(ev, d) { if (ev.defaultPrevented) return; showDetail(d); });
+node.on('mouseenter', function(ev, d) { highlightRel(d.id, true); showTooltip(ev, d); });
+node.on('mousemove', function(ev) {
+  const tt = document.getElementById('tooltip');
+  tt.style.left = (ev.clientX + 14) + 'px';
+  tt.style.top = (ev.clientY + 14) + 'px';
+});
+node.on('mouseleave', function() { highlightRel(null, false); document.getElementById('tooltip').classList.remove('visible'); });
+svg.on('click', () => closeDetail());
+
+// ── Link updates ──
+function updateLinks() {
+  link.each(function(d) {
+    const el = d3.select(this);
+    const dx = d.target.x - d.source.x;
+    const dy = d.target.y - d.source.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    if (dist < 1) return;
+    const off = 26;
+    const sx = d.source.x + dx/dist * off;
+    const sy = d.source.y + dy/dist * off;
+    const tx = d.target.x - dx/dist * off;
+    const ty = d.target.y - dy/dist * off;
+
+    // Bezier curve (MySQL Workbench style)
+    const cpx = (sx + tx) / 2;
+    const cpy = (sy + ty) / 2 + (Math.abs(dy) > 80 ? 0 : 0);
+    const midY = (sy + ty) / 2;
+    const ctrlX = (sx + tx) / 2;
+    const ctrlY = Math.max(sy, ty) + Math.min(40, dist * 0.15);
+
+    el.select('.link-path')
+      .attr('d', `M${sx},${sy} Q${ctrlX},${ctrlY} ${tx},${ty}`)
+      .attr('marker-end', () => `url(#arrow-${Math.max(0, GROUPS.findIndex(gr => gr.id === d.target.group))})`);
+
+    const mx = (sx + tx) / 2;
+    const my = (sy + ty) / 2 + 16;
+
+    let lb = el.select('.link-label');
+    if (lb.empty()) lb = el.append('text').attr('class','link-label');
+    lb.attr('x', mx).attr('y', my - 3).text(d.label);
+
+    let nt = el.select('.link-note');
+    if (d.note) {
+      if (nt.empty()) nt = el.append('text').attr('class','link-note');
+      nt.attr('x', mx).attr('y', my + 8).text(d.note);
+    } else nt.remove();
+  });
+}
+
+// ── Simulation ──
+const simulation = d3.forceSimulation(nodeData)
+  .force('x', d3.forceX(d => autoPos[d.id]?.x || d.x).strength(0.04))
+  .force('y', d3.forceY(d => autoPos[d.id]?.y || d.y).strength(0.04))
+  .force('collision', d3.forceCollide(65))
+  .alphaDecay(0.015);
+
+simulation.on('tick', () => {
+  node.attr('transform', d => `translate(${d.x},${d.y})`);
+  updateLinks();
+});
+
+// Fix auto positions
+nodeData.forEach(d => { if (autoPos[d.id]) { d.fx = autoPos[d.id].x; d.fy = autoPos[d.id].y; } });
+
+// ── Zoom ──
+const zoom = d3.zoom().scaleExtent([0.2, 3]).on('zoom', ev => gMain.attr('transform', ev.transform));
+svg.call(zoom);
+function resetZoom() { svg.transition().duration(400).call(zoom.transform, d3.zoomIdentity); }
+
+// ── Toggle layout ──
+function toggleLayout() {
+  if (layoutMode === 'auto') {
+    layoutMode = 'free';
+    document.getElementById('btn-layout').classList.remove('btn-active');
+    document.getElementById('btn-layout').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18"/></svg> Free';
+    nodeData.forEach(d => { d.fx = null; d.fy = null; });
+    simulation.force('charge', d3.forceManyBody().strength(-350));
+    simulation.force('center', d3.forceCenter(W/2, H/2));
+    simulation.alpha(1).restart();
+  } else {
+    layoutMode = 'auto';
+    document.getElementById('btn-layout').classList.add('btn-active');
+    document.getElementById('btn-layout').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Auto';
+    autoPos = computeAutoLayout();
+    nodeData.forEach(d => {
+      if (autoPos[d.id]) { d.fx = autoPos[d.id].x; d.fy = autoPos[d.id].y; d.x = autoPos[d.id].x; d.y = autoPos[d.id].y; }
+    });
+    simulation.force('charge', null).force('center', null);
+    simulation.force('x', d3.forceX(d => autoPos[d.id]?.x || d.x).strength(0.04));
+    simulation.force('y', d3.forceY(d => autoPos[d.id]?.y || d.y).strength(0.04));
+    simulation.alpha(0.3).restart();
+    gMain.selectAll('.group-g').remove();
+    drawGroupBoxes();
+  }
+}
+
+// ── Search ──
+document.getElementById('search-box').addEventListener('input', function() {
+  const q = this.value.toLowerCase().trim();
+  let vis = 0;
+  nodeData.forEach(d => {
+    const m = d.name.toLowerCase().includes(q) || d.id.toLowerCase().includes(q) || q === '';
+    gMain.selectAll('.node').filter(n => n.id === d.id).style('opacity', m ? 1 : 0.1);
+    gMain.selectAll('.link').filter(l => l.from === d.id || l.to === d.id).style('opacity', (m || q === '') ? 1 : 0.04);
+    if (m) vis++;
+  });
+  document.getElementById('tables-visible').textContent = vis;
+});
+
+// ── Group filter ──
+function toggleGroupFilter(gid) {
+  if (groupFilter === gid) {
+    groupFilter = null;
+    nodeData.forEach(d => { gMain.selectAll('.node').filter(n => n.id === d.id).style('opacity', 1); });
+    linkData.forEach(d => { gMain.selectAll('.link').filter(l => l === d).style('opacity', 1); });
+    document.getElementById('tables-visible').textContent = TABLES.length;
+    return;
+  }
+  groupFilter = gid;
+  let vis = 0;
+  nodeData.forEach(d => {
+    const m = d.group === gid;
+    gMain.selectAll('.node').filter(n => n.id === d.id).style('opacity', m ? 1 : 0.1);
+    if (m) vis++;
+  });
+  linkData.forEach(d => {
+    const m = nodeData.find(n => n.id === d.from)?.group === gid || nodeData.find(n => n.id === d.to)?.group === gid;
+    gMain.selectAll('.link').filter(l => l === d).style('opacity', m ? 1 : 0.04);
+  });
+  document.getElementById('tables-visible').textContent = vis;
+}
+
+// ── Highlight ──
+function highlightRel(tid, show) {
+  const conn = new Set();
+  if (show && tid) {
+    conn.add(tid);
+    RELS.forEach(r => { if (r.from === tid) conn.add(r.to); if (r.to === tid) conn.add(r.from); });
+  }
+  let vis = 0;
+  nodeData.forEach(d => {
+    const m = !show || conn.has(d.id);
+    gMain.selectAll('.node').filter(n => n.id === d.id).style('opacity', m ? 1 : 0.1);
+    if (m) vis++;
+  });
+  linkData.forEach(d => {
+    const m = !show || d.from === tid || d.to === tid;
+    const el = gMain.selectAll('.link').filter(l => l === d);
+    el.select('.link-path').attr('stroke', m && show ? '#4a90d9' : '#b0b8c4')
+      .attr('stroke-width', m && show ? 3 : 1.8);
+    el.select('.link-label').attr('fill', m && show ? '#2b6cb0' : '#7a8799');
+    el.select('.link-note').attr('fill', m && show ? '#4a90d9' : '#b0b8c4');
+  });
+}
+
+// ── Tooltip ──
+function showTooltip(ev, d) {
+  const tt = document.getElementById('tooltip');
+  const c = getColor(d.group);
+  const cols = d.cols.map(c => {
+    const isPk = c.t.includes('PK'), isFk = c.t.includes('FK');
+    const badges = []; if (isPk) badges.push('PK'); if (isFk) badges.push('FK');
+    const badge = badges.length ? ` [${badges.join(',')}]` : '';
+    return `<div class="tt-col"><span class="${isPk?'pk':isFk?'fk':''}">${c.n}</span> ${c.t.replace(/ PK| FK/g,'')}${badge}</div>`;
+  }).join('');
+  tt.innerHTML = `<div class="tt-name"><span class="tt-swatch" style="background:${c.fill}"></span>${d.name} <span style="color:#b0b8c4;font-weight:400;font-size:10px">— ${d.cols.length} cols</span></div>${cols}`;
+  tt.classList.add('visible');
+  tt.style.left = (ev.clientX + 14) + 'px';
+  tt.style.top = (ev.clientY + 14) + 'px';
+}
+
+// ── Detail panel ──
+function showDetail(d) {
+  const c = getColor(d.group);
+  const group = GROUPS.find(g => g.id === d.group);
+  const relsTo = RELS.filter(r => r.from === d.id);
+  const relsFrom = RELS.filter(r => r.to === d.id);
+
+  const colsHtml = d.cols.map(col => {
+    const isPk = col.t.includes('PK'), isFk = col.t.includes('FK');
+    const badges = [];
+    if (isPk) badges.push('<span class="badge badge-pk">\u{1F511} PK</span>');
+    if (isFk) badges.push('<span class="badge badge-fk">\u25C7 FK</span>');
+    return `<tr><td>${badges.join(' ')} ${col.n}</td><td>${col.t.replace(/ PK| FK/g,'')}</td></tr>`;
+  }).join('');
+
+  let relsHtml = '';
+  if (relsTo.length) {
+    relsHtml += `<div class="dp-rels"><h3>\u2192 Relaciones salientes</h3>`;
+    relsTo.forEach(r => {
+      const tgt = tableMap[r.to];
+      const gc = tgt ? getColor(tgt.group) : null;
+      const dot = gc ? `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${gc.fill};vertical-align:middle;margin-right:4px;"></span>` : '';
+      relsHtml += `<div class="dp-rel"><span class="rel-arrow">\u2192</span>${dot}<strong>${r.to}</strong> — ${r.label}${r.note ? ` <span class="rel-note">(${r.note})</span>` : ''}</div>`;
+    });
+    relsHtml += `</div>`;
+  }
+  if (relsFrom.length) {
+    relsHtml += `<div class="dp-rels"><h3>\u2190 Relaciones entrantes</h3>`;
+    relsFrom.forEach(r => {
+      const src = tableMap[r.from];
+      const gc = src ? getColor(src.group) : null;
+      const dot = gc ? `<span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${gc.fill};vertical-align:middle;margin-right:4px;"></span>` : '';
+      relsHtml += `<div class="dp-rel"><span class="rel-arrow">\u2190</span>${dot}<strong>${r.from}</strong> — ${r.label}</div>`;
+    });
+    relsHtml += `</div>`;
+  }
+
+  document.getElementById('dp-content').innerHTML = `
+    <div class="dp-bar" style="background:${c.fill}"></div>
+    <h2 style="color:${c.fill}">${d.name}</h2>
+    <div class="dp-group"><span class="dp-swatch" style="background:${c.fill}"></span>${group ? group.name : '\u2014'}</div>
+    <div class="dp-count">${d.cols.length} columnas</div>
+    <table><thead><tr><th>Columna</th><th>Tipo</th></tr></thead><tbody>${colsHtml}</tbody></table>
+    ${relsHtml}
+  `;
+  document.getElementById('detail-panel').classList.add('open');
+}
+function closeDetail() { document.getElementById('detail-panel').classList.remove('open'); }
+
+// ── Resize ──
+window.addEventListener('resize', () => {
+  const w = window.innerWidth, h = window.innerHeight;
+  svg.attr('width', w).attr('height', h);
+});
+
+// ── Init ──
+simulation.alpha(1).restart();
+document.getElementById('tables-visible').textContent = TABLES.length;
+</script>
+</body>
+</html>

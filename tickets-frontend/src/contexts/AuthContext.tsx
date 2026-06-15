@@ -12,6 +12,8 @@ export interface User {
 
   email: string;
 
+  username?: string;
+
   role: number;
 
   role_name?: string;

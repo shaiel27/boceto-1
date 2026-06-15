@@ -29,7 +29,7 @@ export interface Technician extends User {
   first_name: string;
   last_name: string;
   fk_lunch_block: number | null;
-  technician_status: 'Disponible' | 'Ocupado' | 'Inactivo';
+  technician_status: 'Disponible' | 'Ocupado' | 'Inactivo' | 'Fuera de Servicio';
   // joined
   services: string[];
   lunch_block: string;

@@ -313,15 +313,15 @@ try {
             break;
         }
         
-        if ($technician->delete($id)) {
+        if ($technician->deactivate($id)) {
             echo json_encode([
                 'success' => true,
-                'message' => 'Técnico eliminado exitosamente'
+                'message' => 'Técnico marcado como fuera de servicio'
             ]);
         } else {
             echo json_encode([
                 'success' => false,
-                'message' => 'Error al eliminar técnico'
+                'message' => 'Error al desactivar técnico'
             ]);
         }
         break;

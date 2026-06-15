@@ -140,6 +140,7 @@
 
 .tm-stat-card--ok .tm-stat-num { color: var(--success-color, #16a34a); }
 .tm-stat-card--warn .tm-stat-num { color: var(--warning-color, #d97706); }
+.tm-stat-card--muted { opacity: 0.7; }
 
 .tm-stat-lbl {
   display: flex;
@@ -533,6 +534,8 @@
 .tm-tech-card--soporte::before { background: var(--success-color, #10b981); opacity: 1; }
 .tm-tech-card--programación::before { background: #8b5cf6; opacity: 1; }
 .tm-tech-card--sin-asignar::before { background: var(--text-muted); opacity: 1; }
+.tm-tech-card--out-of-service { opacity: 0.75; }
+.tm-tech-card--out-of-service::before { background: #94a3b8; opacity: 1; }
 
 /* Avatar + Name */
 .tm-tech-left {
@@ -651,6 +654,15 @@
 
 .tm-tech-status-orb--inactivo .tm-tech-status-icon {
   color: var(--text-muted);
+}
+
+.tm-tech-status-orb--fuera-de-servicio {
+  background: color-mix(in srgb, #ef4444 15%, transparent);
+  box-shadow: 0 0 6px color-mix(in srgb, #ef4444 15%, transparent);
+}
+
+.tm-tech-status-orb--fuera-de-servicio .tm-tech-status-icon {
+  color: #ef4444;
 }
 
 .tm-tech-status-icon {

@@ -53,7 +53,8 @@ CREATE TABLE IF NOT EXISTS Technicians (
     Fk_Lunch_Block INT NULL,
     Status VARCHAR(20) DEFAULT 'Disponible',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (Fk_Users) REFERENCES Users(ID_Users)
+    FOREIGN KEY (Fk_Users) REFERENCES Users(ID_Users),
+    FOREIGN KEY (Fk_Lunch_Block) REFERENCES Lunch_Blocks(ID_Lunch_Block)
 );
 
 CREATE TABLE IF NOT EXISTS TI_Service (
@@ -241,8 +242,12 @@ CREATE TABLE IF NOT EXISTS Notifications (
     Created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     Updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_User) REFERENCES Users(ID_Users) ON DELETE CASCADE,
-    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE SET NULL
-);
+    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE SET NULL,
+    INDEX idx_user_notifications (Fk_User, Is_Read),
+    INDEX idx_ticket_notifications (Fk_Service_Request),
+    INDEX idx_type (Type),
+    INDEX idx_created_at (Created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='User notifications table';
 
 -- 8. Escalation/Aux tables
 CREATE TABLE IF NOT EXISTS Ticket_Escalations (
@@ -288,6 +293,15 @@ CREATE TABLE IF NOT EXISTS Assistance_Requests (
 
 CREATE INDEX idx_assistance_status ON Assistance_Requests(Status);
 CREATE INDEX idx_assistance_ticket ON Assistance_Requests(Fk_Ticket);
+
+-- 10. Bienes cache (SIFA API)
+CREATE TABLE IF NOT EXISTS bienes_cache (
+    query_key VARCHAR(64) PRIMARY KEY,
+    response MEDIUMTEXT NOT NULL,
+    is_lookup TINYINT(1) NOT NULL DEFAULT 0,
+    cached_at INT UNSIGNED NOT NULL,
+    INDEX idx_cached (cached_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Default data (roles, services, sample users) -- keep minimal
 INSERT IGNORE INTO Role (ID_Role, Role, Description) VALUES

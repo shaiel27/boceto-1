@@ -15,6 +15,7 @@ export default function AdminLayout() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="tickets" options={{ title: 'Gestión de Tickets' }} />
       <Stack.Screen name="tickets/create" options={{ title: 'Nuevo Ticket', presentation: 'modal' }} />
+      <Stack.Screen name="tickets/[id]" options={{ title: 'Detalle' }} />
       <Stack.Screen name="technicians" options={{ title: 'Gestión de Técnicos' }} />
       <Stack.Screen name="users" options={{ title: 'Gestión de Usuarios' }} />
       <Stack.Screen name="reports" options={{ title: 'Reportes' }} />

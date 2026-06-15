@@ -5,7 +5,6 @@ import {
   TrendingUp,
   FileText,
   Download,
-  Calendar,
   RefreshCw,
   Users,
   Clock,
@@ -32,7 +31,7 @@ interface Report {
   type: 'general' | 'performance' | 'office' | 'timeline' | 'priority' | 'service' | 'technician' | 'problem' | 'shift';
   description: string;
   createdAt: string;
-  lastRun: string;
+  lastRun: string | null;
   status: 'active' | 'scheduled' | 'archived';
   parameters: ReportParameter[];
 }
@@ -747,7 +746,14 @@ const Reports: React.FC = () => {
         doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
       }
 
-      const name = (office.office || office.Name_Office || office.name_office || 'N/A');
+      const rawName = (office.office || office.Name_Office || office.name_office || 'N/A');
+      const cleanOfficeName = (n: string): string => {
+        const cleaned = n.replace(
+          /^(DIRECCI[OÓ]N|DIVISI[OÓ]N|COORDINACI[OÓ]N)\s+DE[L]?\s+/i, ''
+        ).trim();
+        return cleaned || n;
+      };
+      const name = cleanOfficeName(rawName);
       const total = Number(office.total ?? office.total_tickets ?? office.ticket_count ?? 0);
       const inProgress = Number(office.in_progress ?? office.en_proceso ?? 0);
       const resolved = Number(office.resolved ?? office.resolved_tickets ?? 0);
@@ -1817,10 +1823,6 @@ const Reports: React.FC = () => {
                   </div>
                   <h3 className="reports-card-title">{report.name}</h3>
                   <p className="reports-card-desc">{report.description}</p>
-                  <div className="reports-card-meta">
-                    <Calendar size={13} />
-                    <span>Última ejecución: {new Date(report.lastRun).toLocaleDateString('es-ES')}</span>
-                  </div>
                   <div className="reports-card-actions">
                     <button
                       className="reports-download-btn"

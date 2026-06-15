@@ -1,7 +1,7 @@
 import { apiClient } from './api';
-import { BackendTicket, BackendComment, BackendTimeline } from '../types/api';
-import { mapBackendTicket, mapBackendComment, mapBackendTimeline } from '../utils/mappers';
-import { Ticket } from '../types/ticket';
+import { BackendTicket, BackendComment, BackendTimeline, BackendAttachment } from '../types/api';
+import { mapBackendTicket, mapBackendComment, mapBackendTimeline, mapBackendAttachment } from '../utils/mappers';
+import { Ticket, TicketAttachment } from '../types/ticket';
 
 export interface ReportItem {
   action: string;
@@ -139,7 +139,12 @@ export async function getAdminTicketDetail(ticketId: number): Promise<{
     return { success: false, message: ticketRes.message || 'Ticket no encontrado' };
   }
 
-  const ticket = mapBackendTicket(ticketRes.data as BackendTicket);
+  let ticketAttachments: TicketAttachment[] = [];
+  if (commentsRes.success && (commentsRes as any).ticket_attachments) {
+    ticketAttachments = ((commentsRes as any).ticket_attachments as BackendAttachment[]).map(mapBackendAttachment);
+  }
+
+  const ticket = mapBackendTicket(ticketRes.data as BackendTicket, ticketAttachments);
 
   if (commentsRes.success && commentsRes.data) {
     ticket.comments = (commentsRes.data as BackendComment[]).map(mapBackendComment);
@@ -250,4 +255,22 @@ export async function getSystems(): Promise<{ success: boolean; data?: { ID_Syst
   const response = await apiClient.get('/api/service?action=software-systems');
   if (!response.success) return { success: false };
   return { success: true, data: response.data };
+}
+
+export async function uploadTicketFiles(
+  ticketId: number,
+  files: { uri: string; name: string; type: string }[]
+): Promise<{ success: boolean; files?: any[]; message?: string }> {
+  const formData = new FormData();
+  formData.append('ticket_id', String(ticketId));
+  for (const file of files) {
+    formData.append('files[]', {
+      uri: file.uri,
+      name: file.name,
+      type: file.type || 'application/octet-stream',
+    } as any);
+  }
+  const response = await apiClient.upload('/api/tickets?action=upload-files', formData);
+  if (!response.success) return { success: false, message: response.message };
+  return { success: true, files: response.data?.files };
 }

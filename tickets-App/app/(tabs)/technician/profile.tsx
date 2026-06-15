@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { Technician } from '../../../src/types/user';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { useToast } from '../../../src/contexts/ToastContext';
-import { getTechnicianProfile, toggleTechnicianAvailability, changePassword as changePw } from '../../../src/services/technicianService';
+import { getTechnicianProfile, changePassword as changePw } from '../../../src/services/technicianService';
 import { Button } from '../../../src/components/ui/Button';
 
 export default function TechnicianProfileScreen() {
   const { logout } = useAuth();
   const toast = useToast();
   const [tech, setTech] = useState<Technician | null>(null);
-  const [available, setAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
   const [showPw, setShowPw] = useState(false);
   const [currPw, setCurrPw] = useState('');
@@ -23,23 +22,10 @@ export default function TechnicianProfileScreen() {
   useEffect(() => {
     (async () => {
       const r = await getTechnicianProfile();
-      if (r.success && r.technician) { setTech(r.technician); setAvailable(r.technician.technician_status === 'Disponible'); }
+      if (r.success && r.technician) { setTech(r.technician); }
       setLoading(false);
     })();
   }, []);
-
-  const toggleAvail = async (v: boolean) => {
-    setAvailable(v);
-    if (!tech) return;
-    const r = await toggleTechnicianAvailability(tech.technician_id, v);
-    if (r.success) {
-      setTech((p) => p ? { ...p, technician_status: v ? 'Disponible' : 'Ocupado' } : p);
-      toast.showToast({ message: v ? 'Disponible para tickets' : 'No disponible', type: v ? 'success' : 'warning' });
-    } else {
-      setAvailable(!v);
-      toast.showToast({ title: 'Error', message: r.message || '', type: 'error' });
-    }
-  };
 
   const handlePw = async () => {
     if (!currPw || !newPw || !confPw) return toast.showToast({ title: 'Error', message: 'Completa todos los campos', type: 'error' });
@@ -72,51 +58,54 @@ export default function TechnicianProfileScreen() {
         </View>
       </View>
 
-      {/* Availability toggle */}
+      {/* Services */}
       <View style={styles.card}>
-        <View style={styles.row}>
-          <View>
-            <Text style={styles.rowLabel}>Disponibilidad</Text>
-            <Text style={styles.rowHint}>{available ? 'Puedes recibir nuevos tickets' : 'No recibirás nuevos tickets'}</Text>
-          </View>
-          <Switch value={available} onValueChange={toggleAvail} trackColor={{ false: Colors.border, true: Colors.statusResueltoBg }} thumbColor={available ? Colors.statusResuelto : Colors.textLight} />
+        <ProfileSectionHead icon="construct-outline" label="Servicios" />
+        <View style={styles.tags}>
+          {tech.services.map((s) => (
+            <View key={s} style={styles.tag}><Text style={styles.tagText}>{s}</Text></View>
+          ))}
         </View>
       </View>
 
-      {/* Services + Schedule */}
+      {/* Schedule */}
       <View style={styles.card}>
-        <Text style={styles.sLabel}>Servicios</Text>
-        <View style={styles.tags}>{tech.services.map((s) => <View key={s} style={styles.tag}><Text style={styles.tagText}>{s}</Text></View>)}</View>
-        <View style={styles.divider} />
-        <Text style={styles.sLabel}>Horario Semanal</Text>
+        <ProfileSectionHead icon="calendar-outline" label="Horario Semanal" />
         {tech.schedule.map((s, i) => (
           <View key={i} style={styles.schedRow}>
             <Text style={styles.schedDay}>{s.day_of_week}</Text>
-            <View style={styles.schedBar}><View style={[styles.schedFill, { width: s.work_end_time.includes('15:00') ? '65%' : '80%' }]} /></View>
+            <View style={styles.schedBar}>
+              <View style={[styles.schedFill, { width: s.work_end_time.includes('15:00') ? '65%' : '80%' }]} />
+            </View>
             <Text style={styles.schedTime}>{s.work_start_time} — {s.work_end_time}</Text>
           </View>
         ))}
-        {tech.lunch_block ? <Text style={styles.lunch}>Almuerzo: {tech.lunch_block}</Text> : null}
+        {tech.lunch_block ? (
+          <View style={styles.lunchRow}>
+            <Ionicons name="cafe-outline" size={13} color={Colors.textLight} />
+            <Text style={styles.lunchText}>Almuerzo: {tech.lunch_block}</Text>
+          </View>
+        ) : null}
       </View>
 
       {/* Metrics */}
       <View style={styles.card}>
-        <Text style={styles.sLabel}>Rendimiento</Text>
+        <ProfileSectionHead icon="stats-chart-outline" label="Rendimiento" />
         <View style={styles.metricsGrid}>
-          <Metric v={tech.metrics.resolved_today} label="Hoy" />
-          <Metric v={tech.metrics.resolved_week} label="Semana" />
-          <Metric v={tech.metrics.resolved_month} label="Mes" />
+          <Metric v={tech.metrics.resolved_today} label="Hoy" icon="today-outline" />
+          <Metric v={tech.metrics.resolved_week} label="Semana" icon="calendar-outline" />
+          <Metric v={tech.metrics.resolved_month} label="Mes" icon="layers-outline" />
         </View>
       </View>
 
-      {/* Password */}
+      {/* Password / Logout */}
       {showPw ? (
         <View style={styles.card}>
-          <Text style={styles.sLabel}>Cambiar Contraseña</Text>
+          <ProfileSectionHead icon="lock-closed-outline" label="Cambiar Contraseña" />
           <TextInput style={styles.pwInput} placeholder="Contraseña actual" placeholderTextColor={Colors.textLight} secureTextEntry value={currPw} onChangeText={setCurrPw} />
           <TextInput style={styles.pwInput} placeholder="Nueva (mín. 6 caracteres)" placeholderTextColor={Colors.textLight} secureTextEntry value={newPw} onChangeText={setNewPw} />
           <TextInput style={styles.pwInput} placeholder="Confirmar nueva" placeholderTextColor={Colors.textLight} secureTextEntry value={confPw} onChangeText={setConfPw} />
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+          <View style={styles.pwActions}>
             <Button title="Cancelar" onPress={() => { setShowPw(false); setCurrPw(''); setNewPw(''); setConfPw(''); }} variant="outline" style={{ flex: 1 }} />
             <Button title="Guardar" onPress={handlePw} loading={savingPw} style={{ flex: 1 }} />
           </View>
@@ -133,49 +122,76 @@ export default function TechnicianProfileScreen() {
   );
 }
 
-function Metric({ v, label }: { v: number; label: string }) {
+function ProfileSectionHead({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+  return (
+    <View style={psh.wrap}>
+      <View style={psh.icon}><Ionicons name={icon} size={13} color={Colors.navyPrimary} /></View>
+      <Text style={psh.label}>{label}</Text>
+      <View style={psh.line} />
+    </View>
+  );
+}
+const psh = StyleSheet.create({
+  wrap: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
+  icon: { width: 26, height: 26, borderRadius: 7, backgroundColor: Colors.navyPrimary + '0C', justifyContent: 'center', alignItems: 'center' },
+  label: { fontSize: 11, fontWeight: '700', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.6 },
+  line: { flex: 1, height: 1, backgroundColor: Colors.border },
+});
+
+function Metric({ v, label, icon }: { v: number; label: string; icon: keyof typeof Ionicons.glyphMap }) {
   return (
     <View style={ms.card}>
+      <Ionicons name={icon} size={16} color={Colors.navyPrimary} />
       <Text style={ms.value}>{v}</Text>
       <Text style={ms.label}>{label}</Text>
     </View>
   );
 }
 const ms = StyleSheet.create({
-  card: { flex: 1, backgroundColor: Colors.background, borderRadius: BorderRadius.md, padding: 16, alignItems: 'center' },
-  value: { fontSize: 22, fontWeight: '700', color: Colors.text },
-  label: { fontSize: 11, color: Colors.textSecondary, textTransform: 'uppercase', marginTop: 4 },
+  card: { flex: 1, backgroundColor: Colors.background, borderRadius: BorderRadius.md, padding: 14, alignItems: 'center', gap: 4 },
+  value: { fontSize: 20, fontWeight: '800', color: Colors.text },
+  label: { fontSize: 10, color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
 });
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.background },
-  scroll: { padding: 14 },
+  scroll: { padding: 12 },
   ctr: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, gap: 12, padding: 24 },
   ctrText: { fontSize: 14, color: Colors.textSecondary },
   ctrTitle: { fontSize: 16, fontWeight: '600', color: Colors.text },
-  headCard: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: 24, alignItems: 'center', marginBottom: 10, borderWidth: 1, borderColor: Colors.border },
-  avatar: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+
+  headCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: 22,
+    alignItems: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  avatar: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   avatarText: { fontSize: 24, fontWeight: '700' },
-  name: { fontSize: 20, fontWeight: '700', color: Colors.text },
-  role: { fontSize: 13, color: Colors.textSecondary, marginTop: 3 },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 5, borderRadius: BorderRadius.full },
-  statusDot: { width: 7, height: 7, borderRadius: 3.5 },
-  statusText: { fontSize: 12, fontWeight: '600' },
-  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: 18, marginBottom: 10, borderWidth: 1, borderColor: Colors.border },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  rowLabel: { fontSize: 15, fontWeight: '600', color: Colors.text },
-  rowHint: { fontSize: 12, color: Colors.textSecondary, marginTop: 3 },
-  sLabel: { fontSize: 13, fontWeight: '600', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
+  name: { fontSize: 19, fontWeight: '700', color: Colors.text },
+  role: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: BorderRadius.full },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 11, fontWeight: '600' },
+
+  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: Colors.border },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tag: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: BorderRadius.sm, backgroundColor: Colors.navyPrimary + '08', borderWidth: 1, borderColor: Colors.navyPrimary + '15' },
-  tagText: { fontSize: 12, fontWeight: '500', color: Colors.navyPrimary },
-  divider: { height: 1, backgroundColor: Colors.border, marginVertical: 14 },
-  schedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 5 },
-  schedDay: { fontSize: 12, color: Colors.text, width: 65 },
-  schedBar: { flex: 1, height: 6, backgroundColor: Colors.background, borderRadius: 3, overflow: 'hidden' },
+  tag: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: BorderRadius.sm, backgroundColor: Colors.navyPrimary + '08', borderWidth: 1, borderColor: Colors.navyPrimary + '15' },
+  tagText: { fontSize: 11, fontWeight: '500', color: Colors.navyPrimary },
+
+  schedRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 4 },
+  schedDay: { fontSize: 11, color: Colors.text, width: 65, fontWeight: '600' },
+  schedBar: { flex: 1, height: 5, backgroundColor: Colors.background, borderRadius: 3, overflow: 'hidden' },
   schedFill: { height: '100%', backgroundColor: Colors.navyPrimary + '20', borderRadius: 3 },
-  schedTime: { fontSize: 11, color: Colors.textSecondary, width: 100, textAlign: 'right' },
-  lunch: { fontSize: 12, color: Colors.textSecondary, marginTop: 10 },
-  metricsGrid: { flexDirection: 'row', gap: 10 },
+  schedTime: { fontSize: 10, color: Colors.textSecondary, width: 95, textAlign: 'right' },
+  lunchRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
+  lunchText: { fontSize: 11, color: Colors.textSecondary },
+
+  metricsGrid: { flexDirection: 'row', gap: 8 },
+
   pwInput: { backgroundColor: Colors.background, borderRadius: BorderRadius.md, padding: 12, fontSize: 13, color: Colors.text, borderWidth: 1, borderColor: Colors.border, marginTop: 10 },
+  pwActions: { flexDirection: 'row', gap: 10, marginTop: 14 },
 });

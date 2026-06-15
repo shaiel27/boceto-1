@@ -8,11 +8,15 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  Linking,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
+import { API_BASE_URL } from '../../../src/constants/config';
 import { useTickets } from '../../../src/contexts/TicketContext';
 import { getTicketDetail } from '../../../src/services/ticketService';
 import { Ticket } from '../../../src/types/ticket';
@@ -31,12 +35,13 @@ export default function RequesterTicketDetail() {
   const { tickets, addComment } = useTickets();
   const tid = Number(id);
   const isResolved = ticket?.status === 'Resuelto';
+  const navigation = useNavigation();
 
   const load = async () => {
     setLoading(true);
     const cached = tickets.find((t) => t.id === tid) || null;
     const r = await getTicketDetail(tid, cached);
-    if (r.success && r.ticket) setTicket(r.ticket);
+    if (r.success && r.ticket) { setTicket(r.ticket); navigation.setOptions({ title: r.ticket.ticket_code }); }
     setLoading(false);
   };
   useEffect(() => { load(); }, [tid]);
@@ -74,7 +79,7 @@ export default function RequesterTicketDetail() {
   if (!ticket) return <View style={styles.ctr}><Ionicons name="alert-circle" size={40} color={Colors.priorityAlta} /><Text style={styles.ctrTitle}>No encontrado</Text></View>;
 
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Header */}
         <View style={styles.card}>
@@ -124,6 +129,30 @@ export default function RequesterTicketDetail() {
           <View style={styles.sHead}><Ionicons name="document-text-outline" size={16} color={Colors.navyPrimary} /><Text style={styles.sLabel}>Descripción</Text></View>
           <Text style={styles.desc}>{ticket.description || 'Sin descripción'}</Text>
         </View>
+
+        {ticket.ticket_attachments.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.sHead}><Ionicons name="attach-outline" size={16} color={Colors.navyPrimary} /><Text style={styles.sLabel}>Archivos adjuntos ({ticket.ticket_attachments.length})</Text></View>
+            {ticket.ticket_attachments.map((att) => {
+              const isImage = att.file_type?.startsWith('image/');
+              const fileUrl = `${API_BASE_URL}/${att.file_path}`;
+              return (
+                <TouchableOpacity key={att.id} style={styles.attItem} onPress={() => Linking.openURL(fileUrl)} activeOpacity={0.7}>
+                  {isImage ? (
+                    <Image source={{ uri: fileUrl }} style={styles.attThumb} />
+                  ) : (
+                    <View style={styles.attIcon}><Ionicons name="document-outline" size={22} color={Colors.primary} /></View>
+                  )}
+                  <View style={styles.attInfo}>
+                    <Text style={styles.attName} numberOfLines={1}>{att.file_name}</Text>
+                    <Text style={styles.attSize}>{formatBytes(att.file_size)}</Text>
+                  </View>
+                  <Ionicons name="open-outline" size={16} color={Colors.textLight} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         {/* Timeline */}
         {ticket.timeline.length > 0 && (
@@ -175,7 +204,7 @@ export default function RequesterTicketDetail() {
         )}
         <View style={{ height: 32 }} />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -187,6 +216,7 @@ function fmt(d: string) { return new Date(d).toLocaleDateString('es-ES', { day: 
 function fmtDT(d: string) { return new Date(d).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 function sBg(s: string) { return s === 'Pendiente' ? Colors.statusPendienteBg : s === 'En Proceso' ? Colors.statusEnProcesoBg : Colors.statusResueltoBg; }
 function sFg(s: string) { return s === 'Pendiente' ? Colors.badgeMedText : s === 'En Proceso' ? Colors.badgeBlueText : Colors.badgeLowText; }
+function formatBytes(bytes: number) { if (!bytes) return ''; const k = bytes / 1024; if (k < 1024) return k.toFixed(1) + ' KB'; return (k / 1024).toFixed(1) + ' MB'; }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.background },
@@ -232,4 +262,14 @@ const styles = StyleSheet.create({
   sendText: { fontSize: 13, fontWeight: '700', color: Colors.gold },
   resolvedBanner: { backgroundColor: Colors.statusResueltoBg, borderRadius: BorderRadius.md, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
   resolvedText: { flex: 1, fontSize: 12, color: Colors.statusResuelto, fontWeight: '500' },
+  attItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.background, borderRadius: BorderRadius.md,
+    padding: 10, marginBottom: 6, borderWidth: 1, borderColor: Colors.border,
+  },
+  attThumb: { width: 44, height: 44, borderRadius: 8 },
+  attIcon: { width: 44, height: 44, borderRadius: 8, backgroundColor: Colors.primary + '0C', justifyContent: 'center', alignItems: 'center' },
+  attInfo: { flex: 1 },
+  attName: { fontSize: 12, fontWeight: '600', color: Colors.text },
+  attSize: { fontSize: 11, color: Colors.textLight, marginTop: 2 },
 });

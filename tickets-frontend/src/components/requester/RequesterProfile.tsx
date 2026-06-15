@@ -10,8 +10,12 @@ import {
   EyeOff,
   Save,
   X,
-  Shield,
-  Edit2
+  Edit2,
+  AtSign,
+  MapPin,
+  Clock,
+  ShieldCheck,
+  KeyRound
 } from 'lucide-react';
 import './RequesterProfile.css';
 
@@ -19,6 +23,7 @@ interface RequesterProfileData {
   id: string;
   name: string;
   email: string;
+  username?: string;
   position: string;
   hireDate: string;
   office_name: string;
@@ -36,7 +41,7 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
+
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
     newPassword: '',
@@ -52,63 +57,29 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
   const [passwordSuccess, setPasswordSuccess] = useState('');
 
   const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPasswordForm({
-      ...passwordForm,
-      [e.target.name]: e.target.value
-    });
+    setPasswordForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
     setPasswordError('');
     setPasswordSuccess('');
   };
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm({
-      ...editForm,
-      [e.target.name]: e.target.value
-    });
+    setEditForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const validatePassword = (password: string): boolean => {
-    // Mínimo 8 caracteres, al menos una mayúscula, una minúscula y un número
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/;
-    return passwordRegex.test(password);
-  };
+  const validatePassword = (password: string): boolean =>
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/.test(password);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validaciones
-    if (!passwordForm.currentPassword) {
-      setPasswordError('Debe ingresar la contraseña actual');
-      return;
-    }
 
-    if (!passwordForm.newPassword) {
-      setPasswordError('Debe ingresar una nueva contraseña');
-      return;
-    }
+    if (!passwordForm.currentPassword) { setPasswordError('Debe ingresar la contraseña actual'); return; }
+    if (!passwordForm.newPassword) { setPasswordError('Debe ingresar una nueva contraseña'); return; }
+    if (!validatePassword(passwordForm.newPassword)) { setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número'); return; }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) { setPasswordError('Las contraseñas nuevas no coinciden'); return; }
 
-    if (!validatePassword(passwordForm.newPassword)) {
-      setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número');
-      return;
-    }
-
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('Las contraseñas nuevas no coinciden');
-      return;
-    }
-
-    // Simular cambio de contraseña (en producción, enviar al backend)
-    console.log('Cambiando contraseña para usuario:', profile.id);
     setPasswordSuccess('Contraseña cambiada exitosamente');
-    
-    // Limpiar formulario
-    setPasswordForm({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
+    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
-    // Cerrar modal después de 2 segundos
     setTimeout(() => {
       setShowPasswordModal(false);
       setPasswordSuccess('');
@@ -117,175 +88,125 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
 
   const handleEditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const updatedProfile = {
-      ...profile,
-      name: editForm.name,
-      email: editForm.email
-    };
-
-    if (onUpdate) {
-      onUpdate(updatedProfile);
-    }
-
+    const updatedProfile = { ...profile, name: editForm.name, email: editForm.email };
+    onUpdate?.(updatedProfile);
     setShowEditModal(false);
   };
 
-  const calculateYearsOfService = (hireDate: string) => {
-    const hire = new Date(hireDate);
+  const yearsOfService = (() => {
+    const hire = new Date(profile.hireDate);
     const now = new Date();
     const years = now.getFullYear() - hire.getFullYear();
     const months = now.getMonth() - hire.getMonth();
-    if (months < 0 || (months === 0 && now.getDate() < hire.getDate())) {
-      return years - 1;
-    }
-    return years;
-  };
+    return months < 0 || (months === 0 && now.getDate() < hire.getDate()) ? years - 1 : years;
+  })();
 
   return (
-    <div className="requester-profile">
-      <div className="profile-header">
-        <div className="profile-avatar-section">
-          <div className="avatar-circle">
-            <User size={32} />
+    <div className="rp">
+      {/* Header */}
+      <div className="rp-head">
+        <div className="rp-head-l">
+          <div className="rp-avatar">
+            <User size={26} />
           </div>
-          <div className="profile-identity">
-            <h2 className="profile-title">{profile.name}</h2>
-            <p className="profile-subtitle">{profile.position}</p>
+          <div className="rp-head-info">
+            <h2 className="rp-name">{profile.name}</h2>
+            <p className="rp-role">{profile.position}</p>
           </div>
         </div>
-        <button 
-          className="edit-profile-btn"
-          onClick={() => setShowEditModal(true)}
-        >
-          <Edit2 size={16} />
-          Editar Datos
+        <button className="rp-edit-btn" onClick={() => setShowEditModal(true)}>
+          <Edit2 size={15} />
+          Editar
         </button>
       </div>
 
-      <div className="profile-content">
-        {/* Información Personal */}
-        <div className="profile-card">
-          <div className="card-header">
-            <div className="card-icon personal">
-              <Shield size={20} />
-            </div>
-            <h3 className="card-title">Información Personal</h3>
+      {/* Cards */}
+      <div className="rp-body">
+        {/* Personal Info */}
+        <div className="rp-card">
+          <div className="rp-card-h">
+            <ShieldCheck size={16} />
+            <span>Información Personal</span>
           </div>
-          <div className="info-grid">
-            <div className="info-item">
-              <label className="info-label">
-                <User size={14} />
-                Nombre Completo
-              </label>
-              <p className="info-value">{profile.name}</p>
+          <div className="rp-grid">
+            <div className="rp-item">
+              <span className="rp-lbl"><User size={13} />Nombre Completo</span>
+              <span className="rp-val">{profile.name}</span>
             </div>
-            <div className="info-item">
-              <label className="info-label">
-                <Mail size={14} />
-                Correo Electrónico
-              </label>
-              <p className="info-value">{profile.email}</p>
+            <div className="rp-item">
+              <span className="rp-lbl"><Mail size={13} />Correo Electrónico</span>
+              <span className="rp-val">{profile.email}</span>
             </div>
-            <div className="info-item">
-              <label className="info-label">
-                <Briefcase size={14} />
-                Cargo
-              </label>
-              <p className="info-value">{profile.position}</p>
+            <div className="rp-item">
+              <span className="rp-lbl"><AtSign size={13} />Usuario</span>
+              <span className="rp-val rp-val--user">{profile.username ? `@${profile.username}` : '-'}</span>
+            </div>
+            <div className="rp-item">
+              <span className="rp-lbl"><Briefcase size={13} />Cargo</span>
+              <span className="rp-val">{profile.position}</span>
             </div>
           </div>
         </div>
 
-        {/* Información Laboral */}
-        <div className="profile-card">
-          <div className="card-header">
-            <div className="card-icon work">
-              <Building size={20} />
-            </div>
-            <h3 className="card-title">Información Laboral</h3>
+        {/* Work Info */}
+        <div className="rp-card">
+          <div className="rp-card-h">
+            <Building size={16} />
+            <span>Información Laboral</span>
           </div>
-          <div className="info-grid">
+          <div className="rp-grid">
             {profile.office_name && (
-              <div className="info-item">
-                <label className="info-label">
-                  <Building size={14} />
-                  Oficina
-                </label>
-                <p className="info-value">{profile.office_name}</p>
+              <div className="rp-item">
+                <span className="rp-lbl"><MapPin size={13} />Oficina</span>
+                <span className="rp-val">{profile.office_name}</span>
               </div>
             )}
-            <div className="info-item">
-              <label className="info-label">
-                <User size={14} />
-                Supervisor
-              </label>
-              <p className="info-value">{profile.supervisor}</p>
+            <div className="rp-item">
+              <span className="rp-lbl"><User size={13} />Supervisor</span>
+              <span className="rp-val">{profile.supervisor}</span>
             </div>
-            <div className="info-item">
-              <label className="info-label">
-                <Calendar size={14} />
-                Fecha de Ingreso
-              </label>
-              <p className="info-value">
+            <div className="rp-item">
+              <span className="rp-lbl"><Calendar size={13} />Fecha de Ingreso</span>
+              <span className="rp-val">
                 {new Date(profile.hireDate).toLocaleDateString('es-ES', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
+                  year: 'numeric', month: 'long', day: 'numeric'
                 })}
-              </p>
+              </span>
             </div>
-            <div className="info-item">
-              <label className="info-label">
-                <Calendar size={14} />
-                Antigüedad
-              </label>
-              <p className="info-value">{calculateYearsOfService(profile.hireDate)} años</p>
+            <div className="rp-item">
+              <span className="rp-lbl"><Clock size={13} />Antigüedad</span>
+              <span className="rp-val">{yearsOfService} años</span>
             </div>
           </div>
         </div>
 
-        {/* Seguridad */}
-        <div className="profile-card security-card">
-          <div className="card-header">
-            <div className="card-icon security">
-              <Lock size={20} />
-            </div>
-            <h3 className="card-title">Seguridad</h3>
+        {/* Security */}
+        <div className="rp-card rp-card--sec">
+          <div className="rp-card-h">
+            <KeyRound size={16} />
+            <span>Seguridad</span>
           </div>
-          <button 
-            className="change-password-btn"
-            onClick={() => setShowPasswordModal(true)}
-          >
-            <Lock size={16} />
+          <button className="rp-pw-btn" onClick={() => setShowPasswordModal(true)}>
+            <Lock size={15} />
             Cambiar Contraseña
           </button>
         </div>
       </div>
 
-      {/* Modal de Cambio de Contraseña */}
+      {/* Password Modal */}
       {showPasswordModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
+        <div className="rp-overlay" onClick={() => { setShowPasswordModal(false); setPasswordError(''); setPasswordSuccess(''); }}>
+          <div className="rp-modal" onClick={e => e.stopPropagation()}>
+            <div className="rp-modal-h">
               <h3>Cambiar Contraseña</h3>
-              <button 
-                className="close-btn"
-                onClick={() => {
-                  setShowPasswordModal(false);
-                  setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                  setPasswordError('');
-                  setPasswordSuccess('');
-                }}
-              >
-                <X size={20} />
+              <button className="rp-modal-close" onClick={() => { setShowPasswordModal(false); setPasswordError(''); setPasswordSuccess(''); }}>
+                <X size={18} />
               </button>
             </div>
-            
-            <form onSubmit={handlePasswordSubmit} className="password-form">
-              <div className="form-group">
+            <form onSubmit={handlePasswordSubmit} className="rp-modal-b">
+              <div className="rp-fg">
                 <label>Contraseña Actual</label>
-                <div className="password-input">
+                <div className="rp-pw">
                   <input
                     type={showCurrentPassword ? 'text' : 'password'}
                     name="currentPassword"
@@ -294,85 +215,53 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
                     placeholder="Ingrese su contraseña actual"
                     required
                   />
-                  <button
-                    type="button"
-                    className="toggle-password"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                  >
-                    {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <button type="button" className="rp-pw-tog" onClick={() => setShowCurrentPassword(p => !p)} tabIndex={-1}>
+                    {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
-
-              <div className="form-group">
+              <div className="rp-fg">
                 <label>Nueva Contraseña</label>
-                <div className="password-input">
+                <div className="rp-pw">
                   <input
                     type={showNewPassword ? 'text' : 'password'}
                     name="newPassword"
                     value={passwordForm.newPassword}
                     onChange={handlePasswordChange}
-                    placeholder="Mínimo 8 caracteres, mayúscula, minúscula y número"
+                    placeholder="Mín. 8 car., mayúscula, minúscula y número"
                     required
                   />
-                  <button
-                    type="button"
-                    className="toggle-password"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                  >
-                    {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <button type="button" className="rp-pw-tog" onClick={() => setShowNewPassword(p => !p)} tabIndex={-1}>
+                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
-
-              <div className="form-group">
+              <div className="rp-fg">
                 <label>Confirmar Nueva Contraseña</label>
-                <div className="password-input">
+                <div className="rp-pw">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={passwordForm.confirmPassword}
                     onChange={handlePasswordChange}
-                    placeholder="Confirme su nueva contraseña"
+                    placeholder="Repita la nueva contraseña"
                     required
                   />
-                  <button
-                    type="button"
-                    className="toggle-password"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  >
-                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <button type="button" className="rp-pw-tog" onClick={() => setShowConfirmPassword(p => !p)} tabIndex={-1}>
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
 
-              {passwordError && (
-                <div className="error-message">
-                  {passwordError}
-                </div>
-              )}
+              {passwordError && <div className="rp-msg rp-msg--err">{passwordError}</div>}
+              {passwordSuccess && <div className="rp-msg rp-msg--ok">{passwordSuccess}</div>}
 
-              {passwordSuccess && (
-                <div className="success-message">
-                  {passwordSuccess}
-                </div>
-              )}
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setShowPasswordModal(false);
-                    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-                    setPasswordError('');
-                    setPasswordSuccess('');
-                  }}
-                >
+              <div className="rp-acts">
+                <button type="button" className="rp-btn rp-btn--sec" onClick={() => { setShowPasswordModal(false); setPasswordError(''); setPasswordSuccess(''); }}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  <Save size={16} />
+                <button type="submit" className="rp-btn rp-btn--pri">
+                  <Save size={15} />
                   Cambiar Contraseña
                 </button>
               </div>
@@ -381,55 +270,31 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
         </div>
       )}
 
-      {/* Modal de Edición de Datos */}
+      {/* Edit Modal */}
       {showEditModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
+        <div className="rp-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="rp-modal" onClick={e => e.stopPropagation()}>
+            <div className="rp-modal-h">
               <h3>Editar Datos de Contacto</h3>
-              <button 
-                className="close-btn"
-                onClick={() => setShowEditModal(false)}
-              >
-                <X size={20} />
+              <button className="rp-modal-close" onClick={() => setShowEditModal(false)}>
+                <X size={18} />
               </button>
             </div>
-            
-            <form onSubmit={handleEditSubmit} className="edit-form">
-              <div className="form-group">
+            <form onSubmit={handleEditSubmit} className="rp-modal-b">
+              <div className="rp-fg">
                 <label>Nombre Completo</label>
-                <input
-                  type="text"
-                  name="name"
-                  value={editForm.name}
-                  onChange={handleEditChange}
-                  placeholder="Nombre completo"
-                  required
-                />
+                <input type="text" name="name" value={editForm.name} onChange={handleEditChange} placeholder="Nombre completo" required />
               </div>
-
-              <div className="form-group">
+              <div className="rp-fg">
                 <label>Correo Electrónico</label>
-                <input
-                  type="email"
-                  name="email"
-                  value={editForm.email}
-                  onChange={handleEditChange}
-                  placeholder="correo@alcaldia.gob"
-                  required
-                />
+                <input type="email" name="email" value={editForm.email} onChange={handleEditChange} placeholder="correo@alcaldia.gob" required />
               </div>
-
-              <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowEditModal(false)}
-                >
+              <div className="rp-acts">
+                <button type="button" className="rp-btn rp-btn--sec" onClick={() => setShowEditModal(false)}>
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  <Save size={16} />
+                <button type="submit" className="rp-btn rp-btn--pri">
+                  <Save size={15} />
                   Guardar Cambios
                 </button>
               </div>

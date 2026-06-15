@@ -1,10 +1,10 @@
 <?php
 declare(strict_types=1);
 
-final readonly class OfficeReportDTO
+final readonly class PriorityReportDTO
 {
     public function __construct(
-        public string $office,
+        public string $priority,
         public int $total,
         public int $resolved,
         public int $inProgress,
@@ -19,7 +19,7 @@ final readonly class OfficeReportDTO
         $resolved = (int)($data['resolved'] ?? 0);
 
         return new self(
-            office: (string)($data['office'] ?? ''),
+            priority: (string)($data['priority'] ?? ''),
             total: $total,
             resolved: $resolved,
             inProgress: (int)($data['in_progress'] ?? 0),
@@ -37,7 +37,7 @@ final readonly class OfficeReportDTO
     public function toArray(): array
     {
         return [
-            'office' => $this->office,
+            'priority' => $this->priority,
             'total' => $this->total,
             'resolved' => $this->resolved,
             'in_progress' => $this->inProgress,

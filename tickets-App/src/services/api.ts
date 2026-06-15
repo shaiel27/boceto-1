@@ -31,24 +31,36 @@ class ApiClient {
     return h;
   }
 
+  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
+    try {
+      const body = await response.json();
+      if (response.status === 401) {
+        return { success: false, message: body.message || 'Credenciales inválidas' };
+      }
+      return body;
+    } catch {
+      const text = await response.text().catch(() => '');
+      const fallback = response.status === 401 ? 'Credenciales inválidas' : `Error del servidor (${response.status})`;
+      return { success: false, message: fallback };
+    }
+  }
+
+  private handleError(e: any): ApiResponse {
+    if (e?.message === 'TIMEOUT') {
+      return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
+    }
+    return { success: false, message: 'Error de conexión con el servidor' };
+  }
+
   async get<T = any>(endpoint: string): Promise<ApiResponse<T>> {
     try {
       const response = await fetchWithTimeout(`${API_BASE_URL}${endpoint}`, {
         method: 'GET',
         headers: await this.headers(false),
       });
-
-      if (response.status === 401) {
-        return { success: false, message: 'Sesión expirada. Inicie sesión nuevamente.' };
-      }
-
-      const data = await response.json();
-      return data;
+      return this.handleResponse(response);
     } catch (e: any) {
-      if (e?.message === 'TIMEOUT') {
-        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
-      }
-      return { success: false, message: 'Error de conexión con el servidor' };
+      return this.handleError(e);
     }
   }
 
@@ -59,18 +71,9 @@ class ApiClient {
         headers: await this.headers(),
         body: body ? JSON.stringify(body) : undefined,
       }, timeout);
-
-      if (response.status === 401) {
-        return { success: false, message: 'Sesión expirada. Inicie sesión nuevamente.' };
-      }
-
-      const data = await response.json();
-      return data;
+      return this.handleResponse(response);
     } catch (e: any) {
-      if (e?.message === 'TIMEOUT') {
-        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
-      }
-      return { success: false, message: 'Error de conexión con el servidor' };
+      return this.handleError(e);
     }
   }
 
@@ -81,18 +84,9 @@ class ApiClient {
         headers: await this.headers(),
         body: body ? JSON.stringify(body) : undefined,
       });
-
-      if (response.status === 401) {
-        return { success: false, message: 'Sesión expirada. Inicie sesión nuevamente.' };
-      }
-
-      const data = await response.json();
-      return data;
+      return this.handleResponse(response);
     } catch (e: any) {
-      if (e?.message === 'TIMEOUT') {
-        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
-      }
-      return { success: false, message: 'Error de conexión con el servidor' };
+      return this.handleError(e);
     }
   }
 
@@ -104,18 +98,9 @@ class ApiClient {
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData,
       });
-
-      if (response.status === 401) {
-        return { success: false, message: 'Sesión expirada. Inicie sesión nuevamente.' };
-      }
-
-      const data = await response.json();
-      return data;
+      return this.handleResponse(response);
     } catch (e: any) {
-      if (e?.message === 'TIMEOUT') {
-        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
-      }
-      return { success: false, message: 'Error de conexión con el servidor' };
+      return this.handleError(e);
     }
   }
 
@@ -125,18 +110,9 @@ class ApiClient {
         method: 'DELETE',
         headers: await this.headers(false),
       });
-
-      if (response.status === 401) {
-        return { success: false, message: 'Sesión expirada. Inicie sesión nuevamente.' };
-      }
-
-      const data = await response.json();
-      return data;
+      return this.handleResponse(response);
     } catch (e: any) {
-      if (e?.message === 'TIMEOUT') {
-        return { success: false, message: 'Servidor no disponible. Verifique su conexión.' };
-      }
-      return { success: false, message: 'Error de conexión con el servidor' };
+      return this.handleError(e);
     }
   }
 }

@@ -11,8 +11,8 @@ import { useAuth } from '../hooks/useAuth';
 interface TicketContextType {
   tickets: Ticket[];
   getTicketById: (id: number) => Promise<Ticket | undefined>;
-  takeTicket: (id: number, notes?: string) => Promise<void>;
-  resolveTicket: (id: number, notes: string) => Promise<void>;
+  takeTicket: (id: number, notes?: string) => Promise<{ success: boolean; message?: string }>;
+  resolveTicket: (id: number, notes: string) => Promise<{ success: boolean; message?: string }>;
   addComment: (ticketId: number, comment: string, fileUri?: string) => Promise<void>;
   refreshTickets: () => Promise<void>;
   isLoading: boolean;
@@ -66,6 +66,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
     if (result.success) {
       refreshTickets();
     }
+    return result;
   }, [refreshTickets]);
 
   const resolveTicket = useCallback(async (id: number, notes: string) => {
@@ -74,6 +75,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
     if (result.success) {
       refreshTickets();
     }
+    return result;
   }, [refreshTickets]);
 
   const addComment = useCallback(async (ticketId: number, comment: string, fileUri?: string) => {

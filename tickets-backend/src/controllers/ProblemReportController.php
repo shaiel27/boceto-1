@@ -46,8 +46,8 @@ class ProblemReportController
                     $this->getTopProblemByService($startDate, $endDate);
                     break;
                 case 'monthly':
-                    $startDate = $_GET['start_date'] ?? null;
-                    $endDate = $_GET['end_date'] ?? null;
+                    $startDate = $_GET['start_date'] ?? date('Y-m-d', strtotime('-90 days'));
+                    $endDate = $_GET['end_date'] ?? date('Y-m-d');
                     $this->getProblemsByMonth($startDate, $endDate);
                     break;
                 case 'systems':
@@ -100,11 +100,11 @@ class ProblemReportController
     private function getProblemsByMonth($startDate = null, $endDate = null)
     {
         $problemReport = new ProblemReport($this->conn);
-        $data = $problemReport->getProblemsByMonth($startDate, $endDate);
+        $data = $problemReport->getMostFrequentProblemsByService($startDate, $endDate);
         
         echo json_encode([
             'success' => true,
-            'message' => 'Problemas por mes obtenidos exitosamente',
+            'message' => 'Reporte mensual por tipo de servicio obtenido exitosamente',
             'data' => $data
         ]);
     }

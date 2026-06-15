@@ -200,6 +200,20 @@ const UserRegistration = () => {
           setErrors({});
           setTouched(new Set());
         }, 2500);
+      } else if (response.errors) {
+        const serverErrors: FormErrors = {};
+        const touchedFields = new Set(touched);
+        const knownFields = ['name_boss','username','email','password','confirmPassword','fk_role','fk_office'];
+        for (const [field, messages] of Object.entries(response.errors)) {
+          if (messages.length > 0 && knownFields.includes(field)) {
+            serverErrors[field as keyof FormErrors] = messages[0];
+            touchedFields.add(field);
+          }
+        }
+        setErrors(serverErrors);
+        setTouched(touchedFields);
+        const firstError = Object.values(response.errors).flat()[0];
+        sileo.error({ title: 'Error', description: firstError || 'Error en los datos ingresados' });
       } else {
         sileo.error({ title: 'Error', description: response.message || 'Error desconocido' });
       }

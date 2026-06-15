@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, FlatList, Image, Linking, KeyboardAvoidingView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Colors, BorderRadius } from '../../../../src/constants/colors';
+import { API_BASE_URL } from '../../../../src/constants/config';
 import { Ticket } from '../../../../src/types/ticket';
 import { updateTicketStatus } from '../../../../src/services/ticketService';
 import { addComment as addCommentApi } from '../../../../src/services/ticketService';
@@ -32,8 +33,9 @@ export default function AdminTicketDetailScreen() {
   const [assignSearch, setAssignSearch] = useState('');
   const toast = useToast();
   const tid = Number(id);
+  const navigation = useNavigation();
 
-  const load = async () => { setLoading(true); const r = await getAdminTicketDetail(tid); if (r.success && r.ticket) setTicket(r.ticket); setLoading(false); };
+  const load = async () => { setLoading(true); const r = await getAdminTicketDetail(tid); if (r.success && r.ticket) { setTicket(r.ticket); navigation.setOptions({ title: r.ticket.ticket_code }); } setLoading(false); };
   useEffect(() => { load(); }, [tid]);
 
   const [bienDesc, setBienDesc] = useState<string | null>(null);
@@ -104,7 +106,7 @@ export default function AdminTicketDetailScreen() {
   if (!ticket) return <View style={styles.ctr}><Ionicons name="alert-circle" size={40} color={Colors.priorityAlta} /><Text style={styles.ctrTitle}>No encontrado</Text><Button title="Volver" onPress={() => router.back()} variant="outline" /></View>;
 
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
       <ScrollView style={styles.sv} contentContainerStyle={styles.scroll}>
         <View style={styles.card}>
           <View style={styles.codeRow}>
@@ -141,6 +143,30 @@ export default function AdminTicketDetailScreen() {
           <Text style={styles.sTitle}>Descripción</Text>
           <Text style={styles.desc}>{ticket.description || 'Sin descripción'}</Text>
         </View>
+
+        {ticket.ticket_attachments.length > 0 && (
+          <View style={styles.card}>
+            <Text style={styles.sTitle}>Archivos adjuntos ({ticket.ticket_attachments.length})</Text>
+            {ticket.ticket_attachments.map((att) => {
+              const isImage = att.file_type?.startsWith('image/');
+              const fileUrl = `${API_BASE_URL}/${att.file_path}`;
+              return (
+                <TouchableOpacity key={att.id} style={styles.attItem} onPress={() => Linking.openURL(fileUrl)} activeOpacity={0.7}>
+                  {isImage ? (
+                    <Image source={{ uri: fileUrl }} style={styles.attThumb} />
+                  ) : (
+                    <View style={styles.attIcon}><Ionicons name="document-outline" size={22} color={Colors.primary} /></View>
+                  )}
+                  <View style={styles.attInfo}>
+                    <Text style={styles.attName} numberOfLines={1}>{att.file_name}</Text>
+                    <Text style={styles.attSize}>{formatBytes(att.file_size)}</Text>
+                  </View>
+                  <Ionicons name="open-outline" size={16} color={Colors.textLight} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         <View style={styles.card}>
           <View style={styles.sHead}>
@@ -281,7 +307,7 @@ export default function AdminTicketDetailScreen() {
           )}
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -291,6 +317,7 @@ function Meta({ icon, label, value, color }: any) {
 const ms = StyleSheet.create({ item: { flexDirection: 'row', alignItems: 'center', gap: 8 }, lbl: { fontSize: 12, color: Colors.textSecondary, width: 80 }, val: { fontSize: 12, color: Colors.text, flex: 1 } });
 function fmt(d: string) { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }); }
 function fmtDT(d: string) { return new Date(d).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+function formatBytes(bytes: number) { if (!bytes) return ''; const k = bytes / 1024; if (k < 1024) return k.toFixed(1) + ' KB'; return (k / 1024).toFixed(1) + ' MB'; }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.background },
@@ -335,6 +362,16 @@ const styles = StyleSheet.create({
   cCount: { fontSize: 11, color: Colors.textLight },
   sendBtn: { width: 100, height: 38 },
   actions: { flexDirection: 'row', gap: 10, paddingTop: 4 },
+  attItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.background, borderRadius: BorderRadius.md,
+    padding: 10, marginBottom: 6, borderWidth: 1, borderColor: Colors.border,
+  },
+  attThumb: { width: 44, height: 44, borderRadius: 8 },
+  attIcon: { width: 44, height: 44, borderRadius: 8, backgroundColor: Colors.primary + '0C', justifyContent: 'center', alignItems: 'center' },
+  attInfo: { flex: 1 },
+  attName: { fontSize: 12, fontWeight: '600', color: Colors.text },
+  attSize: { fontSize: 11, color: Colors.textLight, marginTop: 2 },
 });
 
 const modalStyles = StyleSheet.create({

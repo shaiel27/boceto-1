@@ -43,7 +43,7 @@ interface Technician {
   First_Name: string;
   Last_Name: string;
   Email: string;
-  Status: 'Disponible' | 'Ocupado' | 'Inactivo';
+  Status: 'Disponible' | 'Ocupado' | 'Inactivo' | 'Fuera de Servicio';
   Status_Reason?: 'ticket' | 'lunch' | 'schedule' | null;
   Fk_Lunch_Block?: number;
   Lunch_Block?: {
@@ -139,7 +139,7 @@ const TechnicianManagement: React.FC = () => {
   });
 
   // Vista actual
-  const [currentView, setCurrentView] = useState<'list' | 'analytics'>('list');
+  const [currentView, setCurrentView] = useState<'list' | 'analytics' | 'outOfService'>('list');
 
   // Cargar datos del API
   useEffect(() => {
@@ -280,6 +280,7 @@ const TechnicianManagement: React.FC = () => {
       available: technicians.filter(t => t.Status === 'Disponible').length,
       busy: technicians.filter(t => t.Status === 'Ocupado').length,
       inactive: technicians.filter(t => t.Status === 'Inactivo').length,
+      outOfService: technicians.filter(t => t.Status === 'Fuera de Servicio').length,
       totalTickets: technicians.reduce((acc, t) => acc + (t.Tickets_Assigned || 0), 0),
       totalResolved: technicians.reduce((acc, t) => acc + (t.Tickets_Resolved || 0), 0)
     };
@@ -396,21 +397,35 @@ const TechnicianManagement: React.FC = () => {
     });
   };
 
-  const handleDelete = async () => {
+  const handleDeactivate = async () => {
     if (selectedTechnician) {
       try {
         const response = await ApiService.deleteTechnician(selectedTechnician.ID_Technicians);
         if (response.success) {
-          sileo.success({ title: 'Técnico eliminado', description: `${selectedTechnician.First_Name} ${selectedTechnician.Last_Name} ha sido eliminado del sistema` });
+          sileo.success({ title: 'Técnico fuera de servicio', description: `${selectedTechnician.First_Name} ${selectedTechnician.Last_Name} ha sido marcado como fuera de servicio` });
           loadData();
           setShowDeleteModal(false);
           setSelectedTechnician(null);
         } else {
-          sileo.error({ title: 'Error al eliminar', description: response.message || 'No se pudo eliminar el técnico' });
+          sileo.error({ title: 'Error al desactivar', description: response.message || 'No se pudo desactivar el técnico' });
         }
       } catch (error) {
-        sileo.error({ title: 'Error de conexión', description: 'No se pudo conectar con el servidor al eliminar el técnico' });
+        sileo.error({ title: 'Error de conexión', description: 'No se pudo conectar con el servidor al desactivar el técnico' });
       }
+    }
+  };
+
+  const handleReactivate = async (technician: Technician) => {
+    try {
+      const response = await ApiService.reactivateTechnician(technician.ID_Technicians);
+      if (response.success) {
+        sileo.success({ title: 'Técnico reactivado', description: `${technician.First_Name} ${technician.Last_Name} ha sido reactivado exitosamente` });
+        loadData();
+      } else {
+        sileo.error({ title: 'Error al reactivar', description: response.message || 'No se pudo reactivar el técnico' });
+      }
+    } catch (error) {
+      sileo.error({ title: 'Error de conexión', description: 'No se pudo conectar con el servidor al reactivar el técnico' });
     }
   };
 
@@ -678,6 +693,10 @@ const TechnicianManagement: React.FC = () => {
                   <span className="tm-stat-num">{stats.inactive}</span>
                   <span className="tm-stat-lbl">Inactivos</span>
                 </div>
+                <div className="tm-stat-card tm-stat-card--muted">
+                  <span className="tm-stat-num">{stats.outOfService}</span>
+                  <span className="tm-stat-lbl">F. Servicio</span>
+                </div>
               </>
             )}
           </div>
@@ -705,6 +724,7 @@ const TechnicianManagement: React.FC = () => {
               <option value="Disponible">Disponibles</option>
               <option value="Ocupado">Ocupados</option>
               <option value="Inactivo">Inactivos</option>
+              <option value="Fuera de Servicio">Fuera de Servicio</option>
             </select>
             <select
               value={serviceFilter}
@@ -738,6 +758,13 @@ const TechnicianManagement: React.FC = () => {
               <TrendingUp size={14} />
               <span>Análisis</span>
             </button>
+            <button
+              className={`tm-tab-btn ${currentView === 'outOfService' ? 'active' : ''}`}
+              onClick={() => setCurrentView('outOfService')}
+            >
+              <UserX size={14} />
+              <span>Fuera de Servicio</span>
+            </button>
           </div>
           <span className="tm-results-count">{filteredTechnicians.length} profesionales encontrados</span>
         </div>
@@ -749,14 +776,94 @@ const TechnicianManagement: React.FC = () => {
               <div className="tm-spinner" />
               <p>Cargando técnicos...</p>
             </div>
-          ) : filteredTechnicians.length === 0 ? (
-            <div className="tm-empty">
-              <BadgeCheck size={40} className="tm-empty-icon" />
-              <h3>No se encontraron técnicos</h3>
-              <p>Intenta ajustar los filtros de búsqueda</p>
+          ) : currentView === 'outOfService' ? (
+            <div className="tm-groups">
+              {technicians.filter((t: Technician) => t.Status === 'Fuera de Servicio').length === 0 ? (
+                <div className="tm-empty">
+                  <UserX size={40} className="tm-empty-icon" />
+                  <h3>No hay técnicos fuera de servicio</h3>
+                  <p>Todos los técnicos están activos en el sistema</p>
+                </div>
+              ) : (
+                <div className="tm-group">
+                  <div className="tm-group-header">
+                    <div className="tm-group-info">
+                      <div className="tm-group-icon" style={{ background: '#94a3b8' }}>
+                        <UserX size={16} />
+                      </div>
+                      <h3 className="tm-group-title">Fuera de Servicio</h3>
+                      <span className="tm-group-count">{technicians.filter((t: Technician) => t.Status === 'Fuera de Servicio').length} técnicos</span>
+                    </div>
+                  </div>
+                  <div className="tm-card-list">
+                    {technicians.filter((t: Technician) => t.Status === 'Fuera de Servicio').map((technician: Technician) => (
+                      <div key={technician.ID_Technicians} className="tm-tech-card tm-tech-card--out-of-service">
+                        <div className="tm-tech-left">
+                          <div className="tm-tech-avatar" style={{ opacity: 0.6 }}>
+                            {technician.Avatar || `${technician.First_Name[0]}${technician.Last_Name[0]}`}
+                          </div>
+                          <div className="tm-tech-name">
+                            <div className="tm-tech-fullname">
+                              {technician.First_Name} {technician.Last_Name}
+                            </div>
+                            <div className="tm-tech-id">ID: {technician.ID_Technicians}</div>
+                          </div>
+                        </div>
+
+                        <div className="tm-tech-info">
+                          <div className="tm-tech-info-item">
+                            <span className="tm-tech-info-label">Estado</span>
+                            <div className="tm-tech-status-orb tm-tech-status-orb--fuera-de-servicio" title="Fuera de Servicio">
+                              <span className="tm-tech-status-icon">
+                                <UserX size={14} />
+                              </span>
+                              <span className="tm-tech-status-tooltip">Fuera de Servicio</span>
+                            </div>
+                          </div>
+
+                          <div className="tm-tech-info-item">
+                            <span className="tm-tech-info-label">Email</span>
+                            <span className="tm-tech-info-value">
+                              <Mail size={12} />
+                              {technician.Email || 'Sin email'}
+                            </span>
+                          </div>
+
+                          <div className="tm-tech-info-item">
+                            <span className="tm-tech-info-label">Tickets Resueltos</span>
+                            <span className="tm-tech-info-value">
+                              <CheckCircle size={12} />
+                              {technician.Tickets_Resolved || 0}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="tm-tech-actions">
+                          {!isTechnician() && (
+                            <button
+                              className="tm-tech-action-btn success"
+                              onClick={() => handleReactivate(technician)}
+                              title="Reactivar técnico"
+                            >
+                              <UserCheck size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : currentView === 'list' ? (
-            <div className="tm-groups">
+            filteredTechnicians.length === 0 ? (
+              <div className="tm-empty">
+                <BadgeCheck size={40} className="tm-empty-icon" />
+                <h3>No se encontraron técnicos</h3>
+                <p>Intenta ajustar los filtros de búsqueda</p>
+              </div>
+            ) : (
+              <div className="tm-groups">
               {Object.entries(groupedTechnicians).map(([serviceName, techs]: [string, Technician[]]) => (
                 <div key={serviceName} className="tm-group">
                   <div className="tm-group-header">
@@ -810,6 +917,7 @@ const TechnicianManagement: React.FC = () => {
                                   {technician.Status === 'Ocupado' && technician.Status_Reason === 'lunch' && <Coffee size={14} />}
                                   {technician.Status === 'Ocupado' && technician.Status_Reason === 'schedule' && <Clock size={14} />}
                                   {technician.Status === 'Inactivo' && <XCircle size={14} />}
+                                  {technician.Status === 'Fuera de Servicio' && <UserX size={14} />}
                                 </span>
                                 <span className="tm-tech-status-tooltip">
                                   {technician.Status}
@@ -867,16 +975,25 @@ const TechnicianManagement: React.FC = () => {
                                 >
                                   <Edit size={14} />
                                 </button>
-                                {!isTechnician() && (
+                                {!isTechnician() && technician.Status !== 'Fuera de Servicio' && (
                                   <button
                                     className="tm-tech-action-btn danger"
                                     onClick={() => {
                                       setSelectedTechnician(technician);
                                       setShowDeleteModal(true);
                                     }}
-                                    title="Eliminar"
+                                    title="Marcar fuera de servicio"
                                   >
-                                    <Trash2 size={14} />
+                                    <UserX size={14} />
+                                  </button>
+                                )}
+                                {!isTechnician() && technician.Status === 'Fuera de Servicio' && (
+                                  <button
+                                    className="tm-tech-action-btn success"
+                                    onClick={() => handleReactivate(technician)}
+                                    title="Reactivar técnico"
+                                  >
+                                    <UserCheck size={14} />
                                   </button>
                                 )}
                               </>
@@ -889,6 +1006,7 @@ const TechnicianManagement: React.FC = () => {
                 </div>
               ))}
             </div>
+            )
           ) : (
             <TechnicianAnalytics />
           )}
@@ -1390,12 +1508,12 @@ const TechnicianManagement: React.FC = () => {
         </div>
       )}
 
-      {/* ─── Modal: Eliminar ─── */}
+      {/* ─── Modal: Marcar como Fuera de Servicio ─── */}
       {showDeleteModal && selectedTechnician && (
         <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowDeleteModal(false); }}>
           <div className="tm-modal tm-modal-sm">
             <div className="tm-modal-header">
-              <h2>Eliminar Técnico</h2>
+              <h2>Marcar Fuera de Servicio</h2>
               <button className="tm-close-btn" onClick={() => setShowDeleteModal(false)}>
                 <X size={20} />
               </button>
@@ -1405,17 +1523,17 @@ const TechnicianManagement: React.FC = () => {
               <div className="tm-warning-icon">
                 <UserX size={48} />
               </div>
-              <p>¿Estás seguro de que deseas eliminar al técnico <strong>{selectedTechnician.First_Name} {selectedTechnician.Last_Name}</strong>?</p>
-              <p className="tm-warning-text">Esta acción no se puede deshacer.</p>
+              <p>¿Estás seguro de que deseas marcar como <strong>fuera de servicio</strong> a <strong>{selectedTechnician.First_Name} {selectedTechnician.Last_Name}</strong>?</p>
+              <p className="tm-warning-text">El técnico no será eliminado de la base de datos. Podrá ser reactivado posteriormente.</p>
             </div>
 
             <div className="tm-modal-actions">
               <button className="tm-modal-btn tm-modal-btn-secondary" onClick={() => setShowDeleteModal(false)}>
                 Cancelar
               </button>
-              <button className="tm-modal-btn tm-modal-btn-danger" onClick={handleDelete}>
-                <Trash2 size={15} />
-                Eliminar
+              <button className="tm-modal-btn tm-modal-btn-danger" onClick={handleDeactivate}>
+                <UserX size={15} />
+                Marcar Fuera de Servicio
               </button>
             </div>
           </div>

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, LayoutAnimation, Platform, UIManager, Modal, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, LayoutAnimation, Platform, UIManager, Modal, ActivityIndicator, Linking, KeyboardAvoidingView, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
+import { API_BASE_URL } from '../../../src/constants/config';
 import { Ticket } from '../../../src/types/ticket';
 import { useTickets } from '../../../src/contexts/TicketContext';
 import { getTicketDetail, requestAssistance } from '../../../src/services/ticketService';
@@ -21,11 +22,7 @@ try {
 
 const PRIO_COL: Record<string, string> = { Alta: Colors.priorityAlta, Media: Colors.priorityMedia, Baja: Colors.textLight };
 const QUICK = ['Recibido, comenzaré.', 'Necesito más información.', 'Repuesto solicitado.', 'Problema resuelto.'];
-const ASSIST_REASONS = [
-  'Necesito ayuda con este ticket',
-  'Requiero autorización',
-  'Otro',
-];
+const ASSIST_REASONS = ['Necesito ayuda con este ticket', 'Requiero autorización', 'Otro'];
 
 export default function TicketDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -35,7 +32,6 @@ export default function TicketDetailScreen() {
   const [quick, setQuick] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ description: true, timeline: true, comments: true });
   const [showAssistance, setShowAssistance] = useState(false);
   const [assistReason, setAssistReason] = useState('');
   const [assistDetails, setAssistDetails] = useState('');
@@ -44,12 +40,14 @@ export default function TicketDetailScreen() {
   const { user } = useAuth();
   const { tickets, takeTicket, resolveTicket, addComment } = useTickets();
   const tid = Number(id);
+  const navigation = useNavigation();
+  const scrollRef = useRef<ScrollView>(null);
 
   const load = async () => {
     setLoading(true);
     const cached = tickets.find((t) => t.id === tid) || null;
     const r = await getTicketDetail(tid, cached);
-    if (r.success && r.ticket) setTicket(r.ticket);
+    if (r.success && r.ticket) { setTicket(r.ticket); navigation.setOptions({ title: r.ticket.ticket_code }); }
     setLoading(false);
   };
   useEffect(() => { load(); }, [tid]);
@@ -65,39 +63,42 @@ export default function TicketDetailScreen() {
     return () => { cancelled = true; };
   }, [ticket?.property_number]);
 
-  const toggle = (k: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setExpanded((p) => ({ ...p, [k]: !p[k] }));
-  };
-
   const handleTake = async () => {
-    await takeTicket(tid);
-    setTicket((p) => p ? { ...p, status: 'En Proceso' } : p);
-    toast.showToast({ title: 'Ticket tomado', message: 'Ahora está en proceso', type: 'success' });
+    if (!ticket) return;
+    const r = await takeTicket(tid);
+    if (r.success) { toast.showToast({ title: 'Ticket tomado', message: 'Comenzaste a trabajar en este ticket', type: 'info' }); load(); }
+    else toast.showToast({ title: 'Error', message: r.message || 'No se pudo tomar', type: 'error' });
   };
 
-  const handleResolve = async () => {
-    const notes = comment || 'Resuelto por el técnico.';
-    await resolveTicket(tid, notes);
-    setTicket((p) => p ? { ...p, status: 'Resuelto', resolved_at: new Date().toISOString(), resolution_notes: notes } : p);
-    toast.showToast({ title: 'Resuelto', message: 'Ticket marcado como resuelto', type: 'success' });
+  const handleResolve = () => {
+    if (!ticket) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setQuick(true);
+  };
+
+  const doResolve = async (note: string) => {
+    setSending(true);
+    const r = await resolveTicket(tid, note);
+    setSending(false);
+    if (r.success) { toast.showToast({ title: 'Ticket resuelto', message: 'Listo', type: 'success' }); setQuick(false); load(); }
+    else toast.showToast({ title: 'Error', message: r.message || '', type: 'error' });
   };
 
   const handleComment = async () => {
     if (!comment.trim() && !image) return;
     setSending(true);
     await addComment(tid, comment || 'Adjunto imagen.', image || undefined);
-    setComment(''); setImage(null); setQuick(false);
-    toast.showToast({ title: 'Comentario agregado', message: '', type: 'info' });
+    setComment(''); setImage(null);
     setSending(false);
-    const c2 = tickets.find((t) => t.id === tid) || null;
-    const r = await getTicketDetail(tid, c2);
+    const cached = tickets.find((t) => t.id === tid) || null;
+    const r = await getTicketDetail(tid, cached);
     if (r.success && r.ticket) setTicket(r.ticket);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
   };
 
   const pickImage = async (fromCamera: boolean) => {
     const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== 'granted') { toast.showToast({ title: 'Permiso denegado', message: '', type: 'error' }); return; }
+    if (perm.status !== 'granted') return;
     const result = fromCamera ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 }) : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.7 });
     if (!result.canceled && result.assets[0]) setImage(result.assets[0].uri);
   };
@@ -105,271 +106,383 @@ export default function TicketDetailScreen() {
   const handleAssistance = async () => {
     if (!assistReason) return;
     setAssistSending(true);
-    const result = await requestAssistance(tid, assistReason, assistDetails);
+    const r = await requestAssistance(tid, assistReason, assistDetails);
     setAssistSending(false);
-    if (result.success) {
-      toast.showToast({ title: 'Asistencia solicitada', message: assistReason, type: 'warning' });
-      setShowAssistance(false);
-      setAssistReason('');
-      setAssistDetails('');
-    } else {
-      toast.showToast({ title: 'Error', message: result.message || 'No se pudo enviar', type: 'error' });
-    }
+    if (r.success) { toast.showToast({ title: 'Asistencia solicitada', message: 'Admin notificado', type: 'warning' }); setShowAssistance(false); setAssistReason(''); setAssistDetails(''); }
+    else toast.showToast({ title: 'Error', message: r.message || '', type: 'error' });
   };
 
-  if (loading) return <View style={styles.ctr}><Text style={styles.ctrText}>Cargando...</Text></View>;
-  if (!ticket) return <View style={styles.ctr}><Ionicons name="alert-circle" size={40} color={Colors.priorityAlta} /><Text style={styles.ctrTitle}>No encontrado</Text><Button title="Volver" onPress={() => router.back()} variant="outline" /></View>;
+  if (loading) return <View style={styles.ctr}><ActivityIndicator size="small" color={Colors.primary} /><Text style={styles.ctrText}>Cargando ticket...</Text></View>;
+  if (!ticket) return <View style={styles.ctr}><Ionicons name="alert-circle" size={36} color={Colors.priorityAlta} /><Text style={styles.ctrTitle}>No encontrado</Text><Button title="Volver" onPress={() => router.back()} variant="outline" /></View>;
 
   const isResolved = ticket.status === 'Resuelto';
+  const prioColor = PRIO_COL[ticket.system_priority] || Colors.textLight;
 
   return (
-    <View style={styles.page}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Header */}
-        <View style={styles.card}>
-          <View style={styles.cardTop}>
-            <View style={styles.codeBlock}>
-              <View style={[styles.codeDot, { backgroundColor: isResolved ? Colors.statusResuelto : Colors.navyPrimary }]} />
-              <Text style={styles.code}>{ticket.ticket_code}</Text>
-            </View>
-            <View style={styles.badges}>
-              <View style={[styles.badge, { backgroundColor: PRIO_COL[ticket.system_priority] + '14' }]}>
-                <Text style={[styles.badgeText, { color: PRIO_COL[ticket.system_priority] }]}>{ticket.system_priority}</Text>
-              </View>
-              <View style={[styles.badge, { backgroundColor: statBg(ticket.status) }]}>
-                <Text style={[styles.badgeText, { color: statFg(ticket.status) }]}>{ticket.status === 'En Proceso' ? 'En curso' : ticket.status}</Text>
-              </View>
+    <KeyboardAvoidingView style={styles.page} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+      <ScrollView ref={scrollRef} style={styles.scroll} contentContainerStyle={styles.scrollInner}>
+        {/* === SIGNAL HEADER === */}
+        <View style={styles.signalHeader}>
+          <View style={styles.signalHeaderTop}>
+            <View style={[styles.signalPrioDot, { backgroundColor: prioColor }]} />
+            <Text style={styles.signalCode}>{ticket.ticket_code}</Text>
+            <View style={{ flex: 1 }} />
+            <View style={[styles.signalStatusBadge, { backgroundColor: statBg(ticket.status) }]}>
+              <Text style={[styles.signalStatusText, { color: statFg(ticket.status) }]}>{ticket.status === 'En Proceso' ? 'En curso' : ticket.status}</Text>
             </View>
           </View>
-          <Text style={styles.subject}>{ticket.subject}</Text>
+          <Text style={styles.signalSubject}>{ticket.subject}</Text>
+          <View style={styles.signalMetaRow}>
+            <SignalMeta icon="business-outline" text={ticket.office_name} />
+            <SignalMeta icon="construct-outline" text={ticket.service_name} />
+            <SignalMeta icon="calendar-outline" text={fmt(ticket.created_at)} />
+          </View>
           {ticket.property_number ? (
-            <View style={styles.bienBlock}>
-              <View style={styles.bienRow}>
-                <Ionicons name="hardware-chip-outline" size={12} color={Colors.navyPrimary} />
-                <Text style={styles.prop}>Bien N° {ticket.property_number}</Text>
-              </View>
-              {bienDesc ? (
-                <Text style={styles.bienDesc}>{bienDesc}</Text>
-              ) : null}
+            <View style={styles.signalBienBlock}>
+              <Ionicons name="hardware-chip-outline" size={11} color={Colors.navyPrimary} />
+              <Text style={styles.signalBienText}>Bien N° {ticket.property_number}</Text>
+              {bienDesc ? <Text style={styles.signalBienDesc}>{bienDesc}</Text> : null}
             </View>
           ) : null}
-          <View style={styles.divider} />
-          <View style={styles.grid}>
-            <Row icon="business-outline" label="Oficina" v={ticket.office_name} />
-            <Row icon="person-outline" label="Solicitante" v={ticket.citizen_name} />
-            {ticket.citizen_email ? (
-              <Row icon="mail-outline" label="Email" v={ticket.citizen_email} />
-            ) : null}
-            <Row icon="construct-outline" label="Servicio" v={ticket.service_name} />
-            <Row icon="calendar-outline" label="Creado" v={fmt(ticket.created_at)} />
-          </View>
+          {ticket.technician_names.length > 0 && (
+            <View style={styles.signalTechRow}>
+              <Ionicons name="people-outline" size={11} color={Colors.textLight} />
+              <Text style={styles.signalTechText}>{ticket.technician_names.join(', ')}</Text>
+            </View>
+          )}
         </View>
 
-        {/* Sections */}
-        <Section title="Descripción" icon="document-text-outline" expanded={expanded.description} onToggle={() => toggle('description')}>
-          <Text style={styles.desc}>{ticket.description || 'Sin descripción'}</Text>
-        </Section>
+        {/* === DESCRIPTION === */}
+        <View style={styles.section}>
+          <SectionHead icon="document-text-outline" label="Descripción" />
+          <Text style={styles.descText}>{ticket.description || 'Sin descripción'}</Text>
+        </View>
 
-        {ticket.timeline.length > 0 && (
-          <Section title="Línea de Tiempo" icon="time-outline" badge={ticket.timeline.length} expanded={expanded.timeline} onToggle={() => toggle('timeline')}>
-            {ticket.timeline.map((e, i) => (
-              <View key={e.id} style={styles.tl}>
-                <View style={styles.tlCol}><View style={[styles.tlDot, i === 0 && styles.tlDotFirst]} />{i < ticket.timeline.length - 1 && <View style={styles.tlLine} />}</View>
-                <View style={styles.tlBody}><Text style={styles.tlAct}>{e.action_description}</Text><Text style={styles.tlMeta}>{e.actor} · {fmtDT(e.event_date)}</Text></View>
-              </View>
-            ))}
-          </Section>
+        {/* === ATTACHMENTS === */}
+        {ticket.ticket_attachments.length > 0 && (
+          <View style={styles.section}>
+            <SectionHead icon="attach-outline" label={`Archivos (${ticket.ticket_attachments.length})`} />
+            {ticket.ticket_attachments.map((att) => {
+              const isImage = att.file_type?.startsWith('image/');
+              const fileUrl = `${API_BASE_URL}/${att.file_path}`;
+              return (
+                <TouchableOpacity key={att.id} style={styles.attRow} onPress={() => Linking.openURL(fileUrl)} activeOpacity={0.7}>
+                  {isImage ? (
+                    <Image source={{ uri: fileUrl }} style={styles.attThumb} />
+                  ) : (
+                    <View style={styles.attIcon}><Ionicons name="document-outline" size={18} color={Colors.primary} /></View>
+                  )}
+                  <View style={styles.attInfo}>
+                    <Text style={styles.attName} numberOfLines={1}>{att.file_name}</Text>
+                    <Text style={styles.attMeta}>{formatBytes(att.file_size)}</Text>
+                  </View>
+                  <Ionicons name="open-outline" size={14} color={Colors.textLight} />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         )}
 
-        <Section title="Comentarios" icon="chatbubble-ellipses-outline" badge={ticket.comments.length} expanded={expanded.comments} onToggle={() => toggle('comments')}>
-          {ticket.comments.length === 0 ? <Text style={styles.noData}>Sin comentarios</Text> : ticket.comments.map((c) => <CommentItem key={c.id} comment={c} />)}
-        </Section>
-
-        {/* Comment input */}
-        {!isResolved && (
-          <View style={styles.card}>
-            <Text style={styles.sLabel}>Agregar Comentario</Text>
-            <TextInput style={styles.cInput} placeholder="Describe tu avance..." placeholderTextColor={Colors.textLight} value={comment} onChangeText={(t) => { setComment(t); if (!t) setQuick(false); }} multiline numberOfLines={3} textAlignVertical="top" />
-            <TouchableOpacity style={styles.quickToggle} onPress={() => setQuick(!quick)}>
-              <Ionicons name="flash-outline" size={14} color={Colors.navyPrimary} />
-              <Text style={styles.quickText}>Respuestas rápidas</Text>
-            </TouchableOpacity>
-            {quick && (
-              <View style={styles.quickRow}>
-                {QUICK.map((q, i) => (
-                  <TouchableOpacity key={i} style={styles.quickChip} onPress={() => { setComment(q); setQuick(false); }}>
-                    <Text style={styles.quickChipText}>{q}</Text>
-                  </TouchableOpacity>
-                ))}
+        {/* === TIMELINE === */}
+        {ticket.timeline.length > 0 && (
+          <View style={styles.section}>
+            <SectionHead icon="time-outline" label="Línea de Tiempo" />
+            {ticket.timeline.map((e, i) => (
+              <View key={e.id} style={styles.tlRow}>
+                <View style={styles.tlCol}>
+                  <View style={[styles.tlDot, i === 0 && styles.tlDotFirst]} />
+                  {i < ticket.timeline.length - 1 && <View style={styles.tlLine} />}
+                </View>
+                <View style={styles.tlBody}>
+                  <Text style={styles.tlAct}>{e.action_description}</Text>
+                  <Text style={styles.tlMeta}>{e.actor} · {fmtDT(e.event_date)}</Text>
+                </View>
               </View>
-            )}
+            ))}
+          </View>
+        )}
+
+        {/* === COMMENTS === */}
+        <View style={styles.section}>
+          <SectionHead icon="chatbubble-ellipses-outline" label={`Comentarios (${ticket.comments.length})`} />
+          {ticket.comments.length === 0 ? (
+            <Text style={styles.noData}>Sin comentarios aún</Text>
+          ) : (
+            ticket.comments.map((c) => <CommentItem key={c.id} comment={c} />)
+          )}
+        </View>
+
+        {/* === COMMENT INPUT === */}
+        {!isResolved && (
+          <View style={styles.section}>
+            <View style={styles.quickRow}>
+              {QUICK.map((q) => (
+                <TouchableOpacity key={q} style={styles.quickChip} onPress={() => doResolve(q)} activeOpacity={0.7}>
+                  <Text style={styles.quickChipText}>{q}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Escribe un comentario..."
+              placeholderTextColor={Colors.textLight}
+              value={comment}
+              onChangeText={setComment}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+            />
             {image && (
-              <View style={styles.imgWrap}>
-                <Image source={{ uri: image }} style={styles.img} />
-                <TouchableOpacity style={styles.imgRemove} onPress={() => setImage(null)}>
+              <View style={styles.imagePreview}>
+                <Image source={{ uri: image }} style={styles.imagePreviewImg} />
+                <TouchableOpacity style={styles.imageRemove} onPress={() => setImage(null)}>
                   <Ionicons name="close-circle" size={22} color={Colors.priorityAlta} />
                 </TouchableOpacity>
               </View>
             )}
-            <View style={styles.cFoot}>
-              <View style={styles.cAttach}>
-                <TouchableOpacity style={styles.attachBtn} onPress={() => pickImage(true)}><Ionicons name="camera-outline" size={18} color={Colors.navyPrimary} /></TouchableOpacity>
-                <TouchableOpacity style={styles.attachBtn} onPress={() => pickImage(false)}><Ionicons name="image-outline" size={18} color={Colors.navyPrimary} /></TouchableOpacity>
+            <View style={styles.commentFoot}>
+              <View style={styles.commentAttach}>
+                <TouchableOpacity style={styles.attachBtn} onPress={() => pickImage(true)}>
+                  <Ionicons name="camera-outline" size={18} color={Colors.navyPrimary} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.attachBtn} onPress={() => pickImage(false)}>
+                  <Ionicons name="image-outline" size={18} color={Colors.navyPrimary} />
+                </TouchableOpacity>
               </View>
-              <Button title="Enviar" onPress={handleComment} disabled={(!comment.trim() && !image) || sending} loading={sending} style={styles.sendBtn} />
+              <TouchableOpacity
+                style={[styles.sendBtn, (!comment.trim() && !image) && { opacity: 0.4 }]}
+                onPress={handleComment}
+                disabled={!comment.trim() && !image}
+              >
+                {sending ? <ActivityIndicator size="small" color={Colors.gold} /> : <Text style={styles.sendText}>Enviar</Text>}
+              </TouchableOpacity>
             </View>
           </View>
         )}
 
-        {/* Actions */}
+        {/* === ACTIONS === */}
         {!isResolved && (
-          <View style={styles.actions}>
-            {ticket.status === 'Pendiente' && <Button title="Tomar Ticket" onPress={handleTake} style={{ flex: 1 }} />}
-            {ticket.status === 'En Proceso' && <Button title="Marcar Resuelto" onPress={handleResolve} variant="secondary" style={{ flex: 1 }} />}
-            <Button title="Ayuda" onPress={() => setShowAssistance(true)} variant="outline" style={{ flex: 1 }} />
+          <View style={styles.actionsRow}>
+            {ticket.status === 'Pendiente' && (
+              <TouchableOpacity style={[styles.actionBtn, styles.actionTake]} onPress={handleTake}>
+                <Ionicons name="hand-left-outline" size={18} color={Colors.surface} />
+                <Text style={styles.actionBtnText}>Tomar Ticket</Text>
+              </TouchableOpacity>
+            )}
+            {ticket.status === 'En Proceso' && (
+              <TouchableOpacity style={[styles.actionBtn, styles.actionResolve]} onPress={handleResolve}>
+                <Ionicons name="checkmark-circle-outline" size={18} color={Colors.surface} />
+                <Text style={styles.actionBtnText}>Marcar Resuelto</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={[styles.actionBtn, styles.actionHelp]} onPress={() => setShowAssistance(true)}>
+              <Ionicons name="hand-left-outline" size={18} color={Colors.surface} />
+              <Text style={styles.actionBtnText}>Ayuda</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {quick && (
+          <View style={styles.quickPanel}>
+            <Text style={styles.quickPanelTitle}>Selecciona una nota rápida</Text>
+            {QUICK.map((q) => (
+              <TouchableOpacity key={q} style={styles.quickPanelBtn} onPress={() => doResolve(q)} disabled={sending}>
+                <Text style={styles.quickPanelBtnText}>{q}</Text>
+                {sending && <ActivityIndicator size="small" color={Colors.primary} />}
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity onPress={() => setQuick(false)} style={styles.quickPanelCancel}>
+              <Text style={styles.quickPanelCancelText}>Cancelar</Text>
+            </TouchableOpacity>
           </View>
         )}
 
         {isResolved && (
           <View style={styles.resolvedBanner}>
-            <Ionicons name="lock-closed" size={16} color={Colors.statusResuelto} />
-            <Text style={styles.resolvedText}>Este ticket está cerrado. No se pueden agregar comentarios ni modificar su estado.</Text>
+            <Ionicons name="lock-closed" size={14} color={Colors.statusResuelto} />
+            <Text style={styles.resolvedText}>Ticket cerrado. No se pueden agregar comentarios.</Text>
           </View>
         )}
-        <View style={{ height: 32 }} />
+
+        <View style={{ height: 40 }} />
       </ScrollView>
 
-      <Modal visible={showAssistance} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAssistance(false)}>
-        <View style={styles.assistPage}>
-          <View style={styles.assistHead}>
-            <View style={styles.assistHeadIcon}>
-              <Ionicons name="hand-left-outline" size={20} color={Colors.coral} />
+      {/* === ASSISTANCE MODAL === */}
+      <Modal visible={showAssistance} animationType="slide" presentationStyle="pageSheet" transparent>
+        <View style={modal.wrap}>
+          <View style={modal.sheet}>
+            <View style={modal.head}>
+              <View style={modal.headIcon}>
+                <Ionicons name="hand-left-outline" size={18} color={Colors.coral} />
+              </View>
+              <Text style={modal.title}>Solicitar Asistencia</Text>
+              <TouchableOpacity onPress={() => { setShowAssistance(false); setAssistReason(''); setAssistDetails(''); }}>
+                <Ionicons name="close" size={22} color={Colors.textLight} />
+              </TouchableOpacity>
             </View>
-            <Text style={styles.assistHeadTitle}>Solicitar Asistencia</Text>
-            <TouchableOpacity onPress={() => setShowAssistance(false)} style={{ marginLeft: 'auto' }}>
-              <Ionicons name="close" size={22} color={Colors.text} />
-            </TouchableOpacity>
+            <Text style={modal.subtitle}>¿Qué necesitas?</Text>
+            <View style={modal.reasonList}>
+              {ASSIST_REASONS.map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  style={[modal.reasonBtn, assistReason === r && modal.reasonBtnActive]}
+                  onPress={() => setAssistReason(r)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[modal.radio, assistReason === r && modal.radioActive]}>
+                    {assistReason === r && <View style={modal.radioInner} />}
+                  </View>
+                  <Text style={[modal.reasonText, assistReason === r && modal.reasonTextActive]}>{r}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Button
+              title="Enviar Solicitud"
+              onPress={handleAssistance}
+              loading={assistSending}
+              disabled={!assistReason}
+              style={modal.sendBtn}
+            />
           </View>
-
-          {ASSIST_REASONS.map((r) => (
-            <TouchableOpacity
-              key={r}
-              style={[styles.assistBtn, assistReason === r && styles.assistBtnActive]}
-              onPress={async () => {
-                setAssistSending(true);
-                const result = await requestAssistance(tid, r, '');
-                setAssistSending(false);
-                if (result.success) {
-                  toast.showToast({ title: 'Asistencia solicitada', message: r, type: 'warning' });
-                  setShowAssistance(false);
-                  setAssistReason('');
-                } else {
-                  toast.showToast({ title: 'Error', message: result.message || 'No se pudo enviar', type: 'error' });
-                }
-              }}
-              activeOpacity={0.6}
-            >
-              {assistReason === r && assistSending ? (
-                <ActivityIndicator size="small" color={Colors.primary} style={{ marginRight: 8 }} />
-              ) : (
-                <Ionicons name="send-outline" size={18} color={assistReason === r ? Colors.primary : Colors.textLight} style={{ marginRight: 8 }} />
-              )}
-              <Text style={[styles.assistBtnText]}>{r}</Text>
-            </TouchableOpacity>
-          ))}
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-function Section({ title, icon, badge, expanded, onToggle, children }: any) {
+function SectionHead({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; text?: string; label: string }) {
   return (
-    <View style={styles.card}>
-      <TouchableOpacity style={styles.sHead} onPress={onToggle} activeOpacity={0.6}>
-        <View style={styles.sHeadL}>
-          <Ionicons name={icon} size={16} color={Colors.navyPrimary} />
-          <Text style={styles.sLabel}>{title}</Text>
-          {badge !== undefined && <View style={styles.sBadge}><Text style={styles.sBadgeText}>{badge}</Text></View>}
-        </View>
-        <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.textLight} />
-      </TouchableOpacity>
-      {expanded && <View style={styles.sBody}>{children}</View>}
+    <View style={sh.wrap}>
+      <View style={sh.icon}><Ionicons name={icon} size={14} color={Colors.navyPrimary} /></View>
+      <Text style={sh.label}>{label}</Text>
+      <View style={sh.line} />
     </View>
   );
 }
+const sh = StyleSheet.create({
+  wrap: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
+  icon: { width: 28, height: 28, borderRadius: 8, backgroundColor: Colors.navyPrimary + '0C', justifyContent: 'center', alignItems: 'center' },
+  label: { fontSize: 12, fontWeight: '700', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.6 },
+  line: { flex: 1, height: 1, backgroundColor: Colors.border },
+});
 
-function Row({ icon, label, v }: any) {
-  return <View style={rs.item}><Ionicons name={icon} size={13} color={Colors.textLight} /><Text style={rs.lbl}>{label}</Text><Text style={rs.val} numberOfLines={1}>{v}</Text></View>;
+function SignalMeta({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
+  return (
+    <View style={sm.row}>
+      <Ionicons name={icon} size={10} color={Colors.textLight} />
+      <Text style={sm.text}>{text}</Text>
+    </View>
+  );
 }
-const rs = StyleSheet.create({ item: { flexDirection: 'row', alignItems: 'center', gap: 8 }, lbl: { fontSize: 12, color: Colors.textSecondary, width: 80 }, val: { fontSize: 12, color: Colors.text, flex: 1 } });
-function fmt(d: string) { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' }); }
+const sm = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  text: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500' },
+});
+
+function fmt(d: string) { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
 function fmtDT(d: string) { return new Date(d).toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 function statBg(s: string) { return s === 'Pendiente' ? Colors.statusPendienteBg : s === 'En Proceso' ? Colors.statusEnProcesoBg : Colors.statusResueltoBg; }
 function statFg(s: string) { return s === 'Pendiente' ? Colors.badgeMedText : s === 'En Proceso' ? Colors.badgeBlueText : Colors.badgeLowText; }
+function formatBytes(bytes: number) { if (!bytes) return ''; const k = bytes / 1024; if (k < 1024) return k.toFixed(1) + ' KB'; return (k / 1024).toFixed(1) + ' MB'; }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: Colors.background },
-  scroll: { padding: 12 },
-  ctr: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, gap: 12, padding: 24 },
-  ctrText: { fontSize: 14, color: Colors.textSecondary },
-  ctrTitle: { fontSize: 16, fontWeight: '600', color: Colors.text },
-  card: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: 18, marginBottom: 10, borderWidth: 1, borderColor: Colors.border },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  codeBlock: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  codeDot: { width: 8, height: 8, borderRadius: 4 },
-  code: { fontSize: 13, fontWeight: '700', color: Colors.navyPrimary, fontFamily: 'monospace' },
-  badges: { flexDirection: 'row', gap: 5 },
-  badge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: BorderRadius.sm },
-  badgeText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3 },
-  subject: { fontSize: 18, fontWeight: '600', color: Colors.text, lineHeight: 24 },
-  prop: { fontSize: 12, color: Colors.navyPrimary, fontWeight: '600', letterSpacing: 0.2 },
-  bienBlock: { marginTop: 6, backgroundColor: Colors.navyPrimary + '08', borderRadius: BorderRadius.md, padding: 10, borderWidth: 1, borderColor: Colors.navyPrimary + '18' },
-  bienRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  bienDesc: { fontSize: 12, color: Colors.text, marginTop: 4, paddingLeft: 18, lineHeight: 17 },
-  divider: { height: 1, backgroundColor: Colors.border, marginVertical: 14 },
-  grid: { gap: 12 },
-  sHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sHeadL: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sLabel: { fontSize: 13, fontWeight: '600', color: Colors.text, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sBadge: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: BorderRadius.sm, backgroundColor: Colors.navyPrimary + '10' },
-  sBadgeText: { fontSize: 10, fontWeight: '600', color: Colors.navyPrimary },
-  sBody: { marginTop: 14 },
-  desc: { fontSize: 14, color: Colors.text, lineHeight: 22 },
-  noData: { fontSize: 13, color: Colors.textLight, fontStyle: 'italic' },
-  tl: { flexDirection: 'row', marginBottom: 4, marginTop: 8 },
+  scroll: { flex: 1 },
+  scrollInner: { padding: 12 },
+  ctr: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background, gap: 10, padding: 24 },
+  ctrText: { fontSize: 13, color: Colors.textSecondary },
+  ctrTitle: { fontSize: 15, fontWeight: '600', color: Colors.text },
+
+  signalHeader: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: 18,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  signalHeaderTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
+  signalPrioDot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  signalCode: { fontSize: 13, fontWeight: '700', color: Colors.navyPrimary, fontFamily: 'monospace', letterSpacing: 0.3 },
+  signalStatusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.sm },
+  signalStatusText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.3 },
+  signalSubject: { fontSize: 18, fontWeight: '700', color: Colors.text, lineHeight: 24, marginBottom: 10 },
+  signalMetaRow: { flexDirection: 'row', gap: 14, marginBottom: 8 },
+  signalBienBlock: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginTop: 6, backgroundColor: Colors.navyPrimary + '08', borderRadius: BorderRadius.sm, padding: 8, borderWidth: 1, borderColor: Colors.navyPrimary + '15' },
+  signalBienText: { fontSize: 11, fontWeight: '600', color: Colors.navyPrimary },
+  signalBienDesc: { fontSize: 11, color: Colors.text, marginLeft: 17, flexBasis: '100%', marginTop: 2 },
+  signalTechRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  signalTechText: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500' },
+
+  section: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: Colors.border },
+  descText: { fontSize: 14, color: Colors.text, lineHeight: 22 },
+  noData: { fontSize: 12, color: Colors.textLight, fontStyle: 'italic' },
+
+  attRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.background, borderRadius: BorderRadius.md,
+    padding: 10, marginBottom: 6, borderWidth: 1, borderColor: Colors.border,
+  },
+  attThumb: { width: 40, height: 40, borderRadius: 6 },
+  attIcon: { width: 40, height: 40, borderRadius: 6, backgroundColor: Colors.primary + '0C', justifyContent: 'center', alignItems: 'center' },
+  attInfo: { flex: 1 },
+  attName: { fontSize: 12, fontWeight: '600', color: Colors.text },
+  attMeta: { fontSize: 10, color: Colors.textLight, marginTop: 1 },
+
+  tlRow: { flexDirection: 'row', marginBottom: 2 },
   tlCol: { alignItems: 'center', width: 18 },
-  tlDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.textLight, borderWidth: 2, borderColor: Colors.border },
+  tlDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.textLight, borderWidth: 2, borderColor: Colors.border },
   tlDotFirst: { backgroundColor: Colors.navyPrimary, borderColor: Colors.navyPrimary },
   tlLine: { flex: 1, width: 2, backgroundColor: Colors.border, marginVertical: 2 },
-  tlBody: { flex: 1, paddingLeft: 10, paddingBottom: 12 },
-  tlAct: { fontSize: 13, fontWeight: '500', color: Colors.text },
-  tlMeta: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  cInput: { backgroundColor: Colors.background, borderRadius: BorderRadius.md, padding: 14, fontSize: 13, color: Colors.text, minHeight: 80, borderWidth: 1, borderColor: Colors.border },
-  quickToggle: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8 },
-  quickText: { fontSize: 12, color: Colors.navyPrimary, fontWeight: '500' },
-  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-  quickChip: { backgroundColor: Colors.navyPrimary + '08', paddingHorizontal: 12, paddingVertical: 6, borderRadius: BorderRadius.sm, borderWidth: 1, borderColor: Colors.navyPrimary + '15' },
-  quickChipText: { fontSize: 12, color: Colors.navyPrimary },
-  imgWrap: { position: 'relative', marginTop: 10, borderRadius: BorderRadius.md, overflow: 'hidden' },
-  img: { width: '100%', height: 150, borderRadius: BorderRadius.md },
-  imgRemove: { position: 'absolute', top: 8, right: 8, backgroundColor: Colors.surface, borderRadius: 12 },
-  cFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
-  cAttach: { flexDirection: 'row', gap: 8 },
-  attachBtn: { width: 36, height: 36, borderRadius: BorderRadius.sm, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
-  sendBtn: { width: 100, height: 38 },
-  actions: { flexDirection: 'row', gap: 10, paddingTop: 4 },
-  resolvedBanner: { backgroundColor: Colors.statusResueltoBg, borderRadius: BorderRadius.md, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 10 },
-  resolvedText: { flex: 1, fontSize: 12, color: Colors.statusResuelto, fontWeight: '500' },
+  tlBody: { flex: 1, paddingLeft: 10, paddingBottom: 10 },
+  tlAct: { fontSize: 12, fontWeight: '500', color: Colors.text },
+  tlMeta: { fontSize: 10, color: Colors.textSecondary, marginTop: 2 },
 
-  assistPage: { flex: 1, backgroundColor: Colors.background, padding: 20 },
-  assistHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20, marginTop: 8 },
-  assistHeadIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: Colors.coralLight, justifyContent: 'center', alignItems: 'center' },
-  assistHeadTitle: { fontSize: 18, fontWeight: '700', color: Colors.text, flex: 1 },
-  assistBtn: {
-    flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: BorderRadius.md,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border, marginBottom: 8,
-  },
-  assistBtnActive: { backgroundColor: Colors.primary + '06', borderColor: Colors.primary + '25' },
-  assistBtnText: { fontSize: 14, fontWeight: '500', color: Colors.text },
+  quickRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginBottom: 10 },
+  quickChip: { backgroundColor: Colors.primary + '08', borderRadius: BorderRadius.sm, paddingHorizontal: 8, paddingVertical: 5, borderWidth: 1, borderColor: Colors.primary + '15' },
+  quickChipText: { fontSize: 10, fontWeight: '500', color: Colors.primary },
+  commentInput: { backgroundColor: Colors.background, borderRadius: BorderRadius.md, padding: 12, fontSize: 13, color: Colors.text, minHeight: 72, borderWidth: 1, borderColor: Colors.border },
+  imagePreview: { position: 'relative', marginTop: 10, borderRadius: BorderRadius.md, overflow: 'hidden' },
+  imagePreviewImg: { width: '100%', height: 130, borderRadius: BorderRadius.md },
+  imageRemove: { position: 'absolute', top: 6, right: 6, backgroundColor: Colors.surface, borderRadius: 11 },
+  commentFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  commentAttach: { flexDirection: 'row', gap: 8 },
+  attachBtn: { width: 36, height: 36, borderRadius: BorderRadius.sm, backgroundColor: Colors.background, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  sendBtn: { paddingHorizontal: 22, paddingVertical: 10, borderRadius: BorderRadius.md, backgroundColor: Colors.primary },
+  sendText: { fontSize: 13, fontWeight: '700', color: Colors.gold },
+
+  actionsRow: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: BorderRadius.md },
+  actionTake: { backgroundColor: Colors.statusEnProceso },
+  actionResolve: { backgroundColor: Colors.statusResuelto },
+  actionHelp: { backgroundColor: Colors.navyPrimary },
+  actionBtnText: { fontSize: 13, fontWeight: '700', color: Colors.surface },
+
+  quickPanel: { backgroundColor: Colors.surface, borderRadius: BorderRadius.lg, padding: 18, marginTop: 10, borderWidth: 1, borderColor: Colors.border },
+  quickPanelTitle: { fontSize: 13, fontWeight: '700', color: Colors.text, marginBottom: 10 },
+  quickPanelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  quickPanelBtnText: { fontSize: 13, fontWeight: '500', color: Colors.text },
+  quickPanelCancel: { alignItems: 'center', marginTop: 12 },
+  quickPanelCancelText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+
+  resolvedBanner: { backgroundColor: Colors.statusResueltoBg, borderRadius: BorderRadius.md, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  resolvedText: { flex: 1, fontSize: 12, color: Colors.statusResuelto, fontWeight: '500' },
+});
+
+const modal = StyleSheet.create({
+  wrap: { flex: 1, backgroundColor: Colors.overlay, justifyContent: 'flex-end' },
+  sheet: { backgroundColor: Colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 18 },
+  headIcon: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.coralLight, justifyContent: 'center', alignItems: 'center' },
+  title: { flex: 1, fontSize: 17, fontWeight: '700', color: Colors.text },
+  subtitle: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 12 },
+  reasonList: { gap: 8, marginBottom: 18 },
+  reasonBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border, backgroundColor: Colors.background },
+  reasonBtnActive: { borderColor: Colors.coral + '50', backgroundColor: Colors.coralLight },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: Colors.border, justifyContent: 'center', alignItems: 'center' },
+  radioActive: { borderColor: Colors.coral },
+  radioInner: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.coral },
+  reasonText: { fontSize: 14, fontWeight: '500', color: Colors.text },
+  reasonTextActive: { color: Colors.coral, fontWeight: '600' },
+  sendBtn: { marginTop: 4 },
 });

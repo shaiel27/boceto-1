@@ -417,12 +417,16 @@ switch ($method) {
         
     case 'POST':
         $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-        $isMultipart = strpos($contentType, 'multipart/form-data') !== false;
+        $isMultipart = strpos($contentType, 'multipart/form-data') !== false || !empty($_FILES) || !empty($_POST);
         
         if ($isMultipart) {
             $data = (object)$_POST;
         } else {
-            $data = json_decode(file_get_contents("php://input"));
+            $rawBody = file_get_contents("php://input");
+            $data = @json_decode($rawBody);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                $data = null;
+            }
         }
         
         error_log("=== POST REQUEST ===");
@@ -1007,6 +1011,12 @@ switch ($method) {
                 'application/zip', 'application/x-rar-compressed'
             ];
 
+            error_log("=== UPLOAD FILES ACTION ===");
+            error_log("ticket_id: {$ticketId}");
+            error_log("isMultipart: " . ($isMultipart ? 'true' : 'false'));
+            error_log("FILES keys: " . implode(', ', array_keys($_FILES)));
+            error_log("FILES[files] exists: " . (isset($_FILES['files']) ? 'yes' : 'no'));
+
             $uploadedFiles = [];
 
             if (!$isMultipart || empty($_FILES['files'])) {
@@ -1029,11 +1039,13 @@ switch ($method) {
                 $fileError = is_array($files['error']) ? $files['error'][$i] : $files['error'];
 
                 if ($fileError !== UPLOAD_ERR_OK) {
+                    error_log("Upload error for file {$fileName}: error code {$fileError}");
                     continue;
                 }
 
                 $maxSize = 10 * 1024 * 1024;
                 if ($fileSize > $maxSize) {
+                    error_log("File {$fileName} exceeds max size: {$fileSize} > {$maxSize}");
                     continue;
                 }
 
@@ -1058,9 +1070,15 @@ switch ($method) {
                             'File_Type' => $fileType,
                             'File_Size' => $fileSize
                         ];
+                    } else {
+                        error_log("Failed to create DB record for file: {$fileName}");
                     }
+                } else {
+                    error_log("move_uploaded_file failed: tmp={$fileTmpName} dest={$destPath}");
                 }
             }
+
+            error_log("Upload loop complete: " . count($uploadedFiles) . " files uploaded successfully");
 
             $auditService->logTicketAction('upload_files', $ticketId, count($uploadedFiles) . ' archivos adjuntados al ticket #' . $ticketId);
 
@@ -1106,9 +1124,11 @@ switch ($method) {
             echo json_encode([
                 'success' => true,
                 'message' => 'Ticket creado exitosamente',
-                'ticket_id' => $result['ticket_id'],
-                'technician_assigned' => $result['technician_assigned'],
-                'technician_name' => $result['technician_name']
+                'data' => [
+                    'ticket_id' => $result['ticket_id'],
+                    'technician_assigned' => $result['technician_assigned'],
+                    'technician_name' => $result['technician_name']
+                ]
             ]);
         } catch (\InvalidArgumentException $e) {
             http_response_code(400);

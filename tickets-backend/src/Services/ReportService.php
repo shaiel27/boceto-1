@@ -2,83 +2,74 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../DTO/DateRangeDTO.php';
+require_once __DIR__ . '/../DTO/GeneralSummaryDTO.php';
+require_once __DIR__ . '/../DTO/GeneralMonthlyDTO.php';
+require_once __DIR__ . '/../DTO/OfficeReportDTO.php';
+require_once __DIR__ . '/../DTO/ResponseTimeDTO.php';
+require_once __DIR__ . '/../DTO/PriorityReportDTO.php';
+require_once __DIR__ . '/../DTO/TechnicianWorkloadDTO.php';
+require_once __DIR__ . '/../DTO/ServiceReportDTO.php';
+require_once __DIR__ . '/../DTO/WeeklyReportDTO.php';
 
 final class ReportService
 {
-    private PDO $db;
-
-    public function __construct(PDO $db)
-    {
-        $this->db = $db;
-    }
+    public function __construct(
+        private readonly PDO $db,
+    ) {}
 
     /**
      * Parse date range from query params with validation.
-     * Returns [start, end] as Y-m-d strings, defaulting to last 30 days.
+     * Returns ['start', 'end', 'start_date', 'end_date'] strings.
+     * Defaults to full history (1970-01-01 → today) when no dates provided.
      */
     public function parseDateRange(array $params): array
     {
-        $end = date('Y-m-d');
-        $start = date('Y-m-d', strtotime('-30 days'));
-
-        if (!empty($params['start_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $params['start_date'])) {
-            $start = $params['start_date'];
-        }
-        if (!empty($params['end_date']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $params['end_date'])) {
-            $end = $params['end_date'];
-        }
-        // Ensure start <= end
-        if ($start > $end) {
-            [$start, $end] = [$end, $start];
-        }
-
-        return [
-            'start' => $start . ' 00:00:00',
-            'end'   => $end . ' 23:59:59',
-            'start_date' => $start,
-            'end_date'   => $end,
-        ];
+        return DateRangeDTO::fromRequest($params)->toArray();
     }
 
     // ─── 1. GENERAL TICKETS REPORT ────────────────────────────────
 
+    /** @return GeneralMonthlyDTO[] */
     public function getGeneralReport(array $dates): array
     {
-        $sql = "SELECT DATE_FORMAT(sr.Created_at, '%Y-%m') AS month, COUNT(*) AS total, "
-            . "SUM(CASE WHEN sr.Status='Pendiente' THEN 1 ELSE 0 END) AS pending, "
-            . "SUM(CASE WHEN sr.Status='En Proceso' THEN 1 ELSE 0 END) AS in_progress, "
-            . "SUM(CASE WHEN sr.Status='Cerrado' THEN 1 ELSE 0 END) AS resolved, "
-            . "SUM(CASE WHEN sr.System_Priority='Alta' THEN 1 ELSE 0 END) AS alta_count, "
-            . "ROUND(AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)), 1) AS avg_hours "
-        . "FROM Service_Request sr "
-        . "WHERE sr.Created_at BETWEEN :start AND :end "
-        . "GROUP BY DATE_FORMAT(sr.Created_at, '%Y-%m') "
-        . "ORDER BY month DESC";
-
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->db->prepare("
+            SELECT DATE_FORMAT(sr.Created_at, '%Y-%m') AS month, COUNT(*) AS total,
+                SUM(CASE WHEN sr.Status='Pendiente' THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN sr.Status='En Proceso' THEN 1 ELSE 0 END) AS in_progress,
+                SUM(CASE WHEN sr.Status='Cerrado' THEN 1 ELSE 0 END) AS resolved,
+                SUM(CASE WHEN sr.System_Priority='Alta' THEN 1 ELSE 0 END) AS alta_count,
+                ROUND(AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)), 1) AS avg_hours
+            FROM Service_Request sr
+            WHERE sr.Created_at BETWEEN :start AND :end
+            GROUP BY DATE_FORMAT(sr.Created_at, '%Y-%m')
+            ORDER BY month DESC
+        ");
         $stmt->execute([':start' => $dates['start'], ':end' => $dates['end']]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return GeneralMonthlyDTO::collection($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    public function getGeneralSummary(array $dates): array
+    public function getGeneralSummary(array $dates): GeneralSummaryDTO
     {
-        $sql = "SELECT COUNT(*) AS total, "
-            . "SUM(CASE WHEN Status='Pendiente' THEN 1 ELSE 0 END) AS pending, "
-            . "SUM(CASE WHEN Status='En Proceso' THEN 1 ELSE 0 END) AS in_progress, "
-            . "SUM(CASE WHEN Status='Cerrado' THEN 1 ELSE 0 END) AS resolved, "
-            . "SUM(CASE WHEN System_Priority='Alta' THEN 1 ELSE 0 END) AS alta_count, "
-            . "ROUND(AVG(TIMESTAMPDIFF(HOUR, Created_at, Resolved_at)), 1) AS avg_hours, "
-            . "ROUND(SUM(CASE WHEN Status='Cerrado' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS resolution_rate "
-        . "FROM Service_Request "
-        . "WHERE Created_at BETWEEN :start AND :end";
-
-        $stmt = $this->db->prepare($sql);
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) AS total,
+                SUM(CASE WHEN Status='Pendiente' THEN 1 ELSE 0 END) AS pending,
+                SUM(CASE WHEN Status='En Proceso' THEN 1 ELSE 0 END) AS in_progress,
+                SUM(CASE WHEN Status='Cerrado' THEN 1 ELSE 0 END) AS resolved,
+                SUM(CASE WHEN System_Priority='Alta' THEN 1 ELSE 0 END) AS alta_count,
+                ROUND(AVG(TIMESTAMPDIFF(HOUR, Created_at, Resolved_at)), 1) AS avg_hours,
+                ROUND(SUM(CASE WHEN Status='Cerrado' THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0), 1) AS resolution_rate
+            FROM Service_Request
+            WHERE Created_at BETWEEN :start AND :end
+        ");
         $stmt->execute([':start' => $dates['start'], ':end' => $dates['end']]);
-        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return GeneralSummaryDTO::fromArray($row ?: []);
     }
 
     // ─── 2. RESPONSE TIMES REPORT ─────────────────────────────────
 
+    /** @return ResponseTimeDTO[] */
     public function getResponseTimesReport(array $dates): array
     {
         $stmt = $this->db->prepare("
@@ -102,11 +93,12 @@ final class ReportService
             ORDER BY total DESC
         ");
         $stmt->execute([':start' => $dates['start'], ':end' => $dates['end']]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return ResponseTimeDTO::collection($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // ─── 3. OFFICE PERFORMANCE REPORT ─────────────────────────────
 
+    /** @return OfficeReportDTO[] */
     public function getOfficeReport(array $dates): array
     {
         $stmt = $this->db->prepare("
@@ -126,11 +118,12 @@ final class ReportService
             ORDER BY total DESC
         ");
         $stmt->execute([':start' => $dates['start'], ':end' => $dates['end']]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return OfficeReportDTO::collection($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // ─── 4. PRIORITY DISTRIBUTION REPORT ──────────────────────────
 
+    /** @return PriorityReportDTO[] */
     public function getPriorityReport(array $dates): array
     {
         $stmt = $this->db->prepare("
@@ -145,17 +138,15 @@ final class ReportService
             FROM Service_Request
             WHERE Created_at BETWEEN :start AND :end
             GROUP BY System_Priority
-            ORDER BY
-                CASE System_Priority
-                    WHEN 'Alta' THEN 1 WHEN 'Media' THEN 2 WHEN 'Baja' THEN 3
-                END
+            ORDER BY CASE System_Priority WHEN 'Alta' THEN 1 WHEN 'Media' THEN 2 WHEN 'Baja' THEN 3 END
         ");
         $stmt->execute([':start' => $dates['start'], ':end' => $dates['end']]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return PriorityReportDTO::collection($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    // ─── 5. TECHNICIAN WORKLOAD REPORT (existing, improved) ───────
+    // ─── 5. TECHNICIAN WORKLOAD REPORT ────────────────────────────
 
+    /** @return TechnicianWorkloadDTO[] */
     public function getTechnicianWorkload(array $dates): array
     {
         $stmt = $this->db->prepare("
@@ -178,16 +169,15 @@ final class ReportService
             ORDER BY total_assigned DESC
         ");
         $stmt->execute([':start' => $dates['start'], ':end' => $dates['end']]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return TechnicianWorkloadDTO::collection($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
-    // ─── 6. WEEKLY REPORT (existing, improved) ────────────────────
+    // ─── 6. WEEKLY REPORT ─────────────────────────────────────────
 
-    public function getWeeklyReport(string $week): array
+    public function getWeeklyReport(string $week): WeeklyReportDTO
     {
-        // Parse ISO week: 2025-W22
         if (!preg_match('/^(\d{4})-W(\d{1,2})$/', $week, $m)) {
-            return [];
+            return new WeeklyReportDTO('', '', '', [], []);
         }
         $year = (int)$m[1];
         $weekNum = (int)$m[2];
@@ -213,7 +203,6 @@ final class ReportService
         $stmt->execute([':start' => $start, ':end' => $end]);
         $dailyData = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        // Per-technician
         $techStmt = $this->db->prepare("
             SELECT
                 CONCAT(t.First_Name, ' ', t.Last_Name) AS technician,
@@ -229,17 +218,12 @@ final class ReportService
         ");
         $techStmt->execute([':start' => $start, ':end' => $end]);
 
-        return [
-            'week' => $week,
-            'start_date' => $start,
-            'end_date' => $end,
-            'daily' => $dailyData,
-            'technicians' => $techStmt->fetchAll(PDO::FETCH_ASSOC),
-        ];
+        return WeeklyReportDTO::fromData($week, $start, $end, $dailyData, $techStmt->fetchAll(PDO::FETCH_ASSOC));
     }
 
     // ─── 7. SERVICE DISTRIBUTION REPORT ───────────────────────────
 
+    /** @return ServiceReportDTO[] */
     public function getServiceReport(array $dates): array
     {
         $stmt = $this->db->prepare("
@@ -259,6 +243,6 @@ final class ReportService
             ORDER BY total DESC
         ");
         $stmt->execute([':start' => $dates['start'], ':end' => $dates['end']]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return ServiceReportDTO::collection($stmt->fetchAll(PDO::FETCH_ASSOC));
     }
 }

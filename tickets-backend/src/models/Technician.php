@@ -265,58 +265,32 @@ final class Technician
         return false;
     }
 
-    public function delete($id) {
+    public function deactivate($id) {
         try {
-            $this->conn->beginTransaction();
-
-            // Get technician user ID before deleting
-            $getTechQuery = "SELECT Fk_Users FROM " . $this->table_name . " WHERE ID_Technicians = :id";
-            $getTechStmt = $this->conn->prepare($getTechQuery);
-            $getTechStmt->bindParam(":id", $id);
-            $getTechStmt->execute();
-            $techData = $getTechStmt->fetch(PDO::FETCH_ASSOC);
-            $userId = $techData['Fk_Users'] ?? null;
-
-            // Delete ticket assignments
-            $deleteTicketsQuery = "DELETE FROM Ticket_Technicians WHERE Fk_Technician = :id";
-            $deleteTicketsStmt = $this->conn->prepare($deleteTicketsQuery);
-            $deleteTicketsStmt->bindParam(":id", $id);
-            $deleteTicketsStmt->execute();
-
-            // Delete schedules
-            $deleteSchedulesQuery = "DELETE FROM Technician_Schedules WHERE Fk_Technician = :id";
-            $deleteSchedulesStmt = $this->conn->prepare($deleteSchedulesQuery);
-            $deleteSchedulesStmt->bindParam(":id", $id);
-            $deleteSchedulesStmt->execute();
-
-            // Delete services
-            $deleteServicesQuery = "DELETE FROM Technicians_Service WHERE Fk_Technicians = :id";
-            $deleteServicesStmt = $this->conn->prepare($deleteServicesQuery);
-            $deleteServicesStmt->bindParam(":id", $id);
-            $deleteServicesStmt->execute();
-
-            // Delete technician
-            $query = "DELETE FROM " . $this->table_name . " WHERE ID_Technicians = :id";
+            $query = "UPDATE " . $this->table_name . " SET Status = 'Fuera de Servicio' WHERE ID_Technicians = :id";
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(":id", $id);
-            $stmt->execute();
-
-            // Delete user if exists
-            if ($userId) {
-                $deleteUserQuery = "DELETE FROM Users WHERE ID_Users = :userId";
-                $deleteUserStmt = $this->conn->prepare($deleteUserQuery);
-                $deleteUserStmt->bindParam(":userId", $userId);
-                $deleteUserStmt->execute();
-            }
-
-            $this->conn->commit();
-            return true;
-
+            return $stmt->execute();
         } catch(PDOException $exception) {
-            $this->conn->rollBack();
-            error_log("Delete error: " . $exception->getMessage());
+            error_log("Deactivate error: " . $exception->getMessage());
             return false;
         }
+    }
+
+    public function reactivate($id) {
+        try {
+            $query = "UPDATE " . $this->table_name . " SET Status = 'Disponible' WHERE ID_Technicians = :id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":id", $id);
+            return $stmt->execute();
+        } catch(PDOException $exception) {
+            error_log("Reactivate error: " . $exception->getMessage());
+            return false;
+        }
+    }
+
+    public function delete($id) {
+        return $this->deactivate($id);
     }
 
     public function addService($technicianId, $serviceId) {
@@ -500,6 +474,7 @@ final class Technician
                                  LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = ?
                                  WHERE ts.Fk_TI_Service = ?
                                     AND ts.Status = 'Activo'
+                                    AND t.Status != 'Fuera de Servicio'
                                     AND (
                                         (sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
                                         AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time)
@@ -780,7 +755,8 @@ final class Technician
                               AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as Active_Tickets_Count
                       FROM " . $this->table_name . " t
                       LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
-                      LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = :currentDay";
+                      LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = :currentDay
+                      WHERE t.Status != 'Fuera de Servicio'";
 
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(":currentDay", $currentDaySpanish);
@@ -904,6 +880,7 @@ final class Technician
                   INNER JOIN Users u ON t.Fk_Users = u.ID_Users
                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
                   WHERE ts.Fk_TI_Service = :serviceId
+                    AND t.Status != 'Fuera de Servicio'
                   ORDER BY t.First_Name ASC, t.Last_Name ASC";
 
         try {
@@ -947,8 +924,8 @@ final class Technician
             // - Para asignaciones manuales/escaladas (allowCrossService = true) permitimos asignar aunque esté 'Ocupado'
             //   pero nunca permitiremos asignar a un técnico que esté 'Inactivo'
             $techStatus = $technician['Status'];
-            if ($techStatus === 'Inactivo') {
-                error_log("Error: Técnico {$technicianId} está Inactivo y no puede ser asignado");
+                if ($techStatus === 'Inactivo' || $techStatus === 'Fuera de Servicio') {
+                error_log("Error: Técnico {$technicianId} está {$techStatus} y no puede ser asignado");
                 return false;
             }
 
@@ -1512,6 +1489,7 @@ final class Technician
                   INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
                   WHERE ts.Fk_TI_Service = :serviceId
                     AND ts.Status = 'Activo'
+                    AND t.Status != 'Fuera de Servicio'
                   ORDER BY t.First_Name ASC, t.Last_Name ASC";
 
                 $stmt = $this->conn->prepare($query);

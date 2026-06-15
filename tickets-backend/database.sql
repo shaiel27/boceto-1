@@ -16,7 +16,7 @@ CREATE TABLE Role (
 CREATE TABLE Users (
     ID_Users INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Role INT,
-    Email VARCHAR(50) NOT NULL UNIQUE,
+    Email VARCHAR(100) NOT NULL UNIQUE,
     Password VARCHAR(255) NOT NULL,
     Username VARCHAR(100) NOT NULL UNIQUE,
     Full_Name VARCHAR(200) NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE Users (
 
 -- Índices recomendados para optimizar login y filtrado por usuarios del sistema
 CREATE INDEX idx_users_system ON Users(is_system_user, Email);
-CREATE INDEX idx_users_active ON Users(is_system_user, Username);
+CREATE INDEX idx_users_active ON Users(is_system_user, Full_Name);
 
 CREATE TABLE Boss (
     ID_Boss INT AUTO_INCREMENT PRIMARY KEY,
@@ -58,17 +58,18 @@ CREATE TABLE Office (
 CREATE TABLE Technicians (
     ID_Technicians INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Users INT UNIQUE,
-    First_Name VARCHAR(25) NOT NULL,
-    Last_Name VARCHAR(25) NOT NULL,
+    First_Name VARCHAR(50) NOT NULL,
+    Last_Name VARCHAR(50) NOT NULL,
     Fk_Lunch_Block INT NULL,
-    Status VARCHAR(20) DEFAULT 'Disponible' COMMENT "Estado de disponibilidad del técnico: 'Disponible' (en horario laboral, fuera de almuerzo, sin tickets), 'Ocupado' (con tickets o en almuerzo), 'Inactivo' (fuera de horario laboral)",
+    Status VARCHAR(20) DEFAULT 'Disponible' COMMENT "Estado de disponibilidad del técnico: 'Disponible' (en horario laboral, fuera de almuerzo, sin tickets), 'Ocupado' (con tickets o en almuerzo), 'Inactivo' (fuera de horario laboral), 'Fuera de Servicio' (ya no presta servicio en la oficina)",
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (Fk_Users) REFERENCES Users(ID_Users)
+    FOREIGN KEY (Fk_Users) REFERENCES Users(ID_Users),
+    FOREIGN KEY (Fk_Lunch_Block) REFERENCES Lunch_Blocks(ID_Lunch_Block)
 );
 
 CREATE TABLE TI_Service (
     ID_TI_Service INT AUTO_INCREMENT PRIMARY KEY,
-    Type_Service VARCHAR(30) NOT NULL COMMENT "'Redes', 'Soporte', 'Programación'",
+    Type_Service VARCHAR(50) NOT NULL COMMENT "'Redes', 'Soporte', 'Programación'",
     Details TEXT
 );
 
@@ -85,16 +86,16 @@ CREATE TABLE Technicians_Service (
 CREATE TABLE Service_Problems_Catalog (
     ID_Problem_Catalog INT AUTO_INCREMENT PRIMARY KEY,
     Fk_TI_Service INT,
-    Problem_Name VARCHAR(100) NOT NULL,
+    Problem_Name VARCHAR(200) NOT NULL,
     Typical_Description TEXT,
-    Estimated_Severity VARCHAR(15),
+    Estimated_Severity VARCHAR(50),
     FOREIGN KEY (Fk_TI_Service) REFERENCES TI_Service(ID_TI_Service)
 );
 
 CREATE TABLE Technician_Schedules (
     ID_Schedule INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Technician INT,
-    Day_Of_Week VARCHAR(10) NOT NULL,
+    Day_Of_Week VARCHAR(20) NOT NULL,
     Work_Start_Time TIME DEFAULT '08:00:00',
     Work_End_Time TIME NOT NULL,
     FOREIGN KEY (Fk_Technician) REFERENCES Technicians(ID_Technicians)
@@ -102,7 +103,7 @@ CREATE TABLE Technician_Schedules (
 
 CREATE TABLE Lunch_Blocks (
     ID_Lunch_Block INT AUTO_INCREMENT PRIMARY KEY,
-    Block_Name VARCHAR(20) NOT NULL,
+    Block_Name VARCHAR(50) NOT NULL,
     Start_Time TIME NOT NULL,
     End_Time TIME NOT NULL
 );
@@ -130,7 +131,7 @@ CREATE TABLE Request_Settings (
 
 CREATE TABLE Software_Systems (
     ID_System INT AUTO_INCREMENT PRIMARY KEY,
-    System_Name VARCHAR(100) NOT NULL,
+    System_Name VARCHAR(200) NOT NULL,
     Description TEXT,
     Status VARCHAR(20) DEFAULT 'Activo'
 );
@@ -149,19 +150,19 @@ CREATE TABLE Office_Systems (
 
 CREATE TABLE Service_Request (
     ID_Service_Request INT AUTO_INCREMENT PRIMARY KEY,
-    Ticket_Code VARCHAR(20) UNIQUE,
+    Ticket_Code VARCHAR(50) UNIQUE,
     Fk_Office INT COMMENT 'Oficina de origen (Maestra)',
     Fk_User_Requester INT COMMENT 'ID del Jefe que solicita',
     Fk_TI_Service INT,
     Fk_Problem_Catalog INT,
     Fk_Boss_Requester INT COMMENT 'El jefe específico que hizo la solicitud',
     Fk_Software_System INT NULL COMMENT 'Obligatorio si es Programación',
-    Subject VARCHAR(100) NOT NULL,
-    Property_Number VARCHAR(10),
+    Subject VARCHAR(500) NOT NULL,
+    Property_Number VARCHAR(50),
     Description TEXT,
-    System_Priority VARCHAR(15) DEFAULT 'Media',
+    System_Priority VARCHAR(50) DEFAULT 'Media',
     Resolution_Notes TEXT NULL,
-    Status VARCHAR(20) DEFAULT 'Pendiente',
+    Status VARCHAR(50) DEFAULT 'Pendiente',
     Created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     Resolved_at TIMESTAMP NULL,
     FOREIGN KEY (Fk_Office) REFERENCES Office(ID_Office),
@@ -177,10 +178,10 @@ CREATE TABLE Ticket_Technicians (
     Fk_Service_Request INT,
     Fk_Technician INT,
     Is_Lead BOOLEAN DEFAULT FALSE COMMENT 'Técnico responsable principal',
-    Assignment_Role VARCHAR(30) COMMENT "'Apoyo', 'Especialista', 'Supervisor'",
+    Assignment_Role VARCHAR(100) COMMENT "'Apoyo', 'Especialista', 'Supervisor'",
     Assigned_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     Fk_Assigned_By INT COMMENT 'ID del Admin que realizó la asignación',
-    Status VARCHAR(20) DEFAULT 'Activo' COMMENT "'Activo', 'Finalizado'" ,-- En proceso, Cerrado
+    Status VARCHAR(50) DEFAULT 'Activo' COMMENT "'Activo', 'Finalizado'" ,-- En proceso, Cerrado
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request),
     FOREIGN KEY (Fk_Technician) REFERENCES Technicians(ID_Technicians),
     FOREIGN KEY (Fk_Assigned_By) REFERENCES Users(ID_Users)
@@ -216,8 +217,8 @@ CREATE TABLE Ticket_Timeline (
     Fk_Service_Request INT,
     Fk_User_Actor INT COMMENT 'Quién hizo el cambio',
     Action_Description TEXT COMMENT "'Admin agregó al técnico Carlos como apoyo'",
-    Old_Status VARCHAR(20),
-    New_Status VARCHAR(20),
+    Old_Status VARCHAR(50),
+    New_Status VARCHAR(50),
     Event_Date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request),
     FOREIGN KEY (Fk_User_Actor) REFERENCES Users(ID_Users)
@@ -254,7 +255,7 @@ CREATE TABLE audit_logs (
 CREATE TABLE IF NOT EXISTS Notifications (
     ID_Notification INT AUTO_INCREMENT PRIMARY KEY,
     Fk_User INT NOT NULL,
-    Type VARCHAR(50) NOT NULL COMMENT 'Type of notification: ticket_assignment, ticket_created, etc.',
+    Type VARCHAR(100) NOT NULL COMMENT 'Type of notification: ticket_assignment, ticket_created, etc.',
     Title VARCHAR(255) NOT NULL,
     Message TEXT NOT NULL,
     Fk_Service_Request INT NULL COMMENT 'Associated ticket ID if applicable',
@@ -464,6 +465,35 @@ CREATE TABLE IF NOT EXISTS Assistance_Requests (
 
 CREATE INDEX idx_assistance_status ON Assistance_Requests(Status);
 CREATE INDEX idx_assistance_ticket ON Assistance_Requests(Fk_Ticket);
+
+-- ==========================================
+-- 8. MÓDULO DE ESCALACIÓN
+-- ==========================================
+
+CREATE TABLE IF NOT EXISTS Ticket_Escalations (
+    ID_Escalation INT AUTO_INCREMENT PRIMARY KEY,
+    Fk_Service_Request INT NOT NULL,
+    Original_Service_ID INT NOT NULL,
+    Escalated_Service_ID INT NOT NULL,
+    Escalated_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS Pending_Ticket_Alerts (
+    ID_Alert INT AUTO_INCREMENT PRIMARY KEY,
+    Fk_Service_Request INT NOT NULL,
+    Alert_Type VARCHAR(100) NOT NULL,
+    Notified_At TIMESTAMP NULL,
+    Resolved_At TIMESTAMP NULL,
+    Resolution_Notes VARCHAR(1000) NULL
+);
+
+CREATE TABLE IF NOT EXISTS Escalation_Config (
+    ID_Config INT AUTO_INCREMENT PRIMARY KEY,
+    Priority_Level VARCHAR(50) NOT NULL,
+    Hours_Threshold INT NOT NULL DEFAULT 4,
+    Notify_Admins BOOLEAN DEFAULT TRUE,
+    Auto_Escalate BOOLEAN DEFAULT FALSE
+);
 
 INSERT INTO Lunch_Blocks (Block_Name, Start_Time, End_Time) VALUES
 ('Primer turno', '11:30:00', '12:10:00'),

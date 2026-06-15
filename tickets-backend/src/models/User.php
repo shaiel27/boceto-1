@@ -184,6 +184,7 @@ class User {
                    LEFT JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
                    LEFT JOIN TI_Service s ON ts.Fk_TI_Service = s.ID_TI_Service
                    WHERE t.Status IN ('Activo', 'Disponible', 'Ocupado')
+                     AND t.Status != 'Fuera de Servicio'
                      AND COALESCE(u.is_system_user, 0) = 1
                    ORDER BY t.First_Name, t.Last_Name";
 
@@ -235,7 +236,7 @@ class User {
     }
 
     public function getById($id) {
-        $query = "SELECT u.ID_Users, u.Full_Name, u.Email, u.created_at, u.last_login_at,
+        $query = "SELECT u.ID_Users, u.Username, u.Full_Name, u.Email, u.created_at, u.last_login_at,
                          COALESCE(o.ID_Office, NULL) as office_id,
                          COALESCE(o.Name_Office, '') as office_name,
                          r.Role as role_name

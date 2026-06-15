@@ -348,11 +348,27 @@ switch ($method) {
                             'data' => ['id' => $userId]
                         ]);
                     } catch (Exception $e) {
+                        $message = $e->getMessage();
+                        $errors = [];
+
+                        if (str_contains($message, '1062') || str_contains($message, 'Duplicate entry')) {
+                            if (str_contains($message, 'Email_UNIQUE') || str_contains($message, 'Users.Email')) {
+                                $errors['email'] = ['El correo ya está registrado'];
+                            }
+                            if (str_contains($message, 'Username_UNIQUE') || str_contains($message, 'Users.Username')) {
+                                $errors['username'] = ['El usuario ya existe'];
+                            }
+                        }
+
                         http_response_code(500);
-                        echo json_encode([
+                        $response = [
                             'success' => false,
-                            'message' => 'Error al crear usuario: ' . $e->getMessage()
-                        ]);
+                            'message' => $errors ? reset($errors)[0] : 'Error al crear usuario'
+                        ];
+                        if ($errors) {
+                            $response['errors'] = $errors;
+                        }
+                        echo json_encode($response);
                     }
                     break;
 

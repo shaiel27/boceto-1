@@ -28,6 +28,7 @@ export interface Ticket {
   technician_names: string[];
   comments: TicketComment[];
   timeline: TimelineEvent[];
+  ticket_attachments: TicketAttachment[];
   has_attachments: boolean;
 }
 

@@ -36,7 +36,7 @@ final class TicketAttachment
         try {
             $stmt = $this->conn->prepare($query);
             $stmt->bindParam(":Fk_Service_Request", $this->Fk_Service_Request, PDO::PARAM_INT);
-            $stmt->bindParam(":Fk_Comment", $this->Fk_Comment, PDO::PARAM_INT);
+            $stmt->bindValue(":Fk_Comment", $this->Fk_Comment, $this->Fk_Comment === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $stmt->bindParam(":Fk_User", $this->Fk_User, PDO::PARAM_INT);
             $stmt->bindParam(":File_Name", $this->File_Name, PDO::PARAM_STR);
             $stmt->bindParam(":File_Path", $this->File_Path, PDO::PARAM_STR);

@@ -23,7 +23,7 @@ interface Ticket {
 }
 
 interface RequesterProfileData {
-  id: string; name: string; email: string; position: string;
+  id: string; name: string; email: string; username?: string; position: string;
   hireDate: string; office_name: string; supervisor: string;
 }
 
@@ -74,12 +74,12 @@ const RequesterDashboard: React.FC = () => {
         try {
           const pr = await ApiService.getUserProfile(uid);
           if (pr.success && pr.data) {
-            setProfile({ id: String(uid), name: pr.data.Full_Name || ur.data.full_name || 'Usuario', email: pr.data.Email || ur.data.email || '', position: pr.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: pr.data.office_name || '', supervisor: pr.data.supervisor || 'No asignado' });
+            setProfile({ id: String(uid), name: pr.data.Full_Name || ur.data.full_name || 'Usuario', email: pr.data.Email || ur.data.email || '', username: pr.data.Username || pr.data.username || ur.data.username || '', position: pr.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: pr.data.office_name || '', supervisor: pr.data.supervisor || 'No asignado' });
           } else {
-            setProfile({ id: String(uid), name: ur.data.full_name || 'Usuario', email: ur.data.email || '', position: ur.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: '', supervisor: 'No asignado' });
+            setProfile({ id: String(uid), name: ur.data.full_name || 'Usuario', email: ur.data.email || '', username: ur.data.username || '', position: ur.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: '', supervisor: 'No asignado' });
           }
         } catch {
-          setProfile({ id: String(uid), name: ur.data.full_name || 'Usuario', email: ur.data.email || '', position: ur.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: '', supervisor: 'No asignado' });
+          setProfile({ id: String(uid), name: ur.data.full_name || 'Usuario', email: ur.data.email || '', username: ur.data.username || '', position: ur.data.role_name || 'Solicitante', hireDate: new Date().toISOString().split('T')[0], office_name: '', supervisor: 'No asignado' });
         }
         try {
           const tr = await ApiService.getMyTickets(uid);
@@ -160,6 +160,7 @@ const RequesterDashboard: React.FC = () => {
               <div>
                 <h2 className="rq-hdr-name">{profile.name}</h2>
                 <p className="rq-hdr-role">{profile.position}</p>
+                {profile.username && <p className="rq-hdr-user">@{profile.username}</p>}
               </div>
             </div>
             <div className="rq-hdr-r">
@@ -176,6 +177,7 @@ const RequesterDashboard: React.FC = () => {
                 <div>
                   <h1 className="rq-ctx-name">{profile.name}</h1>
                   <div className="rq-ctx-meta">
+                    {profile.username && <span className="rq-ctx-tag">@{profile.username}</span>}
                     {profile.office_name && <span className="rq-ctx-tag"><Building size={12} />{profile.office_name}</span>}
                     <span className="rq-ctx-tag"><Mail size={12} />{profile.email}</span>
                   </div>

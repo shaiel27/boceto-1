@@ -594,10 +594,6 @@ const TechnicianDashboard: React.FC = () => {
           </div>
         </div>
         <div className="tech-topbar-right">
-          <button className="action-btn" onClick={() => navigate('/dashboard')}>
-            <ArrowLeft size={15} />
-            Dashboard
-          </button>
           <button className="action-btn profile" onClick={() => setShowProfileDrawer(true)}>
             <User size={15} />
             Perfil

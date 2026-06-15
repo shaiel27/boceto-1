@@ -209,10 +209,6 @@ const OfficeManagement: React.FC = () => {
             </div>
           </div>
           <div className="om-topbar-right">
-            <button className="om-btn om-btn-ghost" onClick={() => navigate('/admin')}>
-              <ArrowLeft size={16} />
-              <span>Volver</span>
-            </button>
             <button
               className="om-btn om-btn-primary"
               onClick={handleSync}

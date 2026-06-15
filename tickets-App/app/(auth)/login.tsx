@@ -7,6 +7,7 @@ import {
   Platform,
   TouchableOpacity,
   Animated,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useForm } from 'react-hook-form';
@@ -46,11 +47,9 @@ export default function LoginScreen() {
     >
       <View style={styles.topSection}>
         <View style={styles.topGradient}>
-          <View style={styles.crestOuter}>
-            <View style={styles.crestInner}>
-              <Ionicons name="business" size={34} color={Colors.gold} />
-            </View>
-          </View>
+          <Animated.View style={[styles.logoWrap, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+            <Image source={require('../../assets/loading.png')} style={styles.logoImage} resizeMode="contain" />
+          </Animated.View>
           <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }], alignItems: 'center' }}>
             <Text style={styles.brandLabel}>ALCALDÍA DEL MUNICIPIO</Text>
             <Text style={styles.brandName}>San Cristóbal</Text>
@@ -114,14 +113,12 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: Colors.navyPrimary },
   topSection: { flex: 1, justifyContent: 'center' },
   topGradient: { alignItems: 'center', paddingTop: 60, paddingBottom: 40, paddingHorizontal: 32 },
-  crestOuter: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: 'rgba(201,168,76,0.08)',
+  logoWrap: {
+    width: 150, height: 120,
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(201,168,76,0.3)',
-    marginBottom: 28,
+    marginBottom: 20,
   },
-  crestInner: { justifyContent: 'center', alignItems: 'center' },
+  logoImage: { width: 150, height: 120 },
   brandLabel: { fontSize: 10, letterSpacing: 3, color: '#94845c', textTransform: 'uppercase', fontWeight: '600' },
   brandName: { fontSize: 28, fontWeight: '300', color: Colors.gold, marginTop: 6, letterSpacing: 1 },
   brandRule: { width: 32, height: 1, backgroundColor: Colors.gold, marginVertical: 14, opacity: 0.5 },

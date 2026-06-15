@@ -8,6 +8,7 @@ import {
   RefreshControl,
   TextInput,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -34,6 +35,8 @@ const FILTERS: { key: FilterTab; label: string; color: string }[] = [
   { key: 'Resuelto', label: 'Resueltos', color: Colors.statusResuelto },
 ];
 
+const { width: SCREEN_W } = Dimensions.get('window');
+
 export default function TechnicianDashboard() {
   const [activeFilter, setActiveFilter] = useState<FilterTab>('Todos');
   const [refreshing, setRefreshing] = useState(false);
@@ -42,8 +45,10 @@ export default function TechnicianDashboard() {
   const { user } = useAuth();
   const { tickets, isLoading, refreshTickets } = useTickets();
   const { unreadCount } = useNotifications();
+  const headerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    Animated.timing(headerAnim, { toValue: 1, duration: 600, useNativeDriver: true }).start();
     getTechnicianPerformance().then((r) => {
       if (r.success && r.data) setPerf(r.data);
     });
@@ -92,6 +97,148 @@ export default function TechnicianDashboard() {
 
   const firstName = user?.full_name?.split(' ')[0] || 'Técnico';
 
+  const renderHeader = () => (
+    <View>
+      <Animated.View style={[styles.header, { opacity: headerAnim }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Buenos días,</Text>
+            <Text style={styles.name}>{firstName}</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
+              <Ionicons name="notifications-outline" size={20} color={Colors.surface} />
+              {unreadCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => router.push('/(tabs)/technician/profile')}
+            >
+              <Ionicons name="person-outline" size={20} color={Colors.surface} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{perf?.resolved_today ?? '--'}</Text>
+            <Text style={styles.statLabel}>Hoy</Text>
+          </View>
+          <View style={styles.statSep} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{perf?.resolved_week ?? '--'}</Text>
+            <Text style={styles.statLabel}>Semana</Text>
+          </View>
+          <View style={styles.statSep} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{perf?.resolved_month ?? '--'}</Text>
+            <Text style={styles.statLabel}>Mes</Text>
+          </View>
+          <View style={styles.statSep} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, styles.statValueGold]}>{counts['En Proceso']}</Text>
+            <Text style={[styles.statLabel, styles.statLabelGold]}>Activos</Text>
+          </View>
+        </View>
+
+        <View style={styles.avgRow}>
+          <Ionicons name="timer-outline" size={12} color={Colors.gold} />
+          <Text style={styles.avgText}>
+            Tiempo promedio: <Text style={styles.avgValue}>{perf?.avg_resolution_time ?? '--'}</Text>
+          </Text>
+        </View>
+
+        <View style={styles.headerAccent} />
+      </Animated.View>
+
+      {inProgress.length > 0 && (
+        <View style={styles.inProgSection}>
+          <View style={styles.inProgHead}>
+            <View style={styles.inProgHeadL}>
+              <View style={styles.inProgPulse} />
+              <Text style={styles.inProgTitle}>En curso</Text>
+            </View>
+            <Text style={styles.inProgCount}>{inProgress.length}</Text>
+          </View>
+          <View style={styles.inProgList}>
+            {inProgress.slice(0, 5).map((t) => (
+              <TouchableOpacity
+                key={t.id}
+                style={styles.inProgChip}
+                onPress={() => router.push(`/(tabs)/technician/${t.id}`)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.inProgChipAccent} />
+                <Text style={styles.inProgChipCode}>{t.ticket_code}</Text>
+                <Text style={styles.inProgChipSubject} numberOfLines={1}>{t.subject}</Text>
+              </TouchableOpacity>
+            ))}
+            {inProgress.length > 5 && (
+              <TouchableOpacity
+                style={styles.inProgMore}
+                onPress={() => setActiveFilter('En Proceso')}
+              >
+                <Text style={styles.inProgMoreText}>+{inProgress.length - 5}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      )}
+
+      <TouchableOpacity
+        style={styles.historyBtn}
+        onPress={() => router.push('/(tabs)/technician/history')}
+        activeOpacity={0.7}
+      >
+        <Ionicons name="time-outline" size={16} color={Colors.gold} />
+        <Text style={styles.historyText}>Historial de tickets resueltos</Text>
+        <Ionicons name="chevron-forward" size={14} color={Colors.textLight} />
+      </TouchableOpacity>
+
+      <View style={styles.filtersSection}>
+        <ScrollableFilters
+          filters={FILTERS}
+          active={activeFilter}
+          onSelect={setActiveFilter}
+          counts={counts}
+        />
+      </View>
+
+      <View style={styles.searchWrap}>
+        <View style={styles.searchBox}>
+          <Ionicons name="search" size={15} color={Colors.textLight} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Buscar por código, asunto, oficina..."
+            placeholderTextColor={Colors.textLight}
+            value={search}
+            onChangeText={setSearch}
+            autoCapitalize="none"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={16} color={Colors.textLight} />
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {filtered.length > 0 && (
+        <View style={styles.resultBar}>
+          <Text style={styles.resultBarText}>
+            {filtered.length} {activeFilter === 'Todos' ? 'ticket' : activeFilter.toLowerCase()}
+            {filtered.length !== 1 ? 's' : ''}
+          </Text>
+          <View style={styles.resultBarLine} />
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <View style={styles.page}>
       <FlatList
@@ -110,171 +257,23 @@ export default function TechnicianDashboard() {
           />
         }
         contentContainerStyle={styles.list}
-        ListHeaderComponent={
-          <View>
-            {/* ====== HEADER ====== */}
-            <View style={styles.header}>
-              <View style={styles.headerTop}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.greeting}>Panel de Control</Text>
-                  <Text style={styles.name}>{firstName}</Text>
-                </View>
-                <View style={styles.headerActions}>
-                  <TouchableOpacity style={styles.iconBtn} onPress={() => {}}>
-                    <Ionicons name="notifications-outline" size={20} color={Colors.surface} />
-                    {unreadCount > 0 && (
-                      <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.iconBtn}
-                    onPress={() => router.push('/(tabs)/technician/profile')}
-                  >
-                    <Ionicons name="settings-outline" size={20} color={Colors.surface} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </View>
-
-            {/* ====== PERFORMANCE CARDS ====== */}
-            <View style={styles.perfSection}>
-              <View style={styles.perfRow}>
-                <View style={styles.perfCard}>
-                  <Ionicons name="today-outline" size={18} color={Colors.primary} />
-                  <Text style={styles.perfCardValue}>{perf?.resolved_today ?? '--'}</Text>
-                  <Text style={styles.perfCardLabel}>Hoy</Text>
-                </View>
-                <View style={styles.perfCard}>
-                  <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
-                  <Text style={styles.perfCardValue}>{perf?.resolved_week ?? '--'}</Text>
-                  <Text style={styles.perfCardLabel}>Semana</Text>
-                </View>
-                <View style={styles.perfCard}>
-                  <Ionicons name="layers-outline" size={18} color={Colors.primary} />
-                  <Text style={styles.perfCardValue}>{perf?.resolved_month ?? '--'}</Text>
-                  <Text style={styles.perfCardLabel}>Mes</Text>
-                </View>
-                <View style={[styles.perfCard, styles.perfCardAccent]}>
-                  <Ionicons name="flame-outline" size={18} color={Colors.surface} />
-                  <Text style={styles.perfCardValueAccent}>{counts['En Proceso']}</Text>
-                  <Text style={styles.perfCardLabelAccent}>Activos</Text>
-                </View>
-              </View>
-
-              <View style={styles.perfWideCard}>
-                <Ionicons name="timer-outline" size={22} color={Colors.gold} />
-                <View>
-                  <Text style={styles.perfWideLabel}>Tiempo promedio de resolución</Text>
-                  <Text style={styles.perfWideValue}>{perf?.avg_resolution_time ?? '--'}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* ====== IN PROGRESS SECTION ====== */}
-            {inProgress.length > 0 && (
-              <View style={styles.section}>
-                <View style={styles.sectionHead}>
-                  <View style={styles.sectionHeadL}>
-                    <View style={styles.sectionDot} />
-                    <Text style={styles.sectionTitle}>En Proceso</Text>
-                  </View>
-                  <Text style={styles.sectionCount}>{inProgress.length}</Text>
-                </View>
-                {inProgress.slice(0, 3).map((t) => (
-                  <TouchableOpacity
-                    key={t.id}
-                    style={styles.inProgCard}
-                    onPress={() => router.push(`/(tabs)/technician/${t.id}`)}
-                    activeOpacity={0.6}
-                  >
-                    <View style={styles.ipLeftBar} />
-                    <View style={styles.ipBody}>
-                      <Text style={styles.ipCode}>{t.ticket_code}</Text>
-                      <Text style={styles.ipSubject} numberOfLines={1}>
-                        {t.subject}
-                      </Text>
-                      <Text style={styles.ipMeta}>{t.office_name}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={Colors.textLight} style={{ marginRight: 12 }} />
-                  </TouchableOpacity>
-                ))}
-                {inProgress.length > 3 && (
-                  <TouchableOpacity
-                    style={styles.seeMore}
-                    onPress={() => setActiveFilter('En Proceso')}
-                  >
-                    <Text style={styles.seeMoreText}>Ver {inProgress.length - 3} más</Text>
-                    <Ionicons name="arrow-forward" size={14} color={Colors.statusEnProceso} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {/* ====== HISTORY BUTTON ====== */}
-            <TouchableOpacity
-              style={styles.historyBtn}
-              onPress={() => router.push('/(tabs)/technician/history')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.historyIcon}>
-                <Ionicons name="time-outline" size={22} color={Colors.gold} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.historyTitle}>Historial de Tickets</Text>
-                <Text style={styles.historySub}>Revisa todos los tickets resueltos</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.textLight} />
-            </TouchableOpacity>
-
-            {/* ====== FILTERS ====== */}
-            <View style={styles.filters}>
-              <Text style={styles.filterLabel}>Bandeja</Text>
-              <ScrollableFilters
-                filters={FILTERS}
-                active={activeFilter}
-                onSelect={setActiveFilter}
-                counts={counts}
-              />
-            </View>
-
-            {/* ====== SEARCH ====== */}
-            <View style={styles.searchWrap}>
-              <View style={styles.searchBox}>
-                <Ionicons name="search" size={16} color={Colors.textLight} />
-                <TextInput
-                  style={styles.searchInput}
-                  placeholder="Buscar tickets..."
-                  placeholderTextColor={Colors.textLight}
-                  value={search}
-                  onChangeText={setSearch}
-                  autoCapitalize="none"
-                  clearButtonMode="while-editing"
-                />
-                {search.length > 0 && (
-                  <TouchableOpacity onPress={() => setSearch('')}>
-                    <Ionicons name="close-circle" size={16} color={Colors.textLight} />
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          </View>
-        }
+        ListHeaderComponent={renderHeader}
         ListEmptyComponent={
           isLoading ? null : (
             <View style={styles.empty}>
-              <Ionicons
-                name={search ? 'search' : 'document-text-outline'}
-                size={40}
-                color={Colors.textLight}
-              />
+              <View style={styles.emptyIcon}>
+                <Ionicons
+                  name={search ? 'search' : 'document-text-outline'}
+                  size={28}
+                  color={Colors.textLight}
+                />
+              </View>
               <Text style={styles.emptyTitle}>{search ? 'Sin resultados' : 'Sin tickets'}</Text>
               <Text style={styles.emptySub}>
                 {search
                   ? `Nada coincide con "${search}"`
                   : activeFilter === 'Todos'
-                    ? 'No tienes tickets asignados'
+                    ? 'No tienes tickets asignados aún'
                     : `No hay tickets ${activeFilter.toLowerCase()}`}
               </Text>
             </View>
@@ -295,18 +294,18 @@ function ScrollableFilters({ filters, active, onSelect, counts }: any) {
             key={f.key}
             style={[
               sf.chip,
-              isActive && { backgroundColor: f.color + '14', borderColor: f.color + '40' },
+              isActive && { backgroundColor: f.color + '14', borderColor: f.color + '50' },
             ]}
             onPress={() => onSelect(f.key)}
             activeOpacity={0.7}
           >
-            {isActive && <View style={[sf.dot, { backgroundColor: f.color }]} />}
-            <Text style={[sf.label, isActive && { color: f.color, fontWeight: '600' }]}>
+            {isActive && <View style={[sf.chipDot, { backgroundColor: f.color }]} />}
+            <Text style={[sf.chipLabel, isActive && { color: f.color, fontWeight: '700' }]}>
               {f.label}
             </Text>
             {counts[f.key] > 0 && (
-              <View style={[sf.count, isActive && { backgroundColor: f.color + '20' }]}>
-                <Text style={[sf.countText, isActive && { color: f.color }]}>
+              <View style={[sf.chipCount, isActive && { backgroundColor: f.color + '20' }]}>
+                <Text style={[sf.chipCountText, isActive && { color: f.color }]}>
                   {counts[f.key]}
                 </Text>
               </View>
@@ -319,7 +318,7 @@ function ScrollableFilters({ filters, active, onSelect, counts }: any) {
 }
 
 const sf = StyleSheet.create({
-  wrap: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 8 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 12 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -329,12 +328,10 @@ const sf = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginRight: 6,
-    marginBottom: 6,
   },
-  dot: { width: 6, height: 6, borderRadius: 3 },
-  label: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
-  count: {
+  chipDot: { width: 6, height: 6, borderRadius: 3, marginRight: 5 },
+  chipLabel: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
+  chipCount: {
     minWidth: 20,
     height: 20,
     borderRadius: 10,
@@ -342,9 +339,9 @@ const sf = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 6,
     backgroundColor: Colors.border,
-    marginLeft: 4,
+    marginLeft: 5,
   },
-  countText: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary },
+  chipCountText: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary },
 });
 
 const styles = StyleSheet.create({
@@ -353,145 +350,174 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: Colors.primary,
-    paddingTop: 52,
-    paddingBottom: 28,
+    paddingTop: 50,
+    paddingBottom: 14,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    position: 'relative',
   },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  greeting: { fontSize: 11, color: Colors.gold, textTransform: 'uppercase', letterSpacing: 1.2, fontWeight: '600', opacity: 0.8 },
-  name: { fontSize: 24, fontWeight: '800', color: Colors.surface, marginTop: 2, letterSpacing: -0.3 },
-  headerActions: { flexDirection: 'row', marginTop: 4 },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  headerLeft: {},
+  greeting: { fontSize: 12, color: Colors.gold, fontWeight: '600', letterSpacing: 0.8, opacity: 0.85, textTransform: 'uppercase' },
+  name: { fontSize: 26, fontWeight: '800', color: Colors.surface, marginTop: 1, letterSpacing: -0.5 },
+  headerRight: { flexDirection: 'row', gap: 8, marginTop: 4 },
   iconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
   },
   badge: {
     position: 'absolute',
-    top: 2,
-    right: 2,
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
+    top: 1,
+    right: 1,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: Colors.coral,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 5,
+    paddingHorizontal: 4,
     borderWidth: 2,
     borderColor: Colors.primary,
   },
-  badgeText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+  badgeText: { fontSize: 9, fontWeight: '800', color: '#fff' },
 
-  perfSection: { paddingHorizontal: 16, paddingTop: 16 },
-  perfRow: { flexDirection: 'row', marginBottom: 10 },
-  perfCard: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: BorderRadius.md,
     paddingVertical: 12,
-    paddingHorizontal: 6,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    alignItems: 'center',
-    marginRight: 8,
+    paddingHorizontal: 8,
   },
-  perfCardAccent: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primaryDark,
-    marginRight: 0,
-  },
-  perfCardValue: { fontSize: 20, fontWeight: '800', color: Colors.text, marginTop: 6 },
-  perfCardValueAccent: { fontSize: 20, fontWeight: '800', color: Colors.surface, marginTop: 6 },
-  perfCardLabel: { fontSize: 10, fontWeight: '500', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
-  perfCardLabelAccent: { fontSize: 10, fontWeight: '500', color: Colors.gold, textTransform: 'uppercase', letterSpacing: 0.5 },
-  perfWideCard: {
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: 20, fontWeight: '800', color: Colors.surface },
+  statValueGold: { color: Colors.gold },
+  statLabel: { fontSize: 10, fontWeight: '500', color: 'rgba(255,255,255,0.6)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 0.5 },
+  statLabelGold: { color: Colors.gold + 'CC' },
+  statSep: { width: 1, backgroundColor: 'rgba(255,255,255,0.12)' },
+
+  avgRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 10,
+    gap: 6,
   },
-  perfWideLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500', marginLeft: 12 },
-  perfWideValue: { fontSize: 20, fontWeight: '700', color: Colors.text, marginLeft: 12, marginTop: 2 },
+  avgText: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+  avgValue: { color: Colors.gold, fontWeight: '700' },
 
-  section: { paddingHorizontal: 16, marginTop: 16, marginBottom: 8 },
-  sectionHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionHeadL: { flexDirection: 'row', alignItems: 'center' },
-  sectionDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.statusEnProceso, marginRight: 8 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  sectionCount: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, backgroundColor: Colors.border, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  inProgCard: {
+  headerAccent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 20,
+    right: 20,
+    height: 2,
+    backgroundColor: Colors.gold,
+    opacity: 0.3,
+  },
+
+  inProgSection: {
+    paddingHorizontal: 12,
+    paddingTop: 14,
+  },
+  inProgHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  inProgHeadL: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  inProgPulse: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.statusEnProceso },
+  inProgTitle: { fontSize: 13, fontWeight: '700', color: Colors.text },
+  inProgCount: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, backgroundColor: Colors.border, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
+  inProgList: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  inProgChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
-    marginBottom: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
+    paddingLeft: 0,
+    paddingRight: 8,
+    height: 32,
     overflow: 'hidden',
+    maxWidth: SCREEN_W * 0.45,
   },
-  ipLeftBar: { width: 3, backgroundColor: Colors.statusEnProceso, alignSelf: 'stretch' },
-  ipBody: { flex: 1, paddingVertical: 12, paddingLeft: 12 },
-  ipCode: { fontSize: 10, fontWeight: '700', color: Colors.textLight, fontFamily: 'monospace', letterSpacing: 0.3, marginBottom: 2 },
-  ipSubject: { fontSize: 14, fontWeight: '600', color: Colors.text },
-  ipMeta: { fontSize: 11, color: Colors.textSecondary, marginTop: 3 },
-  seeMore: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  inProgChipAccent: { width: 3, backgroundColor: Colors.statusEnProceso, alignSelf: 'stretch', marginRight: 6 },
+  inProgChipCode: { fontSize: 9, fontWeight: '700', color: Colors.textLight, fontFamily: 'monospace', marginRight: 4 },
+  inProgChipSubject: { fontSize: 11, fontWeight: '500', color: Colors.text, flexShrink: 1 },
+  inProgMore: {
+    width: 32,
+    height: 32,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
     justifyContent: 'center',
-    paddingVertical: 8,
+    alignItems: 'center',
   },
-  seeMoreText: { fontSize: 12, fontWeight: '600', color: Colors.statusEnProceso, marginRight: 4 },
+  inProgMoreText: { fontSize: 11, fontWeight: '700', color: Colors.statusEnProceso },
 
   historyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginBottom: 14,
-    marginTop: 8,
+    marginHorizontal: 12,
+    marginTop: 10,
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
-    padding: 16,
+    borderRadius: BorderRadius.md,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
     borderWidth: 1,
     borderColor: Colors.border,
+    gap: 8,
   },
-  historyIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: Colors.primary + '08',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  historyTitle: { fontSize: 14, fontWeight: '700', color: Colors.text },
-  historySub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  historyText: { flex: 1, fontSize: 12, fontWeight: '600', color: Colors.text },
 
-  filters: { paddingTop: 8 },
-  filterLabel: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 8, paddingHorizontal: 16 },
-
-  searchWrap: { paddingHorizontal: 16, paddingVertical: 8 },
+  filtersSection: { paddingTop: 12, paddingBottom: 4 },
+  searchWrap: { paddingHorizontal: 12, paddingVertical: 6 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: 14,
-    height: 44,
+    paddingHorizontal: 12,
+    height: 40,
     borderWidth: 1,
     borderColor: Colors.border,
+    gap: 8,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.text, marginLeft: 8 },
+  searchInput: { flex: 1, fontSize: 13, color: Colors.text },
 
-  empty: { paddingVertical: 60, alignItems: 'center' },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: Colors.text, marginTop: 8 },
-  emptySub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 30, marginTop: 4 },
+  resultBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 4,
+    marginTop: 2,
+  },
+  resultBarText: { fontSize: 10, fontWeight: '700', color: Colors.textLight, letterSpacing: 0.6, textTransform: 'uppercase' },
+  resultBarLine: { flex: 1, height: 1, backgroundColor: Colors.border, marginLeft: 8 },
+
+  empty: { paddingVertical: 50, alignItems: 'center' },
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.background,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
+  emptySub: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 40, marginTop: 4, lineHeight: 17 },
 });

@@ -508,7 +508,6 @@ const AdminTicketManagement: React.FC = () => {
       setTimeline([]);
     }
 
-    setAttachments([]);
   };
 
   const handleAssignTechnician = async () => {

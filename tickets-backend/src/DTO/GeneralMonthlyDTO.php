@@ -1,31 +1,28 @@
 <?php
 declare(strict_types=1);
 
-final readonly class OfficeReportDTO
+final readonly class GeneralMonthlyDTO
 {
     public function __construct(
-        public string $office,
+        public string $month,
         public int $total,
-        public int $resolved,
-        public int $inProgress,
         public int $pending,
+        public int $inProgress,
+        public int $resolved,
+        public int $altaCount,
         public float $avgHours,
-        public float $resolutionRate,
     ) {}
 
     public static function fromArray(array $data): self
     {
-        $total = (int)($data['total'] ?? 0);
-        $resolved = (int)($data['resolved'] ?? 0);
-
         return new self(
-            office: (string)($data['office'] ?? ''),
-            total: $total,
-            resolved: $resolved,
-            inProgress: (int)($data['in_progress'] ?? 0),
+            month: (string)($data['month'] ?? ''),
+            total: (int)($data['total'] ?? 0),
             pending: (int)($data['pending'] ?? 0),
+            inProgress: (int)($data['in_progress'] ?? 0),
+            resolved: (int)($data['resolved'] ?? 0),
+            altaCount: (int)($data['alta_count'] ?? 0),
             avgHours: (float)($data['avg_hours'] ?? 0.0),
-            resolutionRate: $total > 0 ? round($resolved * 100.0 / $total, 1) : 0.0,
         );
     }
 
@@ -37,13 +34,13 @@ final readonly class OfficeReportDTO
     public function toArray(): array
     {
         return [
-            'office' => $this->office,
+            'month' => $this->month,
             'total' => $this->total,
-            'resolved' => $this->resolved,
-            'in_progress' => $this->inProgress,
             'pending' => $this->pending,
+            'in_progress' => $this->inProgress,
+            'resolved' => $this->resolved,
+            'alta_count' => $this->altaCount,
             'avg_hours' => $this->avgHours,
-            'resolution_rate' => $this->resolutionRate,
         ];
     }
 }

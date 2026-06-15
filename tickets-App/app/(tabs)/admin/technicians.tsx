@@ -44,17 +44,17 @@ export default function AdminTechniciansScreen() {
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
   const del = (id: number, name: string) =>
-    Alert.alert('Eliminar técnico', `¿Eliminar a ${name}?`, [
+    Alert.alert('Marcar fuera de servicio', `¿Marcar a ${name} como fuera de servicio?`, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+      { text: 'Desactivar', style: 'destructive', onPress: async () => {
         const r = await deleteTechnician(id);
-        toast.showToast({ title: r.success ? 'Eliminado' : 'Error', message: r.message || '', type: r.success ? 'success' : 'error' });
+        toast.showToast({ title: r.success ? 'Desactivado' : 'Error', message: r.message || '', type: r.success ? 'success' : 'error' });
         if (r.success) load();
       }},
     ]);
 
   const statusColor = (s: string) =>
-    s === 'Disponible' ? Colors.statusResuelto : s === 'Ocupado' ? Colors.statusPendiente : Colors.textLight;
+    s === 'Disponible' ? Colors.statusResuelto : s === 'Ocupado' ? Colors.statusPendiente : s === 'Fuera de Servicio' ? '#ef4444' : Colors.textLight;
 
   const handleTabChange = (index: number) => {
     Animated.spring(tabAnim, { toValue: index, useNativeDriver: true, tension: 80, friction: 10 }).start();

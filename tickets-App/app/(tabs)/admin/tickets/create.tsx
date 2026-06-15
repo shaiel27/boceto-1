@@ -12,11 +12,13 @@ import {
   SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as DocumentPicker from 'expo-document-picker';
 import { Colors, BorderRadius } from '../../../../src/constants/colors';
-import { createTicket, getOffices, getProblems, getSystems } from '../../../../src/services/adminService';
+import { createTicket, getOffices, getProblems, getSystems, uploadTicketFiles } from '../../../../src/services/adminService';
 import { findBienByCode, Bien } from '../../../../src/services/bienesService';
 import { useToast } from '../../../../src/contexts/ToastContext';
 
@@ -40,6 +42,7 @@ export default function CreateTicketScreen() {
   const [systemId, setSystemId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<DocumentPicker.DocumentPickerResult['assets']>([]);
   const [officeModal, setOfficeModal] = useState(false);
   const [officeSearch, setOfficeSearch] = useState('');
   const toast = useToast();
@@ -106,6 +109,35 @@ export default function CreateTicketScreen() {
 
   const isValid = subject.trim().length >= 3 && officeId !== null && serviceId !== null && description.trim().length >= 5;
 
+  const pickFiles = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        multiple: true,
+        type: ['image/*', 'application/pdf', 'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-excel',
+          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'text/plain', 'text/csv'],
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const MAX_SIZE = 10 * 1024 * 1024;
+        const valid = result.assets.filter((f) => (f.size || 0) <= MAX_SIZE);
+        if (valid.length < result.assets.length) {
+          toast.showToast({ title: 'Archivo grande', message: 'Algunos archivos exceden 10MB', type: 'error' });
+        }
+        setSelectedFiles((prev) => {
+          const combined = [...(prev || []), ...valid];
+          return combined.slice(0, 5);
+        });
+      }
+    } catch {}
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles((prev) => (prev || []).filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async () => {
     if (!isValid || submitting) return;
     setSubmitting(true);
@@ -120,14 +152,24 @@ export default function CreateTicketScreen() {
         System_Priority: derivedPriority,
       });
       if (result.success) {
+        const ticketId = result.ticket_id;
+        if (ticketId && selectedFiles && selectedFiles.length > 0) {
+          const fileData = selectedFiles.map((f) => ({
+            uri: f.uri,
+            name: f.name,
+            type: f.mimeType || 'application/octet-stream',
+          }));
+          const uploadRes = await uploadTicketFiles(ticketId, fileData);
+          if (uploadRes.success) {
+            toast.showToast({ title: 'Archivos subidos', message: `${fileData.length} archivo(s) adjuntado(s)`, type: 'info' });
+          } else {
+            toast.showToast({ title: 'Error al subir archivos', message: uploadRes.message || 'Intente subirlos después', type: 'error' });
+          }
+        }
         setDone(true);
         setTimeout(() => {
-          if (router.canGoBack()) {
-            router.back();
-          } else {
-            router.replace('/(tabs)/admin');
-          }
-        }, 2000);
+          router.replace(`/(tabs)/admin/tickets/${ticketId}`);
+        }, 1500);
       } else {
         toast.showToast({ title: 'Error', message: result.message || 'No se pudo crear el ticket', type: 'error' });
       }
@@ -156,7 +198,7 @@ export default function CreateTicketScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
     >
       <ScrollView
@@ -322,6 +364,35 @@ export default function CreateTicketScreen() {
             maxLength={500}
           />
           <Text style={styles.hint}>{description.length}/500</Text>
+        </Field>
+
+        <Field label="Archivos adjuntos" icon="attach-outline" optional>
+          <TouchableOpacity style={styles.filePicker} onPress={pickFiles} activeOpacity={0.6}>
+            <Ionicons name="cloud-upload-outline" size={20} color={Colors.primary} />
+            <Text style={styles.filePickerText}>Seleccionar archivos (PDF, imágenes...)</Text>
+          </TouchableOpacity>
+          {selectedFiles && selectedFiles.length > 0 && (
+            <View style={styles.fileList}>
+              {selectedFiles.map((file, i) => {
+                const isImage = file.mimeType?.startsWith('image/');
+                return (
+                  <View key={i} style={styles.fileItem}>
+                    <View style={styles.fileItemLeft}>
+                      {isImage ? (
+                        <Image source={{ uri: file.uri }} style={styles.fileThumb} />
+                      ) : (
+                        <Ionicons name="document-outline" size={20} color={Colors.primary} />
+                      )}
+                      <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => removeFile(i)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Ionicons name="close-circle" size={20} color={Colors.coral} />
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </Field>
       </ScrollView>
 
@@ -489,6 +560,24 @@ const styles = StyleSheet.create({
   },
   submitDisabled: { opacity: 0.45, elevation: 0, shadowOpacity: 0 },
   submitText: { fontSize: 16, fontWeight: '700', color: Colors.gold, letterSpacing: 0.3 },
+
+  filePicker: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.surface, borderRadius: BorderRadius.md,
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderWidth: 1, borderColor: Colors.border, borderStyle: 'dashed',
+  },
+  filePickerText: { fontSize: 14, color: Colors.primary, fontWeight: '500' },
+  fileList: { marginTop: 8, gap: 6 },
+  fileItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.primary + '08', borderRadius: BorderRadius.md,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: Colors.primary + '18',
+  },
+  fileItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  fileThumb: { width: 32, height: 32, borderRadius: 6 },
+  fileName: { fontSize: 12, color: Colors.text, flex: 1 },
 
   doneRoot: { flex: 1, backgroundColor: Colors.background },
   doneWrap: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },

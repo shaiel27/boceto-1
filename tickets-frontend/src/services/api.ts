@@ -58,6 +58,8 @@ export interface LoginResponse {
 
     email: string;
 
+    username?: string;
+
     role: number;
 
     role_name: string;
@@ -188,6 +190,8 @@ export class ApiService {
               id: parseInt(data.user.ID_Users || data.user.id),
 
               email: data.user.Email || data.user.email,
+
+              username: data.user.Username || data.user.username || data.user.Email?.split('@')[0],
 
               full_name: data.user.Full_Name || data.user.full_name,
 
@@ -409,6 +413,7 @@ export class ApiService {
           data: {
             id: data.user.id || data.user.ID_Users,
             email: data.user.email || data.user.Email,
+            username: data.user.username || data.user.Username || data.user.email?.split('@')[0],
             role: roleNumber,
             role_name: roleString.charAt(0).toUpperCase() + roleString.slice(1),
             full_name: data.user.full_name || data.user.Full_Name,
@@ -1261,7 +1266,7 @@ export class ApiService {
 
           success: false,
 
-          message: data.message || 'Error al eliminar técnico'
+          message: data.message || 'Error al desactivar técnico'
 
         };
 
@@ -1279,6 +1284,27 @@ export class ApiService {
 
     }
 
+  }
+
+  static async reactivateTechnician(id: number): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/technicians?id=${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'Disponible' })
+      });
+      const data = await response.json();
+      if (data.success) {
+        return { success: true, message: data.message };
+      } else {
+        return { success: false, message: data.message || 'Error al reactivar técnico' };
+      }
+    } catch (error) {
+      return { success: false, message: 'Error de conexión con el servidor' };
+    }
   }
 
 
@@ -2045,26 +2071,6 @@ export class ApiService {
     } catch { return { success: false, message: 'Error de conexión' }; }
   }
 
-  static async getResponseTimesReport(): Promise<ApiResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/reports?action=response-times`, {
-        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
-      });
-      const data = await response.json();
-      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
-    } catch { return { success: false, message: 'Error de conexión' }; }
-  }
-
-  static async getPriorityReport(): Promise<ApiResponse> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/reports?action=priority`, {
-        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
-      });
-      const data = await response.json();
-      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
-    } catch { return { success: false, message: 'Error de conexión' }; }
-  }
-
   static async getMonthlyReport(): Promise<ApiResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/reports?action=general`, {
@@ -2281,7 +2287,9 @@ export class ApiService {
 
           success: false,
 
-          message: data.message || 'Error al crear usuario'
+          message: data.message || 'Error al crear usuario',
+
+          errors: data.errors
 
         };
 

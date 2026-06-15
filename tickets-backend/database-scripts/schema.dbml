@@ -1,0 +1,349 @@
+Project tickets_system {
+  database_type: 'MySQL'
+  Note: 'Sistema de Gestión de Tickets - Boceto TI'
+}
+
+// ─── 1. Roles y Usuarios ───
+
+Table Role {
+  ID_Role INT [pk, increment]
+  Role VARCHAR(20) [not null, unique]
+  Description TEXT
+}
+
+Table Users {
+  ID_Users INT [pk, increment]
+  Fk_Role INT
+  Email VARCHAR(100) [not null, unique]
+  Password VARCHAR(255) [not null]
+  Username VARCHAR(100) [not null, unique]
+  Full_Name VARCHAR(200) [not null]
+  is_system_user BOOLEAN [default: false]
+  last_login_at TIMESTAMP [null]
+  created_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (is_system_user, Email) [name: 'idx_users_system']
+    (is_system_user, Full_Name) [name: 'idx_users_active']
+  }
+}
+
+Table Boss {
+  ID_Boss INT [pk, increment]
+  Name_Boss VARCHAR(200) [not null]
+  Pronoun VARCHAR(20)
+  Fk_User INT [unique]
+}
+
+// ─── 2. Estructura Institucional ───
+
+Table Office {
+  ID_Office INT [pk, increment]
+  Name_Office VARCHAR(100) [not null]
+  coduniadm VARCHAR(20) [unique, null, note: 'ID de la API de bienes (spg_unidadadministrativa)']
+  Fk_Boss_ID INT
+  created_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+// ─── 3. Técnicos y Servicios TI ───
+
+Table Technicians {
+  ID_Technicians INT [pk, increment]
+  Fk_Users INT [unique]
+  First_Name VARCHAR(50) [not null]
+  Last_Name VARCHAR(50) [not null]
+  Fk_Lunch_Block INT [null]
+  Status VARCHAR(20) [default: 'Disponible']
+  created_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table TI_Service {
+  ID_TI_Service INT [pk, increment]
+  Type_Service VARCHAR(50) [not null]
+  Details TEXT
+}
+
+Table Technicians_Service {
+  ID_Technicians_Service INT [pk, increment]
+  Fk_TI_Service INT
+  Fk_Technicians INT
+  Status VARCHAR(15) [default: 'Activo']
+  created_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Service_Problems_Catalog {
+  ID_Problem_Catalog INT [pk, increment]
+  Fk_TI_Service INT
+  Problem_Name VARCHAR(200) [not null]
+  Typical_Description TEXT
+  Estimated_Severity VARCHAR(50)
+}
+
+Table Technician_Schedules {
+  ID_Schedule INT [pk, increment]
+  Fk_Technician INT
+  Day_Of_Week VARCHAR(20) [not null]
+  Work_Start_Time TIME [default: '08:00:00']
+  Work_End_Time TIME [not null]
+}
+
+Table Lunch_Blocks {
+  ID_Lunch_Block INT [pk, increment]
+  Block_Name VARCHAR(50) [not null]
+  Start_Time TIME [not null]
+  End_Time TIME [not null]
+}
+
+// ─── 4. Permisos y Sistemas ───
+
+Table Service_Permissions {
+  ID_Permission INT [pk, increment]
+  Fk_TI_Service INT
+  Fk_Office INT
+  Is_Allowed BOOLEAN [default: true]
+}
+
+Table Request_Settings {
+  ID_Setting INT [pk, increment]
+  Fk_Office_ID INT
+  Can_Request_Directly BOOLEAN [default: true]
+  Must_Be_Approved_By_Superior BOOLEAN [default: false]
+}
+
+Table Software_Systems {
+  ID_System INT [pk, increment]
+  System_Name VARCHAR(200) [not null]
+  Description TEXT
+  Status VARCHAR(20) [default: 'Activo']
+}
+
+Table Office_Systems {
+  ID_Office_System INT [pk, increment]
+  Fk_Office_ID INT
+  Fk_System_ID INT
+}
+
+// ─── 5. Tickets ───
+
+Table Service_Request {
+  ID_Service_Request INT [pk, increment]
+  Ticket_Code VARCHAR(50) [unique]
+  Fk_Office INT
+  Fk_User_Requester INT
+  Fk_TI_Service INT
+  Fk_Problem_Catalog INT
+  Fk_Boss_Requester INT
+  Fk_Software_System INT [null]
+  Subject VARCHAR(500) [not null]
+  Property_Number VARCHAR(50)
+  Description TEXT
+  System_Priority VARCHAR(50) [default: 'Media']
+  Resolution_Notes TEXT [null]
+  Status VARCHAR(50) [default: 'Pendiente']
+  Created_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Resolved_at TIMESTAMP [null]
+}
+
+Table Ticket_Technicians {
+  ID_Ticket_Technician INT [pk, increment]
+  Fk_Service_Request INT
+  Fk_Technician INT
+  Is_Lead BOOLEAN [default: false]
+  Assignment_Role VARCHAR(100)
+  Assigned_At TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Fk_Assigned_By INT
+  Status VARCHAR(50) [default: 'Activo']
+}
+
+Table Ticket_Comments {
+  ID_Comment INT [pk, increment]
+  Fk_Service_Request INT
+  Fk_User INT
+  Comment TEXT [not null]
+  Created_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Ticket_Attachments {
+  ID_Attachment INT [pk, increment]
+  Fk_Service_Request INT
+  Fk_Comment INT [null]
+  Fk_User INT
+  File_Name VARCHAR(255) [not null]
+  File_Path VARCHAR(1024) [not null]
+  File_Type VARCHAR(100) [default: null]
+  File_Size INT [default: null]
+  Uploaded_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Ticket_Timeline {
+  ID_Timeline INT [pk, increment]
+  Fk_Service_Request INT
+  Fk_User_Actor INT
+  Action_Description TEXT
+  Old_Status VARCHAR(50)
+  New_Status VARCHAR(50)
+  Event_Date TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+// ─── 6. Auditoría ───
+
+Table audit_logs {
+  id INT [pk, increment]
+  user_id INT [null]
+  email VARCHAR(100) [null]
+  action VARCHAR(50) [not null]
+  entity_type VARCHAR(50) [null]
+  entity_id INT [null]
+  description TEXT [null]
+  data JSON [null]
+  severity ENUM('info','warning','critical') [default: 'info']
+  success TINYINT(1) [default: 1]
+  ip_address VARCHAR(45) [null]
+  user_agent VARCHAR(500) [null]
+  created_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+
+  Indexes {
+    (action) [name: 'idx_audit_action']
+    (user_id) [name: 'idx_audit_user']
+    (entity_type, entity_id) [name: 'idx_audit_entity']
+    (created_at) [name: 'idx_audit_created']
+  }
+}
+
+// ─── 7. Notificaciones ───
+
+Table Notifications {
+  ID_Notification INT [pk, increment]
+  Fk_User INT [not null]
+  Type VARCHAR(100) [not null]
+  Title VARCHAR(255) [not null]
+  Message TEXT [not null]
+  Fk_Service_Request INT [null]
+  Is_Read TINYINT(1) [default: 0, not null]
+  Metadata JSON [null]
+  Created_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Updated_at TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+// ─── 8. Escalación ───
+
+Table Ticket_Escalations {
+  ID_Escalation INT [pk, increment]
+  Fk_Service_Request INT [not null]
+  Original_Service_ID INT [not null]
+  Escalated_Service_ID INT [not null]
+  Escalated_At TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Pending_Ticket_Alerts {
+  ID_Alert INT [pk, increment]
+  Fk_Service_Request INT [not null]
+  Alert_Type VARCHAR(100) [not null]
+  Notified_At TIMESTAMP [null]
+  Resolved_At TIMESTAMP [null]
+  Resolution_Notes VARCHAR(1000) [null]
+}
+
+Table Escalation_Config {
+  ID_Config INT [pk, increment]
+  Priority_Level VARCHAR(50) [not null]
+  Hours_Threshold INT [not null, default: 4]
+  Notify_Admins BOOLEAN [default: true]
+  Auto_Escalate BOOLEAN [default: false]
+}
+
+// ─── 9. Asistencia entre Técnicos ───
+
+Table Assistance_Requests {
+  ID_Request INT [pk, increment]
+  Fk_Ticket INT [not null]
+  Fk_Requesting_Technician INT [not null]
+  Fk_Assigned_Technician INT [null]
+  Status ENUM('PENDIENTE','ASIGNADO','RECHAZADO','CANCELADO') [default: 'PENDIENTE']
+  Requested_At TIMESTAMP [default: `CURRENT_TIMESTAMP`]
+  Updated_At TIMESTAMP [null]
+  Notification_Count INT [default: 0]
+  Last_Notified_At TIMESTAMP [null]
+
+  Indexes {
+    (Status) [name: 'idx_assistance_status']
+    (Fk_Ticket) [name: 'idx_assistance_ticket']
+  }
+}
+
+// ─── 10. Caché de Bienes SIFA ───
+
+Table bienes_cache {
+  query_key VARCHAR(64) [pk]
+  response MEDIUMTEXT [not null]
+  is_lookup TINYINT(1) [not null, default: 0]
+  cached_at INT UNSIGNED [not null]
+
+  Indexes {
+    (cached_at) [name: 'idx_cached']
+  }
+}
+
+// 6. Auditoría - Relación lógica (sin FK en SQL para preservar registros)
+Ref: audit_logs.user_id > Users.ID_Users
+
+// ═══════════════════════════════════════
+// RELACIONES
+// ═══════════════════════════════════════
+
+// 1. Roles y Usuarios
+Ref: Users.Fk_Role > Role.ID_Role
+Ref: Boss.Fk_User > Users.ID_Users
+
+// 2. Estructura Institucional
+Ref: Office.Fk_Boss_ID > Boss.ID_Boss
+
+// 3. Técnicos y Servicios TI
+Ref: Technicians.Fk_Users > Users.ID_Users
+Ref: Technicians.Fk_Lunch_Block > Lunch_Blocks.ID_Lunch_Block
+Ref: Technicians_Service.Fk_TI_Service > TI_Service.ID_TI_Service
+Ref: Technicians_Service.Fk_Technicians > Technicians.ID_Technicians
+Ref: Service_Problems_Catalog.Fk_TI_Service > TI_Service.ID_TI_Service
+Ref: Technician_Schedules.Fk_Technician > Technicians.ID_Technicians
+
+// 4. Permisos y Sistemas
+Ref: Service_Permissions.Fk_TI_Service > TI_Service.ID_TI_Service
+Ref: Service_Permissions.Fk_Office > Office.ID_Office
+Ref: Request_Settings.Fk_Office_ID > Office.ID_Office
+Ref: Office_Systems.Fk_Office_ID > Office.ID_Office
+Ref: Office_Systems.Fk_System_ID > Software_Systems.ID_System
+
+// 5. Tickets
+Ref: Service_Request.Fk_Office > Office.ID_Office
+Ref: Service_Request.Fk_User_Requester > Users.ID_Users
+Ref: Service_Request.Fk_TI_Service > TI_Service.ID_TI_Service
+Ref: Service_Request.Fk_Problem_Catalog > Service_Problems_Catalog.ID_Problem_Catalog
+Ref: Service_Request.Fk_Software_System > Software_Systems.ID_System
+Ref: Service_Request.Fk_Boss_Requester > Boss.ID_Boss
+Ref: Ticket_Technicians.Fk_Service_Request > Service_Request.ID_Service_Request
+Ref: Ticket_Technicians.Fk_Technician > Technicians.ID_Technicians
+Ref: Ticket_Technicians.Fk_Assigned_By > Users.ID_Users
+Ref: Ticket_Comments.Fk_Service_Request > Service_Request.ID_Service_Request
+Ref: Ticket_Comments.Fk_User > Users.ID_Users
+Ref: Ticket_Attachments.Fk_Service_Request > Service_Request.ID_Service_Request
+Ref: Ticket_Attachments.Fk_Comment > Ticket_Comments.ID_Comment
+Ref: Ticket_Attachments.Fk_User > Users.ID_Users
+Ref: Ticket_Timeline.Fk_Service_Request > Service_Request.ID_Service_Request
+Ref: Ticket_Timeline.Fk_User_Actor > Users.ID_Users
+
+// 7. Notificaciones
+Ref: Notifications.Fk_User > Users.ID_Users [delete: cascade]
+Ref: Notifications.Fk_Service_Request > Service_Request.ID_Service_Request [delete: set_null]
+
+// 8. Escalación
+Ref: Ticket_Escalations.Fk_Service_Request > Service_Request.ID_Service_Request
+Ref: Pending_Ticket_Alerts.Fk_Service_Request > Service_Request.ID_Service_Request
+Ref: Escalation_Config.Priority_Level > Service_Request.System_Priority [note: 'relación lógica — la aplicación busca config por nivel de prioridad']
+
+// 9. Asistencia
+Ref: Assistance_Requests.Fk_Ticket > Service_Request.ID_Service_Request
+Ref: Assistance_Requests.Fk_Requesting_Technician > Users.ID_Users
+Ref: Assistance_Requests.Fk_Assigned_Technician > Users.ID_Users
+
+// 10. Caché de Bienes SIFA
+Ref: bienes_cache.query_key > Office.coduniadm [note: 'relación lógica — cachea respuestas de la API de bienes (SIFA) para sincronizar oficinas']

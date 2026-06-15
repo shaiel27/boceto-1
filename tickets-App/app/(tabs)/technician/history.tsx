@@ -73,31 +73,35 @@ export default function HistoryScreen() {
         contentContainerStyle={styles.list}
         ListHeaderComponent={
           <View>
-            {/* Stats */}
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
-                <Text style={styles.statLabel}>Semana</Text>
+                <Text style={styles.statIcon}>
+                  <Ionicons name="calendar-outline" size={14} color={Colors.navyPrimary} />
+                </Text>
                 <Text style={styles.statValue}>{perf?.resolved_week ?? '--'}</Text>
+                <Text style={styles.statLabel}>Semana</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={styles.statSep} />
               <View style={styles.statCard}>
-                <Ionicons name="layers-outline" size={16} color={Colors.primary} />
-                <Text style={styles.statLabel}>Mes</Text>
+                <Text style={styles.statIcon}>
+                  <Ionicons name="layers-outline" size={14} color={Colors.navyPrimary} />
+                </Text>
                 <Text style={styles.statValue}>{perf?.resolved_month ?? '--'}</Text>
+                <Text style={styles.statLabel}>Mes</Text>
               </View>
-              <View style={styles.statDivider} />
+              <View style={styles.statSep} />
               <View style={styles.statCard}>
-                <Ionicons name="timer-outline" size={16} color={Colors.primary} />
-                <Text style={styles.statLabel}>Promedio</Text>
+                <Text style={styles.statIcon}>
+                  <Ionicons name="timer-outline" size={14} color={Colors.navyPrimary} />
+                </Text>
                 <Text style={[styles.statValue, { fontSize: 16 }]}>{perf?.avg_resolution_time ?? '--'}</Text>
+                <Text style={styles.statLabel}>Promedio</Text>
               </View>
             </View>
 
-            {/* Search */}
             <View style={styles.searchWrap}>
               <View style={styles.searchBox}>
-                <Ionicons name="search" size={16} color={Colors.textLight} />
+                <Ionicons name="search" size={15} color={Colors.textLight} />
                 <TextInput
                   style={styles.searchInput}
                   placeholder="Buscar en historial..."
@@ -105,7 +109,6 @@ export default function HistoryScreen() {
                   value={search}
                   onChangeText={setSearch}
                   autoCapitalize="none"
-                  clearButtonMode="while-editing"
                 />
                 {search.length > 0 && (
                   <TouchableOpacity onPress={() => setSearch('')}>
@@ -115,18 +118,19 @@ export default function HistoryScreen() {
               </View>
             </View>
 
-            {/* Section label */}
-            <View style={styles.sectionLabel}>
-              <Text style={styles.sectionLabelText}>
+            <View style={styles.resultBar}>
+              <Text style={styles.resultBarText}>
                 {resolved.length} TICKET{resolved.length !== 1 ? 'S' : ''} RESUELTO{resolved.length !== 1 ? 'S' : ''}
               </Text>
-              <View style={styles.sectionLine} />
+              <View style={styles.resultBarLine} />
             </View>
           </View>
         }
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Ionicons name="hourglass-outline" size={48} color={Colors.textLight} />
+            <View style={styles.emptyIcon}>
+              <Ionicons name="hourglass-outline" size={32} color={Colors.textLight} />
+            </View>
             <Text style={styles.emptyTitle}>
               {search ? 'Sin resultados' : 'Sin tickets resueltos'}
             </Text>
@@ -148,43 +152,56 @@ const styles = StyleSheet.create({
 
   statsRow: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginTop: 16,
+    marginHorizontal: 12,
+    marginTop: 14,
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.lg,
-    padding: 16,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  statCard: { flex: 1, alignItems: 'center' },
-  statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500', textTransform: 'uppercase', marginTop: 4 },
-  statValue: { fontSize: 20, fontWeight: '800', color: Colors.text, marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: Colors.border },
+  statCard: { flex: 1, alignItems: 'center', gap: 4 },
+  statIcon: { marginBottom: 2 },
+  statValue: { fontSize: 20, fontWeight: '800', color: Colors.text },
+  statLabel: { fontSize: 10, color: Colors.textSecondary, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5 },
+  statSep: { width: 1, backgroundColor: Colors.border },
 
-  searchWrap: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8 },
+  searchWrap: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6 },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: 14,
-    height: 44,
+    paddingHorizontal: 12,
+    height: 40,
     borderWidth: 1,
     borderColor: Colors.border,
+    gap: 8,
   },
-  searchInput: { flex: 1, fontSize: 14, color: Colors.text, marginLeft: 8 },
+  searchInput: { flex: 1, fontSize: 13, color: Colors.text },
 
-  sectionLabel: {
+  resultBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 8,
-    marginTop: 4,
+    marginBottom: 4,
+    marginTop: 2,
   },
-  sectionLabelText: { fontSize: 11, fontWeight: '700', color: Colors.textLight, letterSpacing: 0.8 },
-  sectionLine: { flex: 1, height: 1, backgroundColor: Colors.border, marginLeft: 10 },
+  resultBarText: { fontSize: 10, fontWeight: '700', color: Colors.textLight, letterSpacing: 0.6 },
+  resultBarLine: { flex: 1, height: 1, backgroundColor: Colors.border, marginLeft: 8 },
 
-  empty: { paddingVertical: 80, alignItems: 'center' },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: Colors.text, marginTop: 10 },
-  emptySub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 30, marginTop: 4 },
+  empty: { paddingVertical: 70, alignItems: 'center' },
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.text, marginTop: 6 },
+  emptySub: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 30, marginTop: 4 },
 });

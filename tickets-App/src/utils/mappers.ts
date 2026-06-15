@@ -47,10 +47,10 @@ export function mapBackendStatus(raw: string): Ticket['status'] {
   return STATUS_MAP[raw] || STATUS_MAP['Pendiente'];
 }
 
-export function mapBackendTicket(raw: BackendTicket): Ticket {
+export function mapBackendTicket(raw: BackendTicket, ticketAttachments?: TicketAttachment[]): Ticket {
   const techNames = (raw.technicians || []).map((t) => t.name);
 
-  return {
+  const ticket: Ticket = {
     id: raw.ID_Service_Request,
     ticket_code: raw.Ticket_Code || `TTT-${String(raw.ID_Service_Request).padStart(6, '0')}`,
     fk_office: raw.Fk_Office,
@@ -75,8 +75,10 @@ export function mapBackendTicket(raw: BackendTicket): Ticket {
     technician_names: techNames,
     comments: [],
     timeline: [],
-    has_attachments: false,
+    ticket_attachments: ticketAttachments || [],
+    has_attachments: (ticketAttachments || []).length > 0,
   };
+  return ticket;
 }
 
 function mapPriority(raw: string): Ticket['system_priority'] {
