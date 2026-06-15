@@ -278,6 +278,7 @@ SELECT
        AND tt.Status = 'Activo' AND sr.Status NOT IN ('Cerrado', 'Resuelto')) as active_tickets_count
 FROM Technicians t
 LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
+WHERE t.Status NOT IN ('Inactivo', 'Fuera de Servicio')
 ORDER BY t.First_Name
 SQL;
         $stmt = $this->db->query($sql);
@@ -364,7 +365,7 @@ SQL;
                 INNER JOIN Technicians_Service tsvc ON ts.ID_TI_Service = tsvc.Fk_TI_Service
                 INNER JOIN Technicians t ON tsvc.Fk_Technicians = t.ID_Technicians
                 WHERE tsvc.Status = 'Activo'
-                  AND t.Status != 'Inactivo'
+                  AND t.Status NOT IN ('Inactivo', 'Fuera de Servicio')
                 ORDER BY ts.Type_Service, t.First_Name";
         $stmt = $this->db->query($sql);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
