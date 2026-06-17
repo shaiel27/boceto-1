@@ -64,7 +64,11 @@ final class Database
                     PDO::ATTR_EMULATE_PREPARES => false,
                 ]);
 
-                error_log("Database connection established successfully");
+                $phpTz = date_default_timezone_get();
+                $offset = (new DateTimeImmutable('now', new DateTimeZone($phpTz)))->format('P');
+                $this->conn->exec("SET time_zone = '{$offset}'");
+
+                error_log("Database connection established successfully (tz={$offset})");
             } catch (PDOException $exception) {
                 error_log("Connection error: " . $exception->getMessage());
                 throw new RuntimeException("Error de conexión a la base de datos: " . $exception->getMessage());

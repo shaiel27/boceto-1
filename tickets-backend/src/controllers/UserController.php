@@ -36,6 +36,7 @@ try {
 // Get authenticated user from middleware context
 $currentUserId = isset($_SERVER['AUTH_USER_ID']) ? (int) $_SERVER['AUTH_USER_ID'] : null;
 $currentUserRole = $_SERVER['AUTH_USER_ROLE'] ?? null;
+$currentUserRole = $currentUserRole !== null ? strtolower($currentUserRole) : null;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
@@ -97,7 +98,7 @@ switch ($method) {
                 break;
             }
             
-            if ($currentUserRole !== 'Tecnico' && $currentUserRole !== 'tecnico') {
+            if ($currentUserRole !== 'tecnico') {
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,

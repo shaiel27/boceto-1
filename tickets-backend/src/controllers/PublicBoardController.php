@@ -8,11 +8,6 @@ final class PublicBoardController
     public function __construct(PDO $db)
     {
         $this->db = $db;
-
-        // Sync PHP and MySQL session timezone to avoid drift in timestamp comparisons
-        $phpTz = date_default_timezone_get();
-        $offset = (new DateTimeImmutable('now', new DateTimeZone($phpTz)))->format('P');
-        $this->db->exec("SET time_zone = '{$offset}'");
     }
 
     public function getInitialState(): array

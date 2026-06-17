@@ -1,3 +1,3 @@
-const API_HOST = '192.168.100.88';
+const API_HOST = '192.168.0.137';
 
 export const API_BASE_URL = `http://${API_HOST}:8000`;

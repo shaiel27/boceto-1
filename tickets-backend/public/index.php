@@ -30,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Initialize JWT service and auth middleware for all routes except auth
 require_once __DIR__ . '/../src/Services/JwtService.php';
 require_once __DIR__ . '/../src/Middleware/AuthMiddleware.php';
+require_once __DIR__ . '/../src/Services/BienesProxyService.php';
 
 $jwtSecret = getenv('JWT_SECRET') ?: 'change-this-secret-in-production-min-32-chars!!';
 
@@ -203,50 +204,56 @@ switch ($path) {
 
     case '/api/bienes':
     case '/api/bienes/':
-        $qs = $_SERVER['QUERY_STRING'] ?? '';
-        $target = 'http://127.0.0.1:8012/bienes/bienes.php' . ($qs ? '?' . $qs : '');
-        $ctx = stream_context_create([
-            'http' => [
-                'method' => $method,
-                'header' => "Accept: application/json\r\nConnection: keep-alive\r\n",
-                'timeout' => 30,
-            ],
-        ]);
-        $body = @file_get_contents($target, false, $ctx);
-        if ($body === false) {
-            http_response_code(502);
-            echo json_encode([
-                'success' => false,
-                'message' => 'No se pudo conectar con el servicio de bienes (SIFA)',
-                'data' => [],
-                'total' => 0,
-            ]);
+        $bienesProxy = new BienesProxyService(
+            cacheDir: __DIR__ . '/../cache/bienes',
+            cacheTtl: 7200,
+            fetchTimeout: 60
+        );
+
+        $action = $_GET['action'] ?? '';
+        if ($action === 'refresh') {
+            $bienesProxy->clearCache();
+            echo json_encode(['success' => true, 'message' => 'Cache del proxy limpiado']);
             exit;
+        }
+
+        $result = $bienesProxy->fetchBienes([
+            'page' => (int)($_GET['page'] ?? 1),
+            'limit' => (int)($_GET['limit'] ?? 12),
+            'query' => $_GET['query'] ?? '',
+        ]);
+
+        if (!$result['success']) {
+            http_response_code(502);
         }
         if (ini_get('zlib.output_compression') === '0' && extension_loaded('zlib')) {
             ob_start('ob_gzhandler');
         }
-        echo $body;
+        echo json_encode($result, JSON_UNESCAPED_UNICODE);
         exit;
 
     case '/api/unidades':
     case '/api/unidades/':
-        $qs = $_SERVER['QUERY_STRING'] ?? '';
-        $target = 'http://127.0.0.1:8012/bienes/unidades.php' . ($qs ? '?' . $qs : '');
-        $ctx = stream_context_create([
-            'http' => [
-                'method' => $method,
-                'header' => "Accept: application/json\r\n",
-                'timeout' => 30,
-            ],
+        $bienesProxy = new BienesProxyService(
+            cacheDir: __DIR__ . '/../cache/bienes',
+            cacheTtl: 7200,
+            fetchTimeout: 60
+        );
+
+        $result = $bienesProxy->fetchUnidades([
+            'page' => (int)($_GET['page'] ?? 1),
+            'limit' => (int)($_GET['limit'] ?? 12),
+            'query' => $_GET['query'] ?? '',
+            'tabla' => $_GET['tabla'] ?? '',
         ]);
-        $body = @file_get_contents($target, false, $ctx);
-        if ($body === false) {
+
+        if (!$result['success']) {
             http_response_code(502);
-            echo json_encode(['success' => false, 'message' => 'No se pudo conectar con el servicio de unidades (SIFA)']);
-            exit;
         }
-        echo $body;
+        if (ini_get('zlib.output_compression') === '0' && extension_loaded('zlib')) {
+            ob_start('ob_gzhandler');
+        }
+        echo json_encode($result, JSON_UNESCAPED_UNICODE);
         exit;
 
     default:

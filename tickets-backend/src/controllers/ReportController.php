@@ -10,8 +10,10 @@ final class ReportController
     public function __construct(
         private readonly PDO $db,
         private readonly ?int $currentUserId,
-        private readonly ?string $currentUserRole,
-    ) {}
+        private ?string $currentUserRole,
+    ) {
+        $this->currentUserRole = $currentUserRole !== null ? strtolower($currentUserRole) : null;
+    }
 
     private function requireAuth(): void
     {
@@ -25,7 +27,7 @@ final class ReportController
     private function requireAdmin(): void
     {
         $this->requireAuth();
-        if ($this->currentUserRole !== 'Admin') {
+        if ($this->currentUserRole !== 'admin') {
             http_response_code(403);
             echo json_encode(['success' => false, 'message' => 'Solo administradores']);
             exit;

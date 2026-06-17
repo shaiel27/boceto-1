@@ -33,7 +33,7 @@ const BienesTest: React.FC = () => {
     <div style={s.container}>
       <h2 style={s.h2}>Bienes API &mdash; Diagnostico</h2>
       <p style={s.p}>
-        Proxy Node(:3000) &rarr; PHP(:8012/bienes) &rarr; API 192.168.5.10
+        Proxy Node(:3000) &rarr; PHP(:8012/bienes) &rarr; API 192.168.5.125
       </p>
 
       <div style={s.buttons}>

@@ -19,7 +19,7 @@ import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { Colors, BorderRadius } from '../../../../src/constants/colors';
 import { createTicket, getOffices, getProblems, getSystems, uploadTicketFiles } from '../../../../src/services/adminService';
-import { findBienByCode, Bien } from '../../../../src/services/bienesService';
+import { searchBienes, Bien, normalizePropertyCode as normalizeCode } from '../../../../src/services/bienesService';
 import { useToast } from '../../../../src/contexts/ToastContext';
 
 const PRIO_COLORS: Record<string, string> = {
@@ -52,9 +52,12 @@ export default function CreateTicketScreen() {
   const [systems, setSystems] = useState<{ id: number; name: string }[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
-  const [matchedBien, setMatchedBien] = useState<Bien | null>(null);
-  const [bienLookupState, setBienLookupState] = useState<'idle' | 'loading' | 'match' | 'nomatch' | 'otheroffice'>('idle');
+  // Bienes search with anti-flicker: keep previous results visible during debounce
+  const [bienSearchResults, setBienSearchResults] = useState<Bien[]>([]);
+  const [bienSearchState, setBienSearchState] = useState<'idle' | 'loading' | 'results' | 'selected' | 'nomatch'>('idle');
+  const [selectedBien, setSelectedBien] = useState<Bien | null>(null);
   const bienDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestQueryRef = useRef('');
 
   useEffect(() => {
     getOffices().then((r) => { if (r.success && r.data) setOffices(r.data.map((o) => ({ id: o.ID_Office, name: o.Name_Office, type: (o as any).Office_Type || '' }))); });
@@ -76,30 +79,78 @@ export default function CreateTicketScreen() {
   const priorityColor = PRIO_COLORS[derivedPriority] || Colors.priorityMedia;
   const selectedOffice = offices.find((o) => o.id === officeId);
 
+  const fnorm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+
   useEffect(() => {
     if (bienDebounceRef.current) clearTimeout(bienDebounceRef.current);
     const trimmed = propertyNumber.trim();
-    if (!trimmed) { setMatchedBien(null); setBienLookupState('idle'); return; }
-    setBienLookupState('loading');
+    latestQueryRef.current = trimmed;
+
+    if (!trimmed) {
+      setBienSearchResults([]);
+      setBienSearchState('idle');
+      setSelectedBien(null);
+      return;
+    }
+
+    if (bienSearchResults.length === 0) {
+      setBienSearchState('loading');
+    }
+
     bienDebounceRef.current = setTimeout(async () => {
-      const bien = await findBienByCode(trimmed);
-      if (!bien) { setMatchedBien(null); setBienLookupState('nomatch'); return; }
-      const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
-      const bienOffice = String(bien.denuniadm || '').trim();
-      const matchedOffice = offices.find((o) => normalize(o.name) === normalize(bienOffice));
-      if (!selectedOffice && matchedOffice) {
-        setOfficeId(matchedOffice.id);
+      const results = await searchBienes(trimmed, 8);
+      if (trimmed !== latestQueryRef.current) return;
+
+      setBienSearchResults(results);
+
+      if (results.length === 0) {
+        setSelectedBien(null);
+        setBienSearchState('nomatch');
+        return;
       }
-      if (selectedOffice && bienOffice && normalize(bienOffice) === normalize(selectedOffice.name)) {
-        setMatchedBien(bien);
-        setBienLookupState('match');
-      } else if (selectedOffice) {
-        setMatchedBien(null);
-        setBienLookupState('otheroffice');
+
+      const norm = normalizeCode(trimmed);
+      const exact = results.find(
+        (b) => normalizeCode(String(b.codact || '')) === norm,
+      );
+      const first = results[0];
+
+      if (exact || (results.length === 1 && normalizeCode(String(first.codact || '')) === norm)) {
+        const match = exact || first;
+        const matchOffice = String(match.denuniadm || '').trim();
+        const matchedOffice = offices.find((o) => fnorm(o.name) === fnorm(matchOffice));
+        if (!selectedOffice && matchedOffice) {
+          setOfficeId(matchedOffice.id);
+        }
+        setSelectedBien(match);
+        setBienSearchState('selected');
+      } else {
+        setSelectedBien(null);
+        setBienSearchState('results');
       }
     }, 450);
-    return () => { if (bienDebounceRef.current) clearTimeout(bienDebounceRef.current); };
-  }, [propertyNumber, selectedOffice, offices]);
+
+    return () => {
+      if (bienDebounceRef.current) clearTimeout(bienDebounceRef.current);
+    };
+  }, [propertyNumber]);
+
+  const handleSelectBien = (bien: Bien) => {
+    const code = String(bien.codact || '').replace(/^-+$/, '');
+    setPropertyNumber(code);
+    const matchOffice = String(bien.denuniadm || '').trim();
+    const matchedOffice = offices.find((o) => fnorm(o.name) === fnorm(matchOffice));
+    if (!selectedOffice && matchedOffice) {
+      setOfficeId(matchedOffice.id);
+    }
+    setSelectedBien(bien);
+    setBienSearchState('selected');
+    setBienSearchResults([]);
+  };
+
+  const bienOfficeMatch = selectedBien && selectedOffice
+    ? fnorm(String(selectedBien.denuniadm || '')) === fnorm(selectedOffice.name)
+    : false;
 
   const filteredOffices = useMemo(() => {
     if (!officeSearch.trim()) return offices;
@@ -314,40 +365,87 @@ export default function CreateTicketScreen() {
           </Field>
         )}
 
-        <Field label="N° de Bien" icon="hardware-chip-outline" optional>
+        <Field label="N\u00b0 de Bien" icon="hardware-chip-outline" optional>
           <TextInput
             style={styles.input}
             placeholder="PC-001, EQ-002..."
             placeholderTextColor={Colors.textLight}
             value={propertyNumber}
             onChangeText={setPropertyNumber}
-            maxLength={10}
+            maxLength={20}
             returnKeyType="next"
           />
-          {bienLookupState === 'loading' && propertyNumber.trim() && (
+          {bienSearchState === 'loading' && (
             <View style={styles.bienRow}>
               <ActivityIndicator size="small" color={Colors.primary} />
               <Text style={styles.bienText}>Buscando bien...</Text>
             </View>
           )}
-          {bienLookupState === 'match' && matchedBien && (
-            <View style={[styles.bienRow, styles.bienRowOk]}>
-              <Ionicons name="checkmark-circle" size={16} color={Colors.statusResuelto} />
-              <Text style={styles.bienTextOk} numberOfLines={3}>
-                {matchedBien.denact}
-              </Text>
+          {bienSearchState === 'selected' && selectedBien && (
+            <View style={[styles.bienRow, selectedOffice ? (bienOfficeMatch ? styles.bienRowOk : styles.bienRowWarn) : styles.bienRowInfo]}>
+              <Ionicons
+                name={selectedOffice ? (bienOfficeMatch ? 'checkmark-circle' : 'warning-outline') : 'information-circle-outline'}
+                size={bienOfficeMatch || !selectedOffice ? 16 : 13}
+                color={selectedOffice ? (bienOfficeMatch ? Colors.statusResuelto : Colors.priorityAlta) : Colors.primary}
+              />
+              <View style={styles.bienInfoCol}>
+                {selectedOffice && !bienOfficeMatch && (
+                  <Text style={styles.bienTextWarnTitle}>Este bien no pertenece a la oficina seleccionada.</Text>
+                )}
+                <Text style={bienOfficeMatch || !selectedOffice ? styles.bienTextOk : styles.bienTextWarnInfo} numberOfLines={2}>
+                  {selectedBien.denact}
+                </Text>
+                {selectedBien.denuniadm ? (
+                  <Text style={styles.bienSub}>
+                    {selectedBien.codact.replace(/^-+$/, '')} {'\u2014'} {selectedBien.denuniadm}
+                  </Text>
+                ) : (
+                  <Text style={styles.bienSub}>
+                    {selectedBien.codact.replace(/^-+$/, '')}
+                  </Text>
+                )}
+              </View>
             </View>
           )}
-          {bienLookupState === 'otheroffice' && matchedBien && (
-            <View style={styles.bienRowWarn}>
-              <Ionicons name="warning-outline" size={13} color={Colors.priorityAlta} />
-              <Text style={styles.bienTextWarn}>Este bien no pertenece a la oficina seleccionada.</Text>
-            </View>
-          )}
-          {bienLookupState === 'nomatch' && (
+          {bienSearchState === 'nomatch' && (
             <View style={styles.bienRow}>
               <Ionicons name="help-circle-outline" size={16} color={Colors.textLight} />
               <Text style={styles.bienTextDim}>Sin coincidencias en el inventario.</Text>
+            </View>
+          )}
+          {bienSearchState === 'results' && bienSearchResults.length > 0 && (
+            <View style={styles.bienDropdown}>
+              {bienSearchResults.map((bien, idx) => {
+                const code = String(bien.codact || '').replace(/^-+$/, '');
+                const office = String(bien.denuniadm || '').trim();
+                const isMatch = selectedOffice && office && fnorm(office) === fnorm(selectedOffice.name);
+                return (
+                  <TouchableOpacity
+                    key={code || `bien-${idx}`}
+                    style={styles.bienDropdownItem}
+                    onPress={() => handleSelectBien(bien)}
+                    activeOpacity={0.6}
+                  >
+                    <View style={styles.bienDropdownLeft}>
+                      <Text style={styles.bienDropdownCode} numberOfLines={1}>{code || '-'}</Text>
+                      <Text style={styles.bienDropdownDesc} numberOfLines={2}>{bien.denact}</Text>
+                      {office ? (
+                        <View style={styles.bienDropdownOfficeRow}>
+                          <Ionicons
+                            name={isMatch ? 'checkmark-circle' : 'business-outline'}
+                            size={11}
+                            color={isMatch ? Colors.statusResuelto : Colors.textLight}
+                          />
+                          <Text style={[styles.bienDropdownOffice, isMatch && { color: Colors.statusResuelto }]}>
+                            {office}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <Ionicons name="chevron-forward" size={14} color={Colors.textLight} />
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
         </Field>
@@ -543,10 +641,37 @@ const styles = StyleSheet.create({
   bienRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8, paddingHorizontal: 4 },
   bienRowOk: { backgroundColor: Colors.statusResueltoBg, paddingVertical: 8, paddingHorizontal: 12, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.statusResuelto + '40' },
   bienRowWarn: { backgroundColor: Colors.priorityAltaBg, paddingVertical: 8, paddingHorizontal: 12, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.priorityAlta + '40' },
+  bienRowInfo: { backgroundColor: Colors.primary + '08', paddingVertical: 8, paddingHorizontal: 12, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.primary + '30' },
+  bienInfoCol: { flex: 1 },
+  bienSub: { fontSize: 10, color: Colors.textLight, marginTop: 3 },
   bienText: { fontSize: 12, color: Colors.textSecondary },
   bienTextOk: { fontSize: 12, color: Colors.text, fontWeight: '500', flex: 1 },
+  bienTextWarnTitle: { fontSize: 12, color: Colors.priorityAlta, fontWeight: '600' },
+  bienTextWarnInfo: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
   bienTextWarn: { fontSize: 12, color: Colors.priorityAlta, fontWeight: '500', flex: 1 },
   bienTextDim: { fontSize: 11, color: Colors.textLight, fontStyle: 'italic' },
+  bienDropdown: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginTop: 4,
+    maxHeight: 280,
+    overflow: 'hidden',
+  },
+  bienDropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border + '80',
+  },
+  bienDropdownLeft: { flex: 1, marginRight: 8 },
+  bienDropdownCode: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  bienDropdownDesc: { fontSize: 11, color: Colors.text, marginTop: 2 },
+  bienDropdownOfficeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  bienDropdownOffice: { fontSize: 10, color: Colors.textLight },
 
   footer: {
     padding: 16, paddingBottom: Platform.OS === 'ios' ? 32 : 20,

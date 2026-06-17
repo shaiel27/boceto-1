@@ -54,7 +54,7 @@ interface TechnicianGroup {
   technicians: Technician[];
 }
 
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 3000;
 
 const PublicBoard: React.FC = () => {
   const [activeTickets, setActiveTickets] = useState<ActiveTicket[]>([]);
@@ -77,6 +77,8 @@ const PublicBoard: React.FC = () => {
   const prevStatsRef = useRef<Stats>({ pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 });
   /** Track which tickets are unassigned to detect when they get a tech */
   const unassignedTicketsRef = useRef<Set<number>>(new Set());
+  /** Track technician names per ticket to detect additional assignments */
+  const techNamesRef = useRef<Map<number, string>>(new Map());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const showBanner = useCallback((type: string, text: string) => {
@@ -102,6 +104,11 @@ const PublicBoard: React.FC = () => {
             .filter((t: ActiveTicket) => !(t.has_technician ?? t.technician_names))
             .map((t: ActiveTicket) => t.id)
         );
+        const namesMap = new Map<number, string>();
+        (data.active_tickets || []).forEach((t: ActiveTicket) => {
+          if (t.technician_names) namesMap.set(t.id, t.technician_names);
+        });
+        techNamesRef.current = namesMap;
         setTechniciansGrouped(data.technicians_grouped || []);
         setLunchBlocks(data.lunch_blocks || []);
         setCurrentLunch(data.current_lunch || { active: false, block: null });
@@ -137,6 +144,8 @@ const PublicBoard: React.FC = () => {
                 prevTicketIdsRef.current.add(t.id);
                 if (!(t.has_technician ?? t.technician_names)) {
                   unassignedTicketsRef.current.add(t.id);
+                } else if (t.technician_names) {
+                  techNamesRef.current.set(t.id, t.technician_names);
                 }
                 const tag = t.has_technician ? t.ticket_code : `⚠ SIN TÉCNICO: ${t.ticket_code}`;
                 showBanner('new_ticket', `Nuevo: ${tag} — ${t.office_name || ''}`);
@@ -157,14 +166,23 @@ const PublicBoard: React.FC = () => {
             for (const t of updated) {
               const wasUnassigned = unassignedTicketsRef.current.has(t.id);
               const nowHasTech = !!(t.has_technician ?? t.technician_names);
+              const prevNames = techNamesRef.current.get(t.id) || '';
+              const newNames = t.technician_names || '';
               if (wasUnassigned && nowHasTech) {
                 unassignedTicketsRef.current.delete(t.id);
                 showBanner(
                   'new_ticket',
-                  `Asignado: ${t.ticket_code || '#' + t.id} → ${t.technician_names}`
+                  `Asignado: ${t.ticket_code || '#' + t.id} → ${newNames}`
+                );
+                if (soundRef.current) BoardNotification.playSound('new_ticket');
+              } else if (nowHasTech && prevNames !== newNames && prevNames !== '') {
+                showBanner(
+                  'new_ticket',
+                  `Más técnicos: ${t.ticket_code || '#' + t.id} — ${newNames}`
                 );
                 if (soundRef.current) BoardNotification.playSound('new_ticket');
               }
+              if (newNames) techNamesRef.current.set(t.id, newNames);
             }
             setActiveTickets(prev => {
               const existingMap = new Map(prev.map(t => [t.id, t]));
@@ -180,6 +198,7 @@ const PublicBoard: React.FC = () => {
             for (const c of closed) {
               if (!prevClosedIdsRef.current.has(c.ticket_id)) {
                 prevClosedIdsRef.current.add(c.ticket_id);
+                techNamesRef.current.delete(c.ticket_id);
                 showBanner('ticket_closed', `Cerrado: ${c.ticket_code}`);
                 if (soundRef.current) BoardNotification.playSound('closed');
               }

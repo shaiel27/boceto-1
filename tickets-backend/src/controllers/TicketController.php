@@ -58,6 +58,7 @@ try {
 // Get authenticated user from middleware context
 $currentUserId = isset($_SERVER['AUTH_USER_ID']) ? (int) $_SERVER['AUTH_USER_ID'] : null;
 $currentUserRole = $_SERVER['AUTH_USER_ROLE'] ?? null;
+$currentUserRole = $currentUserRole !== null ? strtolower($currentUserRole) : null;
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
@@ -67,7 +68,7 @@ switch ($method) {
         switch ($action) {
             case 'stats':
                 // Only admin and boss can see stats
-                if (!in_array($currentUserRole, ['Admin', 'Jefe'], true)) {
+                if (!in_array($currentUserRole, ['admin', 'jefe'], true)) {
                     http_response_code(403);
                     echo json_encode([
                         'success' => false,
@@ -97,7 +98,7 @@ switch ($method) {
                     }
                     
                     // Check ownership: users can only see their own tickets unless admin
-                    if ($currentUserRole !== 'Admin' && 
+                    if ($currentUserRole !== 'admin' && 
                         $ticket_data['Fk_User_Requester'] != $currentUserId) {
                         http_response_code(403);
                         echo json_encode([
@@ -143,7 +144,7 @@ switch ($method) {
                 
             case 'technician-tickets':
                 // Technicians can see their assigned tickets
-                if (!$currentUserId || $currentUserRole !== 'Tecnico' && $currentUserRole !== 'tecnico') {
+                if (!$currentUserId ||                $currentUserRole !== 'tecnico') {
                     http_response_code(403);
                     echo json_encode([
                         'success' => false,
@@ -300,7 +301,7 @@ switch ($method) {
 
             case 'filter':
                 // Admin filtering by status, service, priority
-                if (!in_array($currentUserRole, ['Admin', 'Jefe'], true)) {
+                if (!in_array($currentUserRole, ['admin', 'jefe'], true)) {
                     http_response_code(403);
                     echo json_encode([
                         'success' => false,
@@ -324,7 +325,7 @@ switch ($method) {
 
             case 'general-report':
                 // PHP-PRO: General tickets report with monthly statistics
-                if (!in_array($currentUserRole, ['Admin', 'Jefe'], true)) {
+                if (!in_array($currentUserRole, ['admin', 'jefe'], true)) {
                     http_response_code(403);
                     echo json_encode([
                         'success' => false,
@@ -357,7 +358,7 @@ switch ($method) {
                 break;
 
             case 'pending-assistance':
-                if (!in_array($currentUserRole, ['Admin', 'Jefe'], true)) {
+                if (!in_array($currentUserRole, ['admin', 'jefe'], true)) {
                     http_response_code(403);
                     echo json_encode([
                         'success' => false,
@@ -395,7 +396,7 @@ switch ($method) {
 
             default:
                 // Admins and technicians can see all tickets
-                if (!in_array($currentUserRole, ['Admin', 'Tecnico', 'Jefe'], true)) {
+                if (!in_array($currentUserRole, ['admin', 'tecnico', 'jefe'], true)) {
                     http_response_code(403);
                     echo json_encode([
                         'success' => false,
@@ -555,7 +556,7 @@ switch ($method) {
             }
 
             // Only admins can assign technicians
-            if ($currentUserRole !== 'Admin') {
+            if ($currentUserRole !== 'admin') {
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,
@@ -627,7 +628,7 @@ switch ($method) {
             }
 
             // Only admins can assign technicians
-            if ($currentUserRole !== 'Admin') {
+            if ($currentUserRole !== 'admin') {
                 error_log("Permission denied: user role is {$currentUserRole}, not Admin");
                 http_response_code(403);
                 echo json_encode([
@@ -712,7 +713,7 @@ switch ($method) {
             }
 
             // Only admins can unassign technicians
-            if ($currentUserRole !== 'Admin') {
+            if ($currentUserRole !== 'admin') {
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,
@@ -775,7 +776,7 @@ switch ($method) {
             error_log("Status to update: {$status}");
             
             // Only technicians and admins can update ticket status
-            if (!in_array($currentUserRole, ['Admin', 'Tecnico', 'tecnico'], true)) {
+            if (!in_array($currentUserRole, ['admin', 'tecnico'], true)) {
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,
@@ -884,7 +885,7 @@ switch ($method) {
 
         // Action: respond to assistance request (admin assigns/rejects)
         if ($action === 'respond-assistance') {
-            if (!in_array($currentUserRole, ['Admin', 'Jefe'], true)) {
+            if (!in_array($currentUserRole, ['admin', 'jefe'], true)) {
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,
@@ -1177,7 +1178,7 @@ switch ($method) {
             }
             
             // Only admins can update priority
-            if ($currentUserRole !== 'Admin') {
+            if ($currentUserRole !== 'admin') {
                 http_response_code(403);
                 echo json_encode([
                     'success' => false,

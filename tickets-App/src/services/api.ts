@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../constants/config';
 import { ApiResponse } from '../types/api';
 
-const FETCH_TIMEOUT = 8000;
+const FETCH_TIMEOUT = 20000;
 
 function fetchWithTimeout(url: string, options: RequestInit, timeout?: number): Promise<Response> {
   const t = timeout ?? FETCH_TIMEOUT;

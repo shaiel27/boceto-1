@@ -160,6 +160,19 @@ export function normalizePropertyCode(code: string): string {
   return t;
 }
 
+/** Search bienes returning just the results array (for dropdown / multi-match display). */
+export async function searchBienes(
+  query: string,
+  limit: number = 8,
+): Promise<Bien[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+
+  const r = await fetchBienes({ query: trimmed, limit });
+  if (r.error || r.results.length === 0) return [];
+  return r.results;
+}
+
 /**
  * Look up a bien by code. Checks in-memory cache → AsyncStorage → network.
  * Persisted to AsyncStorage for instant results across app restarts.
