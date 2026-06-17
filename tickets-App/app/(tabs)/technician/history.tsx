@@ -37,7 +37,7 @@ export default function HistoryScreen() {
   );
 
   const resolved = useMemo(() => {
-    let r = tickets.filter((t) => t.status === 'Resuelto');
+    let r = tickets.filter((t) => t.status === 'Resuelto' || t.status === 'Cerrado');
     if (search.trim()) {
       const q = search.toLowerCase();
       r = r.filter(

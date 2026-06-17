@@ -97,6 +97,26 @@ export async function updateTicketStatus(
   return { success: response.success, message: response.message };
 }
 
+export async function verifyTicket(
+  id: number,
+  verification: 'conforme' | 'inconforme',
+  comment?: string
+): Promise<{ success: boolean; message?: string; status?: string; technician_assigned?: boolean; technician_name?: string }> {
+  const response = await apiClient.post(`/api/tickets?action=verify&id=${id}`, {
+    verification,
+    comment: comment || undefined,
+  });
+
+  const data = response as any;
+  return {
+    success: data.success ?? false,
+    message: data.message,
+    status: data.status,
+    technician_assigned: data.technician_assigned,
+    technician_name: data.technician_name,
+  };
+}
+
 export async function addComment(
   ticketId: number,
   comment: string,

@@ -168,13 +168,14 @@ class ServiceRequest {
      */
     public function updateStatus(int $id, string $status, ?int $assigned_to = null): bool
     {
-        $allowedStatuses = ['Pendiente', 'En Proceso', 'Cerrado', 'Resuelto'];
+        require_once __DIR__ . '/../Enums/TicketStatus.php';
+        $allowedStatuses = \App\Enums\TicketStatus::all();
         if (!in_array($status, $allowedStatuses, true)) {
             error_log("Invalid status: {$status}");
             return false;
         }
         
-        $isClosed = $status === 'Cerrado' || $status === 'Resuelto';
+        $isClosed = \App\Enums\TicketStatus::isClosed($status);
         
         $query = "UPDATE " . $this->table_name . " SET Status = :Status";
         
@@ -220,12 +221,55 @@ class ServiceRequest {
         }
     }
 
+    /**
+     * Mark a ticket as returned from verification (inconformity).
+     * Sets is_returned = 1 so the public board can highlight it.
+     */
+    public function markReturned(int $id): bool
+    {
+        $query = "UPDATE " . $this->table_name . " SET is_returned = 1 WHERE ID_Service_Request = :id";
+        try {
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindParam(":id", $id, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("markReturned error: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Release all active technicians from a ticket without closing it.
+     * Used when a ticket is returned from verification (inconformity flow).
+     */
+    public function releaseAllTechnicians(int $ticketId): int
+    {
+        require_once __DIR__ . '/Technician.php';
+        $technician = new Technician($this->conn);
+
+        $techQuery = "SELECT Fk_Technician FROM Ticket_Technicians 
+                      WHERE Fk_Service_Request = :ticketId AND Status = 'Activo'";
+        $techStmt = $this->conn->prepare($techQuery);
+        $techStmt->bindParam(":ticketId", $ticketId);
+        $techStmt->execute();
+        $assignedTechs = $techStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $released = 0;
+        foreach ($assignedTechs as $tech) {
+            if ($technician->releaseFromTicket($ticketId, $tech['Fk_Technician'])) {
+                $released++;
+            }
+        }
+        return $released;
+    }
+
     public function getStats() {
         $query = "SELECT 
                     COUNT(*) as total_tickets,
                     SUM(CASE WHEN Status = 'Pendiente' THEN 1 ELSE 0 END) as pending,
                     SUM(CASE WHEN Status = 'En Proceso' THEN 1 ELSE 0 END) as in_progress,
-                    SUM(CASE WHEN Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) as resolved
+                    SUM(CASE WHEN Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) as resolved,
+                    SUM(CASE WHEN Status = 'Pendiente de Verificación' THEN 1 ELSE 0 END) as pending_verification
                   FROM " . $this->table_name;
         
         $stmt = $this->conn->prepare($query);

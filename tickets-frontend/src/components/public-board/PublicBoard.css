@@ -292,6 +292,18 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.12; }
 }
+
+/* ── Returned (inconformidad) — purple pulse ────────────────────────── */
+.pb-ticket.returned {
+  border-left-color: #7c3aed;
+  background: linear-gradient(135deg, rgba(124,58,237,0.08), rgba(124,58,237,0.03), var(--pb-surface));
+  animation: pb-pulse-purple 2.2s ease-in-out infinite;
+}
+.pb-ticket.returned .pb-ticket-code { color: #7c3aed; }
+@keyframes pb-pulse-purple {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124,58,237,0.35), var(--pb-shadow); }
+  50% { box-shadow: 0 0 18px 4px rgba(124,58,237,0.18), 0 0 0 2px rgba(124,58,237,0.08), var(--pb-shadow); }
+}
 .pb-ticket-service {
   font-size: 10px;
   font-weight: 600;

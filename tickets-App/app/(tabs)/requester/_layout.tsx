@@ -15,6 +15,7 @@ export default function RequesterLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="history" options={{ title: 'Historial' }} />
+      <Stack.Screen name="verify" options={{ title: 'Verificación', headerBackVisible: false, gestureEnabled: false }} />
       <Stack.Screen name="create" options={{ title: 'Nuevo Ticket', presentation: 'modal' }} />
       <Stack.Screen name="[id]" options={{ title: 'Detalle' }} />
     </Stack>

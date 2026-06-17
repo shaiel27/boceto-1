@@ -39,6 +39,7 @@ const STATUS_MAP: Record<string, Ticket['status']> = {
   Pendiente: 'Pendiente',
   'En Proceso': 'En Proceso',
   EnProceso: 'En Proceso',
+  'Pendiente de Verificación': 'Pendiente de Verificación',
   Resuelto: 'Resuelto',
   Cerrado: 'Resuelto',
 };

@@ -10,6 +10,8 @@ interface StatusBadgeProps {
 const STATUS_CONFIG: Record<TicketStatus, { label: string; bg: string; text: string }> = {
   Pendiente: { label: 'Pendiente', bg: Colors.statusPendienteBg, text: Colors.statusPendiente },
   'En Proceso': { label: 'En Proceso', bg: Colors.statusEnProcesoBg, text: Colors.statusEnProceso },
+  'Pendiente de Verificación': { label: 'Verificación', bg: '#fef3c7', text: '#d97706' },
+  Cerrado: { label: 'Cerrado', bg: '#f3e8ff', text: '#7c3aed' },
   Resuelto: { label: 'Resuelto', bg: Colors.statusResueltoBg, text: Colors.statusResuelto },
 };
 

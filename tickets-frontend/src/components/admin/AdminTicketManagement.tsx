@@ -617,7 +617,7 @@ const AdminTicketManagement: React.FC = () => {
     try {
       const response = await ApiService.updateTicketStatus(
         parseInt(selectedTicket.ID_Service_Request),
-        'Cerrado'
+        'Pendiente de Verificación'
       );
 
       if (response.success) {

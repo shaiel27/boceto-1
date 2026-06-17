@@ -21,6 +21,7 @@ require_once __DIR__ . '/../DTO/CreateTicketDTO.php';
 require_once __DIR__ . '/../DTO/NotificationDTO.php';
 require_once __DIR__ . '/../Services/TicketService.php';
 require_once __DIR__ . '/../Services/NotificationService.php';
+require_once __DIR__ . '/../Enums/TicketStatus.php';
 
 try {
     $database = new Database();
@@ -784,6 +785,12 @@ switch ($method) {
                 ]);
                 break;
             }
+
+            // Block technicians from directly closing tickets → force verification flow
+            if ($currentUserRole === 'tecnico' && \App\Enums\TicketStatus::isClosed($status)) {
+                $status = \App\Enums\TicketStatus::PENDIENTE_VERIFICACION;
+                error_log("Technician closing ticket {$ticket_id} → redirected to Pendiente de Verificación");
+            }
             
             error_log("Updating ticket {$ticket_id} status to: {$status}");
             
@@ -812,6 +819,52 @@ switch ($method) {
             break;
         }
         
+        // Action: verify (requester confirms or rejects ticket resolution)
+        if ($action === 'verify') {
+            if ($currentUserRole === null) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'message' => 'Autenticación requerida']);
+                break;
+            }
+
+            $ticketId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+            if (!$ticketId) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'ID de ticket no proporcionado']);
+                break;
+            }
+
+            $verification = $data->verification ?? $data->Verification ?? '';
+            $comment = $data->comment ?? $data->Comment ?? null;
+
+            if (!in_array($verification, ['conforme', 'inconforme'], true)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Verificación debe ser "conforme" o "inconforme"']);
+                break;
+            }
+
+            $result = $ticketService->verifyTicket(
+                $ticketId,
+                $verification,
+                $comment,
+                (int)$currentUserId
+            );
+
+            if ($result['success']) {
+                // Audit log
+                $auditService->logTicketAction(
+                    $verification === 'conforme' ? 'verify_conforme' : 'verify_inconforme',
+                    $ticketId,
+                    "Verificación {$verification} por el solicitante (User #{$currentUserId})"
+                );
+                echo json_encode($result);
+            } else {
+                http_response_code(400);
+                echo json_encode($result);
+            }
+            break;
+        }
+
         // Action: request assistance (technician requests admin help)
         if ($action === 'assistance') {
             $ticketId = isset($_GET['id']) ? (int)$_GET['id'] : 0;

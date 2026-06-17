@@ -4,6 +4,7 @@ import {
   getTechnicianTickets,
   getMyTickets,
   updateTicketStatus,
+  verifyTicket as verifyTicketApi,
   addComment as addCommentApi,
 } from '../services/ticketService';
 import { useAuth } from '../hooks/useAuth';
@@ -13,6 +14,7 @@ interface TicketContextType {
   getTicketById: (id: number) => Promise<Ticket | undefined>;
   takeTicket: (id: number, notes?: string) => Promise<{ success: boolean; message?: string }>;
   resolveTicket: (id: number, notes: string) => Promise<{ success: boolean; message?: string }>;
+  verifyTicket: (id: number, verification: 'conforme' | 'inconforme', comment?: string) => Promise<{ success: boolean; message?: string; status?: string; technician_assigned?: boolean; technician_name?: string }>;
   addComment: (ticketId: number, comment: string, fileUri?: string) => Promise<void>;
   refreshTickets: () => Promise<void>;
   isLoading: boolean;
@@ -70,7 +72,16 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
   }, [refreshTickets]);
 
   const resolveTicket = useCallback(async (id: number, notes: string) => {
-    const result = await updateTicketStatus(id, 'Cerrado', notes);
+    const result = await updateTicketStatus(id, 'Pendiente de Verificación', notes);
+
+    if (result.success) {
+      refreshTickets();
+    }
+    return result;
+  }, [refreshTickets]);
+
+  const verifyTicket = useCallback(async (id: number, verification: 'conforme' | 'inconforme', comment?: string) => {
+    const result = await verifyTicketApi(id, verification, comment);
 
     if (result.success) {
       refreshTickets();
@@ -93,6 +104,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
         getTicketById,
         takeTicket,
         resolveTicket,
+        verifyTicket,
         addComment,
         refreshTickets,
         isLoading,

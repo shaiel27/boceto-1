@@ -34,7 +34,7 @@ export default function RequesterTicketDetail() {
   const [sending, setSending] = useState(false);
   const { tickets, addComment } = useTickets();
   const tid = Number(id);
-  const isResolved = ticket?.status === 'Resuelto';
+  const isResolved = ticket?.status === 'Resuelto' || ticket?.status === 'Pendiente de Verificación' || ticket?.status === 'Cerrado';
   const navigation = useNavigation();
 
   const load = async () => {

@@ -19,7 +19,7 @@ import { useNotifications } from '../../../src/contexts/NotificationContext';
 import { TicketCard } from '../../../src/components/technician/TicketCard';
 import { getTechnicianPerformance } from '../../../src/services/technicianService';
 
-type FilterTab = 'Todos' | 'Pendiente' | 'En Proceso' | 'Resuelto';
+type FilterTab = 'Todos' | 'Pendiente' | 'En Proceso' | 'Pendiente de Verificación' | 'Resuelto';
 
 interface Performance {
   resolved_today: number;
@@ -32,6 +32,7 @@ const FILTERS: { key: FilterTab; label: string; color: string }[] = [
   { key: 'Todos', label: 'Todos', color: Colors.text },
   { key: 'Pendiente', label: 'Pendientes', color: Colors.statusPendiente },
   { key: 'En Proceso', label: 'En curso', color: Colors.statusEnProceso },
+  { key: 'Pendiente de Verificación', label: 'Verificación', color: '#d97706' },
   { key: 'Resuelto', label: 'Resueltos', color: Colors.statusResuelto },
 ];
 
@@ -80,7 +81,7 @@ export default function TechnicianDashboard() {
   }, [tickets, activeFilter, search]);
 
   const counts = useMemo(() => {
-    const c: Record<FilterTab, number> = { Todos: tickets.length, Pendiente: 0, 'En Proceso': 0, Resuelto: 0 };
+    const c: Record<FilterTab, number> = { Todos: tickets.length, Pendiente: 0, 'En Proceso': 0, 'Pendiente de Verificación': 0, Resuelto: 0 };
     tickets.forEach((t) => { if (t.status in c) c[t.status as FilterTab]++; });
     return c;
   }, [tickets]);

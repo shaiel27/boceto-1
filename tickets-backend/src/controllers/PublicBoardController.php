@@ -328,6 +328,7 @@ SQL;
                  (SELECT COUNT(*) FROM Service_Request WHERE Status = 'En Proceso') as in_progress,
                  (SELECT COUNT(*) FROM Service_Request WHERE DATE(Created_at) = CURDATE()) as today_created,
                  (SELECT COUNT(*) FROM Service_Request WHERE Status IN ('Cerrado', 'Resuelto') AND DATE(Created_at) = CURDATE()) as closed_today,
+                 (SELECT COUNT(*) FROM Service_Request WHERE is_returned = 1) as returned,
                  (SELECT COUNT(*) FROM Service_Request sr
                   WHERE sr.Status IN ('Pendiente','En Proceso')
                     AND sr.Status NOT IN ('Cerrado', 'Resuelto')
@@ -391,6 +392,7 @@ SQL;
                        o.Name_Office as office_name, ts.Type_Service as service_name,
                        spc.Problem_Name as problem_name,
                        sr.System_Priority as priority, sr.Status as status,
+                       sr.is_returned as is_returned,
                        sr.Created_at as created_at,
                        TIMESTAMPDIFF(MINUTE, sr.Created_at, NOW()) as elapsed_minutes,
                        (SELECT GROUP_CONCAT(CONCAT(t2.First_Name, ' ', t2.Last_Name) SEPARATOR ', ')
@@ -419,6 +421,7 @@ SQL;
                        o.Name_Office as office_name, ts.Type_Service as service_name,
                        spc.Problem_Name as problem_name,
                        sr.System_Priority as priority, sr.Status as status,
+                       sr.is_returned as is_returned,
                        sr.Created_at as created_at,
                        TIMESTAMPDIFF(MINUTE, sr.Created_at, NOW()) as elapsed_minutes,
                        (SELECT GROUP_CONCAT(CONCAT(t2.First_Name, ' ', t2.Last_Name) SEPARATOR ', ')

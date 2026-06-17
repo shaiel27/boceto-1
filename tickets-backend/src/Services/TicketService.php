@@ -217,4 +217,145 @@ final class TicketService
             return 'Desconocida';
         }
     }
+
+    /**
+     * Verify a ticket (requester confirms or rejects the resolution).
+     *
+     * @param int $ticketId
+     * @param string $verification 'conforme' or 'inconforme'
+     * @param string|null $comment Required if verification is 'inconforme'
+     * @param int $requesterUserId The user ID of the requester performing the verification
+     * @return array{success: bool, message: string, status?: string, technician_assigned?: bool, technician_name?: string}
+     */
+    public function verifyTicket(int $ticketId, string $verification, ?string $comment, int $requesterUserId): array
+    {
+        require_once __DIR__ . '/../Enums/TicketStatus.php';
+        require_once __DIR__ . '/../models/TicketComment.php';
+        require_once __DIR__ . '/../models/TicketTimeline.php';
+
+        $ticket = $this->ticketModel->getById($ticketId);
+        if (!$ticket) {
+            return ['success' => false, 'message' => 'Ticket no encontrado'];
+        }
+
+        if ($ticket['Status'] !== \App\Enums\TicketStatus::PENDIENTE_VERIFICACION) {
+            return ['success' => false, 'message' => 'El ticket no está pendiente de verificación'];
+        }
+
+        if ((int)$ticket['Fk_User_Requester'] !== $requesterUserId) {
+            return ['success' => false, 'message' => 'Solo el solicitante puede verificar este ticket'];
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            $timeline = new \TicketTimeline($this->db);
+
+            if ($verification === 'conforme') {
+                // === CONFORME: close the ticket ===
+                $this->ticketModel->updateStatus($ticketId, \App\Enums\TicketStatus::CERRADO);
+
+                $timeline->create(
+                    $ticketId,
+                    $requesterUserId,
+                    'Verificación conforme: ticket cerrado por el solicitante',
+                    \App\Enums\TicketStatus::PENDIENTE_VERIFICACION,
+                    \App\Enums\TicketStatus::CERRADO
+                );
+
+                if ($comment && trim($comment) !== '') {
+                    $commentModel = new \TicketComment($this->db);
+                    $commentModel->Fk_Service_Request = $ticketId;
+                    $commentModel->Fk_User = $requesterUserId;
+                    $commentModel->Comment = trim($comment);
+                    $commentModel->create();
+                }
+
+                $this->db->commit();
+
+                return [
+                    'success' => true,
+                    'message' => 'Ticket cerrado exitosamente',
+                    'status' => \App\Enums\TicketStatus::CERRADO,
+                ];
+            }
+
+            // === INCONFORME: reopen, unassign, reassign ===
+            if ($verification !== 'inconforme') {
+                $this->db->rollBack();
+                return ['success' => false, 'message' => 'Tipo de verificación no válido'];
+            }
+
+            if (!$comment || trim($comment) === '') {
+                $this->db->rollBack();
+                return ['success' => false, 'message' => 'Se requiere un comentario explicando la inconformidad'];
+            }
+
+            // 1. Mark as returned and move back to En Proceso
+            $this->ticketModel->markReturned($ticketId);
+            $this->ticketModel->updateStatus($ticketId, \App\Enums\TicketStatus::EN_PROCESO);
+
+            // 2. Release all currently assigned technicians
+            $releasedCount = $this->ticketModel->releaseAllTechnicians($ticketId);
+            error_log("Released {$releasedCount} technicians from ticket {$ticketId}");
+
+            // 3. Re-assign a new technician automatically
+            $ticketServiceId = (int)$ticket['Fk_TI_Service'];
+            $newTechnician = $this->assignTechnicianAutomatically($ticketId, $ticketServiceId);
+
+            // 4. Save the inconformity comment
+            $commentModel = new \TicketComment($this->db);
+            $commentModel->Fk_Service_Request = $ticketId;
+            $commentModel->Fk_User = $requesterUserId;
+            $commentModel->Comment = '[INCONFORMIDAD] ' . trim($comment);
+            $commentModel->create();
+
+            // 5. Timeline entry
+            $timeline->create(
+                $ticketId,
+                $requesterUserId,
+                'Inconformidad del solicitante: ticket devuelto a En Proceso',
+                \App\Enums\TicketStatus::PENDIENTE_VERIFICACION,
+                \App\Enums\TicketStatus::EN_PROCESO
+            );
+
+            // 6. Notify the new technician
+            if ($this->notificationService !== null && $newTechnician !== null) {
+                try {
+                    $techData = $this->technicianModel->getById($newTechnician['id']);
+                    if ($techData && isset($techData['Fk_Users'])) {
+                        $this->notificationService->createTechnicianAssignedNotification(
+                            technicianUserId: (int)$techData['Fk_Users'],
+                            ticketId: $ticketId,
+                            ticketCode: $ticket['Ticket_Code'] ?? '',
+                            subject: $ticket['Subject'] ?? '',
+                            officeName: $this->getOfficeName((int)$ticket['Fk_Office']),
+                            serviceName: $this->getServiceName($ticketServiceId),
+                            priority: $ticket['System_Priority'] ?? 'Media'
+                        );
+                    }
+                } catch (\Exception $e) {
+                    error_log("Error notifying new technician: " . $e->getMessage());
+                }
+            }
+
+            $this->db->commit();
+
+            $msg = $newTechnician !== null
+                ? 'Ticket devuelto a En Proceso y reasignado a ' . $newTechnician['name']
+                : 'Ticket devuelto a En Proceso (sin técnicos disponibles para reasignar)';
+
+            return [
+                'success' => true,
+                'message' => $msg,
+                'status' => \App\Enums\TicketStatus::EN_PROCESO,
+                'technician_assigned' => $newTechnician !== null,
+                'technician_name' => $newTechnician['name'] ?? null,
+            ];
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            error_log("verifyTicket error: " . $e->getMessage());
+            return ['success' => false, 'message' => 'Error al procesar la verificación'];
+        }
+    }
 }

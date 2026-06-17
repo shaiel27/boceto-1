@@ -17,7 +17,7 @@ export default function RequesterHistory() {
   );
 
   const resolved = useMemo(
-    () => tickets.filter((t) => t.status === 'Resuelto').sort((a, b) => new Date(b.resolved_at || b.created_at).getTime() - new Date(a.resolved_at || a.created_at).getTime()),
+    () => tickets.filter((t) => t.status === 'Resuelto' || t.status === 'Cerrado').sort((a, b) => new Date(b.resolved_at || b.created_at).getTime() - new Date(a.resolved_at || a.created_at).getTime()),
     [tickets],
   );
 

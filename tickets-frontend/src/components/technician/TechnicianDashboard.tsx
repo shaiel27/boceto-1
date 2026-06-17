@@ -435,9 +435,9 @@ const TechnicianDashboard: React.FC = () => {
   const handleCloseTicket = async () => {
     if (!selectedTicket) return;
     try {
-      const response = await ApiService.updateTicketStatus(parseInt(selectedTicket.id), 'Cerrado');
+      const response = await ApiService.updateTicketStatus(parseInt(selectedTicket.id), 'Pendiente de Verificación');
       if (response.success) {
-        showToast('success', 'Ticket cerrado exitosamente');
+        showToast('success', 'Ticket enviado a verificación del solicitante');
         setSelectedTicket(null);
         await refreshTickets();
       } else {

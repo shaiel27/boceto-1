@@ -1,4 +1,4 @@
-export type TicketStatus = 'Pendiente' | 'En Proceso' | 'Resuelto';
+export type TicketStatus = 'Pendiente' | 'En Proceso' | 'Pendiente de Verificación' | 'Cerrado' | 'Resuelto';
 export type TicketPriority = 'Alta' | 'Media' | 'Baja';
 
 export interface Ticket {

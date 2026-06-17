@@ -163,6 +163,7 @@ CREATE TABLE Service_Request (
     System_Priority VARCHAR(50) DEFAULT 'Media',
     Resolution_Notes TEXT NULL,
     Status VARCHAR(50) DEFAULT 'Pendiente',
+    is_returned TINYINT(1) DEFAULT 0 COMMENT 'Marca tickets devueltos por inconformidad',
     Created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     Resolved_at TIMESTAMP NULL,
     FOREIGN KEY (Fk_Office) REFERENCES Office(ID_Office),

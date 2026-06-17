@@ -907,6 +907,21 @@ export class ApiService {
 
 
 
+  static async verifyTicket(id: number, verification: 'conforme' | 'inconforme', comment?: string): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=verify&id=${id}`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ verification, comment: comment || undefined }),
+      });
+      return await response.json();
+    } catch {
+      return { success: false, message: 'Error al verificar ticket' };
+    }
+  }
+
+
+
   static async getTicketComments(id: number): Promise<ApiResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/tickets?action=comments&id=${id}`, {

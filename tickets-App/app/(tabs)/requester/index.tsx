@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,7 @@ export default function RequesterDashboard() {
   const [activeTab, setActiveTab] = useState<'active' | 'all'>('active');
 
   const activeTickets = useMemo(() => tickets.filter((t) => t.status !== 'Resuelto'), [tickets]);
-  const resolvedTickets = useMemo(() => tickets.filter((t) => t.status === 'Resuelto'), [tickets]);
+  const resolvedTickets = useMemo(() => tickets.filter((t) => t.status === 'Resuelto' || t.status === 'Cerrado'), [tickets]);
   const displayed = activeTab === 'active' ? activeTickets : tickets;
 
   const onRefresh = async () => { setRefreshing(true); await refreshTickets(); setRefreshing(false); };
@@ -30,6 +30,17 @@ export default function RequesterDashboard() {
       refreshTickets();
     }, [refreshTickets])
   );
+
+  const verificationCount = useMemo(
+    () => tickets.filter((t) => t.status === 'Pendiente de Verificación').length,
+    [tickets]
+  );
+
+  useEffect(() => {
+    if (verificationCount > 0) {
+      router.replace('/(tabs)/requester/verify');
+    }
+  }, [verificationCount]);
 
   const office = user?.office_name || '';
 

@@ -12,6 +12,7 @@ import ApiService, { API_BASE_URL } from '../../services/api';
 import { findBienByCode } from '../../services/bienesApi';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordChangeRequired from '../common/PasswordChangeRequired';
+import VerificationModal from '../verification/VerificationModal';
 
 interface Ticket {
   id: string; Code: string; Subject: string; Description: string;
@@ -50,6 +51,55 @@ const RequesterDashboard: React.FC = () => {
   const [loadComments, setLoadComments] = useState(false);
 
   useEffect(() => { loadData(); }, []);
+
+  // Auto-refresh: re-fetch tickets when tab becomes visible + periodic polling
+  useEffect(() => {
+    let pollTimer: ReturnType<typeof setInterval>;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        refreshSilently();
+        pollTimer = setInterval(refreshSilently, 30000);
+      } else {
+        if (pollTimer) clearInterval(pollTimer);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    // Start polling if already visible
+    if (document.visibilityState === 'visible') {
+      pollTimer = setInterval(refreshSilently, 30000);
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, []);
+
+  const refreshSilently = async () => {
+    try {
+      const token = sessionStorage.getItem('auth_token');
+      if (!token) return;
+      const ur = await ApiService.getMe();
+      if (!ur.success || !ur.data) return;
+      const uid = ur.data.id;
+      const tr = await ApiService.getMyTickets(uid);
+      if (tr.success && tr.data && tr.data.length > 0) {
+        setTickets(tr.data.map((t: any) => ({
+          id: String(t.ID_Service_Request), Code: t.Ticket_Code || `TICK-${t.ID_Service_Request}`,
+          Subject: t.Subject || 'Sin asunto', Description: t.Description || '',
+          Property_Number: t.Property_Number || null,
+          office_name: t.office_name || '', System_Priority: t.System_Priority || 'Media',
+          Status: t.Status || 'Pendiente', Created_at: t.Created_at || new Date().toISOString(),
+          Resolved_at: t.Resolved_at, Solution: t.Resolution_Notes,
+          Technicians: (t.technicians || []).map((x: any) => ({ Name: x.name, Is_Lead: x.is_lead })),
+          Comments_Count: 0,
+        })));
+      }
+    } catch {}
+  };
 
   const [bienDesc, setBienDesc] = useState<string | null>(null);
   useEffect(() => {
@@ -103,10 +153,19 @@ const RequesterDashboard: React.FC = () => {
 
   const active = tickets.filter(t => t.Status !== 'Cerrado');
   const resolved = tickets.filter(t => t.Status === 'Cerrado');
+  const verificationTickets = tickets
+    .filter(t => t.Status === 'Pendiente de Verificación')
+    .map(t => ({
+      id: Number(t.id),
+      ticket_code: t.Code,
+      subject: t.Subject,
+      technician_names: t.Technicians?.map(x => x.Name).join(', ') || undefined,
+      resolved_at: t.Resolved_at,
+    }));
   const totalComments = tickets.reduce((a, t) => a + t.Comments_Count, 0);
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  const getStep = (s: string) => s === 'Pendiente' ? 1 : s === 'En Proceso' ? 2 : 3;
+  const getStep = (s: string) => s === 'Cerrado' ? 4 : s === 'Pendiente de Verificación' ? 3 : s === 'En Proceso' ? 2 : 1;
 
   const handleView = async (t: Ticket) => {
     setSelected(t); setShowDetail(true); setLoadComments(true);
@@ -147,7 +206,18 @@ const RequesterDashboard: React.FC = () => {
   if (firstLogin) return <PasswordChangeRequired onComplete={() => setFirstLogin(false)} />;
 
   return (
-    <div className="rq">
+    <>
+      {verificationTickets.length > 0 && (
+        <VerificationModal
+          tickets={verificationTickets}
+          onAllResolved={() => {
+            const next = tickets.filter(t => t.Status !== 'Pendiente de Verificación');
+            setTickets(next);
+            refreshSilently();
+          }}
+        />
+      )}
+      <div className="rq">
       {loading ? (
         <div className="rq-load"><div className="rq-spin" /><p>Cargando...</p></div>
       ) : (
@@ -193,7 +263,10 @@ const RequesterDashboard: React.FC = () => {
             {/* Stats */}
             <div className="rq-stats">
               <div className="rq-stat"><div className="rq-stat-n">{active.length}</div><div className="rq-stat-l">Activos</div></div>
-              <div className="rq-stat"><div className="rq-stat-n">{resolved.length}</div><div className="rq-stat-l">Resueltos</div></div>
+              <div className="rq-stat"><div className="rq-stat-n" style={verificationTickets.length > 0 ? { color: '#d97706' } : undefined}>{resolved.length}</div><div className="rq-stat-l">Resueltos</div></div>
+              {verificationTickets.length > 0 && (
+                <div className="rq-stat rq-stat--warn"><div className="rq-stat-n">{verificationTickets.length}</div><div className="rq-stat-l">Por verificar</div></div>
+              )}
               <div className="rq-stat"><div className="rq-stat-n">{totalComments}</div><div className="rq-stat-l">Comentarios</div></div>
             </div>
 
@@ -206,23 +279,24 @@ const RequesterDashboard: React.FC = () => {
                     <div className="rq-t-top">
                       <span className="rq-t-code">{t.Code}</span>
                       <span className={`rq-t-prio ${PrioClass[t.System_Priority] || ''}`}>{t.System_Priority}</span>
-                      <span className={`rq-t-st rq-t-st--${t.Status === 'En Proceso' ? 'prog' : 'pend'}`}>
-                        {t.Status === 'En Proceso' ? 'En curso' : t.Status}
+                      <span className={`rq-t-st rq-t-st--${t.Status === 'En Proceso' ? 'prog' : t.Status === 'Pendiente de Verificación' ? 'verif' : 'pend'}`}>
+                        {t.Status === 'En Proceso' ? 'En curso' : t.Status === 'Pendiente de Verificación' ? 'Verificación' : t.Status}
                       </span>
                     </div>
 
                     <div className="rq-t-timeline">
                       {[
-                        { label: 'Pendiente', step: 1 },
-                        { label: 'En Proceso', step: 2 },
-                        { label: 'Cerrado', step: 3 },
+                        { label: 'Solicitado', step: 1 },
+                        { label: 'En curso', step: 2 },
+                        { label: 'Verificación', step: 3 },
+                        { label: 'Cerrado', step: 4 },
                       ].map((s, i) => (
                         <React.Fragment key={s.step}>
                           <div className={`rq-tl-step ${getStep(t.Status) >= s.step ? 'rq-tl-done' : ''}`}>
                             <div className="rq-tl-dot">{getStep(t.Status) >= s.step ? <CheckCircle size={10} /> : null}</div>
                             <span className="rq-tl-lbl">{s.label}</span>
                           </div>
-                          {i < 2 && <div className={`rq-tl-line ${getStep(t.Status) > s.step ? 'rq-tl-done' : ''}`} />}
+                          {i < 3 && <div className={`rq-tl-line ${getStep(t.Status) > s.step ? 'rq-tl-done' : ''}`} />}
                         </React.Fragment>
                       ))}
                     </div>
@@ -416,21 +490,22 @@ const RequesterDashboard: React.FC = () => {
 
               <div className="rq-det-sec">
                 <h4>Estado del ticket</h4>
-                <div className="rq-det-tl">
-                  {[
-                    { label: 'Pendiente', step: 1 },
-                    { label: 'En Proceso', step: 2 },
-                    { label: 'Cerrado', step: 3 },
-                  ].map((s, i) => (
-                    <React.Fragment key={s.step}>
-                      <div className={`rq-det-tl-step ${getStep(selected.Status) >= s.step ? 'rq-det-tl-done' : ''}`}>
-                        <div className="rq-det-tl-dot">{getStep(selected.Status) >= s.step ? <CheckCircle size={10} /> : null}</div>
-                        <span>{s.label}</span>
-                      </div>
-                      {i < 2 && <div className={`rq-det-tl-line ${getStep(selected.Status) > s.step ? 'rq-det-tl-done' : ''}`} />}
-                    </React.Fragment>
-                  ))}
-                </div>
+                  <div className="rq-det-tl">
+                    {[
+                      { label: 'Solicitado', step: 1 },
+                      { label: 'En curso', step: 2 },
+                      { label: 'Verificación', step: 3 },
+                      { label: 'Cerrado', step: 4 },
+                    ].map((s, i) => (
+                      <React.Fragment key={s.step}>
+                        <div className={`rq-det-tl-step ${getStep(selected.Status) >= s.step ? 'rq-det-tl-done' : ''}`}>
+                          <div className="rq-det-tl-dot">{getStep(selected.Status) >= s.step ? <CheckCircle size={10} /> : null}</div>
+                          <span>{s.label}</span>
+                        </div>
+                        {i < 3 && <div className={`rq-det-tl-line ${getStep(selected.Status) > s.step ? 'rq-det-tl-done' : ''}`} />}
+                      </React.Fragment>
+                    ))}
+                  </div>
               </div>
 
               {selected.Technicians.length > 0 && (
@@ -518,6 +593,7 @@ const RequesterDashboard: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

@@ -321,7 +321,7 @@ const PublicBoard: React.FC = () => {
           {activeTickets.map(t => (
             <article
               key={t.id}
-              className={`pb-ticket priority-${priorityClass(t.priority)}${!hasTech(t) ? ' no-tech' : ''}`}
+              className={`pb-ticket priority-${priorityClass(t.priority)}${!hasTech(t) ? ' no-tech' : ''}${(t as any).is_returned ? ' returned' : ''}`}
             >
               <div className="pb-ticket-left">
                 <span className="pb-ticket-code">

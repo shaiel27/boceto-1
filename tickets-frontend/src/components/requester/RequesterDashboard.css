@@ -76,6 +76,7 @@
 .rq-t-st{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:4px}
 .rq-t-st--pend{background:#fef3f2;color:#b91c1c}
 .rq-t-st--prog{background:#eff6ff;color:#1d4ed8}
+.rq-t-st--verif{background:#fef3c7;color:#d97706}
 .rq-t-st--done{background:#f0fdf4;color:#15803d}
 
 /* timeline */

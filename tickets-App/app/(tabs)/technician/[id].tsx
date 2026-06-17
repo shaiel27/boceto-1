@@ -80,7 +80,7 @@ export default function TicketDetailScreen() {
     setSending(true);
     const r = await resolveTicket(tid, note);
     setSending(false);
-    if (r.success) { toast.showToast({ title: 'Ticket resuelto', message: 'Listo', type: 'success' }); setQuick(false); load(); }
+    if (r.success) { toast.showToast({ title: 'Enviado a verificación', message: 'El solicitante debe confirmar', type: 'success' }); setQuick(false); load(); }
     else toast.showToast({ title: 'Error', message: r.message || '', type: 'error' });
   };
 
@@ -115,7 +115,7 @@ export default function TicketDetailScreen() {
   if (loading) return <View style={styles.ctr}><ActivityIndicator size="small" color={Colors.primary} /><Text style={styles.ctrText}>Cargando ticket...</Text></View>;
   if (!ticket) return <View style={styles.ctr}><Ionicons name="alert-circle" size={36} color={Colors.priorityAlta} /><Text style={styles.ctrTitle}>No encontrado</Text><Button title="Volver" onPress={() => router.back()} variant="outline" /></View>;
 
-  const isResolved = ticket.status === 'Resuelto';
+  const isResolved = ticket.status === 'Resuelto' || ticket.status === 'Pendiente de Verificación' || ticket.status === 'Cerrado';
   const prioColor = PRIO_COL[ticket.system_priority] || Colors.textLight;
 
   return (
