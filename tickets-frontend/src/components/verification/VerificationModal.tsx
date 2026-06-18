@@ -24,10 +24,32 @@ const VerificationModal: React.FC<Props> = ({ tickets, onAllResolved }) => {
   const [error, setError] = useState<string | null>(null);
   const [resolvedIds, setResolvedIds] = useState<Set<number>>(new Set());
 
+  // Reset resolved IDs when tickets change (new verification session)
+  const ticketIdsKey = tickets.map((t) => `${t.id}:${t.ticket_code}`).join('|');
+  useEffect(() => {
+    setResolvedIds(new Set());
+    setCurrentIndex(0);
+    setStep('select');
+    setComment('');
+    setError(null);
+  }, [ticketIdsKey]);
+
+  // Guard: prevent duplicate onAllResolved calls
+  const calledRef = React.useRef(false);
+  const doOnAllResolved = () => {
+    if (!calledRef.current) {
+      calledRef.current = true;
+      onAllResolved();
+    }
+  };
+  useEffect(() => {
+    calledRef.current = false;
+  }, [ticketIdsKey]);
+
   const current = tickets[currentIndex];
   if (!current) {
     if (tickets.length > 0 && tickets.every((t) => resolvedIds.has(t.id))) {
-      onAllResolved();
+      doOnAllResolved();
     }
     return null;
   }
@@ -49,7 +71,7 @@ const VerificationModal: React.FC<Props> = ({ tickets, onAllResolved }) => {
         if (nextIndex >= 0) {
           setCurrentIndex(nextIndex);
         } else if (next.size >= tickets.length) {
-          onAllResolved();
+          doOnAllResolved();
         }
       } else {
         setError(r.message || 'Error al verificar');
@@ -77,7 +99,7 @@ const VerificationModal: React.FC<Props> = ({ tickets, onAllResolved }) => {
         if (nextIndex >= 0) {
           setCurrentIndex(nextIndex);
         } else if (next.size >= tickets.length) {
-          onAllResolved();
+          doOnAllResolved();
         }
       } else {
         setError(r.message || 'Error al procesar');

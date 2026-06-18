@@ -46,7 +46,7 @@ interface Ticket {
   readonly Direction_Name: string;
   readonly Coordination_Name: string;
   readonly System_Priority: 'Crítica' | 'Alta' | 'Media' | 'Baja';
-  readonly Status: 'Pendiente' | 'En Progreso' | 'Cerrado';
+  readonly Status: 'Pendiente' | 'En Progreso' | 'Pendiente de Verificación' | 'Cerrado';
   readonly Created_at: string;
   readonly Technician_Name: string;
   readonly Is_Lead: boolean;
@@ -572,7 +572,8 @@ const TechnicianDashboard: React.FC = () => {
     activeTicketsPage * ITEMS_PER_PAGE
   );
 
-  const activeCount = myTickets.filter(t => t.Status !== 'Cerrado').length;
+  const isInactive = (s: string) => s === 'Cerrado' || s === 'Pendiente de Verificación';
+  const activeCount = myTickets.filter(t => !isInactive(t.Status)).length;
   const resolvedCount = myTickets.filter(t => t.Status === 'Cerrado').length;
   const criticalCount = myTickets.filter(t => t.System_Priority === 'Crítica').length;
 
@@ -721,7 +722,7 @@ const TechnicianDashboard: React.FC = () => {
                   <div className="tkt-meta">
                     <span><MapPin size={10} />{ticket.Direction_Name}</span>
                     <span>
-                      {ticket.Status === 'Cerrado' ? '✓ Cerrado' : ticket.Status === 'En Progreso' ? '▶ En Progreso' : '○ Pendiente'}
+                      {ticket.Status === 'Cerrado' ? '✓ Cerrado' : ticket.Status === 'Pendiente de Verificación' ? '◷ Verificación' : ticket.Status === 'En Progreso' ? '▶ En Progreso' : '○ Pendiente'}
                     </span>
                     {ticket.Comments_Count > 0 && <span><MessageSquare size={10} />{ticket.Comments_Count}</span>}
                   </div>
@@ -771,7 +772,7 @@ const TechnicianDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="dd-actions">
-                  {selectedTicket.Status !== 'Cerrado' && (
+                  {!isInactive(selectedTicket.Status) && (
                     <>
                       <button className="action-btn assistance" onClick={() => handleAssistanceRequest(selectedTicket)}>
                         <AlertTriangle size={15} />
@@ -905,7 +906,7 @@ const TechnicianDashboard: React.FC = () => {
                     </div>
                   ))
                 )}
-                {selectedTicket.Status !== 'Cerrado' && (
+                {!isInactive(selectedTicket.Status) && (
                   <div className="dd-comment-form">
                     <div className="dd-comment-input-row">
                       <textarea
@@ -958,7 +959,7 @@ const TechnicianDashboard: React.FC = () => {
                 )}
               </div>
 
-              {selectedTicket.Status !== 'Cerrado' && (
+                {!isInactive(selectedTicket.Status) && (
                 <div className="tech-detail-close-action">
                   <button className="action-btn danger" onClick={handleCloseTicket}>
                     <CheckCircle size={16} />
