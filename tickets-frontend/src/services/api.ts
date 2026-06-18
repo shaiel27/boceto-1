@@ -946,6 +946,31 @@ export class ApiService {
     }
   }
 
+  static async resetTicketSequence(): Promise<ApiResponse<{ current_number: number }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=reset-sequence`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ confirm: true }),
+      });
+      return await response.json();
+    } catch {
+      return { success: false, message: 'Error al reiniciar secuencia' };
+    }
+  }
+
+  static async getTicketSequence(): Promise<ApiResponse<{ current_number: number; total_tickets: number }>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/tickets?action=sequence-info`, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` },
+      });
+      return await response.json();
+    } catch {
+      return { success: false, message: 'Error al obtener secuencia' };
+    }
+  }
+
 
 
   static async getTicketComments(id: number): Promise<ApiResponse> {

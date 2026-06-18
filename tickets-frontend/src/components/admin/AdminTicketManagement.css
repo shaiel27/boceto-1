@@ -115,6 +115,25 @@
 .gvt-stat-n--return{color:#7c3aed}
 .gvt-stat-l{display:block;font-size:10.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
 
+/* ── Sequence bar ──────────────────────────────────────────────── */
+.gvt-seqbar{
+  display:flex;align-items:center;gap:20px;
+  padding:10px 16px;margin-bottom:12px;
+  background:var(--navy-s);border:1px solid var(--navy-b);
+  border-radius:10px;
+}
+.gvt-seqbar-item{display:flex;flex-direction:column;gap:2px}
+.gvt-seqbar-label{font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.gvt-seqbar-val{font-size:16px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
+.gvt-seqbar-code{font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--navy)}
+.gvt-seqbar-reset{
+  margin-left:auto;padding:7px 14px;
+  background:transparent;border:1px solid var(--crt-s);border-radius:6px;
+  font-size:11px;font-weight:600;color:var(--crt);cursor:pointer;
+  font-family:inherit;transition:all .15s;
+}
+.gvt-seqbar-reset:hover{background:var(--crt-s)}
+
 /* tools */
 .gvt-tools{
   display:flex;flex-wrap:wrap;gap:8px;align-items:center;

@@ -21,6 +21,7 @@ require_once __DIR__ . '/../DTO/CreateTicketDTO.php';
 require_once __DIR__ . '/../DTO/NotificationDTO.php';
 require_once __DIR__ . '/../Services/TicketService.php';
 require_once __DIR__ . '/../Services/NotificationService.php';
+require_once __DIR__ . '/../Services/TicketCodeGenerator.php';
 require_once __DIR__ . '/../Enums/TicketStatus.php';
 
 try {
@@ -862,6 +863,57 @@ switch ($method) {
                 http_response_code(400);
                 echo json_encode($result);
             }
+            break;
+        }
+
+        // Action: reset ticket sequence (admin only, manual)
+        if ($action === 'reset-sequence') {
+            if ($currentUserRole !== 'admin') {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Solo administradores pueden reiniciar la secuencia']);
+                break;
+            }
+
+            $confirm = ($data->confirm ?? false) === true || ($data->confirm ?? '') === 'true';
+            if (!$confirm) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Se requiere confirmación']);
+                break;
+            }
+
+            $codeGenerator = new \TicketCodeGenerator($db);
+            $success = $codeGenerator->reset((int)$currentUserId);
+
+            if ($success) {
+                $auditService->logTicketAction(
+                    'reset_sequence',
+                    (int)$currentUserId,
+                    "Secuencia de tickets reiniciada manualmente por Admin #{$currentUserId}"
+                );
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Secuencia reiniciada. El próximo ticket será TICK-000001',
+                    'current_number' => 0,
+                ]);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'message' => 'Error al reiniciar la secuencia']);
+            }
+            break;
+        }
+
+        // Action: get sequence info
+        if ($action === 'sequence-info') {
+            $codeGenerator = new \TicketCodeGenerator($db);
+            $stmt = $db->query("SELECT COUNT(*) as total FROM Service_Request");
+            $total = (int) ($stmt->fetchColumn() ?: 0);
+            echo json_encode([
+                'success' => true,
+                'data' => [
+                    'current_number' => $codeGenerator->currentNumber(),
+                    'total_tickets' => $total,
+                ],
+            ]);
             break;
         }
 

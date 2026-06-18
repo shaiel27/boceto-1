@@ -29,7 +29,7 @@ class ServiceRequest {
     /**
      * Create ticket using DTO (modern approach)
      */
-    public function createWithDTO(object $dto, int $requesterId): ?int
+    public function createWithDTO(object $dto, int $requesterId, ?string $ticketCode = null): ?int
     {
         $query = "INSERT INTO " . $this->table_name . "
                   SET Fk_Office = :Fk_Office,
@@ -43,6 +43,7 @@ class ServiceRequest {
                       Description = :Description,
                       System_Priority = :System_Priority,
                       Status = 'Pendiente',
+                      Ticket_Code = :Ticket_Code,
                       Created_at = NOW()";
 
         $stmt = $this->conn->prepare($query);
@@ -57,6 +58,7 @@ class ServiceRequest {
         $stmt->bindValue(":Property_Number", $dto->propertyNumber, $dto->propertyNumber === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
         $stmt->bindParam(":Description", $dto->description);
         $stmt->bindParam(":System_Priority", $dto->systemPriority);
+        $stmt->bindValue(":Ticket_Code", $ticketCode, $ticketCode === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
 
         try {
             if ($stmt->execute()) {
