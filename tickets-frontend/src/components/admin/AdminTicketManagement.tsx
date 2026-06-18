@@ -32,7 +32,6 @@ import {
 import './AdminTicketManagement.css';
 import ApiService, { API_BASE_URL } from '../../services/api';
 import { findBienByCode } from '../../services/bienesApi';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface TicketTechnician {
   readonly ID_Ticket_Technician: string;
@@ -124,7 +123,6 @@ interface Attachment {
 const AdminTicketManagement: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { isAuditor } = useAuth();
   
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
@@ -180,9 +178,6 @@ const AdminTicketManagement: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(6);
-  const [sequenceInfo, setSequenceInfo] = useState<{ current_number: number; total_tickets: number; generation?: number } | null>(null);
-  const [resetting, setResetting] = useState(false);
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -215,11 +210,6 @@ const AdminTicketManagement: React.FC = () => {
     const interval = setInterval(() => {
       checkForUpdates();
     }, refreshInterval);
-
-    // Load sequence info
-    ApiService.getTicketSequence().then(r => {
-      if (r.success && r.data) setSequenceInfo(r.data);
-    });
 
     return () => clearInterval(interval);
   }, [refreshInterval]);
@@ -622,23 +612,6 @@ const AdminTicketManagement: React.FC = () => {
     }
   };
 
-  const handleResetSequence = async () => {
-    setResetting(true);
-    try {
-      const r = await ApiService.resetTicketSequence();
-      if (r.success) {
-        showNotification('success', 'Secuencia reiniciada. Próximo ticket: TICK-000001');
-        setSequenceInfo({ current_number: 0, total_tickets: sequenceInfo?.total_tickets ?? 0 });
-      } else {
-        showNotification('error', r.message || 'Error al reiniciar');
-      }
-    } catch {
-      showNotification('error', 'Error de conexión');
-    }
-    setResetting(false);
-    setShowResetConfirm(false);
-  };
-
   const handleCloseTicket = async () => {
     if (!selectedTicket) return;
 
@@ -740,57 +713,6 @@ const AdminTicketManagement: React.FC = () => {
             <span className="gvt-stat-l">Inconformidad</span>
           </div>
         </div>
-
-        {sequenceInfo && (
-          <div className="gvt-seqbar">
-            <div className="gvt-seqbar-item">
-              <span className="gvt-seqbar-label">Total histórico</span>
-              <span className="gvt-seqbar-val">{sequenceInfo.total_tickets.toLocaleString()}</span>
-            </div>
-            <div className="gvt-seqbar-item">
-              <span className="gvt-seqbar-label">Último código</span>
-              <span className="gvt-seqbar-code">TICK-{String(sequenceInfo.current_number).padStart(6, '0')}</span>
-            </div>
-            {sequenceInfo.generation !== undefined && sequenceInfo.generation > 1 && (
-              <div className="gvt-seqbar-item">
-                <span className="gvt-seqbar-label">Generación</span>
-                <span className="gvt-seqbar-val">{sequenceInfo.generation}</span>
-              </div>
-            )}
-            {isAuditor() && (
-              <button
-                className="gvt-seqbar-reset"
-                onClick={() => setShowResetConfirm(true)}
-                title="Reiniciar contador de tickets"
-              >
-                Reiniciar contador
-              </button>
-            )}
-          </div>
-        )}
-
-        {showResetConfirm && (
-          <div className="gvt-over" onClick={() => setShowResetConfirm(false)}>
-            <div className="gvt-mod gvt-mod--sm" onClick={e => e.stopPropagation()}>
-              <div className="gvt-mod-h">
-                <span className="gvt-mod-t">Reiniciar contador</span>
-                <button className="gvt-mod-x" onClick={() => setShowResetConfirm(false)}>×</button>
-              </div>
-              <div className="gvt-mod-b">
-                <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--ink)' }}>
-                  ¿Reiniciar la secuencia de tickets? Los códigos existentes no se modifican.
-                  El próximo ticket será <strong>TICK-000001</strong>.
-                </p>
-              </div>
-              <div className="gvt-mod-f">
-                <button className="gvt-btn" onClick={() => setShowResetConfirm(false)}>Cancelar</button>
-                <button className="gvt-btn gvt-btn--danger" onClick={handleResetSequence} disabled={resetting}>
-                  {resetting ? 'Reiniciando...' : 'Reiniciar'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         <div className="gvt-tools">
           <div className="gvt-search">

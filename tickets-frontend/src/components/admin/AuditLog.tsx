@@ -92,6 +92,15 @@ const AuditLog: React.FC = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [sequenceInfo, setSequenceInfo] = useState<{ current_number: number; total_tickets: number; generation?: number } | null>(null);
+  const [resetting, setResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+
+  useEffect(() => {
+    ApiService.getTicketSequence().then(r => {
+      if (r.success && r.data) setSequenceInfo(r.data);
+    });
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -169,6 +178,22 @@ const AuditLog: React.FC = () => {
     });
   };
 
+  const handleResetSequence = async () => {
+    setResetting(true);
+    try {
+      const r = await ApiService.resetTicketSequence();
+      if (r.success) {
+        setSequenceInfo(prev => prev ? { ...prev, current_number: 0, generation: (prev.generation || 1) + 1 } : null);
+      } else {
+        alert(r.message || 'Error al reiniciar');
+      }
+    } catch {
+      alert('Error de conexión');
+    }
+    setResetting(false);
+    setShowResetConfirm(false);
+  };
+
   const handleViewDetail = (entry: AuditEntry) => {
     setSelectedEntry(entry);
     setShowDetailModal(true);
@@ -176,22 +201,14 @@ const AuditLog: React.FC = () => {
 
   return (
     <div className="audit-page">
-      {/* Header */}
       <header className="audit-header">
         <div className="audit-title-group">
-          <div className="audit-title-icon">
-            <Shield />
-          </div>
           <div className="audit-titles">
             <h1>Auditoría del Sistema</h1>
             <p>Registro de eventos y movimientos del sistema</p>
           </div>
         </div>
         <div className="audit-header-actions">
-          <button className="audit-btn audit-btn--sec" onClick={() => navigate('/')}>
-            <ArrowLeft size={15} />
-            Panel Admin
-          </button>
           <button className="audit-btn audit-btn--sec" onClick={loadData}>
             <RefreshCw size={15} />
             Actualizar
@@ -230,6 +247,56 @@ const AuditLog: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Sequence bar */}
+      {sequenceInfo && (
+        <div className="gvt-seqbar">
+          <div className="gvt-seqbar-item">
+            <span className="gvt-seqbar-label">Total tickets</span>
+            <span className="gvt-seqbar-val">{sequenceInfo.total_tickets.toLocaleString()}</span>
+          </div>
+          <div className="gvt-seqbar-item">
+            <span className="gvt-seqbar-label">Último código</span>
+            <span className="gvt-seqbar-code">TICK-{String(sequenceInfo.current_number).padStart(6, '0')}</span>
+          </div>
+          {sequenceInfo.generation !== undefined && sequenceInfo.generation > 1 && (
+            <div className="gvt-seqbar-item">
+              <span className="gvt-seqbar-label">Generación</span>
+              <span className="gvt-seqbar-val">{sequenceInfo.generation}</span>
+            </div>
+          )}
+          <button
+            className="gvt-seqbar-reset"
+            onClick={() => setShowResetConfirm(true)}
+            title="Reiniciar contador de tickets"
+          >
+            Reiniciar contador
+          </button>
+        </div>
+      )}
+
+      {showResetConfirm && (
+        <div className="gvt-over" onClick={() => setShowResetConfirm(false)}>
+          <div className="gvt-mod gvt-mod--sm" onClick={e => e.stopPropagation()}>
+            <div className="gvt-mod-h">
+              <span className="gvt-mod-t">Reiniciar contador</span>
+              <button className="gvt-mod-x" onClick={() => setShowResetConfirm(false)}>×</button>
+            </div>
+            <div className="gvt-mod-b">
+              <p style={{ margin: 0, fontSize: 13, lineHeight: 1.5, color: 'var(--ink)' }}>
+                ¿Reiniciar la secuencia de tickets? Los códigos existentes no se modifican.
+                El próximo ticket será <strong>TICK-000001</strong>.
+              </p>
+            </div>
+            <div className="gvt-mod-f">
+              <button className="gvt-btn" onClick={() => setShowResetConfirm(false)}>Cancelar</button>
+              <button className="gvt-btn gvt-btn--danger" onClick={handleResetSequence} disabled={resetting}>
+                {resetting ? 'Reiniciando...' : 'Reiniciar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Severity Legend */}
       <div className="audit-legend">
@@ -404,7 +471,6 @@ const AuditLog: React.FC = () => {
           )}
         </>
       )}
-
       {/* Detail Modal */}
       {showDetailModal && selectedEntry && (
         <div className="audit-modal-overlay" onClick={() => setShowDetailModal(false)}>

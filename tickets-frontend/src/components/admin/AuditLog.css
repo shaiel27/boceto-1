@@ -912,4 +912,25 @@
     font-size: 0.55rem;
     padding: 1px 6px;
   }
+
+/* ── Sequence bar ──────────────────────────────────────────── */
+.gvt-seqbar{display:flex;align-items:center;gap:20px;padding:10px 16px;margin-bottom:16px;background:var(--navy-s);border:1px solid var(--navy-b);border-radius:10px}
+.gvt-seqbar-item{display:flex;flex-direction:column;gap:2px}
+.gvt-seqbar-label{font-size:10px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
+.gvt-seqbar-val{font-size:16px;font-weight:700;color:var(--navy);font-variant-numeric:tabular-nums}
+.gvt-seqbar-code{font-family:'DM Mono',monospace;font-size:15px;font-weight:700;color:var(--navy)}
+.gvt-seqbar-reset{margin-left:auto;padding:7px 14px;background:transparent;border:1px solid var(--crt-s);border-radius:6px;font-size:11px;font-weight:600;color:var(--crt);cursor:pointer;font-family:inherit;transition:all .15s}
+.gvt-seqbar-reset:hover{background:var(--crt-s)}
+.gvt-over{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(26,54,93,.5);backdrop-filter:blur(4px)}
+.gvt-mod{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(26,54,93,.15);width:100%;max-height:90vh;display:flex;flex-direction:column;max-width:520px;overflow:hidden}
+.gvt-mod--sm{max-width:380px}
+.gvt-mod-h{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #e2e8f0;flex-shrink:0}
+.gvt-mod-t{font-size:15px;font-weight:700;margin:0;color:var(--navy)}
+.gvt-mod-x{width:28px;height:28px;border-radius:6px;border:none;background:transparent;color:var(--dim);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.gvt-mod-b{padding:14px 20px;overflow-y:auto;flex:1}
+.gvt-mod-f{display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:12px 20px;border-top:1px solid #e2e8f0;flex-shrink:0}
+.gvt-btn{padding:8px 16px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit}
+.gvt-btn--danger{background:var(--crt);color:#fff;border-color:var(--crt)}
+.gvt-btn--danger:hover:not(:disabled){background:#b91c1c}
+.gvt-btn--danger:disabled{opacity:.5;cursor:not-allowed}
 }
