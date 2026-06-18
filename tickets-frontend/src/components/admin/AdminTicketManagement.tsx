@@ -54,7 +54,8 @@ interface Ticket {
   readonly Fk_Coordination: string;
   readonly Fk_TI_Service: string;
   readonly System_Priority: 'Baja' | 'Media' | 'Alta' | 'Crítica';
-  readonly Status: 'Pendiente' | 'En Proceso' | 'Cerrado';
+  readonly Status: 'Pendiente' | 'En Proceso' | 'Pendiente de Verificación' | 'Cerrado';
+  readonly is_returned: number;
   readonly Created_at: string;
   readonly Resolved_at: string | null;
   readonly Direction_Name?: string;
@@ -250,6 +251,7 @@ const AdminTicketManagement: React.FC = () => {
           Fk_TI_Service: ticket.Fk_TI_Service?.toString() || '',
           System_Priority: ticket.System_Priority || 'Media',
           Status: ticket.Status || 'Pendiente',
+          is_returned: Number(ticket.is_returned) || 0,
           Created_at: ticket.Created_at || new Date().toISOString(),
           Resolved_at: ticket.Resolved_at || null,
           Direction_Name: ticket.office_name || 'No asignado',
@@ -299,6 +301,7 @@ const AdminTicketManagement: React.FC = () => {
           Fk_TI_Service: ticket.Fk_TI_Service?.toString() || '',
           System_Priority: ticket.System_Priority || 'Media',
           Status: ticket.Status || 'Pendiente',
+          is_returned: Number(ticket.is_returned) || 0,
           Created_at: ticket.Created_at || new Date().toISOString(),
           Resolved_at: ticket.Resolved_at || null,
           Direction_Name: ticket.office_name || 'No asignado',
@@ -650,6 +653,7 @@ const AdminTicketManagement: React.FC = () => {
     switch (s) {
       case 'Pendiente': return 's-pend';
       case 'En Proceso': return 's-prog';
+      case 'Pendiente de Verificación': return 's-verif';
       case 'Cerrado': return 's-done';
       default: return 's-pend';
     }
@@ -703,6 +707,10 @@ const AdminTicketManagement: React.FC = () => {
           <div className="gvt-stat">
             <span className="gvt-stat-n gvt-stat-n--crit">{tickets.filter(t => t.System_Priority === 'Crítica').length}</span>
             <span className="gvt-stat-l">Críticos</span>
+          </div>
+          <div className="gvt-stat">
+            <span className="gvt-stat-n gvt-stat-n--return">{tickets.filter(t => t.is_returned === 1).length}</span>
+            <span className="gvt-stat-l">Inconformidad</span>
           </div>
         </div>
 
@@ -782,6 +790,9 @@ const AdminTicketManagement: React.FC = () => {
                       <div className="gvt-card-tags">
                         <span className={`gvt-tag gvt-tag--${getPriorityClass(t.System_Priority)}`}>{t.System_Priority}</span>
                         <span className={`gvt-tag gvt-tag--${getStatusClass(t.Status)}`}>{t.Status}</span>
+                        {t.is_returned === 1 && (
+                          <span className="gvt-tag gvt-tag--returned">Inconformidad</span>
+                        )}
                       </div>
                     </div>
                     <h3 className="gvt-card-subject">{t.Subject}</h3>
