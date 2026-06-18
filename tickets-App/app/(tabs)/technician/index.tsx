@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useTickets } from '../../../src/contexts/TicketContext';
 import { useAuth } from '../../../src/hooks/useAuth';
@@ -63,6 +64,18 @@ export default function TechnicianDashboard() {
       });
     }, [refreshTickets])
   );
+
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (!isFocused) return;
+    const interval = setInterval(() => {
+      refreshTickets();
+      getTechnicianPerformance().then((r) => {
+        if (r.success && r.data) setPerf(r.data);
+      });
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [isFocused, refreshTickets]);
 
   const filtered = useMemo(() => {
     let r = tickets;

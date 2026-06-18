@@ -32,7 +32,8 @@ export default function VerifyScreen() {
     setLoading(false);
 
     if (mounted && pending.length === 0) {
-      router.replace('/(tabs)/requester');
+      const timer = setTimeout(() => router.replace('/(tabs)/requester'), 100);
+      return () => clearTimeout(timer);
     }
   }, [tickets, mounted]);
 
@@ -54,7 +55,7 @@ export default function VerifyScreen() {
           setComment('');
         } else {
           await refreshTickets();
-          router.replace('/(tabs)/requester');
+          setTimeout(() => router.replace('/(tabs)/requester'), 100);
         }
       } else {
         toast.showToast({ title: 'Error', message: r.message || 'No se pudo verificar', type: 'error' });
@@ -84,7 +85,7 @@ export default function VerifyScreen() {
           setComment('');
         } else {
           await refreshTickets();
-          router.replace('/(tabs)/requester');
+          setTimeout(() => router.replace('/(tabs)/requester'), 100);
         }
       } else {
         toast.showToast({ title: 'Error', message: r.message || 'No se pudo procesar', type: 'error' });

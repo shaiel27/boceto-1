@@ -74,6 +74,7 @@ const PublicBoard: React.FC = () => {
   const prevTicketIdsRef = useRef<Set<number>>(new Set());
   const prevClosedIdsRef = useRef<Set<number>>(new Set());
   const prevAssistanceIdsRef = useRef<Set<number>>(new Set());
+  const prevReturnedIdsRef = useRef<Set<number>>(new Set());
   const prevStatsRef = useRef<Stats>({ pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 });
   /** Track which tickets are unassigned to detect when they get a tech */
   const unassignedTicketsRef = useRef<Set<number>>(new Set());
@@ -183,6 +184,17 @@ const PublicBoard: React.FC = () => {
                 if (soundRef.current) BoardNotification.playSound('new_ticket');
               }
               if (newNames) techNamesRef.current.set(t.id, newNames);
+
+              // Detect returned tickets (inconformity)
+              const isReturned = (t as any).is_returned === 1 || (t as any).is_returned === '1';
+              if (isReturned && !prevReturnedIdsRef.current.has(t.id)) {
+                prevReturnedIdsRef.current.add(t.id);
+                showBanner('returned', `INCONFORMIDAD: ${t.ticket_code || '#' + t.id} — ${t.office_name || ''}`);
+                if (soundRef.current) {
+                  BoardNotification.playSound('returned');
+                  setTimeout(() => BoardNotification.playSound('returned'), 1200);
+                }
+              }
             }
             setActiveTickets(prev => {
               const existingMap = new Map(prev.map(t => [t.id, t]));

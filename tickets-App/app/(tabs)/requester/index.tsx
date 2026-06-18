@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import { useIsFocused } from '@react-navigation/native';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useTickets } from '../../../src/contexts/TicketContext';
 import { useAuth } from '../../../src/hooks/useAuth';
@@ -41,9 +42,22 @@ export default function RequesterDashboard() {
 
   useEffect(() => {
     if (mounted && verificationCount > 0) {
-      router.replace('/(tabs)/requester/verify');
+      const timer = setTimeout(() => router.replace('/(tabs)/requester/verify'), 100);
+      return () => clearTimeout(timer);
     }
   }, [mounted, verificationCount]);
+
+  const isFocused = useIsFocused();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    if (isFocused) {
+      pollRef.current = setInterval(() => { refreshTickets(); }, 30000);
+    }
+    return () => {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    };
+  }, [isFocused, refreshTickets]);
 
   const office = user?.office_name || '';
 

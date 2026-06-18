@@ -478,6 +478,32 @@ const TechnicianDashboard: React.FC = () => {
     setWorkTimeRemaining(Math.max(0, Math.floor(workDiff / 1000 / 60)));
   }, []);
 
+  // Auto-refresh: poll every 30s when tab is visible
+  useEffect(() => {
+    let pollTimer: ReturnType<typeof setInterval>;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        pollTimer = setInterval(refreshTickets, 30000);
+      } else {
+        if (pollTimer) clearInterval(pollTimer);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    if (document.visibilityState === 'visible') {
+      pollTimer = setInterval(refreshTickets, 30000);
+    }
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, []);
+
+
+
+
   const handleAssistanceRequest = (ticket: Ticket) => {
     setSelectedTicketForAssistance(ticket);
     setShowAssistanceModal(true);

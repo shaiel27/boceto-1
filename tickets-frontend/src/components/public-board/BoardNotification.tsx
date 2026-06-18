@@ -48,11 +48,18 @@ class BoardNotification {
     o.stop(start + duration);
   }
 
-  static playSound(type: 'new_ticket' | 'lunch' | 'assistance' | 'closed'): void {
+  static playSound(type: 'new_ticket' | 'lunch' | 'assistance' | 'closed' | 'returned'): void {
     try {
       const ctx = this.getCtx();
       const t = ctx.currentTime;
       switch (type) {
+        case 'returned':
+          for (let i = 0; i < 3; i++) {
+            const offset = i * 0.32;
+            this.note(ctx, 587.33, t + offset, 0.34, 0.24, 'square');
+            this.note(ctx, 554.37, t + offset + 0.10, 0.34, 0.20, 'square');
+          }
+          break;
         case 'new_ticket':
           this.note(ctx, 659.25, t,        0.40, 0.20);
           this.note(ctx, 1046.5, t + 0.15, 0.55, 0.12);

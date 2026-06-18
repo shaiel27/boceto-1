@@ -82,6 +82,7 @@
 .pb-banner-lunch_started { background: var(--pb-warn-bg); border-color: var(--pb-warn-border); color: var(--pb-warn); }
 .pb-banner-lunch_ended   { background: var(--pb-surface-alt); border-color: var(--pb-border); color: var(--pb-text-secondary); }
 .pb-banner-assistance    { background: var(--pb-danger-bg); border-color: var(--pb-danger-border); color: var(--pb-danger); animation: pb-banner-in 0.35s ease both, pb-banner-pulse 1s ease-in-out 0.3s 3; }
+.pb-banner-returned      { background: #7c3aed; border-color: #6d28d9; color: #fff; font-size: 15px; padding: 14px 28px; animation: pb-banner-in 0.35s ease both, pb-banner-pulse 0.8s ease-in-out 0.3s 5; box-shadow: 0 4px 24px rgba(124,58,237,0.5); }
 .pb-banner-stats         { background: var(--pb-warn-bg); border-color: var(--pb-warn-border); color: var(--pb-warn); }
 @keyframes pb-banner-pulse {
   0%, 100% { box-shadow: 0 2px 12px rgba(217, 64, 64, 0.1); }
