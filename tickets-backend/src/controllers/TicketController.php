@@ -82,7 +82,21 @@ switch ($method) {
                 $stats = $ticket->getStats();
                 echo json_encode([
                     'success' => true,
-                    'data' => $stats
+                    'data' => $tickets
+                ]);
+                break;
+
+            case 'sequence-info':
+                require_once __DIR__ . '/../Services/TicketCodeGenerator.php';
+                $codeGenerator = new \TicketCodeGenerator($db);
+                $stmt = $db->query("SELECT COUNT(*) as total FROM Service_Request");
+                $total = (int) ($stmt->fetchColumn() ?: 0);
+                echo json_encode([
+                    'success' => true,
+                    'data' => [
+                        'current_number' => $codeGenerator->currentNumber(),
+                        'total_tickets' => $total,
+                    ],
                 ]);
                 break;
                 
@@ -899,21 +913,6 @@ switch ($method) {
                 http_response_code(500);
                 echo json_encode(['success' => false, 'message' => 'Error al reiniciar la secuencia']);
             }
-            break;
-        }
-
-        // Action: get sequence info
-        if ($action === 'sequence-info') {
-            $codeGenerator = new \TicketCodeGenerator($db);
-            $stmt = $db->query("SELECT COUNT(*) as total FROM Service_Request");
-            $total = (int) ($stmt->fetchColumn() ?: 0);
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'current_number' => $codeGenerator->currentNumber(),
-                    'total_tickets' => $total,
-                ],
-            ]);
             break;
         }
 
