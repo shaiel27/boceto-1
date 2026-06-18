@@ -22,13 +22,17 @@ final class TicketCodeGenerator
 
     /**
      * Generate the next ticket code atomically.
+     * Uses an existing transaction if one is active, otherwise creates one.
      *
      * @return string e.g. "TICK-000147"
      */
     public function nextCode(): string
     {
         try {
-            $this->db->beginTransaction();
+            $inTransaction = $this->db->inTransaction();
+            if (!$inTransaction) {
+                $this->db->beginTransaction();
+            }
 
             // Row-level lock prevents concurrent increments
             $stmt = $this->db->prepare(
@@ -42,7 +46,9 @@ final class TicketCodeGenerator
             );
             $update->execute([':num' => $next]);
 
-            $this->db->commit();
+            if (!$inTransaction) {
+                $this->db->commit();
+            }
 
             return 'TICK-' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
         } catch (PDOException $e) {
