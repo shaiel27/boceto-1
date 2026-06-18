@@ -89,12 +89,14 @@ switch ($method) {
             case 'sequence-info':
                 require_once __DIR__ . '/../Services/TicketCodeGenerator.php';
                 $codeGenerator = new \TicketCodeGenerator($db);
+                $seq = $codeGenerator->current();
                 $stmt = $db->query("SELECT COUNT(*) as total FROM Service_Request");
                 $total = (int) ($stmt->fetchColumn() ?: 0);
                 echo json_encode([
                     'success' => true,
                     'data' => [
-                        'current_number' => $codeGenerator->currentNumber(),
+                        'current_number' => $seq['current_number'],
+                        'generation' => $seq['generation'],
                         'total_tickets' => $total,
                     ],
                 ]);

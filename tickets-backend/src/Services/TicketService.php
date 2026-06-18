@@ -43,10 +43,10 @@ final class TicketService
             // Generate ticket code atomically
             require_once __DIR__ . '/TicketCodeGenerator.php';
             $codeGenerator = new TicketCodeGenerator($this->db);
-            $ticketCode = $codeGenerator->nextCode();
+            $nextCode = $codeGenerator->next();
 
             // Create the ticket
-            $ticketId = $this->ticketModel->createWithDTO($dto, $requesterId, $ticketCode);
+            $ticketId = $this->ticketModel->createWithDTO($dto, $requesterId, $nextCode['code'], $nextCode['generation']);
 
             if (!$ticketId) {
                 throw new \RuntimeException('No se pudo crear el ticket');

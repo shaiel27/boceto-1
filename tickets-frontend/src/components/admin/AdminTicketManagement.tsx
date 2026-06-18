@@ -178,7 +178,7 @@ const AdminTicketManagement: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(6);
-  const [sequenceInfo, setSequenceInfo] = useState<{ current_number: number; total_tickets: number } | null>(null);
+  const [sequenceInfo, setSequenceInfo] = useState<{ current_number: number; total_tickets: number; generation?: number } | null>(null);
   const [resetting, setResetting] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -749,6 +749,12 @@ const AdminTicketManagement: React.FC = () => {
               <span className="gvt-seqbar-label">Último código</span>
               <span className="gvt-seqbar-code">TICK-{String(sequenceInfo.current_number).padStart(6, '0')}</span>
             </div>
+            {sequenceInfo.generation !== undefined && sequenceInfo.generation > 1 && (
+              <div className="gvt-seqbar-item">
+                <span className="gvt-seqbar-label">Generación</span>
+                <span className="gvt-seqbar-val">{sequenceInfo.generation}</span>
+              </div>
+            )}
             <button
               className="gvt-seqbar-reset"
               onClick={() => setShowResetConfirm(true)}

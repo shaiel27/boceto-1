@@ -144,7 +144,8 @@ CREATE TABLE IF NOT EXISTS User_Systems (
 -- 5. Tickets
 CREATE TABLE IF NOT EXISTS Service_Request (
     ID_Service_Request INT AUTO_INCREMENT PRIMARY KEY,
-    Ticket_Code VARCHAR(50) UNIQUE,
+    Ticket_Code VARCHAR(50),
+    sequence_generation INT NOT NULL DEFAULT 1,
     Fk_Office INT,
     Fk_User_Requester INT,
     Fk_TI_Service INT,
@@ -167,6 +168,19 @@ CREATE TABLE IF NOT EXISTS Service_Request (
     FOREIGN KEY (Fk_Software_System) REFERENCES Software_Systems(ID_System),
     FOREIGN KEY (Fk_Boss_Requester) REFERENCES Boss(ID_Boss)
 );
+
+ALTER TABLE Service_Request ADD UNIQUE KEY uq_ticket_code (Ticket_Code, sequence_generation);
+
+CREATE TABLE IF NOT EXISTS ticket_sequence (
+    id TINYINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    current_number INT NOT NULL DEFAULT 0,
+    generation INT NOT NULL DEFAULT 1,
+    last_reset_at TIMESTAMP NULL,
+    reset_by INT NULL,
+    FOREIGN KEY (reset_by) REFERENCES Users(ID_Users)
+);
+
+INSERT IGNORE INTO ticket_sequence (id, current_number, generation) VALUES (1, 0, 1);
 
 CREATE TABLE IF NOT EXISTS Ticket_Technicians (
     ID_Ticket_Technician INT AUTO_INCREMENT PRIMARY KEY,
