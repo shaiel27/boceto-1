@@ -22,6 +22,8 @@ export default function VerifyScreen() {
   const [comment, setComment] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const pending = tickets.filter((t) => t.status === 'Pendiente de Verificación');
@@ -29,10 +31,10 @@ export default function VerifyScreen() {
     setCurrentIndex((prev) => Math.min(prev, Math.max(0, pending.length - 1)));
     setLoading(false);
 
-    if (pending.length === 0) {
+    if (mounted && pending.length === 0) {
       router.replace('/(tabs)/requester');
     }
-  }, [tickets]);
+  }, [tickets, mounted]);
 
   const current = verificationTickets[currentIndex];
   const total = verificationTickets.length;

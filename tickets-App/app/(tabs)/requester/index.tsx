@@ -36,11 +36,14 @@ export default function RequesterDashboard() {
     [tickets]
   );
 
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   useEffect(() => {
-    if (verificationCount > 0) {
+    if (mounted && verificationCount > 0) {
       router.replace('/(tabs)/requester/verify');
     }
-  }, [verificationCount]);
+  }, [mounted, verificationCount]);
 
   const office = user?.office_name || '';
 
