@@ -251,6 +251,17 @@ export async function getProblems(serviceId: number): Promise<{ success: boolean
   return { success: true, data: response.data };
 }
 
+export async function getUserSystems(): Promise<{ success: boolean; data?: { id: number; name: string; description: string | null }[] }> {
+  const response = await apiClient.post('/api/users?action=my-systems', {});
+  if (!response.success) return { success: false };
+  return { success: true, data: response.data };
+}
+
+export async function assignUserSystems(systemIds: number[]): Promise<{ success: boolean; message?: string }> {
+  const response = await apiClient.post('/api/users?action=assign-systems', { system_ids: systemIds });
+  return { success: response.success, message: response.message };
+}
+
 export async function getSystems(): Promise<{ success: boolean; data?: { ID_System: number; System_Name: string; Description: string }[] }> {
   const response = await apiClient.get('/api/service?action=software-systems');
   if (!response.success) return { success: false };

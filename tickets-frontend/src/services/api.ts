@@ -335,6 +335,32 @@ export class ApiService {
     }
   }
 
+  static async getUserSystems(): Promise<ApiResponse<{ id: number; name: string; description: string | null; assigned_at: string }[]>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users?action=my-systems`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({}),
+      });
+      return await response.json();
+    } catch {
+      return { success: false, message: 'Error al obtener sistemas del usuario' };
+    }
+  }
+
+  static async assignUserSystems(systemIds: number[]): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users?action=assign-systems`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify({ system_ids: systemIds }),
+      });
+      return await response.json();
+    } catch {
+      return { success: false, message: 'Error al guardar sistemas' };
+    }
+  }
+
 
 
   static async getMe(): Promise<ApiResponse<LoginResponse['user']>> {

@@ -12,6 +12,7 @@ import ApiService, { API_BASE_URL } from '../../services/api';
 import { findBienByCode } from '../../services/bienesApi';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordChangeRequired from '../common/PasswordChangeRequired';
+import SystemSelection from '../common/SystemSelection';
 import VerificationModal from '../verification/VerificationModal';
 
 interface Ticket {
@@ -36,7 +37,7 @@ const RequesterDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [firstLogin, setFirstLogin] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<'none' | 'password' | 'systems'>('none');
   const [profile, setProfile] = useState<RequesterProfileData>({ id: '', name: '', email: '', position: '', hireDate: '', office_name: '', supervisor: '' });
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
@@ -120,7 +121,7 @@ const RequesterDashboard: React.FC = () => {
       const ur = await ApiService.getMe();
       if (ur.success && ur.data) {
         const uid = ur.data.id;
-        if (!ur.data.last_login_at) { setFirstLogin(true); setLoading(false); return; }
+        if (!ur.data.last_login_at) { setOnboardingStep('password'); setLoading(false); return; }
         try {
           const pr = await ApiService.getUserProfile(uid);
           if (pr.success && pr.data) {
@@ -203,7 +204,8 @@ const RequesterDashboard: React.FC = () => {
 
   const rmFile = (tid: string, i: number) => setSelFiles(p => ({ ...p, [tid]: (p[tid] || []).filter((_, j) => j !== i) }));
 
-  if (firstLogin) return <PasswordChangeRequired onComplete={() => setFirstLogin(false)} />;
+  if (onboardingStep === 'password') return <PasswordChangeRequired onComplete={() => setOnboardingStep('systems')} />;
+  if (onboardingStep === 'systems') return <SystemSelection onComplete={() => setOnboardingStep('none')} />;
 
   return (
     <>

@@ -219,14 +219,25 @@ const TicketForm: React.FC = () => {
 
           // Cargar sistemas de software si el tipo de servicio es Programación (ID 3)
           if (formData.fkTiService === '3') {
-            const systemsResponse = await ApiService.getSystems();
-            if (systemsResponse.success && systemsResponse.data) {
-              const systems: SoftwareSystem[] = systemsResponse.data.map((s: any) => ({
-                id: s.ID_System?.toString() || s.id?.toString(),
-                name: s.System_Name || s.name,
-                description: s.Description || s.description
+            // Try user's assigned systems first, fallback to all systems
+            const userSystemsRes = await ApiService.getUserSystems();
+            if (userSystemsRes.success && userSystemsRes.data && userSystemsRes.data.length > 0) {
+              const systems: SoftwareSystem[] = userSystemsRes.data.map((s: any) => ({
+                id: s.id?.toString(),
+                name: s.name,
+                description: s.description || ''
               }));
               setSoftwareSystems(systems);
+            } else {
+              const systemsResponse = await ApiService.getSystems();
+              if (systemsResponse.success && systemsResponse.data) {
+                const systems: SoftwareSystem[] = systemsResponse.data.map((s: any) => ({
+                  id: s.ID_System?.toString() || s.id?.toString(),
+                  name: s.System_Name || s.name,
+                  description: s.Description || s.description
+                }));
+                setSoftwareSystems(systems);
+              }
             }
           } else {
             setSoftwareSystems([]);

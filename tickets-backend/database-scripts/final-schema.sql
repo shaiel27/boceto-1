@@ -131,6 +131,16 @@ CREATE TABLE IF NOT EXISTS Office_Systems (
     FOREIGN KEY (Fk_System_ID) REFERENCES Software_Systems(ID_System)
 );
 
+CREATE TABLE IF NOT EXISTS User_Systems (
+    ID_User_System INT AUTO_INCREMENT PRIMARY KEY,
+    Fk_User INT NOT NULL,
+    Fk_System INT NOT NULL,
+    Assigned_At TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (Fk_User) REFERENCES Users(ID_Users) ON DELETE CASCADE,
+    FOREIGN KEY (Fk_System) REFERENCES Software_Systems(ID_System) ON DELETE CASCADE,
+    UNIQUE KEY uq_user_system (Fk_User, Fk_System)
+);
+
 -- 5. Tickets
 CREATE TABLE IF NOT EXISTS Service_Request (
     ID_Service_Request INT AUTO_INCREMENT PRIMARY KEY,

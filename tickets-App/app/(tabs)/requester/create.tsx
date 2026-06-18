@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
-import { createTicket, getProblems, getSystems, uploadTicketFiles } from '../../../src/services/adminService';
+import { createTicket, getProblems, getSystems, getUserSystems, uploadTicketFiles } from '../../../src/services/adminService';
 import { searchBienes, Bien, normalizePropertyCode as normalizeCode } from '../../../src/services/bienesService';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { useToast } from '../../../src/contexts/ToastContext';
@@ -54,7 +54,13 @@ export default function RequesterCreateTicket() {
   const latestQueryRef = useRef('');
 
   useEffect(() => {
-    getSystems().then((r) => { if (r.success && r.data) setSystems(r.data.map((s) => ({ id: s.ID_System, name: s.System_Name }))); });
+    getUserSystems().then((r) => {
+      if (r.success && r.data && r.data.length > 0) {
+        setSystems(r.data.map((s: any) => ({ id: s.id, name: s.name })));
+      } else {
+        getSystems().then((res) => { if (res.success && res.data) setSystems(res.data.map((s) => ({ id: s.ID_System, name: s.System_Name }))); });
+      }
+    });
   }, []);
 
   useEffect(() => {

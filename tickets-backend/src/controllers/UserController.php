@@ -6,6 +6,7 @@ require_once __DIR__ . '/../models/User.php';
 require_once __DIR__ . '/../models/Office.php';
 require_once __DIR__ . '/../models/Technician.php';
 require_once __DIR__ . '/../models/AuditLog.php';
+require_once __DIR__ . '/../models/UserSystem.php';
 require_once __DIR__ . '/../Services/AuditService.php';
 
 try {
@@ -421,6 +422,38 @@ switch ($method) {
                             'success' => false,
                             'message' => $result['message']
                         ]);
+                    }
+                    break;
+                    
+                case 'my-systems':
+                    if (!$currentUserId) {
+                        http_response_code(401);
+                        echo json_encode(['success' => false, 'message' => 'No autenticado']);
+                        break;
+                    }
+                    $userSystem = new UserSystem($db);
+                    $systems = $userSystem->getByUser($currentUserId);
+                    echo json_encode(['success' => true, 'data' => $systems]);
+                    break;
+                
+                case 'assign-systems':
+                    if (!$currentUserId) {
+                        http_response_code(401);
+                        echo json_encode(['success' => false, 'message' => 'No autenticado']);
+                        break;
+                    }
+                    $systemIds = [];
+                    $raw = $data->system_ids ?? $data->systemIds ?? [];
+                    if (is_array($raw)) {
+                        $systemIds = array_map('intval', $raw);
+                    }
+                    $userSystem = new UserSystem($db);
+                    $success = $userSystem->assign($currentUserId, $systemIds);
+                    if ($success) {
+                        echo json_encode(['success' => true, 'message' => 'Sistemas actualizados']);
+                    } else {
+                        http_response_code(500);
+                        echo json_encode(['success' => false, 'message' => 'Error al guardar sistemas']);
                     }
                     break;
                     
