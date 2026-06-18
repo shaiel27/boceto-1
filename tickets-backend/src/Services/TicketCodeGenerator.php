@@ -50,7 +50,20 @@ final class TicketCodeGenerator
                 $this->db->commit();
             }
 
-            return 'TICK-' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+            $code = 'TICK-' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+
+            // Safety: ensure code doesn't already exist (e.g., after manual reset with existing backfill)
+            $check = $this->db->prepare("SELECT 1 FROM Service_Request WHERE Ticket_Code = :code LIMIT 1");
+            $check->execute([':code' => $code]);
+            if ($check->fetchColumn()) {
+                // Code collision — jump to next available above existing max
+                $max = $this->db->query("SELECT MAX(CAST(SUBSTRING(Ticket_Code, 6) AS UNSIGNED)) FROM Service_Request WHERE Ticket_Code LIKE 'TICK-%'");
+                $next = ((int) $max->fetchColumn()) + 1;
+                $this->db->exec("UPDATE ticket_sequence SET current_number = {$next} WHERE id = 1");
+                $code = 'TICK-' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+            }
+
+            return $code;
         } catch (PDOException $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
