@@ -21,7 +21,7 @@ try {
 } catch {}
 
 const PRIO_COL: Record<string, string> = { Alta: Colors.priorityAlta, Media: Colors.priorityMedia, Baja: Colors.textLight };
-const QUICK = ['Recibido, comenzaré.', 'Necesito más información.', 'Repuesto solicitado.', 'Problema resuelto.'];
+const QUICK = ['Problema resuelto.'];
 const ASSIST_REASONS = ['Necesito ayuda con este ticket', 'Requiero autorización', 'Otro'];
 
 export default function TicketDetailScreen() {
@@ -29,7 +29,6 @@ export default function TicketDetailScreen() {
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
   const [comment, setComment] = useState('');
-  const [quick, setQuick] = useState(false);
   const [image, setImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [showAssistance, setShowAssistance] = useState(false);
@@ -66,22 +65,20 @@ export default function TicketDetailScreen() {
   const handleTake = async () => {
     if (!ticket) return;
     const r = await takeTicket(tid);
-    if (r.success) { toast.showToast({ title: 'Ticket tomado', message: 'Comenzaste a trabajar en este ticket', type: 'info' }); load(); }
+    if (r.success) { toast.showToast({ title: 'Ticket tomado', message: 'Comenzaste a trabajar en este ticket', type: 'info' }); setTicket((prev) => (prev ? { ...prev, status: 'En Proceso' as Ticket['status'] } : null)); }
     else toast.showToast({ title: 'Error', message: r.message || 'No se pudo tomar', type: 'error' });
-  };
-
-  const handleResolve = () => {
-    if (!ticket) return;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setQuick(true);
   };
 
   const doResolve = async (note: string) => {
     setSending(true);
     const r = await resolveTicket(tid, note);
     setSending(false);
-    if (r.success) { toast.showToast({ title: 'Enviado a verificación', message: 'El solicitante debe confirmar', type: 'success' }); setQuick(false); load(); }
-    else toast.showToast({ title: 'Error', message: r.message || '', type: 'error' });
+    if (r.success) {
+      toast.showToast({ title: 'Enviado a verificación', message: 'El solicitante debe confirmar', type: 'success' });
+      setTicket((prev) => (prev ? { ...prev, status: 'Pendiente de Verificación' as Ticket['status'] } : null));
+    } else {
+      toast.showToast({ title: 'Error', message: r.message || '', type: 'error' });
+    }
   };
 
   const handleComment = async () => {
@@ -215,13 +212,6 @@ export default function TicketDetailScreen() {
         {/* === COMMENT INPUT === */}
         {!isResolved && (
           <View style={styles.section}>
-            <View style={styles.quickRow}>
-              {QUICK.map((q) => (
-                <TouchableOpacity key={q} style={styles.quickChip} onPress={() => doResolve(q)} activeOpacity={0.7}>
-                  <Text style={styles.quickChipText}>{q}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
             <TextInput
               style={styles.commentInput}
               placeholder="Escribe un comentario..."
@@ -270,29 +260,14 @@ export default function TicketDetailScreen() {
               </TouchableOpacity>
             )}
             {ticket.status === 'En Proceso' && (
-              <TouchableOpacity style={[styles.actionBtn, styles.actionResolve]} onPress={handleResolve}>
-                <Ionicons name="checkmark-circle-outline" size={18} color={Colors.surface} />
-                <Text style={styles.actionBtnText}>Marcar Resuelto</Text>
+              <TouchableOpacity style={[styles.actionBtn, styles.actionResolve]} onPress={() => doResolve(QUICK[0])} disabled={sending}>
+                {sending ? <ActivityIndicator size="small" color={Colors.surface} /> : <Ionicons name="checkmark-circle-outline" size={18} color={Colors.surface} />}
+                <Text style={styles.actionBtnText}>{sending ? 'Enviando...' : 'Marcar Resuelto'}</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity style={[styles.actionBtn, styles.actionHelp]} onPress={() => setShowAssistance(true)}>
               <Ionicons name="hand-left-outline" size={18} color={Colors.surface} />
               <Text style={styles.actionBtnText}>Ayuda</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {quick && (
-          <View style={styles.quickPanel}>
-            <Text style={styles.quickPanelTitle}>Selecciona una nota rápida</Text>
-            {QUICK.map((q) => (
-              <TouchableOpacity key={q} style={styles.quickPanelBtn} onPress={() => doResolve(q)} disabled={sending}>
-                <Text style={styles.quickPanelBtnText}>{q}</Text>
-                {sending && <ActivityIndicator size="small" color={Colors.primary} />}
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity onPress={() => setQuick(false)} style={styles.quickPanelCancel}>
-              <Text style={styles.quickPanelCancelText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         )}

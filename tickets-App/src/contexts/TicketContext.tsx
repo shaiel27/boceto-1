@@ -66,7 +66,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
     const result = await updateTicketStatus(id, 'En Proceso', notes);
 
     if (result.success) {
-      refreshTickets();
+      await refreshTickets();
     }
     return result;
   }, [refreshTickets]);
@@ -75,7 +75,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
     const result = await updateTicketStatus(id, 'Pendiente de Verificación', notes);
 
     if (result.success) {
-      refreshTickets();
+      await refreshTickets();
     }
     return result;
   }, [refreshTickets]);
@@ -84,7 +84,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
     const result = await verifyTicketApi(id, verification, comment);
 
     if (result.success) {
-      refreshTickets();
+      await refreshTickets();
     }
     return result;
   }, [refreshTickets]);
@@ -93,7 +93,7 @@ export function TicketProvider({ children }: { children: React.ReactNode }) {
     const result = await addCommentApi(ticketId, comment, fileUri);
 
     if (result.success) {
-      refreshTickets();
+      await refreshTickets();
     }
   }, [refreshTickets]);
 

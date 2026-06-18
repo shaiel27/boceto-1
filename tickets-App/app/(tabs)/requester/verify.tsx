@@ -26,6 +26,7 @@ export default function VerifyScreen() {
   useEffect(() => {
     const pending = tickets.filter((t) => t.status === 'Pendiente de Verificación');
     setVerificationTickets(pending);
+    setCurrentIndex((prev) => Math.min(prev, Math.max(0, pending.length - 1)));
     setLoading(false);
 
     if (pending.length === 0) {
