@@ -32,6 +32,7 @@ import {
 import './AdminTicketManagement.css';
 import ApiService, { API_BASE_URL } from '../../services/api';
 import { findBienByCode } from '../../services/bienesApi';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface TicketTechnician {
   readonly ID_Ticket_Technician: string;
@@ -123,6 +124,7 @@ interface Attachment {
 const AdminTicketManagement: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { isAuditor } = useAuth();
   
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
@@ -755,13 +757,15 @@ const AdminTicketManagement: React.FC = () => {
                 <span className="gvt-seqbar-val">{sequenceInfo.generation}</span>
               </div>
             )}
-            <button
-              className="gvt-seqbar-reset"
-              onClick={() => setShowResetConfirm(true)}
-              title="Reiniciar contador de tickets"
-            >
-              Reiniciar contador
-            </button>
+            {isAuditor() && (
+              <button
+                className="gvt-seqbar-reset"
+                onClick={() => setShowResetConfirm(true)}
+                title="Reiniciar contador de tickets"
+              >
+                Reiniciar contador
+              </button>
+            )}
           </div>
         )}
 

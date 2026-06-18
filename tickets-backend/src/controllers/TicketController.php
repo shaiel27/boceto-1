@@ -882,11 +882,11 @@ switch ($method) {
             break;
         }
 
-        // Action: reset ticket sequence (admin only, manual)
+        // Action: reset ticket sequence (auditor only, manual)
         if ($action === 'reset-sequence') {
-            if ($currentUserRole !== 'admin') {
+            if ($currentUserRole !== 'auditor') {
                 http_response_code(403);
-                echo json_encode(['success' => false, 'message' => 'Solo administradores pueden reiniciar la secuencia']);
+                echo json_encode(['success' => false, 'message' => 'Solo el auditor puede reiniciar la secuencia']);
                 break;
             }
 
