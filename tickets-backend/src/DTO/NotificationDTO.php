@@ -6,24 +6,38 @@ namespace App\DTO;
 
 final class NotificationDTO
 {
+    public string $type;
+    public string $title;
+    public string $message;
+    public ?int $userId;
+    public ?int $ticketId;
+    public array $metadata;
+
     public function __construct(
-        public string $type,
-        public string $title,
-        public string $message,
-        public ?int $userId,
-        public ?int $ticketId,
-        public array $metadata = []
-    ) {}
+        string $type,
+        string $title,
+        string $message,
+        ?int $userId,
+        ?int $ticketId,
+        array $metadata = []
+    ) {
+        $this->type = $type;
+        $this->title = $title;
+        $this->message = $message;
+        $this->userId = $userId;
+        $this->ticketId = $ticketId;
+        $this->metadata = $metadata;
+    }
 
     public static function fromArray(array $data): self
     {
         return new self(
-            type: $data['type'],
-            title: $data['title'],
-            message: $data['message'],
-            userId: $data['user_id'] ?? null,
-            ticketId: $data['ticket_id'] ?? null,
-            metadata: $data['metadata'] ?? []
+            $data['type'],
+            $data['title'],
+            $data['message'],
+            $data['user_id'] ?? null,
+            $data['ticket_id'] ?? null,
+            $data['metadata'] ?? []
         );
     }
 

@@ -13,7 +13,7 @@ $currentUserId = $_SERVER['AUTH_USER_ID'] ?? null;
 $currentUserRole = $_SERVER['AUTH_USER_ROLE'] ?? null;
 
 // Only allow admin access
-if ($currentUserRole != 1) {
+if ($currentUserRole !== 'admin' && $currentUserRole !== '1') {
     http_response_code(403);
     echo json_encode([
         'success' => false,
@@ -58,7 +58,7 @@ function getWeeklyTechnicianReport($db, $week, $technicianId = null) {
     $weeklyStats = getWeeklyStats($db, $startDate, $endDate);
     
     // Get technician data
-    $technicianData = getTechnicianWeeklyData($db, $startDate, $endDate, $technicianId);
+    $technicianData = getTechnicianWeeklyData($db, $startDate, $endDate, $technicianId, $week);
     
     return [
         'week' => $week,
@@ -117,7 +117,7 @@ WHERE Status IN ('Cerrado', 'Resuelto')
     ];
 }
 
-function getTechnicianWeeklyData($db, $startDate, $endDate, $technicianId = null) {
+function getTechnicianWeeklyData($db, $startDate, $endDate, $technicianId = null, $week = '') {
     $query = "SELECT
                 t.ID_Technicians as id,
                 CONCAT(t.First_Name, ' ', t.Last_Name) as nombre,

@@ -99,10 +99,12 @@
 .gvt-btn--outline:hover:not(:disabled){background:var(--navy-s);color:var(--navy);border-color:var(--navy-b)}
 .gvt-btn--danger{background:var(--crt);color:#fff}
 .gvt-btn--danger:hover:not(:disabled){background:#b91c1c}
+.gvt-btn--verify{background:#0891b2;color:#fff}
+.gvt-btn--verify:hover:not(:disabled){background:#0e7490}
 
 /* stat bar */
 .gvt-bar{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;
   margin:18px 0
 }
 @media(max-width:600px){.gvt-bar{grid-template-columns:repeat(2,1fr)}}
@@ -113,6 +115,7 @@
 .gvt-stat-n{display:block;font-size:20px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
 .gvt-stat-n--crit{color:var(--crt)}
 .gvt-stat-n--return{color:#7c3aed}
+.gvt-stat-n--verify{color:#0891b2}
 .gvt-stat-l{display:block;font-size:10.5px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
 
 /* ── Sequence bar ──────────────────────────────────────────────── */

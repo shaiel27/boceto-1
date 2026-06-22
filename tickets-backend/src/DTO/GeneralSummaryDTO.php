@@ -1,28 +1,44 @@
 <?php
 declare(strict_types=1);
 
-final readonly class GeneralSummaryDTO
+final class GeneralSummaryDTO
 {
+    public int $total;
+    public int $pending;
+    public int $inProgress;
+    public int $resolved;
+    public int $altaCount;
+    public float $avgHours;
+    public float $resolutionRate;
+
     public function __construct(
-        public int $total,
-        public int $pending,
-        public int $inProgress,
-        public int $resolved,
-        public int $altaCount,
-        public float $avgHours,
-        public float $resolutionRate,
-    ) {}
+        int $total,
+        int $pending,
+        int $inProgress,
+        int $resolved,
+        int $altaCount,
+        float $avgHours,
+        float $resolutionRate,
+    ) {
+        $this->total = $total;
+        $this->pending = $pending;
+        $this->inProgress = $inProgress;
+        $this->resolved = $resolved;
+        $this->altaCount = $altaCount;
+        $this->avgHours = $avgHours;
+        $this->resolutionRate = $resolutionRate;
+    }
 
     public static function fromArray(array $data): self
     {
         return new self(
-            total: (int)($data['total'] ?? 0),
-            pending: (int)($data['pending'] ?? 0),
-            inProgress: (int)($data['in_progress'] ?? 0),
-            resolved: (int)($data['resolved'] ?? 0),
-            altaCount: (int)($data['alta_count'] ?? 0),
-            avgHours: (float)($data['avg_hours'] ?? 0.0),
-            resolutionRate: (float)($data['resolution_rate'] ?? 0.0),
+            (int)($data['total'] ?? 0),
+            (int)($data['pending'] ?? 0),
+            (int)($data['in_progress'] ?? 0),
+            (int)($data['resolved'] ?? 0),
+            (int)($data['alta_count'] ?? 0),
+            (float)($data['avg_hours'] ?? 0.0),
+            (float)($data['resolution_rate'] ?? 0.0),
         );
     }
 

@@ -1,18 +1,36 @@
 <?php
 declare(strict_types=1);
 
-final readonly class TechnicianWorkloadDTO
+final class TechnicianWorkloadDTO
 {
+    public string $technician;
+    public string $email;
+    public int $totalAssigned;
+    public int $resolved;
+    public int $inProgress;
+    public int $pending;
+    public float $avgHours;
+    public float $resolutionRate;
+
     public function __construct(
-        public string $technician,
-        public string $email,
-        public int $totalAssigned,
-        public int $resolved,
-        public int $inProgress,
-        public int $pending,
-        public float $avgHours,
-        public float $resolutionRate,
-    ) {}
+        string $technician,
+        string $email,
+        int $totalAssigned,
+        int $resolved,
+        int $inProgress,
+        int $pending,
+        float $avgHours,
+        float $resolutionRate,
+    ) {
+        $this->technician = $technician;
+        $this->email = $email;
+        $this->totalAssigned = $totalAssigned;
+        $this->resolved = $resolved;
+        $this->inProgress = $inProgress;
+        $this->pending = $pending;
+        $this->avgHours = $avgHours;
+        $this->resolutionRate = $resolutionRate;
+    }
 
     public static function fromArray(array $data): self
     {
@@ -20,20 +38,22 @@ final readonly class TechnicianWorkloadDTO
         $resolved = (int)($data['resolved'] ?? 0);
 
         return new self(
-            technician: (string)($data['technician'] ?? ''),
-            email: (string)($data['email'] ?? ''),
-            totalAssigned: $total,
-            resolved: $resolved,
-            inProgress: (int)($data['in_progress'] ?? 0),
-            pending: (int)($data['pending'] ?? 0),
-            avgHours: (float)($data['avg_hours'] ?? 0.0),
-            resolutionRate: $total > 0 ? round($resolved * 100.0 / $total, 1) : 0.0,
+            (string)($data['technician'] ?? ''),
+            (string)($data['email'] ?? ''),
+            $total,
+            $resolved,
+            (int)($data['in_progress'] ?? 0),
+            (int)($data['pending'] ?? 0),
+            (float)($data['avg_hours'] ?? 0.0),
+            $total > 0 ? round($resolved * 100.0 / $total, 1) : 0.0,
         );
     }
 
     public static function collection(array $data): array
     {
-        return array_map(fn(array $row): self => self::fromArray($row), $data);
+        return array_map(function(array $row): self {
+            return self::fromArray($row);
+        }, $data);
     }
 
     public function toArray(): array

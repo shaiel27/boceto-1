@@ -14,9 +14,13 @@ require_once __DIR__ . '/../DTO/WeeklyReportDTO.php';
 
 final class ReportService
 {
+    private PDO $db;
+
     public function __construct(
-        private readonly PDO $db,
-    ) {}
+        PDO $db,
+    ) {
+        $this->db = $db;
+    }
 
     /**
      * Parse date range from query params with validation.

@@ -700,9 +700,9 @@ final class Technician
 
         foreach ($keywords as $category => $terms) {
             foreach ($terms as $term) {
-                if (str_contains($currentServiceName, $term)) {
+                if (strpos($currentServiceName, $term) !== false) {
                     foreach ($terms as $relatedTerm) {
-                        if (str_contains($serviceName, $relatedTerm)) {
+                        if (strpos($serviceName, $relatedTerm) !== false) {
                             return 10;
                         }
                     }
@@ -1304,13 +1304,20 @@ final class Technician
      */
     private function getPriorityWeight(string $priority): int
     {
-        return match (strtolower($priority)) {
-            'critica', 'critical' => 10,
-            'alta', 'high' => 5,
-            'media', 'medium' => 2,
-            'baja', 'low' => 1,
-            default => 2,
-        };
+        $lower = strtolower($priority);
+        if ($lower === 'critica' || $lower === 'critical') {
+            return 10;
+        }
+        if ($lower === 'alta' || $lower === 'high') {
+            return 5;
+        }
+        if ($lower === 'media' || $lower === 'medium') {
+            return 2;
+        }
+        if ($lower === 'baja' || $lower === 'low') {
+            return 1;
+        }
+        return 2;
     }
 
     /**

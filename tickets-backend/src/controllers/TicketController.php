@@ -822,6 +822,18 @@ switch ($method) {
                     : "Ticket #{$ticket_id}: estado cambiado de {$oldStatus} a {$status}";
                 $auditService->logTicketAction($actionType, $ticket_id, $description);
                 $timeline->create($ticket_id, (int) $currentUserId, "Estado cambiado de {$oldStatus} a {$status}", $oldStatus, $status);
+
+                if ($status === \App\Enums\TicketStatus::PENDIENTE_VERIFICACION) {
+                    $requesterId = (int)($oldData['Fk_User_Requester'] ?? 0);
+                    if ($requesterId > 0) {
+                        try {
+                            $notificationService = new \App\Services\NotificationService($db, new Notification($db));
+                            $notificationService->createTicketVerificationNotification($requesterId, $ticket_id, $oldData['Subject'] ?? '');
+                        } catch (\Throwable $e) {
+                            error_log("Failed to send verification notification: " . $e->getMessage());
+                        }
+                    }
+                }
                 echo json_encode([
                     'success' => true,
                     'message' => 'Ticket actualizado exitosamente'

@@ -28,7 +28,6 @@ class ProblemReport
     public function getMostFrequentProblemsByService(?string $startDate = null, ?string $endDate = null): array
     {
         try {
-            // Build date filter conditions
             $dateCondition = "";
             $params = [];
             
@@ -42,7 +41,11 @@ class ProblemReport
                 $params[':endDate'] = $endDate . ' 23:59:59';
             }
 
-            // PHP-PRO: Query optimizada con JOIN y agregaciones para reporte mensual por tipo de servicio
+            $dateForSr2 = str_replace('sr.', 'sr2.', $dateCondition);
+            $dateForSr3 = str_replace('sr.', 'sr3.', $dateCondition);
+            $dateForSr4 = str_replace('sr.', 'sr4.', $dateCondition);
+            $dateForPlain = str_replace('sr.', '', $dateCondition);
+
             $query = "SELECT 
                      ts.Type_Service as tipo_servicio,
                      COUNT(sr.ID_Service_Request) as total_tickets_mes,
@@ -57,7 +60,7 @@ class ProblemReport
                          FROM Service_Request sr2
                          JOIN Service_Problems_Catalog spc ON sr2.Fk_Problem_Catalog = spc.ID_Problem_Catalog
                          WHERE sr2.Fk_TI_Service = ts.ID_TI_Service
-                         " . $dateCondition . "
+                         " . $dateForSr2 . "
                          GROUP BY spc.Problem_Name
                          ORDER BY COUNT(*) DESC
                          LIMIT 1
@@ -67,7 +70,7 @@ class ProblemReport
                          FROM Service_Request sr3
                          JOIN Service_Problems_Catalog spc2 ON sr3.Fk_Problem_Catalog = spc2.ID_Problem_Catalog
                          WHERE sr3.Fk_TI_Service = ts.ID_TI_Service
-                         " . $dateCondition . "
+                         " . $dateForSr3 . "
                          GROUP BY spc2.Problem_Name
                          ORDER BY COUNT(*) DESC
                          LIMIT 1
@@ -77,7 +80,7 @@ class ProblemReport
                          FROM Service_Request sr4
                          JOIN Office o ON sr4.Fk_Office = o.ID_Office
                          WHERE sr4.Fk_TI_Service = ts.ID_TI_Service
-                         " . $dateCondition . "
+                         " . $dateForSr4 . "
                          GROUP BY o.Name_Office
                          ORDER BY COUNT(*) DESC
                          LIMIT 1
@@ -86,7 +89,7 @@ class ProblemReport
                      ROUND(COUNT(sr.ID_Service_Request) * 100.0 / (
                          SELECT COUNT(*) 
                          FROM Service_Request 
-                         WHERE 1=1 " . str_replace("sr.Created_at", "Created_at", $dateCondition) . "
+                         WHERE 1=1 " . $dateForPlain . "
                      ), 2) as porcentaje_mes_actual
                      FROM ti_service ts
                      LEFT JOIN service_request sr ON ts.ID_TI_Service = sr.Fk_TI_Service
@@ -311,6 +314,9 @@ class ProblemReport
                 $params[':endDate'] = $endDate . ' 23:59:59';
             }
 
+            $dateForSr2 = str_replace('sr.', 'sr2.', $dateCondition);
+            $dateForSr3 = str_replace('sr.', 'sr3.', $dateCondition);
+
             $query = "SELECT 
                      ss.System_Name AS sistema,
                      COUNT(sr.ID_Service_Request) AS total_tickets,
@@ -320,7 +326,7 @@ class ProblemReport
                          JOIN Service_Problems_Catalog spc ON sr2.Fk_Problem_Catalog = spc.ID_Problem_Catalog
                          WHERE sr2.Fk_Software_System = sr.Fk_Software_System
                          AND sr2.Fk_TI_Service = 3
-                         " . $dateCondition . "
+                         " . $dateForSr2 . "
                          GROUP BY spc.Problem_Name
                          ORDER BY COUNT(*) DESC
                          LIMIT 1
@@ -331,7 +337,7 @@ class ProblemReport
                          JOIN Service_Problems_Catalog spc2 ON sr3.Fk_Problem_Catalog = spc2.ID_Problem_Catalog
                          WHERE sr3.Fk_Software_System = sr.Fk_Software_System
                          AND sr3.Fk_TI_Service = 3
-                         " . $dateCondition . "
+                         " . $dateForSr3 . "
                          GROUP BY spc2.Problem_Name
                          ORDER BY COUNT(*) DESC
                          LIMIT 1

@@ -161,6 +161,14 @@ switch ($path) {
 
     case '/api/problem-report':
     case '/api/problem-report/':
+        $user = $authMiddleware->optionalAuth();
+        if (!$user && !empty($_GET['token'])) {
+            $user = $jwtService->validateToken($_GET['token']);
+        }
+        if (!$user) {
+            $user = $authMiddleware->requireAuth();
+        }
+        $authMiddleware->setUserContext($user);
         require_once __DIR__ . '/../src/controllers/ProblemReportController.php';
         $controller = new ProblemReportController();
         $controller->handleRequest();
@@ -182,7 +190,13 @@ switch ($path) {
 
     case '/api/reports':
     case '/api/reports/':
-        $user = $authMiddleware->requireAuth();
+        $user = $authMiddleware->optionalAuth();
+        if (!$user && !empty($_GET['token'])) {
+            $user = $jwtService->validateToken($_GET['token']);
+        }
+        if (!$user) {
+            $user = $authMiddleware->requireAuth();
+        }
         $authMiddleware->setUserContext($user);
         require_once __DIR__ . '/../src/config/database.php';
         require_once __DIR__ . '/../src/controllers/ReportController.php';

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-final readonly class DateRangeDTO
+final class DateRangeDTO
 {
     private const DEFAULT_START = '1970-01-01';
 
@@ -37,7 +37,7 @@ final readonly class DateRangeDTO
             $end = (string)$params['end_date'];
         }
 
-        return new self(startDate: $start, endDate: $end);
+        return new self($start, $end);
     }
 
     public function toArray(): array

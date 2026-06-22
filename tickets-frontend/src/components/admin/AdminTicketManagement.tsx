@@ -32,6 +32,7 @@ import {
 import './AdminTicketManagement.css';
 import ApiService, { API_BASE_URL } from '../../services/api';
 import { findBienByCode } from '../../services/bienesApi';
+import VerificationModal from '../verification/VerificationModal';
 
 interface TicketTechnician {
   readonly ID_Ticket_Technician: string;
@@ -141,6 +142,8 @@ const AdminTicketManagement: React.FC = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showPriorityModal, setShowPriorityModal] = useState(false);
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
+  const [verifyTicket, setVerifyTicket] = useState<Ticket | null>(null);
 
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [groupedTechnicians, setGroupedTechnicians] = useState<any[]>([]);
@@ -709,6 +712,10 @@ const AdminTicketManagement: React.FC = () => {
             <span className="gvt-stat-l">Críticos</span>
           </div>
           <div className="gvt-stat">
+            <span className="gvt-stat-n gvt-stat-n--verify">{tickets.filter(t => t.Status === 'Pendiente de Verificación').length}</span>
+            <span className="gvt-stat-l">Pend. Verif.</span>
+          </div>
+          <div className="gvt-stat">
             <span className="gvt-stat-n gvt-stat-n--return">{tickets.filter(t => t.is_returned === 1).length}</span>
             <span className="gvt-stat-l">Inconformidad</span>
           </div>
@@ -729,6 +736,7 @@ const AdminTicketManagement: React.FC = () => {
               <option value="all">Todos los estados</option>
               <option value="Pendiente">Pendiente</option>
               <option value="En Proceso">En Proceso</option>
+              <option value="Pendiente de Verificación">Pendiente de Verificación</option>
               <option value="Cerrado">Cerrado</option>
             </select>
             <select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="gvt-sel">
@@ -1145,7 +1153,15 @@ const AdminTicketManagement: React.FC = () => {
                     </div>
                   )}
                 </div>
-                {selectedTicket.Status !== 'Cerrado' && (
+                {selectedTicket.Status === 'Pendiente de Verificación' && (
+                  <div className="gvt-det-sec">
+                    <button className="gvt-btn gvt-btn--verify" style={{ width: '100%', justifyContent: 'center' }} onClick={() => { setVerifyTicket(selectedTicket); setShowVerifyModal(true); }} disabled={loading}>
+                      <CheckCircle2 size={14} />
+                      Verificar ticket
+                    </button>
+                  </div>
+                )}
+                {selectedTicket.Status !== 'Cerrado' && selectedTicket.Status !== 'Pendiente de Verificación' && (
                   <div className="gvt-det-sec">
                     <button className="gvt-btn gvt-btn--danger" style={{ width: '100%', justifyContent: 'center' }} onClick={handleCloseTicket} disabled={loading}>
                       <CheckCircle size={14} />
@@ -1157,6 +1173,25 @@ const AdminTicketManagement: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {showVerifyModal && verifyTicket && (
+        <VerificationModal
+          tickets={[{
+            id: parseInt(verifyTicket.ID_Service_Request),
+            ticket_code: verifyTicket.Ticket_Code,
+            subject: verifyTicket.Subject,
+            technician_names: verifyTicket.Requester_Name || '',
+            resolved_at: verifyTicket.Resolved_at || undefined,
+          }]}
+          onAllResolved={() => {
+            setShowVerifyModal(false);
+            setVerifyTicket(null);
+            setShowDetailModal(false);
+            setSelectedTicket(null);
+            loadTickets();
+          }}
+        />
       )}
     </div>
   );

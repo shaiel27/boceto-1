@@ -1,8 +1,12 @@
 <?php
 declare(strict_types=1);
 
-final readonly class WeeklyReportDTO
+final class WeeklyReportDTO
 {
+    public string $week;
+    public string $startDate;
+    public string $endDate;
+
     /** @var WeeklyDailyDTO[] */
     public array $daily;
 
@@ -10,28 +14,29 @@ final readonly class WeeklyReportDTO
     public array $technicians;
 
     public function __construct(
-        public string $week,
-        public string $startDate,
-        public string $endDate,
+        string $week,
+        string $startDate,
+        string $endDate,
         array $daily,
         array $technicians,
     ) {
+        $this->week = $week;
+        $this->startDate = $startDate;
+        $this->endDate = $endDate;
         $this->daily = $daily;
         $this->technicians = $technicians;
     }
 
     public static function fromData(string $week, string $startDate, string $endDate, array $dailyRows, array $techRows): self
     {
-        $daily = array_map(fn(array $row): WeeklyDailyDTO => WeeklyDailyDTO::fromArray($row), $dailyRows);
-        $technicians = array_map(fn(array $row): WeeklyTechnicianDTO => WeeklyTechnicianDTO::fromArray($row), $techRows);
+        $daily = array_map(function(array $row): WeeklyDailyDTO {
+            return WeeklyDailyDTO::fromArray($row);
+        }, $dailyRows);
+        $technicians = array_map(function(array $row): WeeklyTechnicianDTO {
+            return WeeklyTechnicianDTO::fromArray($row);
+        }, $techRows);
 
-        return new self(
-            week: $week,
-            startDate: $startDate,
-            endDate: $endDate,
-            daily: $daily,
-            technicians: $technicians,
-        );
+        return new self($week, $startDate, $endDate, $daily, $technicians);
     }
 
     public function toArray(): array
@@ -40,28 +45,42 @@ final readonly class WeeklyReportDTO
             'week' => $this->week,
             'start_date' => $this->startDate,
             'end_date' => $this->endDate,
-            'daily' => array_map(fn(WeeklyDailyDTO $d): array => $d->toArray(), $this->daily),
-            'technicians' => array_map(fn(WeeklyTechnicianDTO $t): array => $t->toArray(), $this->technicians),
+            'daily' => array_map(function(WeeklyDailyDTO $d): array {
+                return $d->toArray();
+            }, $this->daily),
+            'technicians' => array_map(function(WeeklyTechnicianDTO $t): array {
+                return $t->toArray();
+            }, $this->technicians),
         ];
     }
 }
 
-final readonly class WeeklyDailyDTO
+final class WeeklyDailyDTO
 {
+    public string $dayName;
+    public string $date;
+    public int $total;
+    public int $resolved;
+
     public function __construct(
-        public string $dayName,
-        public string $date,
-        public int $total,
-        public int $resolved,
-    ) {}
+        string $dayName,
+        string $date,
+        int $total,
+        int $resolved,
+    ) {
+        $this->dayName = $dayName;
+        $this->date = $date;
+        $this->total = $total;
+        $this->resolved = $resolved;
+    }
 
     public static function fromArray(array $data): self
     {
         return new self(
-            dayName: (string)($data['day_name'] ?? ''),
-            date: (string)($data['date'] ?? ''),
-            total: (int)($data['total'] ?? 0),
-            resolved: (int)($data['resolved'] ?? 0),
+            (string)($data['day_name'] ?? ''),
+            (string)($data['date'] ?? ''),
+            (int)($data['total'] ?? 0),
+            (int)($data['resolved'] ?? 0),
         );
     }
 
@@ -76,20 +95,28 @@ final readonly class WeeklyDailyDTO
     }
 }
 
-final readonly class WeeklyTechnicianDTO
+final class WeeklyTechnicianDTO
 {
+    public string $technician;
+    public int $assigned;
+    public int $resolved;
+
     public function __construct(
-        public string $technician,
-        public int $assigned,
-        public int $resolved,
-    ) {}
+        string $technician,
+        int $assigned,
+        int $resolved,
+    ) {
+        $this->technician = $technician;
+        $this->assigned = $assigned;
+        $this->resolved = $resolved;
+    }
 
     public static function fromArray(array $data): self
     {
         return new self(
-            technician: (string)($data['technician'] ?? ''),
-            assigned: (int)($data['assigned'] ?? 0),
-            resolved: (int)($data['resolved'] ?? 0),
+            (string)($data['technician'] ?? ''),
+            (int)($data['assigned'] ?? 0),
+            (int)($data['resolved'] ?? 0),
         );
     }
 

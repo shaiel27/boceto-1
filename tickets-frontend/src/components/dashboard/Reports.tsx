@@ -23,7 +23,238 @@ import {
   Layers
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
+import { formatDate } from './DateRangePicker';
 import './Reports.css';
+
+function downloadCSV(filename: string, columns: string[], rows: Record<string, any>[]): void {
+  const BOM = '\uFEFF';
+  const header = columns.join(';');
+  const body = rows.map(row => columns.map(c => {
+    const val = row[c] ?? '';
+    return typeof val === 'string' && (val.includes(';') || val.includes('"') || val.includes('\n'))
+      ? `"${val.replace(/"/g, '""')}"`
+      : String(val);
+  }).join(';')).join('\n');
+  const blob = new Blob([BOM + header + '\n' + body], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function daysAgo(n: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return formatDate(d);
+}
+
+let cachedHeaderImg: string | null = null;
+let cachedFooterImg: string | null = null;
+
+async function loadImageAsBase64PDF(url: string): Promise<string> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return '';
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return '';
+  }
+}
+
+async function ensureImages(): Promise<{ header: string; footer: string }> {
+  if (!cachedHeaderImg) cachedHeaderImg = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
+  if (!cachedFooterImg) cachedFooterImg = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
+  return { header: cachedHeaderImg, footer: cachedFooterImg };
+}
+
+function renderPDFHeader(
+  doc: any, title: string, subtitle: string, headerImg: string, y: number
+): number {
+  if (headerImg) {
+    doc.addImage(headerImg, 'JPEG', 10, 8, 190, 26);
+    y += 5;
+  }
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(title, 105, y + 6, { align: 'center' });
+
+  doc.setDrawColor(26, 54, 93);
+  doc.setLineWidth(0.8);
+  doc.line(50, y + 11, 160, y + 11);
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(100, 116, 139);
+  doc.text(subtitle, 105, y + 18, { align: 'center' });
+  return y + 24;
+}
+
+function renderPDFContinuationHeader(
+  doc: any, title: string, headerImg: string
+): number {
+  if (headerImg) doc.addImage(headerImg, 'JPEG', 10, 8, 190, 26);
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${title} (cont.)`, 105, 48, { align: 'center' });
+  doc.setDrawColor(200, 210, 220);
+  doc.setLineWidth(0.4);
+  doc.line(30, 52, 180, 52);
+  return 58;
+}
+
+function addPDFFooterToAllPages(doc: any, footerImg: string): void {
+  const total = doc.internal.pages.length - 1;
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    if (footerImg) doc.addImage(footerImg, 'JPEG', 10, ph - 25, pw - 20, 18);
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.4);
+    doc.line(15, ph - 28, pw - 15, ph - 28);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(148, 163, 184);
+    doc.text('Sistema de Gestion de Tickets — Alcaldia de San Cristobal', pw / 2, ph - 10, { align: 'center' });
+    doc.text(`Pagina ${i} de ${total}`, pw - 20, ph - 10, { align: 'right' });
+    doc.setTextColor(0, 0, 0);
+  }
+}
+
+function renderTableBlock(
+  doc: any,
+  columns: { label: string; x: number; align?: string; key: string }[],
+  rows: any[],
+  y: number,
+  headerColor: [number, number, number],
+  title: string,
+  headerImg: string,
+  pageBreakY: number,
+): number {
+  const headerHeight = 12;
+  const rowHeight = 10;
+  const tableLeft = 15;
+  const tableRight = 195;
+
+  doc.setFillColor(...headerColor);
+  doc.setTextColor(255, 255, 255);
+  doc.roundedRect(tableLeft, y - 2, tableRight - tableLeft, headerHeight, 1.5, 1.5, 'F');
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  columns.forEach((col) => doc.text(col.label, col.x, y + 5, { align: col.align || 'left' }));
+  y += headerHeight + 4;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+
+  rows.forEach((row: any, idx: number) => {
+    if (y > pageBreakY) {
+      doc.addPage();
+      y = renderPDFContinuationHeader(doc, title, headerImg);
+      doc.setFillColor(...headerColor);
+      doc.setTextColor(255, 255, 255);
+      doc.roundedRect(tableLeft, y - 2, tableRight - tableLeft, headerHeight, 1.5, 1.5, 'F');
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'bold');
+      columns.forEach((col) => doc.text(col.label, col.x, y + 5, { align: col.align || 'left' }));
+      y += headerHeight + 4;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+    }
+
+    if (idx % 2 === 0) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(tableLeft, y, tableRight - tableLeft, rowHeight, 'F');
+    } else {
+      doc.setFillColor(255, 255, 255);
+      doc.rect(tableLeft, y, tableRight - tableLeft, rowHeight, 'F');
+    }
+
+    columns.forEach((col) => {
+      const raw = row[col.key] ?? '';
+      const val = String(raw);
+      let color: [number, number, number] = [30, 41, 59];
+      if (raw === 'N/A' || raw === '') color = [148, 163, 184];
+      doc.setTextColor(...color);
+      doc.text(val, col.x, y + 6, { align: col.align || 'left' });
+    });
+
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.2);
+    doc.line(tableLeft, y + rowHeight, tableRight, y + rowHeight);
+    y += rowHeight;
+  });
+  return y + 6;
+}
+
+function renderSummaryBlock(
+  doc: any, title: string, items: { label: string; value: string; color?: string }[],
+  y: number, headerImg: string
+): number {
+  const DEFAULT_COLOR = '#1a365d';
+  const cols = Math.min(items.length, 4);
+  const cardW = 170 / cols;
+  const cardH = 18;
+  const gap = 4;
+
+  if (y + cardH + 16 > 275) {
+    doc.addPage();
+    y = renderPDFContinuationHeader(doc, title, headerImg);
+  }
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(15, y - 2, 180, 8, 1.5, 1.5, 'F');
+  doc.setFontSize(6.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(100, 116, 139);
+  doc.text('RESUMEN', 20, y + 3);
+  y += 12;
+
+  items.forEach((item, i) => {
+    const cx = 15 + (i % cols) * (cardW + gap);
+    if (i > 0 && i % cols === 0) y += cardH + gap;
+
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(cx, y, cardW, cardH, 2, 2, 'FD');
+
+    const hexColor = item.color || DEFAULT_COLOR;
+    doc.setFillColor(hexColor);
+    doc.rect(cx, y, 3, cardH, 'F');
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(hexColor);
+    doc.text(item.value, cx + 7, y + 9);
+
+    doc.setFontSize(5.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text(item.label, cx + 7, y + 14);
+  });
+
+  const totalRows = Math.ceil(items.length / cols);
+  return y + totalRows * (cardH + gap) + 8;
+}
+
+function drawNoDataMessage(doc: any, y: number): number {
+  doc.setFontSize(11);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(148, 163, 184);
+  doc.text('Sin datos para el periodo seleccionado.', 105, y + 10, { align: 'center' });
+  return y + 20;
+}
 
 interface Report {
   id: string;
@@ -59,10 +290,21 @@ const Reports: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
+  const [reportDates, setReportDates] = useState<Record<string, { start: string; end: string }>>({});
+
+  const getReportDates = (reportId: string) => {
+    return reportDates[reportId] || { start: daysAgo(30), end: formatDate(new Date()) };
+  };
+
+  const setReportDatesFor = (reportId: string, start: string, end: string) => {
+    setReportDates(prev => ({ ...prev, [reportId]: { start, end } }));
+  };
+
   const [executiveSummary, setExecutiveSummary] = useState<any>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [officeData, setOfficeData] = useState<any[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const refreshCountRef = useRef(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -138,18 +380,6 @@ const Reports: React.FC = () => {
       parameters: [
         { id: 'p1', name: 'Fecha Inicio', type: 'date', value: '2024-01-01' },
         { id: 'p2', name: 'Fecha Fin', type: 'date', value: '2024-04-13' }
-      ]
-    },
-    {
-      id: '7',
-      name: 'Reporte por Tipo de Servicio',
-      type: 'service',
-      description: 'Distribución de tickets por categoría de servicio',
-      createdAt: '2024-03-20T15:45:00',
-      lastRun: '2024-04-08T16:30:00',
-      status: 'active',
-      parameters: [
-        { id: 'p1', name: 'Servicio', type: 'multiselect', value: ['hardware', 'software'], options: ['hardware', 'software', 'network', 'printer'] }
       ]
     },
     {
@@ -295,1342 +525,514 @@ const Reports: React.FC = () => {
   };
 
   const handleRunReport = (reportId: string) => {
+    const d = getReportDates(reportId);
     setLoading(true);
+    setErrorMsg(null);
+    const done = () => setLoading(false);
+    const fail = (e: any) => { setErrorMsg(e?.message || 'Error al generar reporte'); setLoading(false); };
     if (reportId === '1') {
-      handleDownloadGeneralTicketsReportPDF().then(() => setLoading(false)).catch(() => setLoading(false));
+      generateGeneralTicketsReportPDF(d.start, d.end).then(done).catch(fail);
     } else if (reportId === '5') {
-      handleDownloadProblemReportPDF().then(() => setLoading(false)).catch(() => setLoading(false));
-    } else if (reportId === '7') {
-      handleDownloadServiceTypeReportPDF().then(() => setLoading(false)).catch(() => setLoading(false));
+      generateProblemReportPDF(d.start, d.end).then(done).catch(fail);
     } else if (reportId === '10') {
-      handleDownloadMonthlyProblemReportPDF().then(() => setLoading(false)).catch(() => setLoading(false));
+      generateMonthlyProblemReportPDF(d.start, d.end).then(done).catch(fail);
     } else if (reportId === '11') {
-      handleDownloadSystemsReportPDF().then(() => setLoading(false)).catch(() => setLoading(false));
+      generateSystemsReportPDF(d.start, d.end).then(done).catch(fail);
     } else if (reportId === '12') {
-      handleDownloadTechnicianShiftsPDF().then(() => setLoading(false)).catch(() => setLoading(false));
+      generateTechnicianShiftsPDF().then(done).catch(fail);
     } else if (reportId === '8') {
-      handleDownloadTechnicianReportPDF().then(() => setLoading(false)).catch(() => setLoading(false));
+      generateTechnicianReportByService().then(done).catch(fail);
     } else if (reportId === '9') {
-      handleDownloadTechnicianPerformancePDF().then(() => setLoading(false)).catch(() => setLoading(false));
+      generateTechnicianPerformanceReport().then(done).catch(fail);
     } else if (reportId === '3') {
-      handleDownloadOfficeReportPDF().then(() => setLoading(false)).catch(() => setLoading(false));
+      generateOfficeReportPDF(d.start, d.end).then(done).catch(fail);
     } else {
-      setTimeout(() => {
-        setLoading(false);
-      }, 1500);
+      setTimeout(() => setLoading(false), 1500);
     }
   };
 
   const handleExportReport = (reportId: string, format: 'pdf' | 'excel' | 'csv') => {
     if (format === 'pdf') {
-      if (reportId === '5' || reportId === '7') handleDownloadProblemReportPDF();
-      else if (reportId === '10') handleDownloadMonthlyProblemReportPDF();
-      else if (reportId === '11') handleDownloadSystemsReportPDF();
-      else if (reportId === '8') handleDownloadTechnicianReportPDF();
-      else if (reportId === '9') handleDownloadTechnicianPerformancePDF();
-      else if (reportId === '3') handleDownloadOfficeReportPDF();
-      else if (reportId === '1') handleDownloadGeneralTicketsReportPDF();
-      else if (reportId === '12') handleDownloadTechnicianShiftsPDF();
+      handleRunReport(reportId);
+    } else if (format === 'csv') {
+      handleCSVExport(reportId);
     }
   };
 
-  const handleDownloadTechnicianReportPDF = async (): Promise<void> => {
-    try {
-      await generateTechnicianReportByService();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+  const handlePrintReport = (reportId: string): void => {
+    const token = sessionStorage.getItem('auth_token');
+    const host = window.location.hostname;
+    const base = process.env.REACT_APP_API_BASE || `http://${host}:8000`;
+    const d = getReportDates(reportId);
+
+    const reportMap: Record<string, string> = {
+      '1': 'general',
+      '3': 'office',
+      '5': 'problem',
+      '10': 'monthly',
+      '11': 'systems',
+    };
+
+    const action = reportMap[reportId];
+    if (!action) {
+      handleRunReport(reportId);
+      return;
     }
+
+    let url: string;
+    if (action === 'problem' || action === 'monthly' || action === 'systems') {
+      url = `${base}/api/problem-report?action=${action === 'problem' ? 'all' : action === 'monthly' ? 'monthly' : 'systems'}&start_date=${d.start}&end_date=${d.end}&format=html&token=${token}`;
+    } else {
+      url = `${base}/api/reports?action=${action}&start_date=${d.start}&end_date=${d.end}&format=html&token=${token}`;
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleDownloadTechnicianPerformancePDF = async (): Promise<void> => {
+  const handleCSVExport = async (reportId: string): Promise<void> => {
+    setLoading(true);
     try {
-      await generateTechnicianPerformanceReport();
+      const date = new Date().toISOString().split('T')[0];
+      const d = getReportDates(reportId);
+      if (reportId === '1') {
+        const r = await ApiService.getGeneralReport(d.start, d.end);
+        const data = (r.success && r.data) ? ((r.data as any).monthly || (Array.isArray(r.data) ? r.data : [])) : [];
+        downloadCSV(`reporte-general-${date}.csv`, ['month', 'total', 'pending', 'in_progress', 'resolved', 'alta_count', 'avg_hours'], data);
+      } else if (reportId === '3') {
+        const r = await ApiService.getOfficeReport(d.start, d.end);
+        const data = (r.success && Array.isArray(r.data)) ? r.data : (r.success && r.data?.data ? r.data.data : []);
+        const rows = (Array.isArray(data) ? data : []).map((o: any) => ({
+          office: o.office || o.Name_Office || 'N/A',
+          total: o.total ?? o.total_tickets ?? 0,
+          in_progress: o.in_progress ?? o.en_proceso ?? 0,
+          resolved: o.resolved ?? o.resolved_tickets ?? 0,
+          pending: o.pending ?? o.pending_tickets ?? 0,
+          avg_hours: o.avg_hours ?? 'N/A',
+        }));
+        downloadCSV(`reporte-oficina-${date}.csv`, ['office', 'total', 'in_progress', 'resolved', 'pending', 'avg_hours'], rows);
+      } else if (reportId === '5') {
+        const r = await ApiService.getProblemReport(d.start, d.end);
+        const data = r.success && r.data ? r.data : [];
+        downloadCSV(`reporte-problemas-${date}.csv`, ['tipo_servicio', 'total_tickets_mes', 'cerrados_mes', 'oficinas_atendidas_mes', 'tecnicos_involucrados_mes', 'problematica_mas_frecuente_mes', 'porcentaje_mes_actual'], data);
+      } else if (reportId === '8') {
+        const r = await ApiService.getAllTechniciansGroupedByService();
+        const rows: any[] = [];
+        if (r.success && r.data) {
+          const d = Array.isArray(r.data) ? r.data : [];
+          d.forEach((sg: any) => {
+            (sg.technicians || (Array.isArray(sg) ? sg : [sg])).forEach((t: any) => {
+              rows.push({ service: sg.service_name || t.primary_service || '', name: `${t.First_Name || ''} ${t.Last_Name || ''}`.trim(), status: t.Status || t.status || '' });
+            });
+          });
+        }
+        downloadCSV(`reporte-tecnicos-${date}.csv`, ['service', 'name', 'status'], rows);
+      } else if (reportId === '9') {
+        const r = await ApiService.getTechnicianPerformanceMetrics();
+        const rows: any[] = [];
+        if (r.success && r.data) {
+          const sd = r.data as Record<string, any[]>;
+          for (const svc in sd) {
+            (sd[svc] || []).forEach((t: any) => rows.push({ service: svc, name: t.name || t.technician_name || '', resolved: t.resolved_tickets || 0, avg_time: t.avg_resolution_time || 0 }));
+          }
+        }
+        downloadCSV(`reporte-desempeno-${date}.csv`, ['service', 'name', 'resolved', 'avg_time'], rows);
+      } else if (reportId === '10') {
+        const r = await ApiService.getMonthlyProblemReport(d.start, d.end);
+        const data = r.success && r.data ? r.data : [];
+        downloadCSV(`reporte-mensual-${date}.csv`, ['month_name', 'problem_name', 'severity', 'ticket_count'], data);
+      } else if (reportId === '11') {
+        const r = await ApiService.getSystemsAndProblems(d.start, d.end);
+        const data = r.success && r.data ? r.data : [];
+        downloadCSV(`reporte-sistemas-${date}.csv`, ['sistema', 'total_tickets', 'problematica_mas_comun', 'frecuencia_problematica'], data);
+      } else if (reportId === '12') {
+        const r = await ApiService.getTechnicianShifts();
+        const data = r.success && r.data ? r.data : [];
+        const rows = (Array.isArray(data) ? data : []).map((s: any) => ({
+          Dia: s['Dia'] || s['Día'] || s.day || '',
+          Nombre: s['Nombre'] || s.name || '',
+          Apellido: s['Apellido'] || s.apellido || '',
+          Hora_Salida: s['Hora Salida'] || s.work_end_time || '',
+        }));
+        downloadCSV(`reporte-turnos-${date}.csv`, ['Dia', 'Nombre', 'Apellido', 'Hora_Salida'], rows);
+      }
     } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
-    }
-  };
-
-  const handleDownloadOfficeReportPDF = async (): Promise<void> => {
-    try {
-      await generateOfficeReportPDF();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
-    }
-  };
-
-  const handleDownloadProblemReportPDF = async (): Promise<void> => {
-    try {
-      await generateProblemReportPDF();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
-    }
-  };
-
-  const handleDownloadMonthlyProblemReportPDF = async (): Promise<void> => {
-    try {
-      await generateMonthlyProblemReportPDF();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
-    }
-  };
-
-  const handleDownloadSystemsReportPDF = async (): Promise<void> => {
-    try {
-      await generateSystemsReportPDF();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
-    }
-  };
-
-  const handleDownloadServiceTypeReportPDF = async (): Promise<void> => {
-    try {
-      await generateServiceTypeReportPDF();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
-    }
-  };
-
-  const handleDownloadTechnicianShiftsPDF = async (): Promise<void> => {
-    try {
-      await generateTechnicianShiftsPDF();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
-    }
-  };
-
-  const handleDownloadGeneralTicketsReportPDF = async (): Promise<void> => {
-    try {
-      await generateGeneralTicketsReportPDF();
-    } catch (error) {
-      console.error('Error generando PDF:', error);
-      alert('Error al generar el PDF: ' + (error instanceof Error ? error.message : 'Error desconocido'));
+      console.error('Error al exportar CSV:', error);
+      alert('Error al exportar CSV');
+    } finally {
+      setLoading(false);
     }
   };
 
   const generateTechnicianReportByService = async (): Promise<void> => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
-    const currentDate = new Date().toLocaleDateString('es-ES');
-
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
+    const { header, footer } = await ensureImages();
 
     const response = await ApiService.getAllTechniciansGroupedByService();
-    const groupedData = response.success && response.data
-      ? response.data
-      : getMockGroupedTechnicians();
-
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-    }
-
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de T\u00e9cnicos por Servicio', 105, 50, { align: 'center' });
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Fecha: ${currentDate}`, 105, 58, { align: 'center' });
-
-    let yPosition = 70;
-    let serviceIndex = 1;
+    const groupedData = response.success && response.data ? response.data : getMockGroupedTechnicians();
 
     let servicesData: Record<string, any[]> = {};
-
     if (Array.isArray(groupedData) && groupedData.length > 0 && groupedData[0].service_name) {
-      servicesData = {};
-      groupedData.forEach((serviceGroup: any) => {
-        const serviceName = serviceGroup.service_name;
-        const technicians = serviceGroup.technicians || [];
-        const transformedTechnicians = technicians.map((tech: any) => ({
-          ...tech,
-          technician_name: `${tech.First_Name} ${tech.Last_Name}`,
-          technician_status: tech.Status
+      groupedData.forEach((sg: any) => {
+        const techs = (sg.technicians || []).map((t: any) => ({
+          ...t, technician_name: `${t.First_Name} ${t.Last_Name}`, technician_status: t.Status
         }));
-        servicesData[serviceName] = transformedTechnicians;
+        servicesData[sg.service_name] = techs;
       });
     } else if (Array.isArray(groupedData)) {
-      servicesData = groupTechniciansByService(groupedData);
+      groupedData.forEach((tech: any) => {
+        const svc = tech.primary_service || tech.Type_Service || 'General';
+        if (!servicesData[svc]) servicesData[svc] = [];
+        servicesData[svc].push(tech);
+      });
     } else if (typeof groupedData === 'object') {
       servicesData = groupedData;
-    } else {
-      servicesData = getMockGroupedTechnicians();
     }
 
-    for (const serviceName in servicesData) {
-      const technicians = servicesData[serviceName];
-      if (!Array.isArray(technicians)) continue;
+    let y = renderPDFHeader(doc, 'Reporte de Tecnicos por Servicio', `Fecha: ${new Date().toLocaleDateString('es-ES')}`, header, 50);
+    y += 5;
+    let si = 1;
 
-      if (yPosition > 240) {
-        doc.addPage();
-        yPosition = 20;
-      }
+    for (const svc in servicesData) {
+      const techs = servicesData[svc];
+      if (!Array.isArray(techs)) continue;
+      if (y > 240) { doc.addPage(); y = renderPDFContinuationHeader(doc, 'Reporte de Tecnicos por Servicio', header); }
 
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${serviceIndex}. ${serviceName}`, 20, yPosition);
-      yPosition += 10;
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+      doc.text(`${si}. ${svc}`, 20, y); y += 10;
 
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Nombre', 20, yPosition);
-      doc.text('Estado', 120, yPosition);
-      yPosition += 2;
-      doc.setLineWidth(0.3);
-      doc.line(20, yPosition, 190, yPosition);
-      yPosition += 7;
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text('Nombre', 20, y); doc.text('Estado', 120, y); y += 2;
+      doc.setLineWidth(0.3); doc.line(20, y, 190, y); y += 7;
 
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      technicians.forEach((tech: any) => {
-        const name = tech.technician_name ||
-          (tech.First_Name && tech.Last_Name ? `${tech.First_Name} ${tech.Last_Name}` : null) ||
-          tech.Full_Name || tech.nombre || tech.name ||
-          `${tech.First_Name || ''} ${tech.Last_Name || ''}`.trim() || 'N/A';
-        const status = tech.technician_status || tech.Status || tech.status || 'Desconocido';
-        doc.text(name, 20, yPosition);
-        doc.text(status, 120, yPosition);
-        yPosition += 6;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+      techs.forEach((t: any) => {
+        const name = t.technician_name || `${t.First_Name || ''} ${t.Last_Name || ''}`.trim() || 'N/A';
+        const status = t.technician_status || t.Status || 'Desconocido';
+        doc.text(name, 20, y); doc.text(status, 120, y); y += 6;
       });
-      yPosition += 10;
-      serviceIndex++;
+      y += 10; si++;
     }
 
-    addFooterToAllPages(doc, footerImage);
-    const filename = `reporte-tecnicos-servicio-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
-  };
-
-  const groupTechniciansByService = (techniciansArray: any[]): Record<string, any[]> => {
-    const grouped: Record<string, any[]> = {};
-    techniciansArray.forEach((tech: any) => {
-      const service = tech.primary_service || tech.Type_Service || 'General';
-      if (!grouped[service]) grouped[service] = [];
-      grouped[service].push(tech);
-    });
-    return grouped;
+    addPDFFooterToAllPages(doc, footer);
+    doc.save(`reporte-tecnicos-servicio-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const generateTechnicianPerformanceReport = async (): Promise<void> => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
-    let yPosition = 50;
-
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
+    const { header, footer } = await ensureImages();
 
     const response = await ApiService.getTechnicianPerformanceMetrics();
-    if (!response.success || !response.data) {
-      console.warn('[PDF] Usando datos de prueba para reporte de desempe\u00f1o de t\u00e9cnicos');
-    }
-    let servicesData: Record<string, any[]> = response.success && response.data
-      ? response.data
-      : ApiService.getMockTechnicianPerformanceMetrics().data;
+    let servicesData: Record<string, any[]> = response.success && response.data ? response.data : {};
+    if (typeof servicesData !== 'object' || Array.isArray(servicesData)) servicesData = {};
 
-    if (typeof servicesData !== 'object' || Array.isArray(servicesData)) {
-      servicesData = {};
-    }
+    const dateStr = `Generado: ${new Date().toLocaleDateString('es-ES')}`;
+    let y = renderPDFHeader(doc, 'Reporte de Desempeno de Tecnicos', dateStr, header, 50);
+    const title = 'Reporte de Desempeno de Tecnicos';
+    let si = 1;
+    let totalTechs = 0;
+    let totalResolved = 0;
 
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-    }
+    for (const svc in servicesData) {
+      const techs = servicesData[svc];
+      if (!Array.isArray(techs)) continue;
+      totalTechs += techs.length;
+      if (y > 240) { doc.addPage(); y = renderPDFContinuationHeader(doc, title, header); }
 
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de Desempe\u00f1o de T\u00e9cnicos', 105, 50, { align: 'center' });
+      doc.setFontSize(14); doc.setFont('helvetica', 'bold');
+      doc.text(`${si}. ${svc}`, 20, y); y += 10;
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 105, 58, { align: 'center' });
+      doc.setFillColor(59, 130, 246); doc.setTextColor(255, 255, 255);
+      doc.rect(20, y - 2, 170, 10, 'F');
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text('Nombre', 25, y + 4); doc.text('Resueltos', 100, y + 4);
+      doc.text('T. Prom.(h)', 145, y + 4);
+      y += 12;
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal');
 
-    yPosition += 20;
-
-    let serviceIndex = 1;
-    for (const serviceName in servicesData) {
-      const technicians = servicesData[serviceName];
-      if (!Array.isArray(technicians)) continue;
-
-      if (yPosition > 240) {
-        doc.addPage();
-        yPosition = 20;
-        if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Desempe\u00f1o de T\u00e9cnicos (cont.)', 105, 50, { align: 'center' });
-        yPosition += 20;
-      }
-
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`${serviceIndex}. ${serviceName}`, 20, yPosition);
-      yPosition += 10;
-
-      doc.setFillColor(59, 130, 246);
-      doc.setTextColor(255, 255, 255);
-      doc.rect(20, yPosition - 2, 170, 10, 'F');
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Nombre', 25, yPosition + 4);
-      doc.text('Resueltos', 90, yPosition + 4);
-      doc.text('T. Prom.(h)', 130, yPosition + 4);
-      doc.text('Eficiencia', 165, yPosition + 4);
-      yPosition += 12;
-
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-
-      let totalResolved = 0;
-      technicians.forEach((tech: any) => {
-        if (yPosition > 245) {
-          doc.addPage();
-          yPosition = 20;
-          if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-          yPosition += 10;
-          doc.setFillColor(59, 130, 246);
-          doc.setTextColor(255, 255, 255);
-          doc.rect(20, yPosition - 2, 170, 10, 'F');
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Nombre', 25, yPosition + 4);
-          doc.text('Resueltos', 90, yPosition + 4);
-          doc.text('T. Prom.(h)', 130, yPosition + 4);
-          doc.text('Eficiencia', 165, yPosition + 4);
-          yPosition += 12;
-          doc.setFontSize(8);
-          doc.setFont('helvetica', 'normal');
+      techs.forEach((tech: any) => {
+        if (y > 245) { doc.addPage(); y = renderPDFContinuationHeader(doc, title, header);
+          doc.setFillColor(59, 130, 246); doc.setTextColor(255, 255, 255);
+          doc.rect(20, y - 2, 170, 10, 'F');
+          doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+          doc.text('Nombre', 25, y + 4); doc.text('Resueltos', 100, y + 4);
+          doc.text('T. Prom.(h)', 145, y + 4);
+          y += 12; doc.setFontSize(8); doc.setFont('helvetica', 'normal');
         }
-
-        const name = tech.name || tech.technician_name || tech.nombre || 'N/A';
-        const resolved = tech.resolved_tickets || tech.tickets_resueltos || 0;
-        const avgTime = tech.avg_resolution_time || tech.tiempo_promedio || 0;
-        const efficiency = tech.efficiency || tech.eficiencia || 0;
-
+        const resolved = Number(tech.resolved_tickets || 0);
         totalResolved += resolved;
-
         doc.setTextColor(0, 0, 0);
-        doc.text(name, 25, yPosition + 5);
-        doc.text(String(resolved), 90, yPosition + 5, { align: 'center' });
-        doc.text(String(avgTime), 130, yPosition + 5, { align: 'center' });
-        doc.setTextColor(34, 197, 94);
-        doc.text(`${efficiency}%`, 165, yPosition + 5, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
-
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.3);
-        doc.rect(20, yPosition, 170, 10);
-
-        yPosition += 10;
+        doc.text(tech.name || tech.technician_name || 'N/A', 25, y + 5);
+        doc.text(String(resolved), 100, y + 5, { align: 'center' });
+        doc.text(String(tech.avg_resolution_time || 0), 145, y + 5, { align: 'center' });
+        doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3);
+        doc.rect(20, y, 170, 10); y += 10;
       });
-
-      yPosition += 10;
-      serviceIndex++;
+      y += 10; si++;
     }
 
-    yPosition += 10;
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
-    }
+    y = renderSummaryBlock(doc, title, [
+      { label: 'Total Servicios', value: String(si - 1) },
+      { label: 'Total Tecnicos', value: String(totalTechs) },
+      { label: 'Total Resueltos', value: String(totalResolved) },
+    ], y, header);
 
-    doc.setFillColor(245, 245, 250);
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(20, yPosition - 5, 170, 30, 'FD');
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(25, yPosition - 3, 60, 8, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN GENERAL', 30, yPosition + 2);
-    yPosition += 12;
-
-    const values = Object.values(servicesData) as any[][];
-    const totalTechnicians = values.reduce((sum: number, arr: any[]) => sum + arr.length, 0);
-    const totalResolvedAll = values.reduce((sum: number, arr: any[]) =>
-      sum + arr.reduce((s: number, t: any) => s + Number(t.resolved_tickets || t.tickets_resueltos || 0), 0), 0);
-
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('\u2022 Total Servicios:', 30, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(serviceIndex - 1), 100, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('\u2022 Total T\u00e9cnicos:', 30, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalTechnicians), 100, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('\u2022 Total Resueltos:', 30, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalResolvedAll), 100, yPosition);
-
-    addFooterToAllPages(doc, footerImage);
-    const filename = `reporte-desempeno-tecnicos-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    addPDFFooterToAllPages(doc, footer);
+    doc.save(`reporte-desempeno-tecnicos-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const generateOfficeReportPDF = async (): Promise<void> => {
+  const generateOfficeReportPDF = async (startDate: string, endDate: string): Promise<void> => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
-    let yPosition = 50;
+    const { header, footer } = await ensureImages();
 
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
-
-    const response = await ApiService.getOfficeReport();
+    const response = await ApiService.getOfficeReport(startDate, endDate);
     const officeData = (response.success && Array.isArray(response.data))
-      ? response.data
-      : (response.success && response.data?.data ? response.data.data : []);
+      ? response.data : (response.success && response.data?.data ? response.data.data : []);
+    const pStr = response.dates?.start_date
+      ? `${response.dates.start_date} — ${response.dates.end_date}`
+      : `${startDate} — ${endDate}`;
 
-    if (headerImage) { doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30); }
+    let y = renderPDFHeader(doc, 'Reporte por Oficina', pStr, header, 50);
 
-    const period = (response.data as any)?.dates || {};
-    const periodText = period.start_date && period.end_date
-      ? `${period.start_date} — ${period.end_date}`
-      : new Date().toLocaleDateString('es-ES');
-
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte por Oficina', 105, 50, { align: 'center' });
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(periodText, 105, 58, { align: 'center' });
-    yPosition += 20;
-
-    doc.setFillColor(26, 54, 93);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(15, yPosition - 2, 180, 10, 'F');
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Oficina', 20, yPosition + 4);
-    doc.text('Total', 70, yPosition + 4);
-    doc.text('En curso', 90, yPosition + 4);
-    doc.text('Res.', 120, yPosition + 4);
-    doc.text('Pend.', 140, yPosition + 4);
-    doc.text('Prom.(h)', 165, yPosition + 4);
-    yPosition += 12;
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 0, 0);
-
-    (Array.isArray(officeData) ? officeData : []).forEach((office: any) => {
-      if (yPosition > 258) {
-        doc.addPage();
-        yPosition = 20;
-        if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-        doc.text('Reporte por Oficina (cont.)', 105, 48, { align: 'center' });
-        yPosition += 20;
-        doc.setFillColor(26, 54, 93); doc.setTextColor(255, 255, 255);
-        doc.rect(15, yPosition - 2, 180, 10, 'F');
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-        doc.text('Oficina', 20, yPosition + 4); doc.text('Total', 70, yPosition + 4);
-        doc.text('En curso', 90, yPosition + 4); doc.text('Res.', 120, yPosition + 4);
-        doc.text('Pend.', 140, yPosition + 4); doc.text('Prom.(h)', 165, yPosition + 4);
-        yPosition += 12;
-        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
-      }
-
-      const rawName = (office.office || office.Name_Office || office.name_office || 'N/A');
-      const cleanOfficeName = (n: string): string => {
-        const cleaned = n.replace(
-          /^(DIRECCI[OÓ]N|DIVISI[OÓ]N|COORDINACI[OÓ]N)\s+DE[L]?\s+/i, ''
-        ).trim();
-        return cleaned || n;
+    const cols = [
+      { label: 'Oficina', x: 20, key: 'office' },
+      { label: 'Total', x: 70, key: 'total', align: 'center' },
+      { label: 'En curso', x: 90, key: 'in_progress', align: 'center' },
+      { label: 'Res.', x: 120, key: 'resolved', align: 'center' },
+      { label: 'Pend.', x: 140, key: 'pending', align: 'center' },
+      { label: 'Prom.(h)', x: 165, key: 'avg_hours', align: 'center' },
+    ];
+    const rows = (Array.isArray(officeData) ? officeData : []).map((o: any) => {
+      const raw = o.office || o.Name_Office || 'N/A';
+      const cleanName = raw.replace(/^(DIRECCI[OÓ]N|DIVISI[OÓ]N|COORDINACI[OÓ]N)\s+DE[L]?\s+/i, '').trim() || raw;
+      return {
+        office: cleanName.length > 22 ? cleanName.substring(0, 21) + '…' : cleanName,
+        total: String(Number(o.total ?? o.total_tickets ?? o.ticket_count ?? 0)),
+        in_progress: String(Number(o.in_progress ?? o.en_proceso ?? 0)),
+        resolved: String(Number(o.resolved ?? o.resolved_tickets ?? 0)),
+        pending: String(Number(o.pending ?? o.pending_tickets ?? 0)),
+        avg_hours: String(o.avg_hours ?? o.avg_time ?? 'N/A'),
       };
-      const name = cleanOfficeName(rawName);
-      const total = Number(office.total ?? office.total_tickets ?? office.ticket_count ?? 0);
-      const inProgress = Number(office.in_progress ?? office.en_proceso ?? 0);
-      const resolved = Number(office.resolved ?? office.resolved_tickets ?? 0);
-      const pending = Number(office.pending ?? office.pending_tickets ?? 0);
-      const avgH = office.avg_hours ?? office.avg_time ?? office.avg_resolution_time ?? 'N/A';
-
-      const displayName = name.length > 22 ? name.substring(0, 21) + '…' : name;
-
-      doc.text(displayName, 20, yPosition + 5);
-      doc.setTextColor(0, 0, 0); doc.text(String(total), 70, yPosition + 5, { align: 'center' });
-      doc.setTextColor(59, 130, 246); doc.text(String(inProgress), 90, yPosition + 5, { align: 'center' });
-      doc.setTextColor(16, 185, 129); doc.text(String(resolved), 120, yPosition + 5, { align: 'center' });
-      doc.setTextColor(245, 158, 11); doc.text(String(pending), 140, yPosition + 5, { align: 'center' });
-      doc.setTextColor(0, 0, 0); doc.text(String(avgH), 165, yPosition + 5, { align: 'center' });
-
-      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
-      doc.line(15, yPosition + 8, 195, yPosition + 8);
-      yPosition += 10;
     });
-
-    yPosition += 12;
-    if (yPosition > 240) { doc.addPage(); yPosition = 20; }
+    y = renderTableBlock(doc, cols, rows, y, [26, 54, 93], 'Reporte por Oficina', header, 258);
 
     const arr = Array.isArray(officeData) ? officeData : [];
-    const totalOffices = arr.length;
-    const totalTickets = arr.reduce((s, o) => s + Number(o.total ?? o.total_tickets ?? o.ticket_count ?? 0), 0);
-    const totalResolved = arr.reduce((s, o) => s + Number(o.resolved ?? o.resolved_tickets ?? 0), 0);
-    const totalInProgress = arr.reduce((s, o) => s + Number(o.in_progress ?? o.en_proceso ?? 0), 0);
+    y = renderSummaryBlock(doc, 'Reporte por Oficina', [
+      { label: 'Total Oficinas', value: String(arr.length) },
+      { label: 'Total Tickets', value: String(arr.reduce((s, o) => s + Number(o.total ?? o.total_tickets ?? o.ticket_count ?? 0), 0)) },
+      { label: 'Resueltos', value: String(arr.reduce((s, o) => s + Number(o.resolved ?? o.resolved_tickets ?? 0), 0)), color: '#10b981' },
+      { label: 'En Proceso', value: String(arr.reduce((s, o) => s + Number(o.in_progress ?? o.en_proceso ?? 0), 0)), color: '#3b82f6' },
+    ], y, header);
 
-    yPosition += 12;
-    if (yPosition + 50 > 280) { doc.addPage(); yPosition = 20; }
-
-    doc.setFillColor(245, 245, 250); doc.setDrawColor(180, 180, 200);
-    doc.rect(15, yPosition - 5, 180, 40, 'FD');
-    doc.setFillColor(26, 54, 93); doc.setTextColor(255, 255, 255);
-    doc.rect(20, yPosition - 3, 60, 8, 'F');
-    doc.setFontSize(10); doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN GENERAL', 25, yPosition + 2);
-    yPosition += 12;
-
-    doc.setTextColor(50, 50, 50); doc.setFontSize(9); doc.setFont('helvetica', 'normal');
-    doc.text(`• Total Oficinas:`, 25, yPosition); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 139); doc.text(String(totalOffices), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50); doc.setFont('helvetica', 'normal');
-    doc.text(`• Total Tickets:`, 25, yPosition); doc.setFont('helvetica', 'bold'); doc.setTextColor(0, 0, 139); doc.text(String(totalTickets), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50); doc.setFont('helvetica', 'normal');
-    doc.text(`• Resueltos:`, 25, yPosition); doc.setFont('helvetica', 'bold'); doc.setTextColor(16, 185, 129); doc.text(String(totalResolved), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50); doc.setFont('helvetica', 'normal');
-    doc.text(`• En Proceso:`, 25, yPosition); doc.setFont('helvetica', 'bold'); doc.setTextColor(59, 130, 246); doc.text(String(totalInProgress), 95, yPosition);
-
-    addFooterToAllPages(doc, footerImage);
+    addPDFFooterToAllPages(doc, footer);
     doc.save(`reporte-oficina-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const generateProblemReportPDF = async (): Promise<void> => {
+  const generateProblemReportPDF = async (startDate: string, endDate: string): Promise<void> => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
-    let yPosition = 50;
+    const { header, footer } = await ensureImages();
 
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
+    const response = await ApiService.getProblemReport(startDate, endDate);
+    const problemData = response.success && response.data ? response.data : [];
 
-    const response = await ApiService.getProblemReport();
-    if (!response.success || !response.data) {
-      console.warn('[PDF] Usando datos de prueba para reporte de problemas');
-    }
-    const problemData = response.success && response.data
-      ? response.data
-      : ApiService.getMockProblemReport().data;
+    let y = renderPDFHeader(doc, 'Reporte de Problemas por Servicio', `Generado: ${new Date().toLocaleDateString('es-ES')}`, header, 50);
 
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-    }
+    const cols = [
+      { label: 'Servicio', x: 20, key: 'service' },
+      { label: 'Total', x: 50, key: 'total', align: 'center' },
+      { label: 'Cerr', x: 80, key: 'closed', align: 'center' },
+      { label: 'Oficinas', x: 105, key: 'offices', align: 'center' },
+      { label: 'Tecnicos', x: 130, key: 'technicians', align: 'center' },
+      { label: 'Prob. Frec', x: 155, key: 'problem' },
+      { label: '%', x: 185, key: 'pct', align: 'center' },
+    ];
+    const rows = (Array.isArray(problemData) ? problemData : []).map((s: any) => ({
+      service: (s.tipo_servicio || s.Type_Service || 'N/A').substring(0, 12),
+      total: String(s.total_tickets_mes || s.count || 0),
+      closed: String(s.cerrados_mes || 0),
+      offices: String(s.oficinas_atendidas_mes || 0),
+      technicians: String(s.tecnicos_involucrados_mes || 0),
+      problem: (s.problematica_mas_frecuente_mes || s.problem || 'N/A').substring(0, 12),
+      pct: `${s.porcentaje_mes_actual || 0}%`,
+    }));
+    y = renderTableBlock(doc, cols, rows, y, [59, 130, 246], 'Reporte de Problemas por Servicio', header, 235);
 
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de Problemas por Servicio', 105, 50, { align: 'center' });
+    const pd = Array.isArray(problemData) ? problemData : [];
+    y = renderSummaryBlock(doc, 'Reporte de Problemas por Servicio', [
+      { label: 'Total Servicios', value: String(pd.length) },
+      { label: 'Total Tickets', value: String(pd.reduce((s, i) => s + Number(i.total_tickets_mes || i.count || 0), 0)) },
+      { label: 'Total Resueltos', value: String(pd.reduce((s, i) => s + Number(i.resueltos_mes || 0), 0)) },
+      { label: 'Tiempo Promedio (hrs)', value: pd.length > 0 ? (pd.reduce((s, i) => s + Number(i.tiempo_promedio_horas_mes || 0), 0) / pd.length).toFixed(2) : '0.00' },
+    ], y, header);
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 105, 58, { align: 'center' });
-
-    yPosition += 20;
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(15, yPosition - 2, 180, 10, 'F');
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Servicio', 20, yPosition + 4);
-    doc.text('Total', 50, yPosition + 4);
-    doc.text('Cerr', 80, yPosition + 4);
-    doc.text('Oficinas', 105, yPosition + 4);
-    doc.text('Técnicos', 130, yPosition + 4);
-    doc.text('Prob. Frec', 155, yPosition + 4);
-    doc.text('%', 185, yPosition + 4);
-    yPosition += 12;
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    (Array.isArray(problemData) ? problemData : []).forEach((service: any, index: number) => {
-      if (yPosition > 235) {
-        doc.addPage();
-        yPosition = 20;
-        if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Problemas por Servicio (cont.)', 25, 50);
-        yPosition += 20;
-        doc.setFillColor(59, 130, 246);
-        doc.setTextColor(255, 255, 255);
-        doc.rect(15, yPosition - 2, 180, 10, 'F');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Servicio', 20, yPosition + 4);
-        doc.text('Total', 50, yPosition + 4);
-        doc.text('Cerr', 80, yPosition + 4);
-        doc.text('Oficinas', 105, yPosition + 4);
-        doc.text('Técnicos', 130, yPosition + 4);
-        doc.text('Prob. Frec', 155, yPosition + 4);
-        doc.text('%', 185, yPosition + 4);
-        yPosition += 12;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-      }
-
-      const servicio = service.tipo_servicio || service.Type_Service || 'N/A';
-      const total = service.total_tickets_mes || service.count || 0;
-      const cerrados = service.cerrados_mes || 0;
-      const oficinas = service.oficinas_atendidas_mes || 0;
-      const tecnicos = service.tecnicos_involucrados_mes || 0;
-      const problemaFrec = service.problematica_mas_frecuente_mes || service.problem || 'N/A';
-      const porcentaje = service.porcentaje_mes_actual || 0;
-
-      const truncatedService = servicio.length > 12 ? servicio.substring(0, 12) + '...' : servicio;
-      const truncatedProblem = problemaFrec.length > 12 ? problemaFrec.substring(0, 12) + '...' : problemaFrec;
-
-      doc.setTextColor(0, 0, 0);
-      doc.text(truncatedService, 20, yPosition + 5);
-      doc.text(String(total), 50, yPosition + 5, { align: 'center' });
-      doc.text(String(cerrados), 80, yPosition + 5, { align: 'center' });
-      doc.text(String(oficinas), 105, yPosition + 5, { align: 'center' });
-      doc.text(String(tecnicos), 130, yPosition + 5, { align: 'center' });
-      doc.text(truncatedProblem, 155, yPosition + 5);
-      doc.setTextColor(59, 130, 246);
-      doc.text(String(porcentaje) + '%', 185, yPosition + 5, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
-
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.3);
-      doc.rect(15, yPosition, 180, 10);
-      yPosition += 10;
-    });
-
-    yPosition += 15;
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    const totalServices = (Array.isArray(problemData) ? problemData : []).length;
-    const totalTickets = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.total_tickets_mes || item.count || 0), 0);
-    const totalResolved = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.resueltos_mes || 0), 0);
-    const avgTime = totalServices > 0
-      ? ((Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.tiempo_promedio_horas_mes || 0), 0) / totalServices).toFixed(2)
-      : '0.00';
-
-    doc.setFillColor(245, 245, 250);
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(15, yPosition - 5, 180, 40, 'FD');
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(20, yPosition - 3, 60, 8, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN GENERAL', 25, yPosition + 2);
-    yPosition += 12;
-
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Servicios:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalServices), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Tickets:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalTickets), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Resueltos:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalResolved), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Tiempo Promedio (hrs):', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(avgTime), 95, yPosition);
-
-    addFooterToAllPages(doc, footerImage);
-    const filename = `reporte-problemas-servicio-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    addPDFFooterToAllPages(doc, footer);
+    doc.save(`reporte-problemas-servicio-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const generateMonthlyProblemReportPDF = async (): Promise<void> => {
+  const generateMonthlyProblemReportPDF = async (startDate: string, endDate: string): Promise<void> => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
-    let yPosition = 50;
+    const { header, footer } = await ensureImages();
 
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
+    const response = await ApiService.getMonthlyProblemReport(startDate, endDate);
+    const problemData = response.success && response.data ? response.data : [];
 
-    const response = await ApiService.getMonthlyProblemReport();
-    if (!response.success || !response.data) {
-      console.warn('[PDF] Usando datos de prueba para reporte mensual de problemas');
-    }
-    const problemData = response.success && response.data
-      ? response.data
-      : ApiService.getMockProblemReport().data;
+    let y = renderPDFHeader(doc, 'Reporte Mensual por Tipo de Servicio', `Generado: ${new Date().toLocaleDateString('es-ES')}`, header, 50);
 
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-    }
+    const cols = [
+      { label: 'Mes', x: 20, key: 'month' },
+      { label: 'Problema', x: 70, key: 'problem' },
+      { label: 'Severidad', x: 130, key: 'severity' },
+      { label: 'Tickets', x: 170, key: 'count', align: 'center' },
+    ];
+    const rows = (Array.isArray(problemData) ? problemData : []).map((s: any) => ({
+      month: (s.month_name || s.month_key || 'N/A').substring(0, 14),
+      problem: (s.problem_name || 'N/A').substring(0, 16),
+      severity: s.severity || 'N/A',
+      count: String(s.ticket_count || 0),
+    }));
+    y = renderTableBlock(doc, cols, rows, y, [26, 54, 93], 'Reporte Mensual por Tipo de Servicio', header, 235);
 
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte por Tipo de Servicio - Mensual', 105, 50, { align: 'center' });
+    const pd = Array.isArray(problemData) ? problemData : [];
+    y = renderSummaryBlock(doc, 'Reporte Mensual por Tipo de Servicio', [
+      { label: 'Total Registros', value: String(pd.length) },
+      { label: 'Total Tickets', value: String(pd.reduce((s, i) => s + Number(i.ticket_count || 0), 0)) },
+    ], y, header);
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 105, 58, { align: 'center' });
-
-    yPosition += 20;
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(15, yPosition - 2, 180, 10, 'F');
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Servicio', 20, yPosition + 4);
-    doc.text('Total', 50, yPosition + 4);
-    doc.text('Cerr', 80, yPosition + 4);
-    doc.text('Oficinas', 105, yPosition + 4);
-    doc.text('Técnicos', 130, yPosition + 4);
-    doc.text('Prob. Frec', 155, yPosition + 4);
-    doc.text('%', 185, yPosition + 4);
-    yPosition += 12;
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    (Array.isArray(problemData) ? problemData : []).forEach((service: any, index: number) => {
-      if (yPosition > 235) {
-        doc.addPage();
-        yPosition = 20;
-        if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte por Tipo de Servicio - Mensual (cont.)', 25, 50);
-        yPosition += 20;
-        doc.setFillColor(59, 130, 246);
-        doc.setTextColor(255, 255, 255);
-        doc.rect(15, yPosition - 2, 180, 10, 'F');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Servicio', 20, yPosition + 4);
-        doc.text('Total', 50, yPosition + 4);
-        doc.text('Cerr', 80, yPosition + 4);
-        doc.text('Oficinas', 105, yPosition + 4);
-        doc.text('Técnicos', 130, yPosition + 4);
-        doc.text('Prob. Frec', 155, yPosition + 4);
-        doc.text('%', 185, yPosition + 4);
-        yPosition += 12;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-      }
-
-      const servicio = service.tipo_servicio || 'N/A';
-      const total = service.total_tickets_mes || 0;
-      const cerrados = service.cerrados_mes || 0;
-      const oficinas = service.oficinas_atendidas_mes || 0;
-      const tecnicos = service.tecnicos_involucrados_mes || 0;
-      const problemaFrec = service.problematica_mas_frecuente_mes || 'N/A';
-      const porcentaje = service.porcentaje_mes_actual || 0;
-
-      const truncatedService = servicio.length > 12 ? servicio.substring(0, 12) + '...' : servicio;
-      const truncatedProblem = problemaFrec.length > 12 ? problemaFrec.substring(0, 12) + '...' : problemaFrec;
-
-      doc.setTextColor(0, 0, 0);
-      doc.text(truncatedService, 20, yPosition + 5);
-      doc.text(String(total), 50, yPosition + 5, { align: 'center' });
-      doc.text(String(cerrados), 80, yPosition + 5, { align: 'center' });
-      doc.text(String(oficinas), 105, yPosition + 5, { align: 'center' });
-      doc.text(String(tecnicos), 130, yPosition + 5, { align: 'center' });
-      doc.text(truncatedProblem, 155, yPosition + 5);
-      doc.setTextColor(59, 130, 246);
-      doc.text(String(porcentaje) + '%', 185, yPosition + 5, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
-
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.3);
-      doc.rect(15, yPosition, 180, 10);
-      yPosition += 10;
-    });
-
-    yPosition += 15;
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    const totalServices = (Array.isArray(problemData) ? problemData : []).length;
-    const totalTickets = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.total_tickets_mes || 0), 0);
-    const totalResolved = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.resueltos_mes || 0), 0);
-    const avgTime = totalServices > 0
-      ? ((Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.tiempo_promedio_horas_mes || 0), 0) / totalServices).toFixed(2)
-      : '0.00';
-
-    doc.setFillColor(245, 245, 250);
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(15, yPosition - 5, 180, 40, 'FD');
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(20, yPosition - 3, 60, 8, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN GENERAL', 25, yPosition + 2);
-    yPosition += 12;
-
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Servicios:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalServices), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Tickets:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalTickets), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Resueltos:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalResolved), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Tiempo Promedio (hrs):', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(avgTime), 95, yPosition);
-
-    addFooterToAllPages(doc, footerImage);
-    const filename = `reporte-tipo-servicio-mensual-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    addPDFFooterToAllPages(doc, footer);
+    doc.save(`reporte-mensual-problemas-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const generateSystemsReportPDF = async (): Promise<void> => {
+  const generateSystemsReportPDF = async (startDate: string, endDate: string): Promise<void> => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
-    let yPosition = 50;
+    const { header, footer } = await ensureImages();
 
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
+    const response = await ApiService.getSystemsAndProblems(startDate, endDate);
+    const systemsData = response.success && response.data ? response.data : [];
 
-    const response = await ApiService.getSystemsAndProblems();
-    if (!response.success || !response.data) {
-      console.warn('[PDF] Sin datos de backend para reporte de sistemas');
-    }
-    const systemsData = response.success && response.data
-      ? response.data
-      : [];
-
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
+    let y = renderPDFHeader(doc, 'Reporte de Sistemas y Problemáticas', `Generado: ${new Date().toLocaleDateString('es-ES')}`, header, 50);
+    if (systemsData.length > 0) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Area: Programacion', 105, y, { align: 'center' });
     }
 
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de Sistemas y Problemáticas', 105, 50, { align: 'center' });
+    const cols = [
+      { label: 'Sistema', x: 25, key: 'system' },
+      { label: 'Total Tickets', x: 85, key: 'total', align: 'center' },
+      { label: 'Problematica Comun', x: 120, key: 'problem' },
+      { label: 'Frecuencia', x: 170, key: 'freq', align: 'center' },
+    ];
+    const rows = (Array.isArray(systemsData) ? systemsData : []).map((s: any) => ({
+      system: (s.system_name || s.System_Name || s.sistema || 'N/A').substring(0, 12),
+      total: String(s.total_tickets || 0),
+      problem: (s.common_problem || s.problematica_mas_comun || 'N/A').substring(0, 14),
+      freq: String(s.frequency || s.frecuencia_problematica || 0),
+    }));
+    y = renderTableBlock(doc, cols, rows, y, [59, 130, 246], 'Reporte de Sistemas y Problemáticas', header, 235);
 
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Área: Programación', 105, 58, { align: 'center' });
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 105, 64, { align: 'center' });
+    const sd = Array.isArray(systemsData) ? systemsData : [];
+    y = renderSummaryBlock(doc, 'Reporte de Sistemas y Problemáticas', [
+      { label: 'Total Sistemas', value: String(sd.length) },
+      { label: 'Total Tickets', value: String(sd.reduce((s, i) => s + Number(i.total_tickets || 0), 0)) },
+    ], y, header);
 
-    yPosition += 25;
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(20, yPosition - 2, 170, 10, 'F');
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Sistema', 25, yPosition + 4);
-    doc.text('Total Tickets', 85, yPosition + 4);
-    doc.text('Problemática Común', 120, yPosition + 4);
-    doc.text('Frecuencia', 170, yPosition + 4);
-    yPosition += 12;
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    (Array.isArray(systemsData) ? systemsData : []).forEach((system: any, index: number) => {
-      if (yPosition > 235) {
-        doc.addPage();
-        yPosition = 20;
-        if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Sistemas y Problemáticas (cont.)', 105, 50, { align: 'center' });
-        yPosition += 20;
-        doc.setFillColor(59, 130, 246);
-        doc.setTextColor(255, 255, 255);
-        doc.rect(20, yPosition - 2, 170, 10, 'F');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Sistema', 25, yPosition + 4);
-        doc.text('Total Tickets', 85, yPosition + 4);
-        doc.text('Problemática Común', 120, yPosition + 4);
-        doc.text('Frecuencia', 170, yPosition + 4);
-        yPosition += 12;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-      }
-
-      const name = system.system_name || system.System_Name || 'N/A';
-      const totalCount = system.total_tickets || 0;
-      const commonProblem = system.common_problem || system.problematica_comun || 'N/A';
-      const frequency = system.frequency || system.frecuencia || 0;
-
-      const truncatedName = name.length > 12 ? name.substring(0, 12) + '...' : name;
-      const truncatedProblem = commonProblem.length > 14 ? commonProblem.substring(0, 14) + '...' : commonProblem;
-
-      doc.setTextColor(0, 0, 0);
-      doc.text(truncatedName, 25, yPosition + 5);
-      doc.text(String(totalCount), 85, yPosition + 5, { align: 'center' });
-      doc.text(truncatedProblem, 120, yPosition + 5);
-      doc.text(String(frequency), 170, yPosition + 5, { align: 'center' });
-
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.3);
-      doc.rect(20, yPosition, 170, 10);
-      yPosition += 10;
-    });
-
-    yPosition += 15;
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    const totalSystems = (Array.isArray(systemsData) ? systemsData : []).length;
-    const grandTotalTickets = (Array.isArray(systemsData) ? systemsData : []).reduce((sum: number, item: any) => sum + Number(item.total_tickets || 0), 0);
-
-    doc.setFillColor(245, 245, 250);
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(20, yPosition - 5, 170, 25, 'FD');
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(25, yPosition - 3, 60, 8, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN', 30, yPosition + 2);
-    yPosition += 12;
-
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Sistemas:', 30, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalSystems), 100, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Tickets:', 30, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(grandTotalTickets), 100, yPosition);
-
-    addFooterToAllPages(doc, footerImage);
-    const filename = `reporte-sistemas-problematicas-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
-  };
-
-  const generateServiceTypeReportPDF = async (): Promise<void> => {
-    const jsPDF = (await import('jspdf')).default;
-    const doc = new jsPDF();
-    let yPosition = 50;
-
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
-
-    const response = await ApiService.getProblemReport();
-    if (!response.success || !response.data) {
-      console.warn('[PDF] Usando datos de prueba para reporte de tipo de servicio');
-    }
-    const problemData = response.success && response.data
-      ? response.data
-      : ApiService.getMockProblemReport().data;
-
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-    }
-
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte por Tipo de Servicio', 105, 50, { align: 'center' });
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Generado: ${new Date().toLocaleDateString('es-ES')}`, 105, 58, { align: 'center' });
-
-    yPosition += 20;
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(15, yPosition - 2, 180, 10, 'F');
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Servicio', 20, yPosition + 4);
-    doc.text('Total', 65, yPosition + 4);
-    doc.text('Cerrados', 100, yPosition + 4);
-    doc.text('T. Prom.(h)', 140, yPosition + 4);
-    doc.text('%', 180, yPosition + 4);
-    yPosition += 12;
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    (Array.isArray(problemData) ? problemData : []).forEach((item: any) => {
-      if (yPosition > 240) {
-        doc.addPage();
-        yPosition = 20;
-        if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte por Tipo de Servicio (cont.)', 105, 50, { align: 'center' });
-        yPosition += 20;
-        doc.setFillColor(59, 130, 246);
-        doc.setTextColor(255, 255, 255);
-        doc.rect(15, yPosition - 2, 180, 10, 'F');
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Servicio', 20, yPosition + 4);
-        doc.text('Total', 65, yPosition + 4);
-        doc.text('Cerrados', 100, yPosition + 4);
-        doc.text('T. Prom.(h)', 140, yPosition + 4);
-        doc.text('%', 180, yPosition + 4);
-        yPosition += 12;
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-      }
-
-      const name = item.tipo_servicio || item.Type_Service || 'N/A';
-      const total = item.total_tickets_mes || item.count || 0;
-      const closed = item.cerrados_mes || 0;
-      const avgTime = item.tiempo_promedio_horas_mes || 0;
-      const pct = item.porcentaje_mes_actual || 0;
-
-      const truncatedName = name.length > 12 ? name.substring(0, 12) + '...' : name;
-
-      doc.setTextColor(0, 0, 0);
-      doc.text(truncatedName, 20, yPosition + 5);
-      doc.text(String(total), 65, yPosition + 5, { align: 'center' });
-      doc.text(String(closed), 100, yPosition + 5, { align: 'center' });
-      doc.text(String(avgTime), 140, yPosition + 5, { align: 'center' });
-      doc.setTextColor(59, 130, 246);
-      doc.text(String(pct) + '%', 180, yPosition + 5, { align: 'center' });
-      doc.setTextColor(0, 0, 0);
-
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.3);
-      doc.rect(15, yPosition, 180, 10);
-      yPosition += 10;
-    });
-
-    yPosition += 15;
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
-    }
-
-    doc.setFillColor(245, 245, 250);
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(15, yPosition - 5, 180, 25, 'FD');
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(20, yPosition - 3, 60, 8, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN', 25, yPosition + 2);
-    yPosition += 12;
-
-    const totalServicesCount = (Array.isArray(problemData) ? problemData : []).length;
-    const totalTicketsCount = (Array.isArray(problemData) ? problemData : []).reduce((sum: number, item: any) => sum + Number(item.total_tickets_mes || item.count || 0), 0);
-
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Servicios:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalServicesCount), 95, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Tickets:', 25, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalTicketsCount), 95, yPosition);
-
-    addFooterToAllPages(doc, footerImage);
-    const filename = `reporte-tipo-servicio-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    addPDFFooterToAllPages(doc, footer);
+    doc.save(`reporte-sistemas-problematicas-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const generateTechnicianShiftsPDF = async (): Promise<void> => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
-    let yPosition = 50;
-
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
+    const { header, footer } = await ensureImages();
 
     const response = await ApiService.getTechnicianShifts();
-    if (!response.success || !response.data) {
-      console.warn('[PDF] Sin datos de backend para reporte de turnos');
-    }
-    const shiftsData = response.success && response.data
-      ? response.data
-      : [];
+    const shiftsData = response.success && response.data ? response.data : [];
 
-    if (headerImage) {
-      doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-    }
-
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte de Turnos de Técnicos', 105, 50, { align: 'center' });
-
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Fecha: ${new Date().toLocaleDateString('es-ES')}`, 105, 58, { align: 'center' });
-    doc.text('Técnicos que trabajan hasta las 5 PM', 105, 64, { align: 'center' });
-
-    yPosition += 25;
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(20, yPosition - 2, 170, 12, 'F');
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Día', 30, yPosition + 5);
-    doc.text('Nombre', 60, yPosition + 5);
-    doc.text('Apellido', 110, yPosition + 5);
-    doc.text('Hora Salida', 155, yPosition + 5);
-    yPosition += 14;
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
+    let y = renderPDFHeader(doc, 'Reporte de Turnos de Tecnicos', `Fecha: ${new Date().toLocaleDateString('es-ES')}`, header, 50);
+    doc.text('Tecnicos que trabajan hasta las 5 PM', 105, y, { align: 'center' });
+    y += 5;
 
     const shiftsByDay: Record<string, any[]> = {};
     shiftsData.forEach((shift: any) => {
-      const day = shift['Día'] || shift.day || 'N/A';
+      const day = shift['Dia'] || shift['Día'] || shift.day || 'N/A';
       if (!shiftsByDay[day]) shiftsByDay[day] = [];
       shiftsByDay[day].push(shift);
     });
 
-    const dayOrder = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
-    const dayNames: Record<string, string> = {
-      'Lunes': 'Lunes', 'Martes': 'Martes', 'Miércoles': 'Miércoles',
-      'Jueves': 'Jueves', 'Viernes': 'Viernes'
-    };
-
+    const dayOrder = ['Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'];
     const sortedDays = Object.keys(shiftsByDay)
       .filter(day => dayOrder.includes(day))
       .sort((a, b) => dayOrder.indexOf(a) - dayOrder.indexOf(b));
 
     sortedDays.forEach(day => {
-      if (yPosition > 250) {
-        doc.addPage();
-        yPosition = 20;
-        if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Reporte de Turnos de Técnicos (cont.)', 105, 50, { align: 'center' });
-        yPosition += 10;
-        doc.setFillColor(59, 130, 246);
-        doc.setTextColor(255, 255, 255);
-        doc.rect(20, yPosition - 2, 170, 12, 'F');
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Día', 30, yPosition + 5);
-        doc.text('Nombre', 60, yPosition + 5);
-        doc.text('Apellido', 110, yPosition + 5);
-        doc.text('Hora Salida', 155, yPosition + 5);
-        yPosition += 14;
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-      }
+      if (y > 250) { doc.addPage(); y = renderPDFContinuationHeader(doc, 'Reporte de Turnos de Tecnicos', header); }
 
-      const dayName = dayNames[day] || day;
-      doc.setFillColor(230, 240, 255);
-      doc.setTextColor(0, 0, 139);
-      doc.rect(20, yPosition - 2, 170, 10, 'F');
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text(dayName, 30, yPosition + 4);
-      yPosition += 12;
+      doc.setFillColor(230, 240, 255); doc.setTextColor(0, 0, 139);
+      doc.rect(20, y - 2, 170, 10, 'F');
+      doc.setFontSize(10); doc.setFont('helvetica', 'bold');
+      doc.text(day, 30, y + 4); y += 12;
 
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-
+      doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
       shiftsByDay[day].forEach((shift: any) => {
-        if (yPosition > 250) {
-          doc.addPage();
-          yPosition = 20;
-          if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-          doc.setFontSize(16);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Reporte de Turnos de Técnicos (cont.)', 105, 50, { align: 'center' });
-          yPosition += 10;
-          doc.setFillColor(59, 130, 246);
-          doc.setTextColor(255, 255, 255);
-          doc.rect(20, yPosition - 2, 170, 12, 'F');
-          doc.setFontSize(10);
-          doc.setFont('helvetica', 'bold');
-          doc.text('Día', 30, yPosition + 5);
-          doc.text('Nombre', 60, yPosition + 5);
-          doc.text('Apellido', 110, yPosition + 5);
-          doc.text('Hora Salida', 155, yPosition + 5);
-          yPosition += 14;
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'normal');
-        }
-
-        const firstName = shift['Nombre'] || shift.name || 'N/A';
-        const lastName = shift['Apellido'] || shift.apellido || 'N/A';
-        const endTime = shift['Hora Salida'] || shift.work_end_time || 'N/A';
-
-        doc.text('', 30, yPosition + 5);
-        doc.text(firstName, 60, yPosition + 5);
-        doc.text(lastName, 110, yPosition + 5);
-        doc.text(endTime, 155, yPosition + 5);
-
-        doc.setDrawColor(220, 220, 220);
-        doc.setLineWidth(0.5);
-        doc.rect(20, yPosition - 2, 170, 10);
-        yPosition += 10;
+        if (y > 250) { doc.addPage(); y = renderPDFContinuationHeader(doc, 'Reporte de Turnos de Tecnicos', header); }
+        doc.text(shift['Nombre'] || shift.name || 'N/A', 60, y + 5);
+        doc.text(shift['Apellido'] || shift.apellido || 'N/A', 110, y + 5);
+        doc.text(shift['Hora Salida'] || shift.work_end_time || 'N/A', 155, y + 5);
+        doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.5);
+        doc.rect(20, y - 2, 170, 10); y += 10;
       });
-      yPosition += 8;
+      y += 8;
     });
 
-    yPosition += 15;
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
-    }
+    y = renderSummaryBlock(doc, 'Reporte de Turnos de Tecnicos', [
+      { label: 'Total Turnos', value: String(shiftsData.length) },
+      { label: 'Dias con turnos', value: String(Object.keys(shiftsByDay).length) },
+    ], y, header);
 
-    doc.setFillColor(245, 245, 250);
-    doc.setDrawColor(180, 180, 200);
-    doc.rect(20, yPosition - 5, 170, 30, 'FD');
-
-    doc.setFillColor(59, 130, 246);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(25, yPosition - 3, 60, 8, 'F');
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'bold');
-    doc.text('RESUMEN GENERAL', 30, yPosition + 2);
-    yPosition += 12;
-
-    const totalShifts = shiftsData.length;
-    const totalDays = Object.keys(shiftsByDay).length;
-
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Total Turnos:', 30, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalShifts), 100, yPosition);
-    yPosition += 7;
-    doc.setTextColor(50, 50, 50);
-    doc.setFont('helvetica', 'normal');
-    doc.text('• Días con turnos:', 30, yPosition);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(0, 0, 139);
-    doc.text(String(totalDays), 100, yPosition);
-
-    addFooterToAllPages(doc, footerImage);
-    const filename = `reporte-turnos-tecnicos-${new Date().toISOString().split('T')[0]}.pdf`;
-    doc.save(filename);
+    addPDFFooterToAllPages(doc, footer);
+    doc.save(`reporte-turnos-tecnicos-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const generateGeneralTicketsReportPDF = async (): Promise<void> => {
+  const generateGeneralTicketsReportPDF = async (startDate: string, endDate: string): Promise<void> => {
     const jsPDF = (await import('jspdf')).default;
     const doc = new jsPDF();
-    let yPosition = 50;
-    const headerImage = await loadImageAsBase64PDF('/pdf-reports/header/cabecera.jpg');
-    const footerImage = await loadImageAsBase64PDF('/pdf-reports/footer/pie.jpg');
+    const { header, footer } = await ensureImages();
 
-    const response = await ApiService.getGeneralReport();
+    const response = await ApiService.getGeneralReport(startDate, endDate);
     const reportData = (response.success && response.data)
       ? ((response.data as any).monthly || (response.data as any).data?.monthly || (Array.isArray(response.data) ? response.data : []))
       : [];
+    const pStr = response.dates?.start_date
+      ? `${response.dates.start_date} — ${response.dates.end_date}`
+      : `${startDate} — ${endDate}`;
 
-    if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
+    let y = renderPDFHeader(doc, 'Reporte General de Tickets', `Periodo: ${pStr}`, header, 50);
 
-    doc.setFontSize(16);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Reporte General de Tickets', 105, 50, { align: 'center' });
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Período: ${(response.data as any)?.dates?.start_date || ''} — ${(response.data as any)?.dates?.end_date || ''}`, 105, 58, { align: 'center' });
-    yPosition += 25;
+    const cols = [
+      { label: 'Mes', x: 20, key: 'month' },
+      { label: 'Total', x: 55, key: 'total', align: 'center' },
+      { label: 'Pend.', x: 80, key: 'pending', align: 'center' },
+      { label: 'Proc.', x: 105, key: 'in_progress', align: 'center' },
+      { label: 'Res.', x: 130, key: 'resolved', align: 'center' },
+      { label: 'Alta', x: 155, key: 'alta', align: 'center' },
+      { label: 'Prom.(h)', x: 175, key: 'avg_hours', align: 'center' },
+    ];
+    const rows = (Array.isArray(reportData) ? reportData : []).map((row: any) => ({
+      month: row.month || row['Mes'] || 'N/A',
+      total: String(row.total ?? 0),
+      pending: String(row.pending ?? 0),
+      in_progress: String(row.in_progress ?? 0),
+      resolved: String(row.resolved ?? 0),
+      alta: String(row.alta_count ?? row['Alta Prioridad'] ?? row.high_priority ?? 0),
+      avg_hours: String(row.avg_hours ?? 'N/A'),
+    }));
+    y = renderTableBlock(doc, cols, rows, y, [26, 54, 93], 'Reporte General de Tickets', header, 258);
 
-    doc.setFillColor(26, 54, 93);
-    doc.setTextColor(255, 255, 255);
-    doc.rect(15, yPosition - 2, 180, 12, 'F');
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Mes', 20, yPosition + 5); doc.text('Total', 55, yPosition + 5);
-    doc.text('Pend.', 80, yPosition + 5); doc.text('Proc.', 105, yPosition + 5);
-    doc.text('Res.', 130, yPosition + 5); doc.text('Alta', 155, yPosition + 5);
-    doc.text('Prom.(h)', 175, yPosition + 5);
-    yPosition += 14;
-
-    doc.setFontSize(9);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(0, 0, 0);
-
-    (Array.isArray(reportData) ? reportData : []).forEach((row: any) => {
-      if (yPosition > 258) {
-        doc.addPage();
-        yPosition = 20;
-        if (headerImage) doc.addImage(headerImage, 'JPEG', 10, 10, 190, 30);
-        doc.setFontSize(14); doc.setFont('helvetica', 'bold');
-        doc.text('Reporte General de Tickets (cont.)', 105, 48, { align: 'center' });
-        yPosition += 10;
-        doc.setFillColor(26, 54, 93); doc.setTextColor(255, 255, 255);
-        doc.rect(15, yPosition - 2, 180, 12, 'F');
-        doc.setFontSize(9); doc.setFont('helvetica', 'bold');
-        doc.text('Mes', 20, yPosition + 5); doc.text('Total', 55, yPosition + 5);
-        doc.text('Pend.', 80, yPosition + 5); doc.text('Proc.', 105, yPosition + 5);
-        doc.text('Res.', 130, yPosition + 5); doc.text('Alta', 155, yPosition + 5);
-        doc.text('Prom.(h)', 175, yPosition + 5);
-        yPosition += 14;
-        doc.setFontSize(9); doc.setFont('helvetica', 'normal'); doc.setTextColor(0, 0, 0);
-      }
-      const m = row.month || row['Mes'] || 'N/A';
-      doc.text(String(m), 20, yPosition + 5);
-      doc.text(String(row.total ?? 0), 55, yPosition + 5);
-      doc.setTextColor(245, 158, 11); doc.text(String(row.pending ?? 0), 80, yPosition + 5);
-      doc.setTextColor(59, 130, 246); doc.text(String(row.in_progress ?? 0), 105, yPosition + 5);
-      doc.setTextColor(16, 185, 129); doc.text(String(row.resolved ?? 0), 130, yPosition + 5);
-      doc.setTextColor(239, 68, 68); doc.text(String(row.alta_count ?? row['Alta Prioridad'] ?? row.high_priority ?? 0), 155, yPosition + 5);
-      doc.setTextColor(0, 0, 0); doc.text(String(row.avg_hours ?? 'N/A'), 175, yPosition + 5);
-      doc.setDrawColor(220, 220, 220); doc.setLineWidth(0.3);
-      doc.line(15, yPosition + 8, 195, yPosition + 8);
-      yPosition += 10;
-    });
-
-    addFooterToAllPages(doc, footerImage);
+    addPDFFooterToAllPages(doc, footer);
     doc.save(`reporte-general-tickets-${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
@@ -1647,41 +1049,6 @@ const Reports: React.FC = () => {
         { technician_name: 'María González', technician_status: 'Activo', First_Name: 'María', Last_Name: 'González', Status: 'Activo', primary_service: 'Programación' }
       ]
     };
-  };
-
-  const loadImageAsBase64PDF = async (url: string): Promise<string> => {
-    try {
-      const response = await fetch(url);
-      if (!response.ok) return '';
-      const blob = await response.blob();
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch (error) {
-      console.error('Error loading image:', error);
-      return '';
-    }
-  };
-
-  const addFooterToAllPages = (doc: any, footerImg: string): void => {
-    const total = doc.internal.pages.length - 1;
-    const pw = doc.internal.pageSize.getWidth();
-    const ph = doc.internal.pageSize.getHeight();
-    for (let i = 1; i <= total; i++) {
-      doc.setPage(i);
-      if (footerImg) {
-        doc.addImage(footerImg, 'JPEG', 10, ph - 25, pw - 20, 18);
-      }
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(120, 120, 120);
-      doc.text('Sistema de Gestión de Tickets — Alcaldía de San Cristóbal', pw / 2, ph - 10, { align: 'center' });
-      doc.text(`Página ${i} de ${total}`, pw - 15, ph - 10, { align: 'right' });
-      doc.setTextColor(0, 0, 0);
-    }
   };
 
   const filteredReports = reports.filter(report => {
@@ -1803,6 +1170,13 @@ const Reports: React.FC = () => {
           </div>
         )}
 
+        {errorMsg && (
+          <div className="reports-error-banner">
+            <span>{errorMsg}</span>
+            <button onClick={() => setErrorMsg(null)} className="reports-error-close">&times;</button>
+          </div>
+        )}
+
         <div className="reports-grid">
           {filteredReports.length === 0 ? (
             <div className="reports-empty">
@@ -1813,24 +1187,61 @@ const Reports: React.FC = () => {
           ) : (
             filteredReports.map((report) => {
               const Icon = getReportIcon(report.type);
+              const dates = getReportDates(report.id);
               return (
                 <div key={report.id} className="reports-card">
                   <div className="reports-card-top">
                     <div className="reports-card-icon-wrap">
-                      <Icon size={28} />
+                      <Icon size={26} />
                     </div>
                     <span className="reports-card-badge">{getCategoryLabel(report.type)}</span>
                   </div>
                   <h3 className="reports-card-title">{report.name}</h3>
                   <p className="reports-card-desc">{report.description}</p>
+                  <div className="reports-card-dates">
+                    <div className="reports-card-date-field">
+                      <label>Desde</label>
+                      <input
+                        type="date"
+                        value={dates.start}
+                        max={dates.end}
+                        onChange={(e) => setReportDatesFor(report.id, e.target.value, dates.end)}
+                      />
+                    </div>
+                    <span className="reports-card-dates-sep">&mdash;</span>
+                    <div className="reports-card-date-field">
+                      <label>Hasta</label>
+                      <input
+                        type="date"
+                        value={dates.end}
+                        min={dates.start}
+                        max={formatDate(new Date())}
+                        onChange={(e) => setReportDatesFor(report.id, dates.start, e.target.value)}
+                      />
+                    </div>
+                  </div>
                   <div className="reports-card-actions">
                     <button
                       className="reports-download-btn"
                       onClick={() => handleRunReport(report.id)}
                       disabled={loading}
                     >
-                      <Download size={16} />
-                      <span>Descargar PDF</span>
+                      <Download size={15} />
+                      <span>PDF</span>
+                    </button>
+                    <button
+                      className="reports-print-btn"
+                      onClick={() => handlePrintReport(report.id)}
+                      title="Vista previa para imprimir"
+                    >
+                      Imprimir
+                    </button>
+                    <button
+                      className="reports-csv-btn"
+                      onClick={() => handleExportReport(report.id, 'csv')}
+                      disabled={loading}
+                    >
+                      CSV
                     </button>
                   </div>
                 </div>

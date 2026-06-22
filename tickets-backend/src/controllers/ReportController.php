@@ -7,11 +7,17 @@ require_once __DIR__ . '/../Services/AuditService.php';
 
 final class ReportController
 {
+    private PDO $db;
+    private ?int $currentUserId;
+    private ?string $currentUserRole;
+
     public function __construct(
-        private readonly PDO $db,
-        private readonly ?int $currentUserId,
-        private ?string $currentUserRole,
+        PDO $db,
+        ?int $currentUserId = null,
+        ?string $currentUserRole = null,
     ) {
+        $this->db = $db;
+        $this->currentUserId = $currentUserId;
         $this->currentUserRole = $currentUserRole !== null ? strtolower($currentUserRole) : null;
     }
 

@@ -69,6 +69,7 @@ switch ($method) {
 }
 
 function getComprehensiveTechnicianReport($db, $days, $technicianId = null) {
+    $days = max(0, (int)$days);
     $dateCondition = "";
     if ($days > 0) {
         $dateCondition = "AND sr.Created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)";
@@ -76,7 +77,8 @@ function getComprehensiveTechnicianReport($db, $days, $technicianId = null) {
     
     $technicianCondition = "";
     if ($technicianId) {
-        $technicianCondition = "AND t.ID_Technicians = " . (int)$technicianId;
+        $technicianId = (int)$technicianId;
+        $technicianCondition = "AND t.ID_Technicians = {$technicianId}";
     }
     
     // Overview statistics
@@ -188,6 +190,7 @@ function getComprehensiveTechnicianReport($db, $days, $technicianId = null) {
 }
 
 function getTechnicianPerformanceReport($db, $days, $technicianId = null) {
+    $days = max(0, (int)$days);
     $dateCondition = "";
     if ($days > 0) {
         $dateCondition = "AND sr.Created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)";
@@ -195,7 +198,8 @@ function getTechnicianPerformanceReport($db, $days, $technicianId = null) {
     
     $technicianCondition = "";
     if ($technicianId) {
-        $technicianCondition = "AND t.ID_Technicians = " . (int)$technicianId;
+        $technicianId = (int)$technicianId;
+        $technicianCondition = "AND t.ID_Technicians = {$technicianId}";
     }
     
     $query = "SELECT
@@ -242,6 +246,7 @@ function getTechnicianPerformanceReport($db, $days, $technicianId = null) {
 }
 
 function getTechnicianWorkloadReport($db, $days) {
+    $days = max(0, (int)$days);
     $dateCondition = "";
     if ($days > 0) {
         $dateCondition = "AND sr.Created_at >= DATE_SUB(NOW(), INTERVAL {$days} DAY)";

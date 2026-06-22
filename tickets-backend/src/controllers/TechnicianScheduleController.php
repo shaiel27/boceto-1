@@ -20,9 +20,8 @@ switch ($method) {
         $action = $_GET['action'] ?? '';
 
         if ($action === 'shifts-report') {
-            // PHP-PRO: Get technician shifts report - technicians working until 5 PM
             $query = "SELECT
-                ts.Day_Of_Week AS 'Día',
+                ts.Day_Of_Week AS 'Dia',
                 t.First_Name AS 'Nombre',
                 t.Last_Name AS 'Apellido',
                 ts.Work_End_Time AS 'Hora Salida'
@@ -31,14 +30,15 @@ switch ($method) {
             JOIN
                 Technicians t ON ts.Fk_Technician = t.ID_Technicians
             WHERE
-                ts.Work_End_Time = '17:00:00'
+                t.Status != 'Fuera de Servicio'
+                AND ts.Work_End_Time >= '17:00:00'
             ORDER BY
                 CASE ts.Day_Of_Week
-                    WHEN 'Monday' THEN 1
-                    WHEN 'Tuesday' THEN 2
-                    WHEN 'Wednesday' THEN 3
-                    WHEN 'Thursday' THEN 4
-                    WHEN 'Friday' THEN 5
+                    WHEN 'Lunes' THEN 1
+                    WHEN 'Martes' THEN 2
+                    WHEN 'Miercoles' THEN 3
+                    WHEN 'Jueves' THEN 4
+                    WHEN 'Viernes' THEN 5
                     ELSE 6
                 END,
                 t.Last_Name,

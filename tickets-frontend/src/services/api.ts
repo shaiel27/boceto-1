@@ -42,6 +42,10 @@ export interface ApiResponse<T = any> {
 
   errors?: Record<string, string[]>;
 
+  dates?: { start_date: string; end_date: string };
+
+  title?: string;
+
   ticket_attachments?: any[];
 
 }
@@ -2127,13 +2131,19 @@ export class ApiService {
 
   // ─── Report endpoints — connected to /api/reports backend ───
 
-  static async getGeneralReport(): Promise<ApiResponse> {
+  static async getGeneralReport(startDate?: string, endDate?: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/reports?action=general`, {
+      const params = new URLSearchParams();
+      params.append('action', 'general');
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      const response = await fetch(`${API_BASE_URL}/api/reports?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
       });
       const data = await response.json();
-      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+      return data.success
+        ? { success: true, message: data.message || '', data: data.data, dates: data.dates, title: data.title }
+        : { success: false, message: data.message };
     } catch { return { success: false, message: 'Error de conexión' }; }
   }
 
@@ -2147,13 +2157,19 @@ export class ApiService {
     } catch { return { success: false, message: 'Error de conexión' }; }
   }
 
-  static async getServiceReport(): Promise<ApiResponse> {
+  static async getServiceReport(startDate?: string, endDate?: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/reports?action=service`, {
+      const params = new URLSearchParams();
+      params.append('action', 'service');
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      const response = await fetch(`${API_BASE_URL}/api/reports?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
       });
       const data = await response.json();
-      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+      return data.success
+        ? { success: true, message: data.message || '', data: data.data, dates: data.dates, title: data.title }
+        : { success: false, message: data.message };
     } catch { return { success: false, message: 'Error de conexión' }; }
   }
 
@@ -2192,13 +2208,19 @@ export class ApiService {
     } catch { return { success: false, message: 'Error de conexión' }; }
   }
 
-  static async getOfficeReport(): Promise<ApiResponse> {
+  static async getOfficeReport(startDate?: string, endDate?: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/reports?action=office`, {
+      const params = new URLSearchParams();
+      params.append('action', 'office');
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      const response = await fetch(`${API_BASE_URL}/api/reports?${params.toString()}`, {
         headers: { 'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}` }
       });
       const data = await response.json();
-      return data.success ? { success: true, message: data.message || '', data: data.data } : { success: false, message: data.message };
+      return data.success
+        ? { success: true, message: data.message || '', data: data.data, dates: data.dates, title: data.title }
+        : { success: false, message: data.message };
     } catch { return { success: false, message: 'Error de conexión' }; }
   }
 
@@ -2686,9 +2708,13 @@ export class ApiService {
   }
 
   // PHP-PRO: Get problem report - Backend integration
-  static async getProblemReport(): Promise<ApiResponse> {
+  static async getProblemReport(startDate?: string, endDate?: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/problem-report?action=all`, {
+      const params = new URLSearchParams();
+      params.append('action', 'all');
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      const response = await fetch(`${API_BASE_URL}/api/problem-report?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
@@ -2702,7 +2728,8 @@ export class ApiService {
         return {
           success: true,
           message: data.message,
-          data: data.data
+          data: data.data,
+          dates: data.dates || null,
         };
       } else {
         return {
@@ -2719,9 +2746,13 @@ export class ApiService {
   }
 
   // PHP-PRO: Get monthly problem report - Backend integration
-  static async getMonthlyProblemReport(): Promise<ApiResponse> {
+  static async getMonthlyProblemReport(startDate?: string, endDate?: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/problem-report?action=monthly`, {
+      const params = new URLSearchParams();
+      params.append('action', 'monthly');
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      const response = await fetch(`${API_BASE_URL}/api/problem-report?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
@@ -2735,7 +2766,8 @@ export class ApiService {
         return {
           success: true,
           message: data.message,
-          data: data.data
+          data: data.data,
+          dates: data.dates || null,
         };
       } else {
         return {
@@ -2774,9 +2806,13 @@ export class ApiService {
   }
 
   // PHP-PRO: Get systems and problems report - Backend integration
-  static async getSystemsAndProblems(): Promise<ApiResponse> {
+  static async getSystemsAndProblems(startDate?: string, endDate?: string): Promise<ApiResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/problem-report?action=systems`, {
+      const params = new URLSearchParams();
+      params.append('action', 'systems');
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      const response = await fetch(`${API_BASE_URL}/api/problem-report?${params.toString()}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
@@ -2790,7 +2826,8 @@ export class ApiService {
         return {
           success: true,
           message: data.message,
-          data: data.data
+          data: data.data,
+          dates: data.dates || null,
         };
       } else {
         return {

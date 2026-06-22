@@ -258,6 +258,28 @@
   100% { transform: translateX(400%); }
 }
 
+.reports-error-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+}
+.reports-error-close {
+  background: none;
+  border: none;
+  color: #b91c1c;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
 .reports-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -266,31 +288,32 @@
 
 .reports-card {
   background: #fff;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
-  padding: 20px;
+  padding: 22px;
   display: flex;
   flex-direction: column;
+  gap: 0;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 .reports-card:hover {
-  border-color: var(--cobe-navy, #1e3a8a);
-  box-shadow: 0 4px 12px rgba(30, 58, 138, 0.08);
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
 }
 
 .reports-card-top {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .reports-card-icon-wrap {
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   background: #eef2ff;
-  color: var(--cobe-navy, #1e3a8a);
+  color: #1e3a8a;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -298,69 +321,154 @@
 }
 
 .reports-card-badge {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
-  color: var(--cobe-navy, #1e3a8a);
+  color: #1e3a8a;
   background: #eef2ff;
   padding: 3px 10px;
-  border-radius: 12px;
+  border-radius: 20px;
   text-transform: uppercase;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.4px;
 }
 
 .reports-card-title {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   color: #0f172a;
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
   line-height: 1.3;
+  letter-spacing: -0.2px;
 }
 
 .reports-card-desc {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   color: #64748b;
-  margin: 0 0 auto 0;
-  line-height: 1.4;
+  margin: 0 0 12px 0;
+  line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 
-.reports-card-meta {
+.reports-card-dates {
   display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.75rem;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.reports-card-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+.reports-card-date-field label {
+  font-size: 0.62rem;
+  font-weight: 700;
   color: #94a3b8;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #f1f5f9;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.reports-card-date-field input[type="date"] {
+  padding: 5px 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 5px;
+  font-size: 0.78rem;
+  color: #1e293b;
+  background: #fff;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+.reports-card-date-field input[type="date"]:focus {
+  border-color: #1e3a8a;
+}
+.reports-card-dates-sep {
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  padding-bottom: 5px;
 }
 
 .reports-card-actions {
-  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  margin-top: 0;
 }
 
 .reports-download-btn {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 18px;
-  background: var(--cobe-navy, #1e3a8a);
+  gap: 5px;
+  padding: 6px 14px;
+  background: #1e3a8a;
   color: #fff;
   border: none;
-  border-radius: 8px;
-  font-size: 0.82rem;
-  font-weight: 500;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s;
+  flex: 1;
+  justify-content: center;
 }
 .reports-download-btn:hover {
   background: #1e40af;
 }
 .reports-download-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reports-print-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #fffbeb;
+  color: #92400e;
+  border: 1px solid #fbbf24;
+  border-radius: 7px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+  justify-content: center;
+}
+.reports-print-btn:hover {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #78350f;
+}
+
+.reports-csv-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: #f8fafc;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  border-radius: 7px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  flex: 1;
+  justify-content: center;
+}
+.reports-csv-btn:hover {
+  background: #f0fdf4;
+  border-color: #16a34a;
+  color: #16a34a;
+}
+.reports-csv-btn:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -406,6 +514,95 @@
 }
 @keyframes overlaySpin {
   to { transform: rotate(360deg); }
+}
+
+.daterange-picker {
+  margin-bottom: 20px;
+}
+
+.daterange-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.daterange-preset-btn {
+  padding: 6px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.daterange-preset-btn:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+.daterange-preset-btn.active {
+  background: var(--cobe-navy, #1e3a8a);
+  color: #fff;
+  border-color: var(--cobe-navy, #1e3a8a);
+}
+
+.daterange-custom-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.daterange-chevron {
+  transition: transform 0.2s;
+}
+.daterange-chevron.open {
+  transform: rotate(180deg);
+}
+
+.daterange-custom {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.daterange-custom-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.daterange-custom-field label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.daterange-custom-field input[type="date"] {
+  padding: 6px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.daterange-custom-field input[type="date"]:focus {
+  border-color: var(--cobe-navy, #1e3a8a);
+  background: #fff;
+}
+
+.daterange-separator {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  padding-bottom: 6px;
 }
 
 @media (max-width: 1024px) {
