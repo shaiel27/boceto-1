@@ -15,7 +15,7 @@ set_error_handler(function (int $errno, string $errstr): void {
 });
 
 // CORS headers - Allow both localhost and network IP
-$allowedOrigins = ['http://localhost:3000', 'http://192.168.100.8:3000'];
+$allowedOrigins = ['http://localhost:3000', 'http://192.168.0.218:3000'];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins)) {
     header("Access-Control-Allow-Origin: $origin");

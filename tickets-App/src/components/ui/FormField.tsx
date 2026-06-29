@@ -54,6 +54,7 @@ export function FormField({
               />
             )}
             <TextInput
+              accessibilityLabel={label}
               style={[styles.input, style]}
               value={value ?? ''}
               onChangeText={onChange}
@@ -64,6 +65,8 @@ export function FormField({
             />
             {isPassword && (
               <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 onPress={() => setShowPassword(!showPassword)}
                 style={styles.toggleBtn}
               >

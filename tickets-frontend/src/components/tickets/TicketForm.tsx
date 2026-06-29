@@ -24,6 +24,7 @@ import ApiService from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { findBienByCode } from '../../services/bienesApi';
 import Header from '../layout/Header';
+import { Helmet } from 'react-helmet-async';
 
 const normalize = (s: string) => (s || '').trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -383,21 +384,13 @@ const TicketForm: React.FC = () => {
         ticketData.Fk_Problem_Catalog = parseInt(formData.fkProblemCatalog);
       }
 
-      // Enviar ticket al backend
-      const response = await ApiService.createTicket(ticketData);
+      // Enviar ticket al backend con archivos adjuntos (todo en una sola request)
+      const response = await ApiService.createTicket(ticketData, formData.attachments.length > 0 ? formData.attachments : undefined);
 
       if (response.success) {
         setSubmitStatus('success');
 
-        const ticketId = response.data?.ticket_id;
-        let filesUploaded = 0;
-
-        if (ticketId && formData.attachments.length > 0) {
-          const uploadResponse = await ApiService.uploadTicketFiles(ticketId, formData.attachments);
-          if (uploadResponse.success) {
-            filesUploaded = uploadResponse.data?.files?.length || 0;
-          }
-        }
+        const filesUploaded = response.data?.files?.length || 0;
 
         // Guardar datos del ticket creado para mostrar en el resumen
         const officeName = offices.find(o => o.id === formData.fkOffice)?.name || 'No asignado';
@@ -936,6 +929,7 @@ const TicketForm: React.FC = () => {
 
   return (
     <>
+      <Helmet><title>Nuevo Ticket — Sistema de Tickets</title></Helmet>
       <Header />
       <div className="tkt">
       {submitStatus === 'success' && createdTicket && (

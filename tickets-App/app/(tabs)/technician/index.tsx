@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import Head from 'expo-router/head';
 import { useIsFocused } from '@react-navigation/native';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useTickets } from '../../../src/contexts/TicketContext';
@@ -68,12 +69,16 @@ export default function TechnicianDashboard() {
   const isFocused = useIsFocused();
   useEffect(() => {
     if (!isFocused) return;
+    refreshTickets();
+    getTechnicianPerformance().then((r) => {
+      if (r.success && r.data) setPerf(r.data);
+    });
     const interval = setInterval(() => {
       refreshTickets();
       getTechnicianPerformance().then((r) => {
         if (r.success && r.data) setPerf(r.data);
       });
-    }, 30000);
+    }, 10000);
     return () => clearInterval(interval);
   }, [isFocused, refreshTickets]);
 
@@ -254,6 +259,8 @@ export default function TechnicianDashboard() {
   );
 
   return (
+    <>
+      <Head><title>Panel Tecnico — Sistema de Tickets</title></Head>
     <View style={styles.page}>
       <FlatList
         data={filtered}
@@ -294,7 +301,7 @@ export default function TechnicianDashboard() {
           )
         }
       />
-    </View>
+    </View></>
   );
 }
 

@@ -10,7 +10,20 @@ ini_set('log_errors', '1');
 ini_set('error_log', __DIR__ . '/../error.log');
 
 // CORS headers
-header("Access-Control-Allow-Origin: http://localhost:3000");
+$allowedOrigins = [
+    'http://localhost:3000',
+    'http://192.168.0.218:3000',
+];
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if (in_array($origin, $allowedOrigins, true)) {
+    header("Access-Control-Allow-Origin: $origin");
+} elseif ($origin) {
+    $originHost = parse_url($origin, PHP_URL_HOST);
+    $serverHost = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
+    if ($originHost === $serverHost || $originHost === 'localhost' || $originHost === '127.0.0.1') {
+        header("Access-Control-Allow-Origin: $origin");
+    }
+}
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header("Access-Control-Allow-Credentials: true");

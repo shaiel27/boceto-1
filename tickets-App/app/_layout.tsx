@@ -1,4 +1,5 @@
 import { Stack, router } from 'expo-router';
+import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useCallback } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -68,6 +69,16 @@ export default function RootLayout() {
       <ToastProvider>
         <TicketProvider>
           <NotificationProvider>
+            <Head>
+              <title>Sistema de Tickets — Alcaldia de San Cristobal</title>
+              <meta name="description" content="Gestion de tickets y solicitudes de servicio tecnico" />
+              <meta name="viewport" content="width=device-width, initial-scale=1" />
+              <meta property="og:title" content="Sistema de Tickets — Alcaldia de San Cristobal" />
+              <meta property="og:description" content="Gestion de tickets y solicitudes de servicio tecnico" />
+              <meta property="og:type" content="website" />
+              <meta name="twitter:card" content="summary_large_image" />
+              <link rel="icon" href="/favicon.png" />
+            </Head>
             <StatusBar style="light" />
             {initialized ? (
               <AuthGate>

@@ -587,7 +587,7 @@ switch ($method) {
             $ticketId = (int)$data->ticket_id;
             $technicianId = (int)$data->technician_id;
             // Asignación manual: permitir asignación cruzada ($allowCrossService = true)
-            if ($technician->assignToTicket($ticketId, $technicianId, $currentUserId, $isLead, true)) {
+            if ($technician->assignToTicket($ticketId, $technicianId, $currentUserId, $isLead, true, true)) {
                 // Update ticket status to "En Proceso" if it was pending
                 $ticketData = $ticket->getById($ticketId);
                 if ($ticketData && $ticketData['Status'] === 'Pendiente') {
@@ -666,7 +666,7 @@ switch ($method) {
                 error_log("Assigning technician {$techId} to ticket {$data->ticket_id} (isLead: " . ($isLead ? 'true' : 'false') . ")");
 
                 // Asignación manual: permitir asignación cruzada ($allowCrossService = true)
-                if ($technician->assignToTicket($data->ticket_id, $techId, $currentUserId, $isLead, true)) {
+                if ($technician->assignToTicket($data->ticket_id, $techId, $currentUserId, $isLead, true, true)) {
                     $assignedCount++;
                     $assignedTechNames[] = 'Técnico #' . $techId;
                     $auditService->logAssignment((int) $data->ticket_id, (int) $techId, 'Técnico #' . $techId, (int) $currentUserId, 'manual');
@@ -964,6 +964,7 @@ switch ($method) {
 
             $assistanceRequest->Fk_Ticket = $ticketId;
             $assistanceRequest->Fk_Requesting_Technician = (int)$currentUserId;
+            $reason = isset($data->reason) ? trim((string)$data->reason) : '';
 
             if ($assistanceRequest->create()) {
                 $requestId = $assistanceRequest->ID_Request;
@@ -974,7 +975,8 @@ switch ($method) {
                     $ticketData['Ticket_Code'] ?? "#{$ticketId}",
                     $ticketData['Subject'] ?? '',
                     $techUser,
-                    $requestId
+                    $requestId,
+                    $reason
                 );
                 if (!$notifSent) {
                     error_log("Assistance request #{$requestId}: notification creation failed (table missing or no admins)");
@@ -1239,14 +1241,74 @@ switch ($method) {
             $ticketData = $ticket->getById((int) $result['ticket_id']);
             $timeline->create($result['ticket_id'], (int) $currentUserId, "Ticket creado por el usuario", null, 'Pendiente');
 
+            // Handle file uploads consolidated in the same request
+            $uploadedFiles = [];
+            if ($isMultipart && !empty($_FILES['files'])) {
+                $uploadDir = __DIR__ . '/../../public/uploads/tickets/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0755, true);
+                }
+
+                $files = $_FILES['files'];
+                $fileCount = is_array($files['name']) ? count($files['name']) : 1;
+
+                for ($i = 0; $i < $fileCount; $i++) {
+                    $fileName = is_array($files['name']) ? $files['name'][$i] : $files['name'];
+                    $fileTmpName = is_array($files['tmp_name']) ? $files['tmp_name'][$i] : $files['tmp_name'];
+                    $fileSize = is_array($files['size']) ? (int)$files['size'][$i] : (int)$files['size'];
+                    $fileType = is_array($files['type']) ? $files['type'][$i] : $files['type'];
+                    $fileError = is_array($files['error']) ? $files['error'][$i] : $files['error'];
+
+                    if ($fileError !== UPLOAD_ERR_OK) {
+                        error_log("File upload error for {$fileName}: code {$fileError}");
+                        continue;
+                    }
+
+                    $maxSize = 10 * 1024 * 1024;
+                    if ($fileSize > $maxSize) {
+                        error_log("File {$fileName} exceeds max size: {$fileSize} > {$maxSize}");
+                        continue;
+                    }
+
+                    $ext = pathinfo($fileName, PATHINFO_EXTENSION);
+                    $safeName = uniqid('tkt_', true) . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    $destPath = $uploadDir . $safeName;
+
+                    if (move_uploaded_file($fileTmpName, $destPath)) {
+                        $attachment->Fk_Service_Request = (int) $result['ticket_id'];
+                        $attachment->Fk_Comment = null;
+                        $attachment->Fk_User = (int) $currentUserId;
+                        $attachment->File_Name = $fileName;
+                        $attachment->File_Path = 'uploads/tickets/' . $safeName;
+                        $attachment->File_Type = $fileType;
+                        $attachment->File_Size = $fileSize;
+
+                        if ($attachment->create()) {
+                            $uploadedFiles[] = [
+                                'ID_Attachment' => $attachment->ID_Attachment,
+                                'File_Name' => $fileName,
+                                'File_Path' => 'uploads/tickets/' . $safeName,
+                                'File_Type' => $fileType,
+                                'File_Size' => $fileSize
+                            ];
+                        } else {
+                            error_log("Failed to create DB record for file: {$fileName}");
+                        }
+                    } else {
+                        error_log("move_uploaded_file failed: tmp={$fileTmpName} dest={$destPath}");
+                    }
+                }
+            }
+
             http_response_code(201);
             echo json_encode([
                 'success' => true,
-                'message' => 'Ticket creado exitosamente',
+                'message' => 'Ticket creado exitosamente' . (count($uploadedFiles) > 0 ? ' con ' . count($uploadedFiles) . ' archivo(s) adjunto(s)' : ''),
                 'data' => [
                     'ticket_id' => $result['ticket_id'],
                     'technician_assigned' => $result['technician_assigned'],
-                    'technician_name' => $result['technician_name']
+                    'technician_name' => $result['technician_name'],
+                    'files' => $uploadedFiles
                 ]
             ]);
         } catch (\InvalidArgumentException $e) {

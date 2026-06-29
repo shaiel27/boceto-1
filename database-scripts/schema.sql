@@ -202,10 +202,16 @@ CREATE TABLE Ticket_Comments (
 CREATE TABLE Ticket_Attachments (
     ID_Attachment INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Service_Request INT NOT NULL,
-    File_Name VARCHAR(100) NOT NULL,
-    File_Path VARCHAR(255) NOT NULL,
+    Fk_Comment INT DEFAULT NULL,
+    Fk_User INT DEFAULT NULL,
+    File_Name VARCHAR(255) NOT NULL,
+    File_Path VARCHAR(1024) NOT NULL,
+    File_Type VARCHAR(100) DEFAULT NULL,
+    File_Size INT DEFAULT NULL,
     Uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE
+    FOREIGN KEY (Fk_Service_Request) REFERENCES Service_Request(ID_Service_Request) ON DELETE CASCADE,
+    FOREIGN KEY (Fk_Comment) REFERENCES Ticket_Comments(ID_Comment),
+    FOREIGN KEY (Fk_User) REFERENCES Users(ID_Users)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE Ticket_Timeline (

@@ -18,10 +18,12 @@ final class Technician
     public ?int $Fk_Lunch_Block;
     public ?string $Status;
     public ?string $created_at;
+    private int $capacityLimit;
 
-    public function __construct(PDO $db)
+    public function __construct(PDO $db, int $capacityLimit = 5)
     {
         $this->conn = $db;
+        $this->capacityLimit = $capacityLimit;
     }
 
     public function getAll(): array {
@@ -364,7 +366,7 @@ final class Technician
      * PHP-PRO: Uses capacity-based selection WITH strict schedule filtering
      * Filters by: work hours, lunch block, capacity limit, status, and ticket priority
      */
-    public function getAvailableTechniciansByService(int $serviceId, int $ticketPriorityWeight = 0): array
+    public function getAvailableTechniciansByService(int $serviceId, int $ticketPriorityWeight = 0, array $excludeTechnicianIds = []): array
     {
         try {
             $currentDay = date('l');
@@ -384,8 +386,16 @@ final class Technician
 
             $this->updateTechniciansStatus($currentDaySpanish, $currentTime);
 
-            $capacityLimit = 5;
+            $capacityLimit = $this->capacityLimit;
             $priorityAdjustment = $ticketPriorityWeight > 0 ? (10 - $ticketPriorityWeight) : 5;
+
+            $excludeCondition = '';
+            $excludeParams = [];
+            if (!empty($excludeTechnicianIds)) {
+                $placeholders = implode(',', array_fill(0, count($excludeTechnicianIds), '?'));
+                $excludeCondition = " AND t.ID_Technicians NOT IN ({$placeholders})";
+                $excludeParams = array_values($excludeTechnicianIds);
+            }
 
             $query = "SELECT t.ID_Technicians, t.First_Name, t.Last_Name, t.Status, t.Fk_Lunch_Block,
                              lb.Start_Time as Lunch_Start, lb.End_Time as Lunch_End,
@@ -423,6 +433,7 @@ final class Technician
                             AND NOT (TIME(?) >= lb.Start_Time AND TIME(?) <= lb.End_Time))
                             OR (lb.Start_Time IS NULL)
                         )
+                        {$excludeCondition}
                     HAVING Active_Tickets_Count < ?
                     ORDER BY 
                         CASE 
@@ -444,10 +455,14 @@ final class Technician
             $stmt->bindValue(5, $currentTime, \PDO::PARAM_STR);
             $stmt->bindValue(6, $currentTime, \PDO::PARAM_STR);
             $stmt->bindValue(7, $currentTime, \PDO::PARAM_STR);
-            $stmt->bindValue(8, $capacityLimit, \PDO::PARAM_INT);
-            $stmt->bindValue(9, $currentTime, \PDO::PARAM_STR);
-            $stmt->bindValue(10, $currentTime, \PDO::PARAM_STR);
-            $stmt->bindValue(11, $priorityAdjustment, \PDO::PARAM_INT);
+            $offset = 8;
+            foreach ($excludeParams as $exId) {
+                $stmt->bindValue($offset++, (int)$exId, \PDO::PARAM_INT);
+            }
+            $stmt->bindValue($offset++, $capacityLimit, \PDO::PARAM_INT);
+            $stmt->bindValue($offset++, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue($offset++, $currentTime, \PDO::PARAM_STR);
+            $stmt->bindValue($offset++, $priorityAdjustment, \PDO::PARAM_INT);
             $stmt->execute();
             $technicians = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
@@ -474,7 +489,7 @@ final class Technician
                                  LEFT JOIN Technician_Schedules sched ON t.ID_Technicians = sched.Fk_Technician AND sched.Day_Of_Week = ?
                                  WHERE ts.Fk_TI_Service = ?
                                     AND ts.Status = 'Activo'
-                                    AND t.Status != 'Fuera de Servicio'
+                                    AND t.Status IN ('Disponible', 'Ocupado')
                                     AND (
                                         (sched.Work_Start_Time IS NOT NULL AND sched.Work_End_Time IS NOT NULL 
                                         AND TIME(?) >= sched.Work_Start_Time AND TIME(?) <= sched.Work_End_Time)
@@ -485,6 +500,7 @@ final class Technician
                                         AND NOT (TIME(?) >= lb.Start_Time AND TIME(?) <= lb.End_Time))
                                         OR (lb.Start_Time IS NULL)
                                     )
+                                    {$excludeCondition}
                                  HAVING Active_Tickets_Count < ?
                                  ORDER BY 
                                     CASE 
@@ -505,9 +521,13 @@ final class Technician
                 $fallbackStmt->bindValue(5, $currentTime, \PDO::PARAM_STR);
                 $fallbackStmt->bindValue(6, $currentTime, \PDO::PARAM_STR);
                 $fallbackStmt->bindValue(7, $currentTime, \PDO::PARAM_STR);
-                $fallbackStmt->bindValue(8, $capacityLimit, \PDO::PARAM_INT);
-                $fallbackStmt->bindValue(9, $currentTime, \PDO::PARAM_STR);
-                $fallbackStmt->bindValue(10, $currentTime, \PDO::PARAM_STR);
+                $fbOffset = 8;
+                foreach ($excludeParams as $exId) {
+                    $fallbackStmt->bindValue($fbOffset++, (int)$exId, \PDO::PARAM_INT);
+                }
+                $fallbackStmt->bindValue($fbOffset++, $capacityLimit, \PDO::PARAM_INT);
+                $fallbackStmt->bindValue($fbOffset++, $currentTime, \PDO::PARAM_STR);
+                $fallbackStmt->bindValue($fbOffset++, $currentTime, \PDO::PARAM_STR);
                 $fallbackStmt->execute();
                 $technicians = $fallbackStmt->fetchAll(\PDO::FETCH_ASSOC);
             }
@@ -738,7 +758,7 @@ final class Technician
         return null; // Available
     }
 
-    private function updateTechniciansStatus($currentDaySpanish, $currentTime) {
+    public function updateTechniciansStatus($currentDaySpanish, $currentTime) {
         try {
             error_log("=== updateTechniciansStatus ===");
             error_log("Current Day: {$currentDaySpanish}, Current Time: {$currentTime}");
@@ -905,7 +925,7 @@ final class Technician
         }
     }
 
-    public function assignToTicket(int $ticketId, int $technicianId, ?int $assignedBy = null, bool $isLead = true, bool $allowCrossService = false): bool {
+    public function assignToTicket(int $ticketId, int $technicianId, ?int $assignedBy = null, bool $isLead = true, bool $allowCrossService = false, bool $bypassCapacity = false): bool {
         try {
             // Validación 1: Verificar si el técnico existe
             $techQuery = "SELECT ID_Technicians, Status FROM " . $this->table_name . " WHERE ID_Technicians = :technicianId";
@@ -986,7 +1006,7 @@ final class Technician
             // Para mitigar condiciones de carrera volvemos a validar la capacidad del técnico dentro
             // de una transacción y usamos SELECT ... FOR UPDATE para bloquear las filas relevantes.
             // Si ya hay una transacción activa (ej. desde TicketService::createTicket), reusarla.
-            $capacityLimit = 5; // TODO: extraer a configuración si se requiere
+            $capacityLimit = $this->capacityLimit; // TODO: extraer a configuración si se requiere
             $ownsTransaction = !$this->conn->inTransaction();
 
             try {
@@ -1008,12 +1028,35 @@ final class Technician
                 $capacityResult = $checkStmt->fetch(PDO::FETCH_ASSOC);
                 $activeCount = (int)($capacityResult['active_count'] ?? 0);
 
-                if ($activeCount >= $capacityLimit && !$allowCrossService) {
+                if ($activeCount >= $capacityLimit && !$bypassCapacity) {
                     if ($ownsTransaction) {
                         $this->conn->rollBack();
                     }
                     error_log("Capacity full for technician {$technicianId} (active: {$activeCount}), cannot assign automatically");
                     return false;
+                }
+
+                // Prevent re-assigning a technician that was previously released from this ticket
+                $prevAssignmentQuery = "SELECT ID_Ticket_Technician, Status FROM Ticket_Technicians
+                    WHERE Fk_Service_Request = :ticketId2 AND Fk_Technician = :technicianId2
+                    ORDER BY ID_Ticket_Technician DESC LIMIT 1";
+                $prevStmt = $this->conn->prepare($prevAssignmentQuery);
+                $prevStmt->bindParam(":ticketId2", $ticketId, PDO::PARAM_INT);
+                $prevStmt->bindParam(":technicianId2", $technicianId, PDO::PARAM_INT);
+                $prevStmt->execute();
+                $prevAssignment = $prevStmt->fetch(PDO::FETCH_ASSOC);
+
+                if ($prevAssignment) {
+                    if ($prevAssignment['Status'] === 'Activo') {
+                        error_log("Technician {$technicianId} already actively assigned to ticket {$ticketId}, skipping");
+                        if ($ownsTransaction) $this->conn->rollBack();
+                        return false;
+                    }
+                    if ($prevAssignment['Status'] === 'Finalizado') {
+                        error_log("Technician {$technicianId} was previously released from ticket {$ticketId}, rejecting re-assignment");
+                        if ($ownsTransaction) $this->conn->rollBack();
+                        return false;
+                    }
                 }
 
                 // Insertar asignación
@@ -1275,6 +1318,62 @@ final class Technician
                             'created_at' => $ticket['Created_at']
                         ];
                         error_log("No technicians available even after escalation for ticket {$ticketId}");
+                    }
+
+                    // ── Fallback: Redes → Soporte (política institucional post-2PM) ──
+                    require_once __DIR__ . '/../Enums/ServiceType.php';
+                    require_once __DIR__ . '/../config/CrossServicePolicy.php';
+
+                    if (
+                        !$assigned
+                        && $serviceId === \App\Enums\ServiceType::SOPORTE
+                        && CrossServicePolicy::isActive()
+                    ) {
+
+                        error_log("[CrossService] Pending ticket {$ticketId}: buscando técnicos de Redes (política activa desde " . CrossServicePolicy::CROSS_SERVICE_START_TIME . ")");
+
+                        $redesTechs = $this->getAvailableTechniciansByService(
+                            \App\Enums\ServiceType::REDES,
+                            $priorityWeight,
+                        );
+
+                        if (!empty($redesTechs)) {
+                            foreach ($redesTechs as $redesTech) {
+                                $crossAssigned = $this->assignToTicket(
+                                    $ticketId,
+                                    $redesTech['ID_Technicians'],
+                                    null,
+                                    true,   // isLead
+                                    true,   // allowCrossService
+                                    false,  // bypassCapacity
+                                );
+
+                                if ($crossAssigned) {
+                                    $assignedCount++;
+                                    $escalatedCount++;
+                                    $assigned = true;
+                                    $results[] = [
+                                        'ticket_id'        => $ticketId,
+                                        'technician'       => $redesTech['First_Name'] . ' ' . $redesTech['Last_Name'],
+                                        'service_id'       => $serviceId,
+                                        'related_service_id' => \App\Enums\ServiceType::REDES,
+                                        'priority'         => $priority,
+                                        'escalated'        => true,
+                                    ];
+
+                                    $this->recordEscalation(
+                                        $ticketId,
+                                        $serviceId,
+                                        \App\Enums\ServiceType::REDES,
+                                    );
+
+                                    error_log("[CrossService] Técnico de Redes {$redesTech['First_Name']} {$redesTech['Last_Name']} asignado al ticket pendiente {$ticketId}");
+                                    break;
+                                }
+                            }
+                        } else {
+                            error_log("[CrossService] No hay técnicos de Redes disponibles para el ticket pendiente {$ticketId}");
+                        }
                     }
                 }
             }

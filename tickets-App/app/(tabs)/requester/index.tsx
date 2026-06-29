@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import Head from 'expo-router/head';
 import { useIsFocused } from '@react-navigation/native';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useTickets } from '../../../src/contexts/TicketContext';
@@ -52,7 +53,8 @@ export default function RequesterDashboard() {
 
   useEffect(() => {
     if (isFocused) {
-      pollRef.current = setInterval(() => { refreshTickets(); }, 30000);
+      refreshTickets();
+      pollRef.current = setInterval(() => { refreshTickets(); }, 10000);
     }
     return () => {
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
@@ -62,6 +64,8 @@ export default function RequesterDashboard() {
   const office = user?.office_name || '';
 
   return (
+    <>
+      <Head><title>Mis Solicitudes — Sistema de Tickets</title></Head>
     <View style={styles.page}>
       <FlatList
         data={displayed}
@@ -179,7 +183,7 @@ export default function RequesterDashboard() {
           </View>
         )}
       />
-    </View>
+    </View></>
   );
 }
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
+import Head from 'expo-router/head';
 import { Colors, BorderRadius } from '../../../src/constants/colors';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { getDashboardStats, getRecentTickets, DashboardStats, AdminRecentTicket } from '../../../src/services/adminService';
@@ -26,6 +27,8 @@ export default function AdminDashboardScreen() {
   const pct = (n: number) => Math.round((n / (stats?.total_tickets || 1)) * 100);
 
   return (
+    <>
+      <Head><title>Dashboard — Sistema de Tickets</title></Head>
     <ScrollView style={styles.page} contentContainerStyle={styles.content}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.navyPrimary} colors={[Colors.navyPrimary]} />}>
 
@@ -124,7 +127,7 @@ export default function AdminDashboardScreen() {
           <View style={{ height: 32 }} />
         </>
       )}
-    </ScrollView>
+    </ScrollView></>
   );
 }
 

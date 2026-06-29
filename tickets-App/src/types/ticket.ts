@@ -18,6 +18,7 @@ export interface Ticket {
   status: TicketStatus;
   created_at: string;
   resolved_at: string | null;
+  is_returned: number;
 
   // Joined fields
   office_name: string;

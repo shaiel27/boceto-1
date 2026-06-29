@@ -25,6 +25,8 @@ export const Colors = {
   statusEnProcesoBg: '#dbeafe',
   statusResuelto: '#10b981',
   statusResueltoBg: '#dcfce7',
+  statusReturned: '#7c3aed',
+  statusReturnedBg: '#f3e8ff',
 
   priorityAlta: '#ef4444',
   priorityAltaBg: '#fee2e2',

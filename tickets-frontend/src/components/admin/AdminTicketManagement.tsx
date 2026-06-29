@@ -138,6 +138,7 @@ const AdminTicketManagement: React.FC = () => {
   const [dateFilter, setDateFilter] = useState<string>('all');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [returnedFilter, setReturnedFilter] = useState(false);
 
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -177,7 +178,7 @@ const AdminTicketManagement: React.FC = () => {
   const modalRef = useRef<HTMLDivElement>(null);
 
   const [previousTickets, setPreviousTickets] = useState<Ticket[]>([]);
-  const [refreshInterval] = useState(15000);
+  const [refreshInterval] = useState(10000);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(6);
@@ -388,9 +389,13 @@ const AdminTicketManagement: React.FC = () => {
       }
     }
 
+    if (returnedFilter) {
+      filtered = filtered.filter(ticket => ticket.is_returned === 1);
+    }
+
     setFilteredTickets(filtered);
     setCurrentPage(1);
-  }, [tickets, searchTerm, statusFilter, serviceFilter, priorityFilter, dateFilter, customStartDate, customEndDate]);
+  }, [tickets, searchTerm, statusFilter, serviceFilter, priorityFilter, dateFilter, customStartDate, customEndDate, returnedFilter]);
 
   const paginatedTickets = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
@@ -759,6 +764,15 @@ const AdminTicketManagement: React.FC = () => {
                 <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="gvt-date" />
               </div>
             )}
+            <button
+              className={`gvt-returned-toggle ${returnedFilter ? 'active' : ''}`}
+              onClick={() => setReturnedFilter(!returnedFilter)}
+              title="Filtrar tickets con inconformidad"
+            >
+              <AlertCircle size={13} />
+              Inconformidad
+              {returnedFilter && <X size={11} style={{ marginLeft: 4 }} />}
+            </button>
           </div>
         </div>
 
@@ -1013,6 +1027,7 @@ const AdminTicketManagement: React.FC = () => {
                                 src={`${API_BASE_URL}/${att.File_Path}`}
                                 alt={att.File_Name}
                                 className="gvt-att-thumb-lg"
+                                loading="lazy"
                               />
                             </a>
                           </div>
@@ -1094,7 +1109,7 @@ const AdminTicketManagement: React.FC = () => {
                                   const isImage = att.File_Type?.startsWith('image/');
                                   return isImage ? (
                                     <a key={att.ID_Attachment} href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer" className="gvt-cmt-att">
-                                      <img src={`${API_BASE_URL}/${att.File_Path}`} alt={att.File_Name} className="gvt-att-thumb" />
+                                      <img src={`${API_BASE_URL}/${att.File_Path}`} alt={att.File_Name} className="gvt-att-thumb" loading="lazy" />
                                     </a>
                                   ) : (
                                     <a key={att.ID_Attachment} href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer" className="gvt-cmt-att">
@@ -1133,7 +1148,7 @@ const AdminTicketManagement: React.FC = () => {
                           {selectedFiles.map((file, i) => (
                             <div key={i} className="gvt-file-preview">
                               {file.type.startsWith('image/') ? (
-                                <img src={URL.createObjectURL(file)} alt={file.name} className="gvt-fp-thumb" />
+                                <img src={URL.createObjectURL(file)} alt={file.name} className="gvt-fp-thumb" loading="lazy" />
                               ) : (
                                 <FileText size={14} />
                               )}
@@ -1185,6 +1200,10 @@ const AdminTicketManagement: React.FC = () => {
             resolved_at: verifyTicket.Resolved_at || undefined,
           }]}
           onAllResolved={() => {
+            const vid = verifyTicket?.ID_Service_Request;
+            setTickets(prev => prev.map(t =>
+              t.ID_Service_Request === vid ? { ...t, Status: 'Cerrado' as const, Resolved_at: new Date().toISOString() } : t
+            ));
             setShowVerifyModal(false);
             setVerifyTicket(null);
             setShowDetailModal(false);

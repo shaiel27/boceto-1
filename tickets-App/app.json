@@ -35,6 +35,17 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "description": "Sistema de gestion de tickets y solicitudes de servicio tecnico para la Alcaldia de San Cristobal",
+    "web": {
+      "name": "Sistema de Tickets — Alcaldia de San Cristobal",
+      "shortName": "Tickets",
+      "description": "Gestion de tickets y solicitudes de servicio tecnico",
+      "lang": "es",
+      "themeColor": "#1a365d",
+      "backgroundColor": "#ffffff",
+      "display": "standalone",
+      "orientation": "portrait"
     }
   }
 }

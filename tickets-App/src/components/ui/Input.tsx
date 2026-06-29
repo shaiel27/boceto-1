@@ -47,6 +47,7 @@ export function Input({
           />
         )}
         <RNTextInput
+          accessibilityLabel={label}
           style={[styles.input, style]}
           placeholderTextColor={Colors.textLight}
           secureTextEntry={isPassword && !showPassword}
@@ -56,6 +57,8 @@ export function Input({
         />
         {isPassword && (
           <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             onPress={() => setShowPassword(!showPassword)}
             style={styles.eyeButton}
           >

@@ -68,6 +68,7 @@ export function mapBackendTicket(raw: BackendTicket, ticketAttachments?: TicketA
     status: mapBackendStatus(raw.Status),
     created_at: raw.Created_at,
     resolved_at: raw.Resolved_at || null,
+    is_returned: Number(raw.is_returned) || 0,
     office_name: raw.office_name || '',
     citizen_name: raw.citizen_name || raw.user_name || '',
     citizen_email: raw.user_email || '',

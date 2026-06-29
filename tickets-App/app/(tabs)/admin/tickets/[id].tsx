@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, FlatList, Image, Linking, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput, Modal, FlatList, Image, Linking, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams, useNavigation } from 'expo-router';
 import { Colors, BorderRadius } from '../../../../src/constants/colors';
 import { API_BASE_URL } from '../../../../src/constants/config';
@@ -29,6 +30,7 @@ export default function AdminTicketDetailScreen() {
   const [selected, setSelected] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
   const [commentText, setCommentText] = useState('');
+  const [image, setImage] = useState<string | null>(null);
   const [sendingComment, setSendingComment] = useState(false);
   const [assignSearch, setAssignSearch] = useState('');
   const toast = useToast();
@@ -83,12 +85,19 @@ export default function AdminTicketDetailScreen() {
   const doClose = () => Alert.alert('Cerrar Ticket', '¿Marcar como resuelto?', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Cerrar', style: 'destructive', onPress: async () => { const r = await updateTicketStatus(tid, 'Cerrado', 'Cerrado por administrador'); toast.showToast({ title: r.success ? 'Cerrado' : 'Error', message: r.message || '', type: r.success ? 'success' : 'error' }); if (r.success) load(); } }]);
 
   const handleAddComment = async () => {
-    if (!commentText.trim()) return;
+    if (!commentText.trim() && !image) return;
     setSendingComment(true);
-    const r = await addCommentApi(tid, commentText.trim());
+    const r = await addCommentApi(tid, commentText.trim(), image || undefined);
     setSendingComment(false);
-    if (r.success) { toast.showToast({ title: 'Comentario agregado', message: 'Registrado exitosamente', type: 'success' }); setCommentText(''); load(); }
+    if (r.success) { toast.showToast({ title: 'Comentario agregado', message: 'Registrado exitosamente', type: 'success' }); setCommentText(''); setImage(null); load(); }
     else toast.showToast({ title: 'Error', message: r.message || 'No se pudo agregar', type: 'error' });
+  };
+
+  const pickImage = async (fromCamera: boolean) => {
+    const perm = fromCamera ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') return;
+    const result = fromCamera ? await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.7 }) : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, quality: 0.7 });
+    if (!result.canceled && result.assets[0]) setImage(result.assets[0].uri);
   };
 
   const filteredTechs = useMemo(() => {
@@ -112,7 +121,13 @@ export default function AdminTicketDetailScreen() {
           <View style={styles.codeRow}>
             <View style={[styles.codeDot, { backgroundColor: isResolved ? Colors.statusResuelto : Colors.navyPrimary }]} />
             <Text style={styles.code}>{ticket.ticket_code}</Text>
-            <View style={{ flex: 1 }} /><StatusBadge status={ticket.status} />
+            <View style={{ flex: 1 }} />
+            {ticket.is_returned === 1 && (
+              <View style={styles.returnedBadge}>
+                <Text style={styles.returnedBadgeText}>Inconformidad</Text>
+              </View>
+            )}
+            <StatusBadge status={ticket.status} />
           </View>
           <Text style={styles.subject}>{ticket.subject}</Text>
           {ticket.property_number ? (
@@ -215,7 +230,28 @@ export default function AdminTicketDetailScreen() {
           <View style={styles.card}>
             <Text style={styles.sTitle}>Agregar Comentario</Text>
             <TextInput style={styles.cInput} placeholder="Escribe un comentario..." placeholderTextColor={Colors.textLight} value={commentText} onChangeText={setCommentText} multiline numberOfLines={3} textAlignVertical="top" />
-            <View style={styles.cFoot}><Text style={styles.cCount}>{commentText.length}</Text><Button title="Enviar" onPress={handleAddComment} disabled={!commentText.trim()} loading={sendingComment} style={styles.sendBtn} /></View>
+            {image && (
+              <View style={styles.imagePreview}>
+                <Image source={{ uri: image }} style={styles.imagePreviewImg} />
+                <TouchableOpacity style={styles.imageRemove} onPress={() => setImage(null)}>
+                  <Ionicons name="close-circle" size={22} color={Colors.priorityAlta} />
+                </TouchableOpacity>
+              </View>
+            )}
+            <View style={styles.cFoot}>
+              <View style={styles.cAttachRow}>
+                <TouchableOpacity style={styles.attachBtn} onPress={() => pickImage(true)}>
+                  <Ionicons name="camera-outline" size={18} color={Colors.navyPrimary} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.attachBtn} onPress={() => pickImage(false)}>
+                  <Ionicons name="image-outline" size={18} color={Colors.navyPrimary} />
+                </TouchableOpacity>
+              </View>
+              <View style={styles.cSendRow}>
+                <Text style={styles.cCount}>{commentText.length}</Text>
+                <Button title="Enviar" onPress={handleAddComment} disabled={!commentText.trim() && !image} loading={sendingComment} style={styles.sendBtn} />
+              </View>
+            </View>
           </View>
         )}
 
@@ -330,6 +366,14 @@ const styles = StyleSheet.create({
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
   codeDot: { width: 8, height: 8, borderRadius: 4 },
   code: { fontSize: 13, fontWeight: '700', color: Colors.navyPrimary, fontFamily: 'monospace' },
+  returnedBadge: {
+    backgroundColor: Colors.statusReturnedBg,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1, borderColor: Colors.statusReturned + '30',
+    marginRight: 6,
+  },
+  returnedBadgeText: { fontSize: 10, fontWeight: '700', color: Colors.statusReturned, textTransform: 'uppercase', letterSpacing: 0.3 },
   subject: { fontSize: 19, fontWeight: '600', color: Colors.text, lineHeight: 26 },
   prop: { fontSize: 12, color: Colors.navyPrimary, fontWeight: '600', letterSpacing: 0.2 },
   bienBlock: { marginTop: 6, backgroundColor: Colors.navyPrimary + '08', borderRadius: BorderRadius.md, padding: 10, borderWidth: 1, borderColor: Colors.navyPrimary + '18' },
@@ -359,8 +403,14 @@ const styles = StyleSheet.create({
   tlMeta: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
   cInput: { backgroundColor: Colors.background, borderRadius: BorderRadius.md, padding: 14, fontSize: 13, color: Colors.text, minHeight: 80, borderWidth: 1, borderColor: Colors.border },
   cFoot: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  cAttachRow: { flexDirection: 'row', gap: 6 },
+  cSendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  attachBtn: { width: 38, height: 38, borderRadius: 10, backgroundColor: Colors.primary + '0C', justifyContent: 'center', alignItems: 'center' },
   cCount: { fontSize: 11, color: Colors.textLight },
   sendBtn: { width: 100, height: 38 },
+  imagePreview: { marginTop: 10, borderRadius: BorderRadius.md, overflow: 'hidden', position: 'relative' },
+  imagePreviewImg: { width: '100%', height: 160, borderRadius: BorderRadius.md },
+  imageRemove: { position: 'absolute', top: 6, right: 6, backgroundColor: Colors.surface + 'E0', borderRadius: 12 },
   actions: { flexDirection: 'row', gap: 10, paddingTop: 4 },
   attItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

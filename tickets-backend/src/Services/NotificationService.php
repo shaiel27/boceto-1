@@ -117,18 +117,19 @@ final class NotificationService
 
     public function createAssistanceRequestNotification(
         int $ticketId, string $ticketCode, string $ticketSubject,
-        string $technicianName, int $requestId, bool $isRenotification = false
+        string $technicianName, int $requestId, ?string $reason = null, bool $isRenotification = false
     ): bool {
         $adminIds = $this->getAdminUserIds();
         if (empty($adminIds)) return false;
         $prefix = $isRenotification ? '⚠️ RECORDATORIO: ' : '🚨 ';
         $title = $prefix . 'Solicitud de Asistencia' . ($isRenotification ? ' (pendiente)' : '');
-        $message = "Técnico: {$technicianName}\nTicket: {$ticketCode}\nAsunto: {$ticketSubject}\n\nSe necesita asignar un técnico de apoyo urgente.";
+        $reasonLine = $reason ? "Motivo: {$reason}\n" : '';
+        $message = "Técnico: {$technicianName}\nTicket: {$ticketCode}\nAsunto: {$ticketSubject}\n{$reasonLine}\nSe necesita asignar un técnico de apoyo urgente.";
         $success = true;
         foreach ($adminIds as $adminId) {
             $dto = new NotificationDTO(
                 'assistance_request', $title, $message, (int)$adminId, $ticketId,
-                ['request_id' => $requestId, 'technician_name' => $technicianName, 'ticket_code' => $ticketCode, 'ticket_subject' => $ticketSubject, 'is_renotification' => $isRenotification, 'notification_count' => null]
+                ['request_id' => $requestId, 'technician_name' => $technicianName, 'ticket_code' => $ticketCode, 'ticket_subject' => $ticketSubject, 'reason' => $reason, 'is_renotification' => $isRenotification, 'notification_count' => null]
             );
             if (!$this->notificationModel->create($dto)) $success = false;
         }

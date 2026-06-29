@@ -28,9 +28,9 @@ const AuditorLayout: React.FC<AuditorLayoutProps> = ({ children }) => {
             alignItems: 'center',
             marginBottom: '1.5rem'
           }}>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-primary, #1a202c)' }}>
-              Auditoría del Sistema
-            </h1>
+          <div style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary, #1a202c)' }}>
+            Auditoría del Sistema
+          </div>
             <button
               onClick={handleLogout}
               style={{

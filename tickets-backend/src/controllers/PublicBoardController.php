@@ -4,6 +4,7 @@ declare(strict_types=1);
 final class PublicBoardController
 {
     private PDO $db;
+    private int $lastStatusRefresh = 0;
 
     public function __construct(PDO $db)
     {
@@ -12,6 +13,8 @@ final class PublicBoardController
 
     public function getInitialState(): array
     {
+        $this->refreshTechnicianStatuses();
+
         $activeTickets = $this->getActiveTickets();
         $techniciansGrouped = $this->getTechniciansGroupedByService();
         $lunchBlocks = $this->getLunchBlocks();
@@ -32,6 +35,8 @@ final class PublicBoardController
 
     public function getUpdatesSince(?string $since): array
     {
+        $this->maybeRefreshStatuses();
+
         $baseTime = $since ? new DateTimeImmutable($since) : new DateTimeImmutable('-10 seconds');
 
         $newTickets = $this->getNewTicketsSince($baseTime);
@@ -229,10 +234,12 @@ SELECT
   sr.Ticket_Code as ticket_code,
   sr.Subject as subject,
   o.Name_Office as office_name,
+  ts.ID_TI_Service as service_id,
   ts.Type_Service as service_name,
   spc.Problem_Name as problem_name,
   sr.System_Priority as priority,
   sr.Status as status,
+  sr.is_returned as is_returned,
   sr.Created_at as created_at,
   TIMESTAMPDIFF(MINUTE, sr.Created_at, NOW()) as elapsed_minutes,
   (SELECT GROUP_CONCAT(CONCAT(t2.First_Name, ' ', t2.Last_Name) SEPARATOR ', ')
@@ -335,7 +342,8 @@ SQL;
                     AND NOT EXISTS (
                       SELECT 1 FROM Ticket_Technicians tt
                       WHERE tt.Fk_Service_Request = sr.ID_Service_Request AND tt.Status = 'Activo'
-                    )) as unassigned
+                    )) as unassigned,
+                 (SELECT COUNT(*) FROM Assistance_Requests WHERE Status = 'PENDIENTE') as pending_assistance
                 ";
         $stmt = $this->db->query($sql);
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: [
@@ -352,6 +360,10 @@ SQL;
                  t.ID_Technicians as id,
                  CONCAT(t.First_Name, ' ', t.Last_Name) as name,
                  t.Status,
+                 t.Fk_Lunch_Block,
+                 lb.Block_Name,
+                 lb.Start_Time,
+                 lb.End_Time,
                  (SELECT COUNT(*) FROM Ticket_Technicians tt
                   JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                   WHERE tt.Fk_Technician = t.ID_Technicians
@@ -360,6 +372,7 @@ SQL;
                 FROM TI_Service ts
                 INNER JOIN Technicians_Service tsvc ON ts.ID_TI_Service = tsvc.Fk_TI_Service
                 INNER JOIN Technicians t ON tsvc.Fk_Technicians = t.ID_Technicians
+                LEFT JOIN Lunch_Blocks lb ON t.Fk_Lunch_Block = lb.ID_Lunch_Block
                 WHERE tsvc.Status = 'Activo'
                   AND t.Status NOT IN ('Inactivo', 'Fuera de Servicio')
                 ORDER BY ts.Type_Service, t.First_Name";
@@ -367,7 +380,12 @@ SQL;
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
 
         $grouped = [];
+        $seenTechIds = [];
         foreach ($rows as $r) {
+            $tid = (int)$r['id'];
+            if (in_array($tid, $seenTechIds, true)) continue;
+            $seenTechIds[] = $tid;
+
             $sid = (int)$r['service_id'];
             if (!isset($grouped[$sid])) {
                 $grouped[$sid] = [
@@ -377,7 +395,7 @@ SQL;
                 ];
             }
             $tech = $r;
-            $tech['id'] = (int)$tech['id'];
+            $tech['id'] = $tid;
             $tech['status'] = $tech['Status'] ?? null;
             unset($tech['Status'], $tech['service_id'], $tech['service_name']);
             $grouped[$sid]['technicians'][] = $tech;
@@ -514,6 +532,35 @@ SQL;
             return true;
         }
         return false;
+    }
+
+    private function maybeRefreshStatuses(): void
+    {
+        $now = time();
+        if ($now - $this->lastStatusRefresh >= 15) {
+            $this->refreshTechnicianStatuses();
+            $this->lastStatusRefresh = $now;
+        }
+    }
+
+    private function refreshTechnicianStatuses(): void
+    {
+        require_once __DIR__ . '/../models/Technician.php';
+        $tech = new Technician($this->db);
+
+        $currentDay = date('l');
+        $currentTime = date('H:i:s');
+        $dayMap = [
+            'Monday' => 'Lunes',
+            'Tuesday' => 'Martes',
+            'Wednesday' => 'Miercoles',
+            'Thursday' => 'Jueves',
+            'Friday' => 'Viernes',
+            'Saturday' => 'Sabado',
+            'Sunday' => 'Domingo'
+        ];
+        $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
+        $tech->updateTechniciansStatus($currentDaySpanish, $currentTime);
     }
 
     private function isNowBetween(string $startStr, string $endStr, DateTimeImmutable $now): bool

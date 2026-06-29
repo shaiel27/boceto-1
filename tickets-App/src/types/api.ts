@@ -42,6 +42,7 @@ export interface BackendTicket {
   Status: string;
   Created_at: string;
   Resolved_at: string | null;
+  is_returned?: number;
   user_name: string;
   user_email?: string;
   office_name: string;

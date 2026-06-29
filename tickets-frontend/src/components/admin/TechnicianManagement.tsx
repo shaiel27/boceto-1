@@ -237,6 +237,7 @@ const TechnicianManagement: React.FC = () => {
   // Filtrar técnicos
   const filteredTechnicians = useMemo(() => {
     return technicians.filter(technician => {
+      if (technician.Status === 'Fuera de Servicio') return false;
       const fullName = `${technician.First_Name} ${technician.Last_Name}`.toLowerCase();
       const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
                            technician.Email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -724,7 +725,6 @@ const TechnicianManagement: React.FC = () => {
               <option value="Disponible">Disponibles</option>
               <option value="Ocupado">Ocupados</option>
               <option value="Inactivo">Inactivos</option>
-              <option value="Fuera de Servicio">Fuera de Servicio</option>
             </select>
             <select
               value={serviceFilter}

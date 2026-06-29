@@ -30,6 +30,7 @@ export default function AdminTicketsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState<number>(0);
+  const [returnedFilter, setReturnedFilter] = useState(false);
   const [services, setServices] = useState<{ ID_TI_Service: number; Type_Service: string }[]>([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -47,6 +48,7 @@ export default function AdminTicketsScreen() {
       limit: PAGE_SIZE, offset: o,
       status: statusFilter || undefined,
       service_id: serviceFilter || undefined,
+      is_returned: returnedFilter ? 1 : undefined,
     });
 
     if (r.success && r.tickets) {
@@ -55,15 +57,15 @@ export default function AdminTicketsScreen() {
       setHasMore(r.tickets.length >= PAGE_SIZE);
     }
     setLoading(false); setLoadingMore(false);
-  }, [statusFilter, serviceFilter, offset]);
+  }, [statusFilter, serviceFilter, returnedFilter, offset]);
 
-  useEffect(() => { setOffset(0); setHasMore(true); load(true); }, [statusFilter, serviceFilter]);
+  useEffect(() => { setOffset(0); setHasMore(true); load(true); }, [statusFilter, serviceFilter, returnedFilter]);
 
-  useFocusEffect(useCallback(() => { setOffset(0); setHasMore(true); load(true); }, [statusFilter, serviceFilter]));
+  useFocusEffect(useCallback(() => { setOffset(0); setHasMore(true); load(true); }, [statusFilter, serviceFilter, returnedFilter]));
 
   const onRefresh = async () => {
     setRefreshing(true); setOffset(0); setHasMore(true);
-    const r = await getAllTickets({ limit: PAGE_SIZE, offset: 0, status: statusFilter || undefined, service_id: serviceFilter || undefined });
+    const r = await getAllTickets({ limit: PAGE_SIZE, offset: 0, status: statusFilter || undefined, service_id: serviceFilter || undefined, is_returned: returnedFilter ? 1 : undefined });
     if (r.success && r.tickets) { setTickets(r.tickets); setOffset(PAGE_SIZE); setHasMore(r.tickets.length >= PAGE_SIZE); }
     setRefreshing(false);
   };
@@ -90,6 +92,16 @@ export default function AdminTicketsScreen() {
               </TouchableOpacity>
             );
           })}
+
+          <View style={styles.filterSep} />
+          <TouchableOpacity
+            style={[styles.fChip, returnedFilter && { backgroundColor: Colors.statusReturnedBg, borderColor: Colors.statusReturned + '35' }]}
+            onPress={() => setReturnedFilter(!returnedFilter)}
+            activeOpacity={0.7}
+          >
+            {returnedFilter && <View style={[styles.fDot, { backgroundColor: Colors.statusReturned }]} />}
+            <Text style={[styles.fText, returnedFilter && { color: Colors.statusReturned, fontWeight: '700' }]}>Inconformidad</Text>
+          </TouchableOpacity>
         </ScrollView>
 
         {services.length > 0 && (
@@ -161,6 +173,11 @@ export default function AdminTicketsScreen() {
                         {status === 'En Proceso' ? 'En curso' : status}
                       </Text>
                     </View>
+                    {Number(item.is_returned) === 1 && (
+                      <View style={[styles.badge, { backgroundColor: Colors.statusReturnedBg, borderColor: Colors.statusReturned + '30', borderWidth: 1 }]}>
+                        <Text style={[styles.badgeText, { color: Colors.statusReturned }]}>Inconformidad</Text>
+                      </View>
+                    )}
                   </View>
                 </View>
 
@@ -209,11 +226,13 @@ export default function AdminTicketsScreen() {
               </View>
               <Text style={styles.emptyTitle}>Sin tickets</Text>
               <Text style={styles.emptySub}>
-                {statusFilter
-                  ? `No hay tickets en estado "${statusFilter}"`
-                  : serviceFilter > 0
-                    ? `Sin tickets para el servicio seleccionado`
-                    : 'No se encontraron tickets'}
+                {returnedFilter
+                  ? 'No hay tickets con inconformidad'
+                  : statusFilter
+                    ? `No hay tickets en estado "${statusFilter}"`
+                    : serviceFilter > 0
+                      ? `Sin tickets para el servicio seleccionado`
+                      : 'No se encontraron tickets'}
               </Text>
             </View>
           )
@@ -273,6 +292,7 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   fDot: { width: 6, height: 6, borderRadius: 3 },
+  filterSep: { width: 1, marginHorizontal: 2, backgroundColor: Colors.border, alignSelf: 'stretch' },
   fText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   serviceBar: {},
   sChip: {

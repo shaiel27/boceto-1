@@ -53,7 +53,8 @@ final class TicketService
             }
 
             // Try to assign a technician automatically
-            $assignedTechnician = $this->assignTechnicianAutomatically($ticketId, $dto->fkTiService);
+            $priorityWeight = $this->getPriorityWeight($dto->systemPriority ?? 'Media');
+            $assignedTechnician = $this->assignTechnicianAutomatically($ticketId, $dto->fkTiService, $priorityWeight);
 
             // Create notification if notification service is available
             if ($this->notificationService !== null) {
@@ -82,38 +83,62 @@ final class TicketService
     /**
      * Automatically assign an available technician to a ticket
      * Uses intelligent selection based on workload and availability
+     *
+     * Si el servicio es Soporte y no hay técnicos disponibles,
+     * aplica la política institucional de asignación cruzada
+     * (técnicos de Redes después de una hora configurable).
      */
-    private function assignTechnicianAutomatically(int $ticketId, int $serviceId): ?array
+    private function assignTechnicianAutomatically(int $ticketId, int $serviceId, int $priorityWeight = 0, array $excludeTechIds = []): ?array
     {
         try {
-            $availableTechnicians = $this->technicianModel->getAvailableTechniciansByService($serviceId);
+            // ── 1. Intento primario: técnicos del servicio original ──
+            $technicians = $this->technicianModel->getAvailableTechniciansByService(
+                $serviceId,
+                $priorityWeight,
+                $excludeTechIds,
+            );
 
-            if (empty($availableTechnicians)) {
-                error_log("No available technicians found for service {$serviceId}");
-                return null;
+            if (!empty($technicians)) {
+                $assigned = $this->tryAssignCandidates($ticketId, $technicians);
+                if ($assigned !== null) {
+                    return $assigned;
+                }
             }
 
-            // Try technicians in order until assignment succeeds
-            foreach ($availableTechnicians as $selectedTechnician) {
-                error_log("Auto-assigning technician: {$selectedTechnician['First_Name']} {$selectedTechnician['Last_Name']} " .
-                          "(Active Tickets: {$selectedTechnician['Active_Tickets_Count']})");
+            // ── 2. Fallback: Redes → Soporte (política institucional post-2PM) ──
+            require_once __DIR__ . '/../Enums/ServiceType.php';
+            require_once __DIR__ . '/../config/CrossServicePolicy.php';
 
-                $assigned = $this->technicianModel->assignToTicket(
+            if (
+                $serviceId === \App\Enums\ServiceType::SOPORTE
+                && CrossServicePolicy::isActive()
+            ) {
+
+                error_log(sprintf(
+                    '[CrossService] Sin técnicos de Soporte para ticket %d. '
+                    . 'Buscando técnicos de Redes (política activa desde %s).',
                     $ticketId,
-                    $selectedTechnician['ID_Technicians'],
-                    null,
-                    true
+                    CrossServicePolicy::CROSS_SERVICE_START_TIME,
+                ));
+
+                $redesTechs = $this->technicianModel->getAvailableTechniciansByService(
+                    \App\Enums\ServiceType::REDES,
+                    $priorityWeight,
+                    $excludeTechIds,
                 );
 
-                if ($assigned) {
-                    error_log("Successfully auto-assigned technician {$selectedTechnician['ID_Technicians']} to ticket {$ticketId}");
-
-                    return [
-                        'id' => $selectedTechnician['ID_Technicians'],
-                        'name' => $selectedTechnician['First_Name'] . ' ' . $selectedTechnician['Last_Name']
-                    ];
+                if (!empty($redesTechs)) {
+                    $assigned = $this->tryAssignCandidatesCrossService($ticketId, $redesTechs);
+                    if ($assigned !== null) {
+                        $this->logCrossServiceAssignment($ticketId, $assigned['id']);
+                        return $assigned;
+                    }
                 }
-                error_log("Failed to assign technician {$selectedTechnician['ID_Technicians']} to ticket {$ticketId}, trying next candidate...");
+
+                error_log(sprintf(
+                    '[CrossService] No hay técnicos de Redes disponibles para ticket %d.',
+                    $ticketId,
+                ));
             }
 
             return null;
@@ -122,6 +147,117 @@ final class TicketService
             // Don't throw - ticket should still be created even if assignment fails
             return null;
         }
+    }
+
+    /**
+     * Try to assign a ticket to a list of candidates (same-service).
+     *
+     * @param array<int, array<string, mixed>> $candidates
+     * @return array{id: int, name: string}|null
+     */
+    private function tryAssignCandidates(int $ticketId, array $candidates): ?array
+    {
+        foreach ($candidates as $tech) {
+            error_log(sprintf(
+                'Auto-assigning technician: %s %s (Active Tickets: %s)',
+                $tech['First_Name'],
+                $tech['Last_Name'],
+                $tech['Active_Tickets_Count'] ?? '?',
+            ));
+
+            $ok = $this->technicianModel->assignToTicket(
+                $ticketId,
+                $tech['ID_Technicians'],
+                null,
+                true,   // isLead
+                // allowCrossService = false, bypassCapacity = false (por defecto)
+            );
+
+            if ($ok) {
+                error_log(sprintf(
+                    'Successfully auto-assigned technician %d to ticket %d',
+                    $tech['ID_Technicians'],
+                    $ticketId,
+                ));
+                return [
+                    'id' => $tech['ID_Technicians'],
+                    'name' => $tech['First_Name'] . ' ' . $tech['Last_Name'],
+                ];
+            }
+
+            error_log(sprintf(
+                'Failed to assign technician %d to ticket %d, trying next candidate...',
+                $tech['ID_Technicians'],
+                $ticketId,
+            ));
+        }
+
+        return null;
+    }
+
+    /**
+     * Try to assign a ticket to a list of cross-service candidates.
+     *
+     * A diferencia de tryAssignCandidates(), este método usa
+     * allowCrossService=true para saltar la verificación de
+     * coincidencia de servicio en assignToTicket().
+     *
+     * @param array<int, array<string, mixed>> $candidates
+     * @return array{id: int, name: string}|null
+     */
+    private function tryAssignCandidatesCrossService(int $ticketId, array $candidates): ?array
+    {
+        foreach ($candidates as $tech) {
+            error_log(sprintf(
+                '[CrossService] Asignando técnico de Redes: %s %s (ticket %d)',
+                $tech['First_Name'],
+                $tech['Last_Name'],
+                $ticketId,
+            ));
+
+            $ok = $this->technicianModel->assignToTicket(
+                $ticketId,
+                $tech['ID_Technicians'],
+                null,
+                true,   // isLead
+                true,   // allowCrossService = true  ← clave: salta el check de servicio
+                false,  // bypassCapacity
+            );
+
+            if ($ok) {
+                error_log(sprintf(
+                    '[CrossService] Técnico %s %s asignado exitosamente al ticket %d',
+                    $tech['First_Name'],
+                    $tech['Last_Name'],
+                    $ticketId,
+                ));
+                return [
+                    'id' => $tech['ID_Technicians'],
+                    'name' => $tech['First_Name'] . ' ' . $tech['Last_Name'],
+                ];
+            }
+
+            error_log(sprintf(
+                '[CrossService] Falló asignación de técnico %d al ticket %d, siguiente candidato...',
+                $tech['ID_Technicians'],
+                $ticketId,
+            ));
+        }
+
+        return null;
+    }
+
+    /**
+     * Registra en el log una asignación cruzada Redes → Soporte.
+     */
+    private function logCrossServiceAssignment(int $ticketId, int $techId): void
+    {
+        error_log(sprintf(
+            '[CrossService] Ticket %d asignado a técnico de Redes %d (política post-%s)',
+            $ticketId,
+            $techId,
+            CrossServicePolicy::CROSS_SERVICE_START_TIME,
+        ));
     }
 
     /**
@@ -304,9 +440,11 @@ final class TicketService
             $releasedCount = $this->ticketModel->releaseAllTechnicians($ticketId);
             error_log("Released {$releasedCount} technicians from ticket {$ticketId}");
 
-            // 3. Re-assign a new technician automatically
+            // 3. Re-assign a new technician automatically, excluding previous ones
             $ticketServiceId = (int)$ticket['Fk_TI_Service'];
-            $newTechnician = $this->assignTechnicianAutomatically($ticketId, $ticketServiceId);
+            $previousTechIds = $this->getPreviousTechnicianIds($ticketId);
+            $priorityWeight = $this->getPriorityWeight($ticket['System_Priority'] ?? 'Media');
+            $newTechnician = $this->assignTechnicianAutomatically($ticketId, $ticketServiceId, $priorityWeight, $previousTechIds);
 
             // 4. Save the inconformity comment
             $commentModel = new \TicketComment($this->db);
@@ -361,6 +499,31 @@ final class TicketService
             $this->db->rollBack();
             error_log("verifyTicket error: " . $e->getMessage());
             return ['success' => false, 'message' => 'Error al procesar la verificación'];
+        }
+    }
+
+    private function getPriorityWeight(string $priority): int
+    {
+        $map = ['Crítica' => 10, 'Alta' => 5, 'Media' => 2, 'Baja' => 1];
+        foreach ($map as $key => $weight) {
+            if (stripos($priority, $key) !== false) {
+                return $weight;
+            }
+        }
+        return 2;
+    }
+
+    private function getPreviousTechnicianIds(int $ticketId): array
+    {
+        try {
+            $stmt = $this->db->prepare(
+                "SELECT DISTINCT Fk_Technician FROM Ticket_Technicians WHERE Fk_Service_Request = ?"
+            );
+            $stmt->execute([$ticketId]);
+            return array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
+        } catch (\Exception $e) {
+            error_log("getPreviousTechnicianIds error: " . $e->getMessage());
+            return [];
         }
     }
 }

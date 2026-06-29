@@ -171,6 +171,16 @@
 }
 .gvt-date:focus{outline:none;border-color:var(--navy-l)}
 
+.gvt-returned-toggle{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:7px 11px;border-radius:var(--radius);
+  font-size:11px;font-weight:600;font-family:inherit;
+  cursor:pointer;color:var(--dim);background:var(--card);
+  border:1px solid var(--line);transition:all .15s;white-space:nowrap
+}
+.gvt-returned-toggle:hover{border-color:rgba(124,58,237,.35);color:#7c3aed}
+.gvt-returned-toggle.active{background:rgba(124,58,237,.1);color:#7c3aed;border-color:rgba(124,58,237,.25);font-weight:700}
+
 /* --- PRIORITY STRIPE MAP --- */
 .gvt-card--p-crit{border-left:3px solid var(--crt)}
 .gvt-card--p-high{border-left:3px solid var(--high)}

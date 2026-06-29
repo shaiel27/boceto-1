@@ -251,8 +251,9 @@ class ServiceRequest {
         require_once __DIR__ . '/Technician.php';
         $technician = new Technician($this->conn);
 
-        $techQuery = "SELECT Fk_Technician FROM Ticket_Technicians 
-                      WHERE Fk_Service_Request = :ticketId AND Status = 'Activo'";
+        // Release ALL assignments regardless of status to fully clean the ticket
+        $techQuery = "SELECT DISTINCT Fk_Technician FROM Ticket_Technicians 
+                      WHERE Fk_Service_Request = :ticketId";
         $techStmt = $this->conn->prepare($techQuery);
         $techStmt->bindParam(":ticketId", $ticketId);
         $techStmt->execute();
@@ -260,8 +261,31 @@ class ServiceRequest {
 
         $released = 0;
         foreach ($assignedTechs as $tech) {
-            if ($technician->releaseFromTicket($ticketId, $tech['Fk_Technician'])) {
+            // Release all rows for this tech+ticket (handles duplicates if any)
+            $releaseQuery = "UPDATE Ticket_Technicians SET Status = 'Finalizado' 
+                            WHERE Fk_Service_Request = :ticketId AND Fk_Technician = :techId";
+            $releaseStmt = $this->conn->prepare($releaseQuery);
+            $releaseStmt->bindParam(":ticketId", $ticketId);
+            $releaseStmt->bindParam(":techId", $tech['Fk_Technician']);
+            if ($releaseStmt->execute() && $releaseStmt->rowCount() > 0) {
                 $released++;
+                // Restore technician to Disponible if they have no other active tickets
+                $checkQuery = "SELECT COUNT(*) as active_tickets
+                              FROM Ticket_Technicians tt
+                              JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
+                              WHERE tt.Fk_Technician = :techId2
+                              AND tt.Status = 'Activo'
+                              AND sr.Status NOT IN ('Cerrado', 'Resuelto')";
+                $checkStmt = $this->conn->prepare($checkQuery);
+                $checkStmt->bindParam(":techId2", $tech['Fk_Technician']);
+                $checkStmt->execute();
+                $result = $checkStmt->fetch(PDO::FETCH_ASSOC);
+                if ((int)($result['active_tickets'] ?? 0) === 0) {
+                    $restoreQuery = "UPDATE Technicians SET Status = 'Disponible' WHERE ID_Technicians = :techId3";
+                    $restoreStmt = $this->conn->prepare($restoreQuery);
+                    $restoreStmt->bindParam(":techId3", $tech['Fk_Technician']);
+                    $restoreStmt->execute();
+                }
             }
         }
         return $released;

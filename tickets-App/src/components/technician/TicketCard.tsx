@@ -41,19 +41,26 @@ function TicketCardInner({ ticket, onPress, index = 0 }: TicketCardProps) {
   return (
     <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
       <TouchableOpacity
-        style={[styles.card, resolved && styles.cardResolved]}
+        style={[styles.card, resolved && styles.cardResolved, ticket.is_returned === 1 && styles.cardReturned]}
         onPress={() => onPress(ticket)}
         activeOpacity={0.65}
       >
-        <View style={[styles.accentBar, { backgroundColor: accent.bar }]} />
-        <View style={[styles.accentCap, { backgroundColor: accent.bar }]} />
+        <View style={[styles.accentBar, { backgroundColor: ticket.is_returned === 1 ? Colors.statusReturned : accent.bar }]} />
+        <View style={[styles.accentCap, { backgroundColor: ticket.is_returned === 1 ? Colors.statusReturned : accent.bar }]} />
         <View style={styles.body}>
           <View style={styles.top}>
             <View style={styles.codeRow}>
-              <View style={[styles.signalDot, { backgroundColor: accent.dot }]} />
+              <View style={[styles.signalDot, { backgroundColor: ticket.is_returned === 1 ? Colors.statusReturned : accent.dot }]} />
               <Text style={styles.code}>{ticket.ticket_code}</Text>
             </View>
-            <StatusSignal status={ticket.status} />
+            <View style={styles.topRight}>
+              {ticket.is_returned === 1 && (
+                <View style={styles.returnedTag}>
+                  <Text style={styles.returnedTagText}>Inconformidad</Text>
+                </View>
+              )}
+              <StatusSignal status={ticket.status} />
+            </View>
           </View>
           <Text style={styles.subject} numberOfLines={1}>{ticket.subject}</Text>
           <View style={styles.metaRow}>
@@ -107,10 +114,19 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   cardResolved: { opacity: 0.75 },
+  cardReturned: { borderColor: Colors.statusReturned + '50', backgroundColor: Colors.statusReturnedBg + '33' },
   accentBar: { width: 3, borderTopLeftRadius: BorderRadius.md, borderBottomLeftRadius: BorderRadius.md },
   accentCap: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 1 },
   body: { flex: 1, paddingVertical: 10, paddingLeft: 10, paddingRight: 4 },
   top: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  returnedTag: {
+    backgroundColor: Colors.statusReturnedBg,
+    paddingHorizontal: 6, paddingVertical: 1,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1, borderColor: Colors.statusReturned + '30',
+  },
+  returnedTagText: { fontSize: 8, fontWeight: '700', color: Colors.statusReturned, letterSpacing: 0.3, textTransform: 'uppercase' },
   codeRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   signalDot: { width: 5, height: 5, borderRadius: 2.5 },
   code: { fontSize: 10, fontWeight: '700', color: Colors.textLight, fontFamily: 'monospace', letterSpacing: 0.4 },

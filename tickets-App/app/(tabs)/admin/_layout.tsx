@@ -1,8 +1,11 @@
 import { Stack } from 'expo-router';
+import Head from 'expo-router/head';
 import { Colors } from '../../../src/constants/colors';
 
 export default function AdminLayout() {
   return (
+    <>
+      <Head><title>Administracion — Sistema de Tickets</title></Head>
     <Stack
       screenOptions={{
         headerStyle: { backgroundColor: Colors.primary },
@@ -19,6 +22,6 @@ export default function AdminLayout() {
       <Stack.Screen name="technicians" options={{ title: 'Gestión de Técnicos' }} />
       <Stack.Screen name="users" options={{ title: 'Gestión de Usuarios' }} />
       <Stack.Screen name="reports" options={{ title: 'Reportes' }} />
-    </Stack>
+    </Stack></>
   );
 }

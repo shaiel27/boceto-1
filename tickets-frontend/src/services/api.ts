@@ -108,6 +108,20 @@ export interface CreateTicketResponse {
 
   technician_name: string | null;
 
+  files?: Array<{
+
+    ID_Attachment: string;
+
+    File_Name: string;
+
+    File_Path: string;
+
+    File_Type: string;
+
+    File_Size: number;
+
+  }>;
+
 }
 
 
@@ -786,76 +800,63 @@ export class ApiService {
 
 
 
-  static async createTicket(ticketData: any): Promise<ApiResponse<CreateTicketResponse>> {
+  static async createTicket(ticketData: any, files?: File[]): Promise<ApiResponse<CreateTicketResponse>> {
+    const hasFiles = files && files.length > 0;
 
     try {
+      let body: BodyInit;
+      let headers: Record<string, string> = {
+        'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+      };
+
+      if (hasFiles) {
+        const formData = new FormData();
+        for (const [key, value] of Object.entries(ticketData)) {
+          if (value !== null && value !== undefined) {
+            formData.append(key, String(value));
+          }
+        }
+        for (const file of files) {
+          formData.append('files[]', file);
+        }
+        body = formData;
+      } else {
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify(ticketData);
+      }
 
       const response = await fetch(`${API_BASE_URL}/api/tickets`, {
-
         method: 'POST',
-
-        headers: {
-
-          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
-
-          'Content-Type': 'application/json',
-
-        },
-
-        body: JSON.stringify(ticketData)
-
+        headers,
+        body,
       });
-
-
 
       const data = await response.json();
 
-
-
       if (data.success) {
-
         return {
-
           success: true,
-
           message: data.message,
-
           data: {
-
-            ticket_id: data.ticket_id,
-
-            technician_assigned: data.technician_assigned || false,
-
-            technician_name: data.technician_name || null
-
+            ticket_id: data.data?.ticket_id ?? data.ticket_id,
+            technician_assigned: data.data?.technician_assigned ?? data.technician_assigned ?? false,
+            technician_name: data.data?.technician_name ?? data.technician_name ?? null,
+            files: data.data?.files ?? data.files ?? [],
           }
-
         };
-
       } else {
-
         return {
-
           success: false,
-
           message: data.message || 'Error al crear ticket'
-
         };
-
       }
 
     } catch (error) {
-
       return {
-
         success: false,
-
         message: 'Error de conexión con el servidor'
-
       };
-
     }
-
   }
 
 

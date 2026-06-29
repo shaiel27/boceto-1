@@ -3,17 +3,19 @@ import BoardNotification from './BoardNotification';
 import Clock from './Clock';
 import './PublicBoard.css';
 import { API_BASE_URL } from '../../services/api';
-import { CheckCircle, Ticket, Coffee, XCircle, AlertCircle } from 'lucide-react';
+import { CheckCircle, Ticket, Coffee, XCircle, AlertCircle, Clock as ClockIcon, UserX } from 'lucide-react';
 
 interface ActiveTicket {
   id: number;
   ticket_code: string;
   subject?: string;
   office_name: string;
+  service_id?: number;
   service_name?: string;
   problem_name?: string;
   technician_names?: string;
   has_technician?: number | boolean;
+  is_returned?: number | boolean;
   priority?: string;
   status?: string;
   created_at: string;
@@ -26,6 +28,10 @@ interface Technician {
   status: string;
   status_reason?: string;
   active_tickets_count: number;
+  Fk_Lunch_Block?: number;
+  Block_Name?: string;
+  Start_Time?: string;
+  End_Time?: string;
 }
 
 interface LunchBlock {
@@ -45,7 +51,17 @@ interface Stats {
   in_progress: number;
   today_created: number;
   closed_today: number;
+  returned: number;
   unassigned: number;
+  pending_assistance?: number;
+}
+
+interface AssistanceRequest {
+  id: number;
+  ticket_code: string;
+  technician_name: string;
+  office_name: string;
+  requested_at: string;
 }
 
 interface TechnicianGroup {
@@ -65,7 +81,8 @@ const PublicBoard: React.FC = () => {
   const [connected, setConnected] = useState<boolean>(false);
   const [soundEnabled] = useState<boolean>(true);
   const [audioUnlocked, setAudioUnlocked] = useState<boolean>(true);
-  const [stats, setStats] = useState<Stats>({ pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 });
+  const [stats, setStats] = useState<Stats>({ pending: 0, in_progress: 0, today_created: 0, closed_today: 0, returned: 0, unassigned: 0, pending_assistance: 0 });
+  const [pendingAssistance, setPendingAssistance] = useState<AssistanceRequest[]>([]);
   const [banner, setBanner] = useState<{ type: string; text: string } | null>(null);
 
   const soundRef = useRef(soundEnabled);
@@ -75,7 +92,7 @@ const PublicBoard: React.FC = () => {
   const prevClosedIdsRef = useRef<Set<number>>(new Set());
   const prevAssistanceIdsRef = useRef<Set<number>>(new Set());
   const prevReturnedIdsRef = useRef<Set<number>>(new Set());
-  const prevStatsRef = useRef<Stats>({ pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 });
+  const prevStatsRef = useRef<Stats>({ pending: 0, in_progress: 0, today_created: 0, closed_today: 0, returned: 0, unassigned: 0 });
   /** Track which tickets are unassigned to detect when they get a tech */
   const unassignedTicketsRef = useRef<Set<number>>(new Set());
   /** Track technician names per ticket to detect additional assignments */
@@ -102,7 +119,7 @@ const PublicBoard: React.FC = () => {
         prevTicketIdsRef.current = new Set((data.active_tickets || []).map((t: ActiveTicket) => t.id));
         unassignedTicketsRef.current = new Set(
           (data.active_tickets || [])
-            .filter((t: ActiveTicket) => !(t.has_technician ?? t.technician_names))
+            .filter((t: ActiveTicket) => !(t.has_technician || t.technician_names))
             .map((t: ActiveTicket) => t.id)
         );
         const namesMap = new Map<number, string>();
@@ -113,8 +130,10 @@ const PublicBoard: React.FC = () => {
         setTechniciansGrouped(data.technicians_grouped || []);
         setLunchBlocks(data.lunch_blocks || []);
         setCurrentLunch(data.current_lunch || { active: false, block: null });
-        setStats(data.stats || { pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 });
-        prevStatsRef.current = data.stats || { pending: 0, in_progress: 0, today_created: 0, closed_today: 0, unassigned: 0 };
+        setStats(data.stats || { pending: 0, in_progress: 0, today_created: 0, closed_today: 0, returned: 0, unassigned: 0, pending_assistance: 0 });
+        prevStatsRef.current = data.stats || { pending: 0, in_progress: 0, today_created: 0, closed_today: 0, returned: 0, unassigned: 0, pending_assistance: 0 };
+        setPendingAssistance(data.pending_assistance || []);
+        prevAssistanceIdsRef.current = new Set((data.pending_assistance || []).map((a: AssistanceRequest) => a.id));
         setServerTime(data.server_time);
         setConnected(true);
       })
@@ -143,7 +162,7 @@ const PublicBoard: React.FC = () => {
             for (const t of incoming) {
               if (!prevTicketIdsRef.current.has(t.id)) {
                 prevTicketIdsRef.current.add(t.id);
-                if (!(t.has_technician ?? t.technician_names)) {
+                if (!(t.has_technician || t.technician_names)) {
                   unassignedTicketsRef.current.add(t.id);
                 } else if (t.technician_names) {
                   techNamesRef.current.set(t.id, t.technician_names);
@@ -151,6 +170,14 @@ const PublicBoard: React.FC = () => {
                 const tag = t.has_technician ? t.ticket_code : `⚠ SIN TÉCNICO: ${t.ticket_code}`;
                 showBanner('new_ticket', `Nuevo: ${tag} — ${t.office_name || ''}`);
                 if (soundRef.current) BoardNotification.playSound('new_ticket');
+              }
+              if ((t.is_returned === 1 || t.is_returned === true) && !prevReturnedIdsRef.current.has(t.id)) {
+                prevReturnedIdsRef.current.add(t.id);
+                showBanner('returned', `INCONFORMIDAD: ${t.ticket_code || '#' + t.id} — ${t.office_name || ''}`);
+                if (soundRef.current) {
+                  BoardNotification.playSound('returned');
+                  setTimeout(() => BoardNotification.playSound('returned'), 1200);
+                }
               }
             }
             setActiveTickets(prev => {
@@ -166,7 +193,7 @@ const PublicBoard: React.FC = () => {
           if (updated.length > 0) {
             for (const t of updated) {
               const wasUnassigned = unassignedTicketsRef.current.has(t.id);
-              const nowHasTech = !!(t.has_technician ?? t.technician_names);
+              const nowHasTech = !!(t.has_technician || t.technician_names);
               const prevNames = techNamesRef.current.get(t.id) || '';
               const newNames = t.technician_names || '';
               if (wasUnassigned && nowHasTech) {
@@ -185,9 +212,7 @@ const PublicBoard: React.FC = () => {
               }
               if (newNames) techNamesRef.current.set(t.id, newNames);
 
-              // Detect returned tickets (inconformity)
-              const isReturned = (t as any).is_returned === 1 || (t as any).is_returned === '1';
-              if (isReturned && !prevReturnedIdsRef.current.has(t.id)) {
+              if ((t.is_returned === 1 || t.is_returned === true) && !prevReturnedIdsRef.current.has(t.id)) {
                 prevReturnedIdsRef.current.add(t.id);
                 showBanner('returned', `INCONFORMIDAD: ${t.ticket_code || '#' + t.id} — ${t.office_name || ''}`);
                 if (soundRef.current) {
@@ -206,8 +231,10 @@ const PublicBoard: React.FC = () => {
           }
 
           const closed = (data.closed_tickets || []) as any[];
+          const closedIds = new Set<number>();
           if (closed.length > 0) {
             for (const c of closed) {
+              closedIds.add(c.ticket_id);
               if (!prevClosedIdsRef.current.has(c.ticket_id)) {
                 prevClosedIdsRef.current.add(c.ticket_id);
                 techNamesRef.current.delete(c.ticket_id);
@@ -215,30 +242,43 @@ const PublicBoard: React.FC = () => {
                 if (soundRef.current) BoardNotification.playSound('closed');
               }
             }
-            const closedIds = new Set(closed.map((c: any) => c.ticket_id));
             setActiveTickets(prev => prev.filter(t => !closedIds.has(t.id)));
           }
 
-          const assistances = (data.new_assistance || []) as any[];
-          if (assistances.length > 0) {
-            for (const a of assistances) {
-              if (!prevAssistanceIdsRef.current.has(a.id)) {
-                prevAssistanceIdsRef.current.add(a.id);
-                showBanner('assistance', `¡ASISTENCIA! ${a.technician_name} — ${a.office_name || ''}`);
-                if (soundRef.current) BoardNotification.playSound('assistance');
-              }
-            }
-          }
+          // Clean up refs from closed/removed tickets
+          Array.from(unassignedTicketsRef.current).forEach(id => {
+            if (closedIds.has(id)) unassignedTicketsRef.current.delete(id);
+          });
 
           if (data.technicians_grouped) setTechniciansGrouped(data.technicians_grouped);
 
           if (data.current_lunch) setCurrentLunch(data.current_lunch);
+
+          const newAssistance = (data.new_assistance || []) as AssistanceRequest[];
+          if (newAssistance.length > 0) {
+            for (const a of newAssistance) {
+              if (!prevAssistanceIdsRef.current.has(a.id)) {
+                prevAssistanceIdsRef.current.add(a.id);
+                showBanner('assistance', `🚨 ${a.technician_name} solicita ayuda — ${a.ticket_code}`);
+                if (soundRef.current) BoardNotification.playSound('new_ticket');
+              }
+            }
+            setPendingAssistance(prev => {
+              const existingMap = new Map(prev.map(a => [a.id, a]));
+              for (const a of newAssistance) existingMap.set(a.id, a);
+              return Array.from(existingMap.values());
+            });
+          }
 
           if (data.stats) {
             const newStats = data.stats as Stats;
             const prev = prevStatsRef.current;
             if (newStats.unassigned > prev.unassigned) {
               showBanner('stats', `¡Sin técnico: ${newStats.unassigned}`);
+            }
+            if ((newStats.pending_assistance ?? 0) > (prev.pending_assistance ?? 0)) {
+              showBanner('assistance', `🚨 Nueva solicitud de asistencia — ${newStats.pending_assistance} pendiente(s)`);
+              if (soundRef.current) BoardNotification.playSound('new_ticket');
             }
             prevStatsRef.current = newStats;
             setStats(newStats);
@@ -255,18 +295,6 @@ const PublicBoard: React.FC = () => {
     };
     }, [serverTime, showBanner]);
 
-  const hasTech = (t: ActiveTicket): boolean =>
-    !!(t.has_technician ?? t.technician_names);
-
-  const formatCreatedAt = (createdAt: string | undefined): string => {
-    if (!createdAt) return '--:--';
-    try {
-      const d = new Date(createdAt.replace(' ', 'T'));
-      if (isNaN(d.getTime())) return '--:--';
-      return d.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: false });
-    } catch { return '--:--'; }
-  };
-
   const priorityClass = (p: string | undefined): string => {
     const s = (p || '').toLowerCase();
     if (s === 'crítica' || s === 'critica') return 'critica';
@@ -275,12 +303,10 @@ const PublicBoard: React.FC = () => {
     return 'baja';
   };
 
-  const shortPriority = (p: string | undefined): string => {
-    const s = (p || '').toLowerCase();
-    if (s === 'crítica' || s === 'critica') return 'CRT';
-    if (s === 'alta') return 'ALT';
-    if (s === 'media') return 'MED';
-    return 'BAJ';
+  const serviceClass = (sid: number): string => {
+    if (sid === 1) return 'redes';
+    if (sid === 2) return 'soporte';
+    return 'prog';
   };
 
   return (
@@ -292,131 +318,92 @@ const PublicBoard: React.FC = () => {
       )}
 
       <header className="pb-topbar">
-        <div className="pb-topbar-left">
-          <img
-            className="pb-logo"
-            src="/SC-1-Photoroom.png"
-            alt="Alcaldía de San Cristóbal"
-          />
+        <div className="pb-topbar-brand">
+          <img className="pb-logo" src="/SC-1-Photoroom.png" alt="Alcaldía de San Cristóbal" />
+          <div className="pb-brand-text">
+            <span className="pb-brand-name">Alcaldía de San Cristóbal</span>
+            <span className="pb-brand-sub">Sistema de Tickets</span>
+          </div>
           <div className={`pb-dot ${connected ? 'pb-dot-live' : 'pb-dot-dead'}`} />
         </div>
-
-        <div className="pb-stats-strip">
-          <div className="pb-stat-chip">
-            <span className="pb-chip-num">{stats.in_progress}</span>
-            <span className="pb-chip-lbl">En proceso</span>
-          </div>
-          <div className={`pb-stat-chip ${stats.pending > 0 ? 'pb-chip-warn' : ''}`}>
-            <span className="pb-chip-num">{stats.pending}</span>
-            <span className="pb-chip-lbl">Pendientes</span>
-          </div>
-          <div className="pb-stat-chip">
-            <span className="pb-chip-num">{stats.today_created}</span>
-            <span className="pb-chip-lbl">Creados hoy</span>
-          </div>
-          <div className="pb-stat-chip">
-            <span className="pb-chip-num">{stats.closed_today}</span>
-            <span className="pb-chip-lbl">Cerrados hoy</span>
-          </div>
+        <div className="pb-stats">
+          <div className="pb-stat"><span className="pb-stat-num">{stats.in_progress}</span><span className="pb-stat-lbl">En proceso</span></div>
+          <div className={`pb-stat ${stats.pending > 0 ? 'pb-stat-warn' : ''}`}><span className="pb-stat-num">{stats.pending}</span><span className="pb-stat-lbl">Pendientes</span></div>
+          <div className="pb-stat"><span className="pb-stat-num">{stats.today_created}</span><span className="pb-stat-lbl">Creados</span></div>
+          <div className="pb-stat"><span className="pb-stat-num">{stats.closed_today}</span><span className="pb-stat-lbl">Cerrados</span></div>
+          {stats.returned > 0 && <div className="pb-stat pb-stat-ret"><span className="pb-stat-num">{stats.returned}</span><span className="pb-stat-lbl">Devueltos</span></div>}
         </div>
-
-        <div className="pb-topbar-right">
-          <Clock />
-        </div>
+        <div className="pb-topbar-right"><Clock /></div>
       </header>
 
       <div className="pb-body">
-        <section className="pb-tickets-grid">
-          {activeTickets.length === 0 && (
-            <p className="pb-empty">No hay tickets activos en este momento</p>
-          )}
-          {activeTickets.map(t => (
-            <article
-              key={t.id}
-              className={`pb-ticket priority-${priorityClass(t.priority)}${!hasTech(t) ? ' no-tech' : ''}${(t as any).is_returned ? ' returned' : ''}`}
-            >
-              <div className="pb-ticket-left">
-                <span className="pb-ticket-code">
-                  {!hasTech(t) && <span className="pb-no-tech-dot" />}
-                  {t.ticket_code || `#${t.id}`}
+        {techniciansGrouped.map(group => {
+          const serviceTickets = activeTickets.filter(
+            t => t.service_id === group.service_id || (!t.service_id && t.service_name === group.service_name)
+          );
+          const returnedCount = serviceTickets.filter(t => t.is_returned).length;
+          const availableTechs = group.technicians.filter(t => {
+            const isInAlmuerzo = currentLunch.active && currentLunch.block && (t.Fk_Lunch_Block === currentLunch.block.id);
+            return t.status === 'Disponible' && !isInAlmuerzo;
+          });
+          return (
+            <div key={group.service_id} className={`pb-col ${serviceClass(group.service_id)}`}>
+
+              <div className="pb-col-hd">
+                <span className="pb-col-name">{group.service_name}</span>
+                <span className="pb-col-hd-meta">
+                  <strong>{serviceTickets.length}</strong> tickets · <strong>{availableTechs.length}</strong> disp
+                  {returnedCount > 0 && <span className="pb-col-hd-meta-return">⚠{returnedCount}</span>}
                 </span>
-                {t.service_name && (
-                  <span className="pb-ticket-service">{t.service_name}</span>
-                )}
               </div>
-              <div className="pb-ticket-mid">
-                <span className="pb-ticket-office">{t.office_name}</span>
-                {t.problem_name && (
-                  <span className="pb-ticket-problem">{t.problem_name}</span>
-                )}
-                {t.technician_names && (
-                  <span className="pb-ticket-tech">{t.technician_names}</span>
-                )}
-              </div>
-              <div className="pb-ticket-right">
-                <span className={`pb-pill ${priorityClass(t.priority)}`}>
-                  {shortPriority(t.priority)}
-                </span>
-                <span className="pb-ticket-time">{formatCreatedAt(t.created_at)}</span>
-              </div>
-            </article>
-          ))}
-        </section>
 
-        <aside className="pb-tech-panel">
-          <div className="pb-tech-header">
-            <span>TÉCNICOS</span>
-            <span className="pb-tech-count">{techniciansGrouped.reduce((s, g) => s + g.technicians.length, 0)}</span>
-          </div>
-          <div className="pb-tech-list">
-            {techniciansGrouped.map(group => (
-              <div key={group.service_id} className="pb-tech-group">
-                <div className="pb-tech-group-name">{group.service_name}</div>
-                {group.technicians.map(t => {
-                  const isOcupado = t.status?.toLowerCase() === 'ocupado' || t.status?.toLowerCase() === 'busy';
-                  const isAlmuerzo = t.status?.toLowerCase() === 'almuerzo' || t.status?.toLowerCase() === 'lunch';
-                  const isDisponible = t.status?.toLowerCase() === 'disponible' || t.status?.toLowerCase() === 'available';
-                  const isInactivo = !isOcupado && !isAlmuerzo && !isDisponible;
-                  const hasTickets = t.active_tickets_count > 0;
-
-                  let StatusIcon: React.ElementType;
-                  let orbClass: string;
-                  if (isDisponible) { StatusIcon = CheckCircle; orbClass = 'disponible'; }
-                  else if (isAlmuerzo) { StatusIcon = Coffee; orbClass = 'almuerzo'; }
-                  else if (isOcupado && hasTickets) { StatusIcon = Ticket; orbClass = 'ocupado'; }
-                  else if (isOcupado) { StatusIcon = AlertCircle; orbClass = 'ocupado'; }
-                  else { StatusIcon = XCircle; orbClass = 'inactivo'; }
-
-                  return (
-                  <div
-                    key={t.id}
-                    className={`pb-tech-row ${orbClass}`}
-                  >
-                    <span className={`pb-tech-orb ${orbClass}`}>
-                      <StatusIcon size={14} strokeWidth={2.5} />
-                    </span>
-                    <span className="pb-tech-name">
-                      {t.name}
-                    </span>
-                    {hasTickets && isOcupado && (
-                      <span className="pb-tech-badge">{t.active_tickets_count}</span>
-                    )}
+              <div className="pb-col-tickets">
+                {serviceTickets.length === 0 && <span className="pb-empty">Sin tickets</span>}
+                {serviceTickets.map(t => (
+                  <div key={t.id} className={`pb-ticket ${priorityClass(t.priority)}${t.is_returned ? ' returned' : ''}${!t.is_returned && !(t.has_technician || t.technician_names) ? ' unassigned' : ''}`}>
+                    <div className="pb-ticket-row1">
+                      <span className="pb-ticket-code">{t.ticket_code || `#${t.id}`}</span>
+                      <span className="pb-ticket-office">{t.office_name}</span>
+                    </div>
+                    <div className="pb-ticket-row2">{t.problem_name}{t.problem_name && t.technician_names ? ' · ' : ''}{t.technician_names}</div>
                   </div>
+                ))}
+              </div>
+
+              <div className="pb-col-techs">
+                {group.technicians.map(t => {
+                  const isInAlmuerzo = currentLunch.active && currentLunch.block && (t.Fk_Lunch_Block === currentLunch.block.id);
+                  const hasTickets = t.active_tickets_count > 0;
+                  const status = t.status || 'Inactivo';
+                  let Icon: React.ElementType;
+                  let orbClass: string;
+                  if (isInAlmuerzo) { Icon = Coffee; orbClass = 'almuerzo'; }
+                  else if (status === 'Disponible') { Icon = CheckCircle; orbClass = 'disponible'; }
+                  else if (status === 'Ocupado' && hasTickets) { Icon = Ticket; orbClass = 'ocupado'; }
+                  else if (status === 'Ocupado') { Icon = AlertCircle; orbClass = 'ocupado'; }
+                  else if (status === 'Inactivo') { Icon = XCircle; orbClass = 'inactivo'; }
+                  else if (status === 'Fuera de Servicio') { Icon = UserX; orbClass = 'out'; }
+                  else { Icon = XCircle; orbClass = 'inactivo'; }
+                  return (
+                    <div key={t.id} className={`pb-tech ${orbClass}`} title={`${isInAlmuerzo ? 'Almuerzo' : status}${hasTickets ? ` · ${t.active_tickets_count} ticket(s)` : ''}`}>
+                      <span className={`pb-tech-orb ${orbClass}`}><Icon size={14} /></span>
+                      <span className="pb-tech-name">{t.name}</span>
+                      {hasTickets && <span className="pb-tech-cnt">{t.active_tickets_count}</span>}
+                    </div>
                   );
                 })}
+                {group.technicians.length === 0 && <span className="pb-empty">Sin técnicos</span>}
               </div>
-            ))}
-          </div>
-        </aside>
+
+            </div>
+          );
+        })}
       </div>
 
       {currentLunch.active && currentLunch.block && (
         <footer className="pb-footer">
           <span className="pb-footer-dot" />
-          <span className="pb-footer-text">
-            Almuerzo activo: <strong>{currentLunch.block.block_name}</strong>
-            {' '}({currentLunch.block.start_time} – {currentLunch.block.end_time})
-          </span>
+          <span>Almuerzo activo: <strong>{currentLunch.block.block_name}</strong> ({currentLunch.block.start_time} – {currentLunch.block.end_time})</span>
         </footer>
       )}
     </div>

@@ -435,17 +435,21 @@ const TechnicianDashboard: React.FC = () => {
 
   const handleCloseTicket = async () => {
     if (!selectedTicket) return;
+    const sid = selectedTicket.id;
     try {
-      const response = await ApiService.updateTicketStatus(parseInt(selectedTicket.id), 'Pendiente de Verificación');
+      setMyTickets(prev => prev.map(t => t.id === sid ? { ...t, Status: 'Pendiente de Verificación' } : t));
+      const response = await ApiService.updateTicketStatus(parseInt(sid), 'Pendiente de Verificación');
       if (response.success) {
         showToast('success', 'Ticket enviado a verificación del solicitante');
         setSelectedTicket(null);
         await refreshTickets();
       } else {
         showToast('error', response.message || 'Error al cerrar ticket');
+        await refreshTickets();
       }
     } catch (error) {
       showToast('error', 'Error de conexión al cerrar ticket');
+      await refreshTickets();
     }
   };
 
@@ -844,6 +848,7 @@ const TechnicianDashboard: React.FC = () => {
                               src={`${API_BASE_URL}/${att.File_Path}`}
                               alt={att.File_Name}
                               className="att-thumb"
+                              loading="lazy"
                             />
                           </a>
                         </div>
@@ -889,6 +894,7 @@ const TechnicianDashboard: React.FC = () => {
                                     src={`${API_BASE_URL}/${att.File_Path}`}
                                     alt={att.File_Name}
                                     className="att-thumb"
+                                    loading="lazy"
                                   />
                                 </a>
                               </div>
@@ -943,7 +949,7 @@ const TechnicianDashboard: React.FC = () => {
                         {selectedFiles.map((file, i) => (
                           <div key={i} className="dd-file-preview">
                             {file.type.startsWith('image/') ? (
-                              <img src={URL.createObjectURL(file)} alt={file.name} className="fp-thumb" />
+                              <img src={URL.createObjectURL(file)} alt={file.name} className="fp-thumb" loading="lazy" />
                             ) : (
                               <FileText size={16} />
                             )}

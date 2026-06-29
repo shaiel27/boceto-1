@@ -15,7 +15,8 @@ import {
   MapPin,
   Wrench,
   Eye,
-  ChevronRight
+  ChevronRight,
+  X
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
 import { API_BASE_URL } from '../../services/api';
@@ -71,6 +72,9 @@ interface Ticket {
   status: 'Pendiente' | 'En Proceso' | 'Cerrado';
   assignedTo: string;
   date: string;
+  service?: string;
+  timeAgo?: string;
+  rawCreatedAt?: string;
 }
 
 interface Technician {
@@ -88,6 +92,7 @@ const Dashboard: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
   const [stats, setStats] = useState<DashboardStats>({
     totalTickets: 0,
@@ -121,7 +126,10 @@ const Dashboard: React.FC = () => {
       priority: ticket.System_Priority || ticket.priority || 'Media',
       status: ticket.Status || ticket.status || 'Pendiente',
       assignedTo: ticket.Technician_Names || ticket.technician_name || ticket.assigned_to || 'Sin asignar',
-      date: new Date(ticket.Created_at || ticket.created_at || Date.now()).toLocaleDateString('es-VE')
+      date: new Date(ticket.Created_at || ticket.created_at || Date.now()).toLocaleDateString('es-VE'),
+      service: ticket.Service_Name || ticket.Type_Service || ticket.type_service || ticket.service_name || ticket.service || '',
+      timeAgo: ticket.Time_Ago || '',
+      rawCreatedAt: ticket.Created_at || ticket.created_at || ''
     }));
   };
 
@@ -287,7 +295,9 @@ const Dashboard: React.FC = () => {
   };
 
   const handleCreateTicket = () => navigate('/new-ticket');
-  const handleViewTicket = (id: string) => navigate(`/tickets/${id}`);
+  const handleViewTicket = (ticket: Ticket) => setSelectedTicket(ticket);
+  const handleCloseModal = () => setSelectedTicket(null);
+  const handleGoToTicket = (id: string) => navigate(`/admin/tickets?search=${encodeURIComponent(id)}`);
 
   const filteredTickets = recentTickets.filter(t =>
     !searchTerm || t.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -598,7 +608,7 @@ const Dashboard: React.FC = () => {
                 </thead>
                 <tbody>
                   {filteredTickets.slice(0, 10).map((ticket) => (
-                    <tr key={ticket.id} onClick={() => handleViewTicket(ticket.id)} className="dash-table-row">
+                    <tr key={ticket.id} onClick={() => handleViewTicket(ticket)} className="dash-table-row">
                       <td><span className="dash-code">{ticket.id}</span></td>
                       <td className="dash-subject-cell">{ticket.subject}</td>
                       <td>{ticket.office}</td>
@@ -628,42 +638,109 @@ const Dashboard: React.FC = () => {
             <div className="dash-card-head">
               <h3><Users size={18} /> Rendimiento del Equipo Técnico</h3>
             </div>
-            <div className="dash-card-body dash-card-body-nopad">
-              <div className="dash-table-wrap">
-                <table className="dash-table">
-                  <thead>
-                    <tr>
-                      <th>Técnico</th>
-                      <th>Estado</th>
-                      <th>Tickets Activos</th>
-                      <th>Resueltos</th>
-                      <th>Tiempo Promedio</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {technicians.slice(0, 8).map((tech) => (
-                      <tr key={tech.id} className="dash-table-row">
-                        <td>
-                          <div className="dash-tech-cell">
-                            <span className="dash-tech-avatar">{tech.name.charAt(0)}</span>
-                            {tech.name}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={`dash-badge ${tech.status === 'available' ? 'dash-badge-available' : 'dash-badge-busy'}`}>
+            <div className="dash-card-body">
+              <div className="dash-tech-chart">
+                {technicians.slice(0, 5).map((tech, idx) => {
+                  const maxTickets = Math.max(...technicians.map(t => t.currentTickets + (t.totalCompleted || 0)), 1);
+                  const total = tech.currentTickets + (tech.totalCompleted || 0);
+                  const resolvedPct = tech.totalCompleted ? Math.round((tech.totalCompleted / Math.max(total, 1)) * 100) : 0;
+                  const activePct = total > 0 ? Math.round((tech.currentTickets / total) * 100) : 0;
+                  const barWidth = Math.round((total / maxTickets) * 100);
+                  return (
+                    <div key={tech.id} className="dash-tech-bar-row" style={{ animationDelay: `${idx * 0.06}s` }}>
+                      <div className="dash-tech-bar-info">
+                        <span className="dash-tech-bar-avatar">{tech.name.charAt(0)}</span>
+                        <div className="dash-tech-bar-meta">
+                          <span className="dash-tech-bar-name">{tech.name}</span>
+                          <span className="dash-tech-bar-badge">
+                            <span className={`dash-tech-dot ${tech.status === 'available' ? 'dash-tech-dot-avail' : 'dash-tech-dot-busy'}`} />
                             {tech.status === 'available' ? 'Disponible' : 'Ocupado'}
                           </span>
-                        </td>
-                        <td>{tech.currentTickets}</td>
-                        <td>{tech.totalCompleted || 0}</td>
-                        <td className="dash-date-cell">-</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        </div>
+                      </div>
+                      <div className="dash-tech-bar-track-wrap">
+                        <div className="dash-tech-bar-track">
+                          <div
+                            className="dash-tech-bar-resolved"
+                            style={{ width: `${resolvedPct}%` }}
+                            title={`Resueltos: ${tech.totalCompleted || 0}`}
+                          />
+                          <div
+                            className="dash-tech-bar-active"
+                            style={{ width: `${activePct}%` }}
+                            title={`Activos: ${tech.currentTickets}`}
+                          />
+                        </div>
+                        <span className="dash-tech-bar-total">{total}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="dash-tech-chart-legend">
+                <span><span className="dash-tech-dot-lg dash-tech-dot-lg-resolved" />Resueltos</span>
+                <span><span className="dash-tech-dot-lg dash-tech-dot-lg-active" />Activos</span>
+                <span>Total de tickets asignados (últimos 30 días)</span>
               </div>
             </div>
           </section>
+        )}
+
+        {selectedTicket && (
+          <div className="dash-modal-overlay" onClick={handleCloseModal}>
+            <div className="dash-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="dash-modal-head">
+                <div>
+                  <span className="dash-modal-code">{selectedTicket.id}</span>
+                  <h2 className="dash-modal-title">{selectedTicket.subject}</h2>
+                </div>
+                <button className="dash-modal-close" onClick={handleCloseModal}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="dash-modal-body">
+                <div className="dash-modal-grid">
+                  <div className="dash-modal-field">
+                    <span className="dash-modal-label">Estado</span>
+                    <span className={`dash-badge ${selectedTicket.status === 'Pendiente' ? 'dash-badge-pending' : selectedTicket.status === 'En Proceso' ? 'dash-badge-progress' : 'dash-badge-done'}`}>
+                      {selectedTicket.status}
+                    </span>
+                  </div>
+                  <div className="dash-modal-field">
+                    <span className="dash-modal-label">Prioridad</span>
+                    <span className={`dash-badge ${(selectedTicket.priority || 'baja').toLowerCase() === 'alta' ? 'dash-badge-high' : (selectedTicket.priority || 'baja').toLowerCase() === 'crítica' ? 'dash-badge-critical' : (selectedTicket.priority || 'baja').toLowerCase() === 'media' ? 'dash-badge-medium' : 'dash-badge-low'}`}>
+                      {selectedTicket.priority}
+                    </span>
+                  </div>
+                  <div className="dash-modal-field">
+                    <span className="dash-modal-label">Oficina</span>
+                    <span className="dash-modal-value"><MapPin size={14} /> {selectedTicket.office}</span>
+                  </div>
+                  <div className="dash-modal-field">
+                    <span className="dash-modal-label">Servicio</span>
+                    <span className="dash-modal-value"><Wrench size={14} /> {selectedTicket.service && selectedTicket.service !== 'No asignado' ? selectedTicket.service : 'Sin asignar'}</span>
+                  </div>
+                  <div className="dash-modal-field">
+                    <span className="dash-modal-label">Asignado a</span>
+                    <span className="dash-modal-value"><Users size={14} /> {selectedTicket.assignedTo}</span>
+                  </div>
+                  <div className="dash-modal-field">
+                    <span className="dash-modal-label">Fecha</span>
+                    <span className="dash-modal-value"><Clock size={14} /> {selectedTicket.date} {selectedTicket.timeAgo && `(${selectedTicket.timeAgo})`}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="dash-modal-foot">
+                <button className="dash-btn dash-btn-ghost" onClick={handleCloseModal}>
+                  Cerrar
+                </button>
+                <button className="dash-btn dash-btn-primary" onClick={() => handleGoToTicket(selectedTicket.id)}>
+                  <Eye size={16} />
+                  Ver ticket completo
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

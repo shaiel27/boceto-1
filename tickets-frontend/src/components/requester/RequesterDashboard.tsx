@@ -182,12 +182,15 @@ const RequesterDashboard: React.FC = () => {
     const txt = commentInputs[tid];
     if (!txt?.trim()) return;
     try {
-      const hasFiles = files && files.length > 0;
-      const r = await ApiService.addTicketComment(parseInt(tid), txt, hasFiles ? files : undefined);
+      const r = await ApiService.addTicketComment(parseInt(tid), txt, (files && files.length > 0) ? files : undefined);
       if (r.success) {
         setTickets(prev => prev.map(t => t.id === tid ? { ...t, Comments_Count: t.Comments_Count + 1 } : t));
         if (selected && selected.id === tid) {
-          setComments(prev => [...prev, { ID_Comment: Date.now(), Comment: txt, Created_at: new Date().toISOString(), User_Name: profile.name, User_Role: profile.position, attachments: hasFiles ? r.data?.files || [] : [] }]);
+          const refetched = await ApiService.getTicketComments(parseInt(tid));
+          if (refetched.success) {
+            setComments(refetched.data || []);
+            setAttachments(refetched.ticket_attachments || []);
+          }
         }
         setCommentInputs(p => ({ ...p, [tid]: '' }));
         setSelFiles(p => ({ ...p, [tid]: [] }));
@@ -480,7 +483,7 @@ const RequesterDashboard: React.FC = () => {
                     {attachments.map((att: any) => (
                       <a key={att.ID_Attachment} href={`${API_BASE_URL}/${att.File_Path}`} target="_blank" rel="noopener noreferrer" className="rq-det-att-link">
                         {att.File_Type?.startsWith('image/') ? (
-                          <img src={`${API_BASE_URL}/${att.File_Path}`} alt={att.File_Name} className="rq-det-thumb" />
+                          <img src={`${API_BASE_URL}/${att.File_Path}`} alt={att.File_Name} className="rq-det-thumb" loading="lazy" />
                         ) : (
                           <><FileText size={14} /><span>{att.File_Name}</span></>
                         )}

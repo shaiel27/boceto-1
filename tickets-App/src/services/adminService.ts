@@ -99,19 +99,20 @@ export async function getRecentTickets(limit = 10): Promise<{ success: boolean; 
 }
 
 export async function getAllTickets(
-  params: { limit?: number; offset?: number; status?: string; priority?: string; service_id?: number } = {}
+  params: { limit?: number; offset?: number; status?: string; priority?: string; service_id?: number; is_returned?: number } = {}
 ): Promise<{ success: boolean; tickets?: BackendTicket[]; total?: number }> {
   const query = new URLSearchParams();
   if (params.limit) query.append('limit', String(params.limit));
   if (params.offset) query.append('offset', String(params.offset));
 
-  const hasFilter = params.status || params.priority || params.service_id;
+  const hasFilter = params.status || params.priority || params.service_id || params.is_returned !== undefined;
 
   if (hasFilter) {
     query.append('action', 'filter');
     if (params.status) query.append('status', params.status);
     if (params.priority) query.append('priority', params.priority);
     if (params.service_id) query.append('service_id', String(params.service_id));
+    if (params.is_returned !== undefined) query.append('is_returned', String(params.is_returned));
   }
 
   const qs = query.toString();
