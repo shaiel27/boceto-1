@@ -35,7 +35,6 @@ import AssistanceRequestModal from '../assistance/AssistanceRequestModal';
 import ApiService, { API_BASE_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import PasswordChangeRequired from '../common/PasswordChangeRequired';
-import SystemSelection from '../common/SystemSelection';
 
 interface Ticket {
   readonly id: string;
@@ -114,7 +113,7 @@ const TechnicianDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [onboardingStep, setOnboardingStep] = useState<'none' | 'password' | 'systems'>('none');
+  const [onboardingStep, setOnboardingStep] = useState<'none' | 'password'>('none');
   const [technicianProfile, setTechnicianProfile] = useState<TechnicianProfile | null>(null);
 
   const [myTickets, setMyTickets] = useState<Ticket[]>([]);
@@ -593,10 +592,7 @@ const TechnicianDashboard: React.FC = () => {
   }
 
   if (onboardingStep === 'password') {
-    return <PasswordChangeRequired onComplete={() => setOnboardingStep('systems')} />;
-  }
-  if (onboardingStep === 'systems') {
-    return <SystemSelection onComplete={() => { setOnboardingStep('none'); loadInitialData(); }} />;
+    return <PasswordChangeRequired onComplete={() => { setOnboardingStep('none'); loadInitialData(); }} />;
   }
 
   if (!technicianProfile) {
