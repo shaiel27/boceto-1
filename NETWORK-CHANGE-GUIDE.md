@@ -2,9 +2,10 @@
 
 ## Dirección actual (se detecta automáticamente)
 ```
-http://192.168.100.88:3000   ← Web
-http://192.168.100.88:8000   ← Backend API
-exp://192.168.100.88:8081     ← Expo Metro Bundler
+http://192.168.2.151:3000   ← Web
+http://192.168.2.151:8000   ← Backend API
+exp://192.168.2.151:8081     ← Expo Metro Bundler
+http://192.168.5.206:8012    ← Bienes/SIFA API (XAMPP)
 ```
 
 ## Cuando cambias de red (WiFi, Ethernet, ubicación)
@@ -12,18 +13,29 @@ exp://192.168.100.88:8081     ← Expo Metro Bundler
 ### App Web (React) — Automático
 **NO necesitas modificar nada.** El frontend web usa `window.location.hostname` para resolver el backend. El CORS es dinámico.
 
+### API de Bienes (SIFA) — Backend PHP
+El backend se conecta a la API de bienes (SIFA) alojada en XAMPP. Debes actualizar **1 archivo**:
+
+**`tickets-backend/public/index.php`** (2 instancias):
+```php
+xamppHost: '192.168.5.206',
+xamppPort: 8012
+```
+
+> Después de cambiar, reinicia el backend (Terminal 1).
+
 ### App Móvil (Expo/React Native) — Manual
 La app móvil tiene el IP hardcodeado. Debes actualizar **1 archivo**:
 
 **`tickets-App/src/constants/config.ts`:**
 ```ts
-const API_HOST = '192.168.100.88';
+const API_HOST = '192.168.2.151';
 export const API_BASE_URL = `http://${API_HOST}:8000`;
 ```
 
 > Después de cambiar, reinicia con:
 > ```powershell
-> $env:EXPO_PACKAGER_PROXY_URL = "http://192.168.100.88:8081"
+> $env:EXPO_PACKAGER_PROXY_URL = "http://192.168.2.151:8081"
 > npx expo start --clear
 > ```
 > `EXPO_PACKAGER_PROXY_URL` (SDK 50+) fuerza la IP/URL del Metro bundler.
@@ -74,7 +86,7 @@ npm start
 
 ```powershell
 cd "C:\Users\Shaiel\Desktop\shaiel\boceto-1\tickets-App"
-$env:EXPO_PACKAGER_PROXY_URL = "http://192.168.100.88:8081"
+$env:EXPO_PACKAGER_PROXY_URL = "http://192.168.2.151:8081"
 npx expo start --clear
 ```
 > `EXPO_PACKAGER_PROXY_URL` fuerza la IP/URL del Metro bundler (SDK 50+).
@@ -91,7 +103,7 @@ Abre `http://TU_IP:3000` en el navegador:
 
 ### Móvil
 Escanea el QR con Expo Go o conecta por USB:
-- Si el QR apunta a IP incorrecta: `$env:EXPO_PACKAGER_PROXY_URL="http://192.168.100.88:8081"; npx expo start --clear`
+- Si el QR apunta a IP incorrecta: `$env:EXPO_PACKAGER_PROXY_URL="http://192.168.2.151:8081"; npx expo start --clear`
 - Verifica que el login funcione
 - Si falla: revisa `tickets-App/src/constants/config.ts`
 
@@ -131,7 +143,7 @@ REACT_APP_API_BASE=http://192.168.X.X:8000
 | App Expo Go sigue con datos viejos | Bundle cacheado en Metro | Parar Expo, ejecutar `npx expo start --clear`, volver a escanear QR |
 
 ---
-## Cambio rápido de IP (3 pasos)
+## Cambio rápido de IP (4 pasos)
 
 ```powershell
 # 1. Averiguar IP actual
@@ -139,7 +151,9 @@ REACT_APP_API_BASE=http://192.168.X.X:8000
 
 # 2. Editar tickets-App\src\constants\config.ts → cambiar API_HOST
 
-# 3. Reiniciar Expo con cache limpio y proxy URL
+# 3. Editar tickets-backend\public\index.php → cambiar xamppHost (bienes/SIFA)
+
+# 4. Reiniciar Expo con cache limpio y proxy URL
 cd tickets-App
 $env:EXPO_PACKAGER_PROXY_URL = "http://192.168.X.X:8081"
 npx expo start --clear

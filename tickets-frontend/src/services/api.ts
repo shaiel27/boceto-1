@@ -353,6 +353,19 @@ export class ApiService {
     }
   }
 
+  static async updateProfile(data: { Full_Name?: string; Email?: string }): Promise<ApiResponse> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users?action=update-profile`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        body: JSON.stringify(data),
+      });
+      return await response.json();
+    } catch {
+      return { success: false, message: 'Error de conexión con el servidor' };
+    }
+  }
+
   static async getUserSystems(): Promise<ApiResponse<{ id: number; name: string; description: string | null; assigned_at: string }[]>> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/users?action=my-systems`, {

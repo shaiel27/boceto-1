@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   KeyRound
 } from 'lucide-react';
+import ApiService from '../../services/api';
 import './RequesterProfile.css';
 
 interface RequesterProfileData {
@@ -69,28 +70,47 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
   const validatePassword = (password: string): boolean =>
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/.test(password);
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
 
     if (!passwordForm.currentPassword) { setPasswordError('Debe ingresar la contraseña actual'); return; }
     if (!passwordForm.newPassword) { setPasswordError('Debe ingresar una nueva contraseña'); return; }
     if (!validatePassword(passwordForm.newPassword)) { setPasswordError('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número'); return; }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) { setPasswordError('Las contraseñas nuevas no coinciden'); return; }
 
-    setPasswordSuccess('Contraseña cambiada exitosamente');
-    setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-
-    setTimeout(() => {
-      setShowPasswordModal(false);
-      setPasswordSuccess('');
-    }, 2000);
+    try {
+      const response = await ApiService.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      if (response.success) {
+        setPasswordSuccess('Contraseña cambiada exitosamente');
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => {
+          setShowPasswordModal(false);
+          setPasswordSuccess('');
+        }, 2000);
+      } else {
+        setPasswordError(response.message || 'Error al cambiar contraseña');
+      }
+    } catch {
+      setPasswordError('Error de conexión con el servidor');
+    }
   };
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const updatedProfile = { ...profile, name: editForm.name, email: editForm.email };
-    onUpdate?.(updatedProfile);
-    setShowEditModal(false);
+    try {
+      const response = await ApiService.updateProfile({ Full_Name: editForm.name, Email: editForm.email });
+      if (response.success) {
+        const updatedProfile = { ...profile, name: editForm.name, email: editForm.email };
+        onUpdate?.(updatedProfile);
+        setShowEditModal(false);
+      } else {
+        alert(response.message || 'Error al actualizar perfil');
+      }
+    } catch {
+      alert('Error de conexión con el servidor');
+    }
   };
 
   const yearsOfService = (() => {

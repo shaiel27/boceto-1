@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, KeyboardAvoidingView, Platform, FlatList, Image,
+  ActivityIndicator, Modal, SafeAreaView, KeyboardAvoidingView, Platform, FlatList, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -42,8 +42,17 @@ export default function RequesterCreateTicket() {
   const [selectedFiles, setSelectedFiles] = useState<DocumentPicker.DocumentPickerResult['assets']>([]);
   const toast = useToast();
 
+  const [systemModal, setSystemModal] = useState(false);
+  const [systemSearch, setSystemSearch] = useState('');
+
   const [problems, setProblems] = useState<{ id: number; name: string; severity: string }[]>([]);
   const [systems, setSystems] = useState<{ id: number; name: string }[]>([]);
+
+  const filteredSystems = useMemo(() => {
+    if (!systemSearch.trim()) return systems;
+    const q = systemSearch.toLowerCase();
+    return systems.filter((s) => s.name.toLowerCase().includes(q));
+  }, [systems, systemSearch]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
   // Bienes search with anti-flicker: keep previous results visible during debounce
@@ -311,22 +320,24 @@ export default function RequesterCreateTicket() {
           </Field>
         )}
 
-        {serviceId === 3 && (
+        {serviceId === 3 && systems.length > 0 && (
           <Field label="Sistema" icon="laptop-outline">
-            {systems.length > 0 ? systems.map((s, i) => {
-              const active = systemId === s.id;
-              return (
-                <TouchableOpacity
-                  key={s.id ?? `sys-${i}`}
-                  style={[styles.optChip, active && styles.optChipActive]}
-                  onPress={() => setSystemId(s.id)}
-                  activeOpacity={0.6}
-                >
-                  <Text style={[styles.optText, active && styles.optTextActive]} numberOfLines={1}>{s.name}</Text>
-                  {active && <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />}
-                </TouchableOpacity>
-              );
-            }) : <Text style={styles.altText}>Sin sistemas registrados</Text>}
+            <TouchableOpacity
+              style={[styles.picker, systemId !== null && styles.pickerFilled]}
+              onPress={() => setSystemModal(true)}
+              activeOpacity={0.6}
+            >
+              {systemId !== null ? (
+                <>
+                  <Text style={styles.pickerValue} numberOfLines={1}>{systems.find(s => s.id === systemId)?.name || 'Seleccionar sistema...'}</Text>
+                  <TouchableOpacity onPress={() => setSystemId(null)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <Ionicons name="close-circle" size={20} color={Colors.textLight} />
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <Text style={styles.pickerPlaceholder}>Seleccionar sistema...</Text>
+              )}
+            </TouchableOpacity>
           </Field>
         )}
 
@@ -470,6 +481,55 @@ export default function RequesterCreateTicket() {
           <Text style={styles.submitText}>Enviar Ticket</Text>
         </TouchableOpacity>
       </View>
+      <Modal visible={systemModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalRoot}>
+          <View style={styles.modalHead}>
+            <Text style={styles.modalTitle}>Sistema de Software</Text>
+            <TouchableOpacity onPress={() => { setSystemModal(false); setSystemSearch(''); }}>
+              <Ionicons name="close" size={24} color={Colors.text} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.modalSearch}>
+            <Ionicons name="search" size={16} color={Colors.textLight} />
+            <TextInput
+              style={styles.modalSearchInput}
+              placeholder="Buscar sistema..."
+              placeholderTextColor={Colors.textLight}
+              value={systemSearch}
+              onChangeText={setSystemSearch}
+              autoFocus
+            />
+            {systemSearch.length > 0 && (
+              <TouchableOpacity onPress={() => setSystemSearch('')}>
+                <Ionicons name="close-circle" size={16} color={Colors.textLight} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <FlatList
+            data={filteredSystems}
+            keyExtractor={(item, index) => String(item.id ?? index)}
+            contentContainerStyle={styles.modalList}
+            renderItem={({ item }) => {
+              const active = systemId === item.id;
+              return (
+                <TouchableOpacity
+                  style={[styles.modalItem, active && styles.modalItemActive]}
+                  onPress={() => { setSystemId(item.id); setSystemModal(false); setSystemSearch(''); }}
+                  activeOpacity={0.6}
+                >
+                  <View style={[styles.modalItemIcon, active && styles.modalItemIconActive]}>
+                    <Ionicons name="laptop" size={18} color={active ? Colors.surface : Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.modalItemName}>{item.name}</Text>
+                  </View>
+                  {active && <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />}
+                </TouchableOpacity>
+              );
+            }}
+          />
+        </SafeAreaView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -608,4 +668,25 @@ const styles = StyleSheet.create({
   donePrio: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 4, borderRadius: BorderRadius.sm, borderWidth: 1, marginTop: 10 },
   donePrioText: { fontSize: 12, fontWeight: '700' },
   doneSub: { fontSize: 14, color: Colors.textSecondary, marginTop: 8, fontWeight: '500' },
+
+  picker: {
+    backgroundColor: Colors.surface, borderRadius: BorderRadius.md, padding: 16,
+    borderWidth: 1, borderColor: Colors.border, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'space-between',
+  },
+  pickerFilled: { borderColor: Colors.primary + '30', backgroundColor: Colors.primary + '04' },
+  pickerValue: { fontSize: 15, fontWeight: '500', color: Colors.text, flex: 1, marginRight: 8 },
+  pickerPlaceholder: { fontSize: 15, color: Colors.textLight },
+
+  modalRoot: { flex: 1, backgroundColor: Colors.background },
+  modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 16, paddingBottom: 14, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: Colors.text },
+  modalSearch: { flexDirection: 'row', alignItems: 'center', margin: 16, backgroundColor: Colors.surface, borderRadius: BorderRadius.md, paddingHorizontal: 14, height: 46, borderWidth: 1, borderColor: Colors.border, gap: 8 },
+  modalSearchInput: { flex: 1, fontSize: 15, color: Colors.text },
+  modalList: { paddingHorizontal: 16, paddingBottom: 32 },
+  modalItem: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  modalItemActive: { backgroundColor: Colors.primary + '08', borderRadius: BorderRadius.md, paddingHorizontal: 10 },
+  modalItemIcon: { width: 42, height: 42, borderRadius: 12, backgroundColor: Colors.primary + '0C', justifyContent: 'center', alignItems: 'center' },
+  modalItemIconActive: { backgroundColor: Colors.primary },
+  modalItemName: { fontSize: 15, fontWeight: '600', color: Colors.text },
 });

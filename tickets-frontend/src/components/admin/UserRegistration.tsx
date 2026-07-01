@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import {
   User,
   Mail,
@@ -7,7 +6,6 @@ import {
   Eye,
   EyeOff,
   Building,
-  ArrowLeft,
   CheckCircle2,
   AlertCircle,
   Shield,
@@ -66,7 +64,6 @@ const ROLES: Role[] = [
 const PRONOUNS = ['Sr.', 'Sra.', 'Lic.', 'Ing.', 'Dr.', 'Dra.'];
 
 const UserRegistration = () => {
-  const navigate = useNavigate();
   const [formData, setFormData] = useState<FormData>({
     name_boss: '',
     username: '',
@@ -231,14 +228,11 @@ const UserRegistration = () => {
     <div className="ur-container">
       <ModernSidebar />
       <div className="ur-content">
-        <button className="ur-back" onClick={() => navigate('/admin/dashboard')}>
-          <ArrowLeft size={18} />
-          Volver al panel
-        </button>
-
         <div className="ur-hero">
-          <div className="ur-hero-icon">
-            <UserPlus size={28} />
+          <div className="ur-seal">
+            <div className="ur-seal-inner">
+              <UserPlus size={24} />
+            </div>
           </div>
           <div>
             <h1 className="ur-hero-title">Registro de Usuario</h1>

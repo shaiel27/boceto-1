@@ -35,7 +35,7 @@ const PrioClass: Record<string, string> = {
 
 const RequesterDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState<'none' | 'password' | 'systems'>('none');
   const [profile, setProfile] = useState<RequesterProfileData>({ id: '', name: '', email: '', position: '', hireDate: '', office_name: '', supervisor: '' });
@@ -207,8 +207,8 @@ const RequesterDashboard: React.FC = () => {
 
   const rmFile = (tid: string, i: number) => setSelFiles(p => ({ ...p, [tid]: (p[tid] || []).filter((_, j) => j !== i) }));
 
-  if (onboardingStep === 'password') return <PasswordChangeRequired onComplete={() => setOnboardingStep('systems')} />;
-  if (onboardingStep === 'systems') return <SystemSelection onComplete={() => setOnboardingStep('none')} />;
+  if (onboardingStep === 'password') return <PasswordChangeRequired onComplete={() => { refreshUser(); setOnboardingStep('systems'); }} />;
+  if (onboardingStep === 'systems') return <SystemSelection onComplete={() => { refreshUser(); setOnboardingStep('none'); }} />;
 
   return (
     <>

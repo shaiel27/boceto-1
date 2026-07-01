@@ -9,13 +9,19 @@ final class OfficeSyncService
     private PDO $db;
     private BienesProxyService $bienesProxy;
 
-    public function __construct(PDO $db, ?BienesProxyService $bienesProxy = null)
-    {
+    public function __construct(
+        PDO $db,
+        ?BienesProxyService $bienesProxy = null,
+        string $xamppHost = '127.0.0.1',
+        int $xamppPort = 8012
+    ) {
         $this->db = $db;
         $this->bienesProxy = $bienesProxy ?? new BienesProxyService(
             cacheDir: __DIR__ . '/../../cache/bienes',
             cacheTtl: 7200,
-            fetchTimeout: 60
+            fetchTimeout: 60,
+            xamppHost: $xamppHost,
+            xamppPort: $xamppPort
         );
     }
 

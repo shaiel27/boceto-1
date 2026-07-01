@@ -60,7 +60,8 @@ type AuthAction =
 
   | { type: 'CLEAR_ERROR' }
 
-  | { type: 'SET_LOADING'; payload: boolean };
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'UPDATE_USER'; payload: { user: User } };
 
 
 
@@ -184,7 +185,15 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
       };
 
+    case 'UPDATE_USER':
 
+      return {
+
+        ...state,
+
+        user: action.payload.user,
+
+      };
 
     default:
 
@@ -215,6 +224,8 @@ interface AuthContextType {
   logout: () => void;
 
   clearError: () => void;
+
+  refreshUser: () => Promise<void>;
 
   isAdmin: () => boolean;
   isTechnician: () => boolean;
@@ -414,7 +425,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   };
 
+  const refreshUser = async (): Promise<void> => {
 
+    try {
+
+      const response = await ApiService.getMe();
+
+      if (response.success && response.data) {
+
+        dispatch({ type: 'UPDATE_USER', payload: { user: response.data } });
+
+      }
+
+    } catch (error) {
+
+      console.error('Failed to refresh user:', error);
+
+    }
+
+  };
 
   const isAdmin = (): boolean => state.user?.role === 1;
   const isTechnician = (): boolean => state.user?.role === 2;
@@ -440,6 +469,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
 
     clearError,
+
+    refreshUser,
 
     isAdmin,
     isTechnician,

@@ -456,6 +456,29 @@ switch ($method) {
                         echo json_encode(['success' => false, 'message' => 'Error al guardar sistemas']);
                     }
                     break;
+                
+                case 'update-profile':
+                    if (!$currentUserId) {
+                        http_response_code(401);
+                        echo json_encode(['success' => false, 'message' => 'No autenticado']);
+                        break;
+                    }
+                    $updateData = (object)[];
+                    if (isset($data->Full_Name)) {
+                        $updateData->Full_Name = $data->Full_Name;
+                    }
+                    if (isset($data->Email)) {
+                        $updateData->Email = $data->Email;
+                    }
+                    $updated = $user->update($currentUserId, $updateData);
+                    if ($updated) {
+                        $auditService->logUserAction('update_profile', (int) $currentUserId, "Perfil actualizado por el usuario", 'info');
+                        echo json_encode(['success' => true, 'message' => 'Perfil actualizado exitosamente']);
+                    } else {
+                        http_response_code(500);
+                        echo json_encode(['success' => false, 'message' => 'Error al actualizar perfil']);
+                    }
+                    break;
                     
                 default:
                     http_response_code(400);

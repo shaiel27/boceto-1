@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 final class BienesProxyService
 {
-    private const XAMPP_HOST = '127.0.0.1';
-    private const XAMPP_PORT = 8012;
     private const BIENES_PATH = '/bienes/bienes.php';
     private const UNIDADES_PATH = '/bienes/unidades.php';
 
+    private string $xamppHost;
+    private int $xamppPort;
     private string $cacheDir;
     private int $cacheTtl;
     private int $fetchTimeout;
@@ -16,8 +16,12 @@ final class BienesProxyService
     public function __construct(
         ?string $cacheDir = null,
         int $cacheTtl = 7200,
-        int $fetchTimeout = 60
+        int $fetchTimeout = 60,
+        string $xamppHost = '127.0.0.1',
+        int $xamppPort = 8012
     ) {
+        $this->xamppHost = $xamppHost;
+        $this->xamppPort = $xamppPort;
         $this->cacheDir = $cacheDir ?? sys_get_temp_dir() . '/bienes_proxy_cache';
         $this->cacheTtl = $cacheTtl;
         $this->fetchTimeout = $fetchTimeout;
@@ -165,7 +169,7 @@ final class BienesProxyService
 
     private function httpGet(string $path, string $queryString): ?string
     {
-        $url = sprintf('http://%s:%d%s?%s', self::XAMPP_HOST, self::XAMPP_PORT, $path, $queryString);
+        $url = sprintf('http://%s:%d%s?%s', $this->xamppHost, $this->xamppPort, $path, $queryString);
 
         $ch = curl_init();
         curl_setopt_array($ch, [

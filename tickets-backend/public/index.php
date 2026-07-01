@@ -222,7 +222,9 @@ switch ($path) {
         $bienesProxy = new BienesProxyService(
             cacheDir: __DIR__ . '/../cache/bienes',
             cacheTtl: 7200,
-            fetchTimeout: 60
+            fetchTimeout: 60,
+            xamppHost: '192.168.5.206',
+            xamppPort: 8012
         );
 
         $action = $_GET['action'] ?? '';
@@ -252,7 +254,9 @@ switch ($path) {
         $bienesProxy = new BienesProxyService(
             cacheDir: __DIR__ . '/../cache/bienes',
             cacheTtl: 7200,
-            fetchTimeout: 60
+            fetchTimeout: 60,
+            xamppHost: '192.168.5.206',
+            xamppPort: 8012
         );
 
         $result = $bienesProxy->fetchUnidades([

@@ -69,6 +69,8 @@ const TicketForm: React.FC = () => {
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [createdTicket, setCreatedTicket] = useState<any>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [systemModalOpen, setSystemModalOpen] = useState(false);
+  const [systemSearchTerm, setSystemSearchTerm] = useState('');
   const [formData, setFormData] = useState<TicketFormData>({
     subject: '',
     description: '',
@@ -200,6 +202,11 @@ const TicketForm: React.FC = () => {
   // Catálogo de problemas por tipo de servicio
   const [problemsCatalog, setProblemsCatalog] = useState<ProblemCatalog[]>([]);
   const [softwareSystems, setSoftwareSystems] = useState<SoftwareSystem[]>([]);
+
+  const filteredSoftwareSystems = softwareSystems.filter(s =>
+    s.name.toLowerCase().includes(systemSearchTerm.toLowerCase()) ||
+    s.description.toLowerCase().includes(systemSearchTerm.toLowerCase())
+  );
 
   // Cargar problemas según tipo de servicio seleccionado
   useEffect(() => {
@@ -611,7 +618,7 @@ const TicketForm: React.FC = () => {
               </div>
             </div>
 
-            {formData.fkTiService === '3' && (
+            {formData.fkTiService === '3' && softwareSystems.length > 0 && (
               <div className="form-section">
                 <div className="form-section-title">
                   <Settings size={18} />
@@ -621,22 +628,62 @@ const TicketForm: React.FC = () => {
                   <label>
                     Sistema Afectado *
                   </label>
-                  <div className="input-with-icon">
+                  <button
+                    type="button"
+                    className={`sys-trigger ${errors.fkSoftwareSystem ? 'error' : ''} ${formData.fkSoftwareSystem ? 'selected' : ''}`}
+                    onClick={() => setSystemModalOpen(true)}
+                  >
                     <Settings size={18} />
-                    <select
-                      className={`form-input ${errors.fkSoftwareSystem ? 'error' : ''}`}
-                      value={formData.fkSoftwareSystem}
-                      onChange={(e) => setFormData(prev => ({ ...prev, fkSoftwareSystem: e.target.value }))}
-                    >
-                      <option value="">Selecciona el sistema</option>
-                      {softwareSystems.map(system => (
-                        <option key={system.id} value={system.id}>
-                          {system.name} - {system.description}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                    <span>
+                      {formData.fkSoftwareSystem
+                        ? softwareSystems.find(s => s.id === formData.fkSoftwareSystem)?.name
+                        : 'Seleccionar sistema...'}
+                    </span>
+                  </button>
                   {errors.fkSoftwareSystem && <span className="error-message">{errors.fkSoftwareSystem}</span>}
+                </div>
+              </div>
+            )}
+            {systemModalOpen && (
+              <div className="sys-modal-overlay" onClick={() => { setSystemModalOpen(false); setSystemSearchTerm(''); }}>
+                <div className="sys-modal" onClick={(e) => e.stopPropagation()}>
+                  <div className="sys-modal-head">
+                    <h3>Sistema de Software</h3>
+                    <button type="button" className="sys-modal-close" onClick={() => { setSystemModalOpen(false); setSystemSearchTerm(''); }}>
+                      <X size={20} />
+                    </button>
+                  </div>
+                  <div className="sys-modal-search">
+                    <input
+                      type="text"
+                      placeholder="Buscar sistema..."
+                      value={systemSearchTerm}
+                      onChange={(e) => setSystemSearchTerm(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                  <div className="sys-modal-list">
+                    {filteredSoftwareSystems.length > 0 ? filteredSoftwareSystems.map(system => (
+                      <button
+                        key={system.id}
+                        type="button"
+                        className={`sys-modal-item ${formData.fkSoftwareSystem === system.id ? 'active' : ''}`}
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, fkSoftwareSystem: system.id }));
+                          setSystemModalOpen(false);
+                          setSystemSearchTerm('');
+                        }}
+                      >
+                        <div className="sys-modal-item-info">
+                          <span className="sys-modal-item-name">{system.name}</span>
+                          <span className="sys-modal-item-desc">{system.description}</span>
+                        </div>
+                        {formData.fkSoftwareSystem === system.id && <Check size={18} />}
+                      </button>
+                    )) : (
+                      <div className="sys-modal-empty">Sin sistemas registrados</div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
