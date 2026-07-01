@@ -1,8 +1,17 @@
--- Final schema for tickets_system (updated)
-CREATE DATABASE IF NOT EXISTS tickets_system;
+-- ==========================================
+-- Esquema de base de datos: tickets_system
+-- Solo crea las tablas (sin datos)
+-- Ejecutar desde XAMPP: mysql -u root -p < este_archivo.sql
+-- O importar desde phpMyAdmin
+-- ==========================================
+
+CREATE DATABASE IF NOT EXISTS tickets_system
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
 USE tickets_system;
 
--- 1. Roles and Users
+-- 1. Roles y usuarios
 CREATE TABLE IF NOT EXISTS Role (
     ID_Role INT AUTO_INCREMENT PRIMARY KEY,
     Role VARCHAR(20) NOT NULL,
@@ -34,7 +43,7 @@ CREATE TABLE IF NOT EXISTS Boss (
     FOREIGN KEY (Fk_User) REFERENCES Users(ID_Users)
 );
 
--- 2. Institutional structure
+-- 2. Infraestructura institucional
 CREATE TABLE IF NOT EXISTS Office (
     ID_Office INT AUTO_INCREMENT PRIMARY KEY,
     Name_Office VARCHAR(100) NOT NULL,
@@ -44,7 +53,7 @@ CREATE TABLE IF NOT EXISTS Office (
     FOREIGN KEY (Fk_Boss_ID) REFERENCES Boss(ID_Boss)
 );
 
--- 3. Technicians and services
+-- 3. Técnicos y servicios TI
 CREATE TABLE IF NOT EXISTS Technicians (
     ID_Technicians INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Users INT UNIQUE,
@@ -53,8 +62,7 @@ CREATE TABLE IF NOT EXISTS Technicians (
     Fk_Lunch_Block INT NULL,
     Status VARCHAR(20) DEFAULT 'Disponible',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (Fk_Users) REFERENCES Users(ID_Users),
-    FOREIGN KEY (Fk_Lunch_Block) REFERENCES Lunch_Blocks(ID_Lunch_Block)
+    FOREIGN KEY (Fk_Users) REFERENCES Users(ID_Users)
 );
 
 CREATE TABLE IF NOT EXISTS TI_Service (
@@ -98,7 +106,10 @@ CREATE TABLE IF NOT EXISTS Lunch_Blocks (
     End_Time TIME NOT NULL
 );
 
--- 4. Permissions and systems
+ALTER TABLE Technicians
+    ADD FOREIGN KEY (Fk_Lunch_Block) REFERENCES Lunch_Blocks(ID_Lunch_Block);
+
+-- 4. Permisos y sistemas
 CREATE TABLE IF NOT EXISTS Service_Permissions (
     ID_Permission INT AUTO_INCREMENT PRIMARY KEY,
     Fk_TI_Service INT,
@@ -158,7 +169,7 @@ CREATE TABLE IF NOT EXISTS Service_Request (
     System_Priority VARCHAR(50) DEFAULT 'Media',
     Resolution_Notes TEXT NULL,
     Status VARCHAR(50) DEFAULT 'Pendiente',
-    is_returned TINYINT(1) DEFAULT 0 COMMENT 'Marca tickets devueltos por inconformidad',
+    is_returned TINYINT(1) DEFAULT 0,
     Created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     Resolved_at TIMESTAMP NULL,
     FOREIGN KEY (Fk_Office) REFERENCES Office(ID_Office),
@@ -169,7 +180,8 @@ CREATE TABLE IF NOT EXISTS Service_Request (
     FOREIGN KEY (Fk_Boss_Requester) REFERENCES Boss(ID_Boss)
 );
 
-ALTER TABLE Service_Request ADD UNIQUE KEY uq_ticket_code (Ticket_Code, sequence_generation);
+ALTER TABLE Service_Request
+    ADD UNIQUE KEY uq_ticket_code (Ticket_Code, sequence_generation);
 
 CREATE TABLE IF NOT EXISTS ticket_sequence (
     id TINYINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
@@ -179,8 +191,6 @@ CREATE TABLE IF NOT EXISTS ticket_sequence (
     reset_by INT NULL,
     FOREIGN KEY (reset_by) REFERENCES Users(ID_Users)
 );
-
-INSERT IGNORE INTO ticket_sequence (id, current_number, generation) VALUES (1, 0, 1);
 
 CREATE TABLE IF NOT EXISTS Ticket_Technicians (
     ID_Ticket_Technician INT AUTO_INCREMENT PRIMARY KEY,
@@ -233,7 +243,7 @@ CREATE TABLE IF NOT EXISTS Ticket_Timeline (
     FOREIGN KEY (Fk_User_Actor) REFERENCES Users(ID_Users)
 );
 
--- 6. Audit logs
+-- 6. Auditoría
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NULL,
@@ -254,7 +264,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     INDEX idx_audit_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 7. Notifications
+-- 7. Notificaciones
 CREATE TABLE IF NOT EXISTS Notifications (
     ID_Notification INT AUTO_INCREMENT PRIMARY KEY,
     Fk_User INT NOT NULL,
@@ -272,9 +282,9 @@ CREATE TABLE IF NOT EXISTS Notifications (
     INDEX idx_ticket_notifications (Fk_Service_Request),
     INDEX idx_type (Type),
     INDEX idx_created_at (Created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='User notifications table';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 8. Escalation/Aux tables
+-- 8. Escalación
 CREATE TABLE IF NOT EXISTS Ticket_Escalations (
     ID_Escalation INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Service_Request INT NOT NULL,
@@ -300,7 +310,7 @@ CREATE TABLE IF NOT EXISTS Escalation_Config (
     Auto_Escalate BOOLEAN DEFAULT FALSE
 );
 
--- 9. Assistance Requests (simplified: technician requests admin help)
+-- 9. Solicitudes de asistencia
 CREATE TABLE IF NOT EXISTS Assistance_Requests (
     ID_Request INT AUTO_INCREMENT PRIMARY KEY,
     Fk_Ticket INT NOT NULL,
@@ -319,7 +329,7 @@ CREATE TABLE IF NOT EXISTS Assistance_Requests (
 CREATE INDEX idx_assistance_status ON Assistance_Requests(Status);
 CREATE INDEX idx_assistance_ticket ON Assistance_Requests(Fk_Ticket);
 
--- 10. Bienes cache (SIFA API)
+-- 10. Caché de bienes (SIFA)
 CREATE TABLE IF NOT EXISTS bienes_cache (
     query_key VARCHAR(64) PRIMARY KEY,
     response MEDIUMTEXT NOT NULL,
@@ -327,51 +337,3 @@ CREATE TABLE IF NOT EXISTS bienes_cache (
     cached_at INT UNSIGNED NOT NULL,
     INDEX idx_cached (cached_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Default data (roles, services, sample users) -- keep minimal
-INSERT IGNORE INTO Role (ID_Role, Role, Description) VALUES
-(1, 'Admin', 'Administrador del sistema con acceso total'),
-(2, 'Tecnico', 'Técnico de TI encargado de resolver tickets'),
-(3, 'Jefe', 'Jefe de oficina que puede solicitar tickets'),
-(4, 'Auditor', 'Auditor del sistema con permisos de solo lectura');
-
-INSERT IGNORE INTO TI_Service (ID_TI_Service, Type_Service, Details) VALUES
-(1, 'Redes', 'Configuración y mantenimiento de redes de computadoras'),
-(2, 'Soporte', 'Soporte técnico general de hardware y software'),
-(3, 'Programación', 'Desarrollo y mantenimiento de sistemas de software');
-
-INSERT IGNORE INTO Service_Problems_Catalog (ID_Problem_Catalog, Fk_TI_Service, Problem_Name, Typical_Description, Estimated_Severity) VALUES
--- Soporte (2)
-(1, 2, 'Equipo no enciende', 'El equipo no responde al presionar el botón de encendido. Posible falla de fuente de poder o batería.', 'Alta'),
-(2, 2, 'Equipo con error de encendido', 'El equipo se enciende pero muestra errores durante el arranque (BSOD, BIOS, etc.).', 'Alta'),
-(3, 2, 'Impresora atascada', 'Papel atascado en la impresora impidiendo la impresión normal.', 'Media'),
-(4, 2, 'Falla en impresora', 'La impresora no funciona correctamente o no imprime. Posible falla mecánica o de conexión.', 'Media'),
-(5, 2, 'Recarga de tinta de impresora', 'Recarga de cartuchos de tinta para impresoras de inyección.', 'Baja'),
-(6, 2, 'Cambio de toner', 'Sustitución de cartucho de tóner en impresora láser.', 'Baja'),
-(7, 2, 'Problemas de software o programas', 'Errores en aplicaciones, instalación/desinstalación de programas, licencias, actualizaciones.', 'Media'),
--- Programación (3)
-(8, 3, 'Caída de sistema', 'El sistema o aplicación no está disponible o presenta interrupciones del servicio.', 'Alta'),
-(9, 3, 'Error de reporte', 'Los reportes generan errores, datos incorrectos o no se generan.', 'Media'),
--- Redes (1)
-(10, 1, 'Desconexión de impresora', 'La impresora de red no responde o se ha desconectado.', 'Media'),
-(11, 1, 'Sin internet', 'Falta de conectividad a internet en uno o varios equipos de la oficina.', 'Alta'),
-(12, 1, 'Conectar impresora a red', 'Configuración e instalación de impresora en la red local.', 'Baja'),
-(13, 1, 'Instalación de red interna y cableado por tubería', 'Tendido de cableado estructurado, instalación de puntos de red y configuración de switches/routers.', 'Media');
-
--- ==========================================
--- Usuarios por defecto (Admin y Auditor)
--- Hash generado con password_hash('password123', PASSWORD_DEFAULT)
--- Contraseña: password123
--- ==========================================
-
-INSERT IGNORE INTO Users (Fk_Role, Email, Password, Username, Full_Name, is_system_user) VALUES
-(1, 'admin@alcaldia.gob', '$2y$12$RYQscZ4JOWkJu8vHM7QpJuXSb/22qqk.qAygHlMXRy.ODPRsNS3Ma', 'admin', 'Administrador del Sistema', TRUE),
-(4, 'auditor@alcaldia.gob', '$2y$12$RYQscZ4JOWkJu8vHM7QpJuXSb/22qqk.qAygHlMXRy.ODPRsNS3Ma', 'auditor', 'Auditor del Sistema', TRUE);
-
-
-INSERT INTO Lunch_Blocks (Block_Name, Start_Time, End_Time) VALUES
-('Primer turno', '11:30:00', '12:10:00'),
-('Segundo turno', '12:10:00', '12:50:00'),
-('Tercer Turno', '12:50:00', '13:30:00'),
-('Cuarto Turno', '13:30:00', '14:00:00');
--- End of final schema

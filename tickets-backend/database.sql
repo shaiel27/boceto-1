@@ -289,12 +289,12 @@ INSERT INTO Role (Role, Description) VALUES
 -- ⚠️ Reemplazar 'password_hash_here' con el hash generado por:
 --    php -r "echo password_hash('password123', PASSWORD_DEFAULT);"
 INSERT INTO Users (Fk_Role, Email, Password, Username, Full_Name, is_system_user) VALUES
-(1, 'admin@alcaldia.gob', 'password_hash_here', 'admin', 'Administrador del Sistema', TRUE),
-(2, 'tech1@alcaldia.gob', 'password_hash_here', 'carlos_diaz', 'Carlos Diaz', TRUE),
-(2, 'tech2@alcaldia.gob', 'password_hash_here', 'amna_verez', 'Amna Verez', TRUE),
-(3, 'jefe1@alcaldia.gob', 'password_hash_here', 'juan_perez', 'Juan Pérez', TRUE),
-(3, 'jefe2@alcaldia.gob', 'password_hash_here', 'maria_gonzalez', 'María González', TRUE),
-(4, 'auditor@alcaldia.gob', 'password_hash_here', 'auditor1', 'Auditor del Sistema', TRUE);
+(1, 'admin@alcaldia.gob', '$2y$12$kuWuI.ZL1CzTIrhOZwEtiOo9Z51ufqTu8QIP1xe2WNzoI40yDOmGe', 'admin', 'Administrador del Sistema', TRUE),
+(2, 'tech1@alcaldia.gob', '$2y$12$kuWuI.ZL1CzTIrhOZwEtiOo9Z51ufqTu8QIP1xe2WNzoI40yDOmGe', 'carlos_diaz', 'Carlos Diaz', TRUE),
+(2, 'tech2@alcaldia.gob', '$2y$12$kuWuI.ZL1CzTIrhOZwEtiOo9Z51ufqTu8QIP1xe2WNzoI40yDOmGe', 'amna_verez', 'Amna Verez', TRUE),
+(3, 'jefe1@alcaldia.gob', '$2y$12$kuWuI.ZL1CzTIrhOZwEtiOo9Z51ufqTu8QIP1xe2WNzoI40yDOmGe', 'juan_perez', 'Juan Pérez', TRUE),
+(3, 'jefe2@alcaldia.gob', '$2y$12$kuWuI.ZL1CzTIrhOZwEtiOo9Z51ufqTu8QIP1xe2WNzoI40yDOmGe', 'maria_gonzalez', 'María González', TRUE),
+(4, 'auditor@alcaldia.gob', '$2y$12$kuWuI.ZL1CzTIrhOZwEtiOo9Z51ufqTu8QIP1xe2WNzoI40yDOmGe', 'auditor1', 'Auditor del Sistema', TRUE);
 
 -- Jefes
 INSERT INTO Boss (Name_Boss, Pronoun, Fk_User) VALUES
