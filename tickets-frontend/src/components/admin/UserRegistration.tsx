@@ -22,6 +22,7 @@ import { sileo } from 'sileo';
 import ModernSidebar from '../layout/ModernSidebar';
 import './UserRegistration.css';
 import ApiService from '../../services/api';
+import { formatEmailPrefix, buildFullEmail, EMAIL_DOMAIN } from '../../utils/emailHelper';
 
 interface FormData {
   name_boss: string;
@@ -118,7 +119,7 @@ const UserRegistration = () => {
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => {
-      const updated = { ...prev, [name]: value };
+      const updated = { ...prev, [name]: name === 'email' ? formatEmailPrefix(value) : value };
       if (name === 'fk_role') {
         updated.fk_office = '';
       }
@@ -153,7 +154,6 @@ const UserRegistration = () => {
     if (!formData.name_boss.trim()) errs.name_boss = 'Requerido';
     if (!formData.username.trim()) errs.username = 'Requerido';
     if (!formData.email.trim()) errs.email = 'Requerido';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) errs.email = 'Email inválido';
     if (!formData.password) errs.password = 'Requerido';
     else if (formData.password.length < 6) errs.password = 'Mínimo 6 caracteres';
     if (formData.confirmPassword && formData.password !== formData.confirmPassword) errs.confirmPassword = 'No coinciden';
@@ -173,7 +173,7 @@ const UserRegistration = () => {
     setLoading(true);
     try {
       const response = await ApiService.createUserWithOffice({
-        email: formData.email,
+        email: buildFullEmail(formData.email),
         password: formData.password,
         username: formData.username,
         full_name: `${formData.pronoun} ${formData.name_boss}`,
@@ -295,11 +295,14 @@ const UserRegistration = () => {
             </div>
             <div className="ur-field ur-field--wide">
               <label htmlFor="email">Correo electrónico</label>
-              <input
-                id="email" name="email" type="email"
-                value={formData.email} onChange={handleChange} onBlur={handleBlur}
-                placeholder="usuario@alcaldia.gob.ve" autoComplete="email"
-              />
+              <div style={{position:'relative',display:'flex',alignItems:'center'}}>
+                <input
+                  id="email" name="email" type="text"
+                  value={formData.email} onChange={handleChange} onBlur={handleBlur}
+                  placeholder="usuario" autoComplete="email" style={{paddingRight:'7rem'}}
+                />
+                <span style={{position:'absolute',right:'.85rem',color:'#a0aec0',fontSize:'13px',pointerEvents:'none'}}>{EMAIL_DOMAIN}</span>
+              </div>
               {touched.has('email') && errors.email && (
                 <span className="ur-err"><AlertCircle size={12} />{errors.email}</span>
               )}

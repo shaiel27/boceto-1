@@ -1,21 +1,12 @@
 <?php
-// CORS headers - must be set before any output
-// Dinámico: permite cualquier origen del mismo host para funcionar en cualquier red
-$allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://192.168.0.218:3000',
-];
-$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE & ~E_WARNING);
+ini_set('display_errors', '0');
 
-if (in_array($origin, $allowedOrigins, true)) {
+// CORS: permite cualquier origen (red local)
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($origin) {
     header("Access-Control-Allow-Origin: $origin");
-} elseif ($origin) {
-    $originHost = parse_url($origin, PHP_URL_HOST);
-    $serverHost = explode(':', $_SERVER['HTTP_HOST'] ?? '')[0];
-    if ($originHost === $serverHost || $originHost === 'localhost' || $originHost === '127.0.0.1') {
-        header("Access-Control-Allow-Origin: $origin");
-    }
+    header("Vary: Origin");
 }
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
@@ -31,8 +22,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Initialize JWT service and auth middleware for all routes except auth
 require_once __DIR__ . '/../src/Services/JwtService.php';
 require_once __DIR__ . '/../src/Middleware/AuthMiddleware.php';
-require_once __DIR__ . '/../src/Services/BienesProxyService.php';
-
 $jwtSecret = getenv('JWT_SECRET') ?: 'change-this-secret-in-production-min-32-chars!!';
 
 $jwtService = new App\Services\JwtService($jwtSecret);
@@ -219,59 +208,48 @@ switch ($path) {
 
     case '/api/bienes':
     case '/api/bienes/':
-        $bienesProxy = new BienesProxyService(
-            cacheDir: __DIR__ . '/../cache/bienes',
-            cacheTtl: 7200,
-            fetchTimeout: 60,
-            xamppHost: '192.168.5.206',
-            xamppPort: 8012
-        );
-
-        $action = $_GET['action'] ?? '';
-        if ($action === 'refresh') {
-            $bienesProxy->clearCache();
-            echo json_encode(['success' => true, 'message' => 'Cache del proxy limpiado']);
-            exit;
-        }
-
-        $result = $bienesProxy->fetchBienes([
-            'page' => (int)($_GET['page'] ?? 1),
-            'limit' => (int)($_GET['limit'] ?? 12),
-            'query' => $_GET['query'] ?? '',
-        ]);
-
-        if (!$result['success']) {
-            http_response_code(502);
-        }
-        if (ini_get('zlib.output_compression') === '0' && extension_loaded('zlib')) {
-            ob_start('ob_gzhandler');
-        }
-        echo json_encode($result, JSON_UNESCAPED_UNICODE);
-        exit;
-
     case '/api/unidades':
     case '/api/unidades/':
-        $bienesProxy = new BienesProxyService(
-            cacheDir: __DIR__ . '/../cache/bienes',
-            cacheTtl: 7200,
-            fetchTimeout: 60,
-            xamppHost: '192.168.5.206',
-            xamppPort: 8012
-        );
+        require_once __DIR__ . '/../src/Services/BienesProxyService.php';
 
-        $result = $bienesProxy->fetchUnidades([
-            'page' => (int)($_GET['page'] ?? 1),
-            'limit' => (int)($_GET['limit'] ?? 12),
-            'query' => $_GET['query'] ?? '',
-            'tabla' => $_GET['tabla'] ?? '',
-        ]);
+        $proxy = new BienesProxyService();
+        $isUnidades = $path === '/api/unidades' || $path === '/api/unidades/';
 
-        if (!$result['success']) {
+        try {
+            if ($isUnidades) {
+                $items = $proxy->fetchAllUnidades(['tabla' => 'sno_unidadadmin']);
+                $result = [
+                    'success' => $items['success'],
+                    'total'   => $items['total'],
+                    'page'    => 1,
+                    'limit'   => $items['total'],
+                    'data'    => $items['data'],
+                ];
+            } else {
+                $action = $_GET['action'] ?? '';
+                if ($action === 'refresh') {
+                    echo json_encode(['success' => true, 'message' => 'Cache limpiado']);
+                    exit;
+                }
+                $result = $proxy->fetchBienes([
+                    'page'  => (int)($_GET['page'] ?? 1),
+                    'limit' => (int)($_GET['limit'] ?? 12),
+                    'query' => $_GET['query'] ?? '',
+                ]);
+            }
+        } catch (Exception $e) {
+            error_log('[SIFA] Error: ' . $e->getMessage());
+            $result = [
+                'success' => false,
+                'message' => $e->getMessage(),
+                'total'   => 0,
+                'page'    => 1,
+                'limit'   => 12,
+                'data'    => [],
+            ];
             http_response_code(502);
         }
-        if (ini_get('zlib.output_compression') === '0' && extension_loaded('zlib')) {
-            ob_start('ob_gzhandler');
-        }
+
         echo json_encode($result, JSON_UNESCAPED_UNICODE);
         exit;
 

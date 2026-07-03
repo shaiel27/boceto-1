@@ -1,12 +1,9 @@
 import React, { useState } from 'react';
-
 import { useNavigate } from 'react-router-dom';
-
 import { Eye, EyeOff, Lock, Mail, Building, AlertCircle, User } from 'lucide-react';
-
 import Layout from '../layout/Layout';
-
 import ApiService, { RegisterResponse } from '../../services/api';
+import { formatEmailPrefix, buildFullEmail, EMAIL_DOMAIN } from '../../utils/emailHelper';
 
 
 
@@ -70,7 +67,7 @@ const RegisterForm: React.FC = () => {
 
       ...prev,
 
-      [name]: name === 'roleId' ? parseInt(value) : value
+      [name]: name === 'email' ? formatEmailPrefix(value) : name === 'roleId' ? parseInt(value) : value
 
     }));
 
@@ -124,7 +121,7 @@ const RegisterForm: React.FC = () => {
 
       const response = await ApiService.register(
 
-        formData.email,
+        buildFullEmail(formData.email),
 
         formData.password,
 
@@ -246,7 +243,7 @@ const RegisterForm: React.FC = () => {
 
                   name="email"
 
-                  type="email"
+                  type="text"
 
                   required
 
@@ -256,11 +253,13 @@ const RegisterForm: React.FC = () => {
 
                   className="form-input"
 
-                  placeholder="correo@alcaldia.gob.ve"
+                  placeholder="usuario"
 
                   autoComplete="email"
 
                 />
+
+                <span className="input-domain">{EMAIL_DOMAIN}</span>
 
               </div>
 

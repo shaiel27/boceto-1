@@ -2,57 +2,58 @@
 
 declare(strict_types=1);
 
-class Office {
-    private $conn;
-    private $table_name = "Office";
+final class Office
+{
+    private PDO $conn;
+    private const TABLE = 'Office';
 
-    public $ID_Office;
-    public $Name_Office;
-    public $coduniadm;
-    public $Fk_Boss_ID;
-    public $created_at;
+    public int $ID_Office;
+    public string $Name_Office;
+    public ?string $coduniadm;
+    public ?int $Fk_Boss_ID;
+    public string $created_at;
 
-    public function __construct($db) {
+    public function __construct(PDO $db)
+    {
         $this->conn = $db;
     }
 
-    public function getAll() {
+    public function getAll(): array
+    {
         $query = "SELECT ID_Office, Name_Office, coduniadm, Fk_Boss_ID, created_at
-                  FROM " . $this->table_name . " 
+                  FROM " . self::TABLE . "
                   ORDER BY Name_Office ASC";
-        
+
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getById($id) {
+    public function getById(int $id): array|false
+    {
         $query = "SELECT ID_Office, Name_Office, coduniadm, Fk_Boss_ID, created_at
-                  FROM " . $this->table_name . " 
+                  FROM " . self::TABLE . "
                   WHERE ID_Office = :id";
-        
+
         $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $id);
+        $stmt->bindValue(':id', $id, PDO::PARAM_INT);
         $stmt->execute();
-        
+
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    /**
-     * Upsert office by coduniadm: updates Name_Office if exists, inserts if not
-     */
     public function upsertByCoduniadm(string $coduniadm, string $nameOffice): int
     {
-        $query = "INSERT INTO " . $this->table_name . " (coduniadm, Name_Office, created_at)
+        $query = "INSERT INTO " . self::TABLE . " (coduniadm, Name_Office, created_at)
                   VALUES (:coduniadm, :name, NOW())
                   ON DUPLICATE KEY UPDATE Name_Office = :name2";
         $stmt = $this->conn->prepare($query);
-        $stmt->bindValue(":coduniadm", $coduniadm);
-        $stmt->bindValue(":name", $nameOffice);
-        $stmt->bindValue(":name2", $nameOffice);
+        $stmt->bindValue(':coduniadm', $coduniadm);
+        $stmt->bindValue(':name', $nameOffice);
+        $stmt->bindValue(':name2', $nameOffice);
         $stmt->execute();
-        
+
         return (int)$this->conn->lastInsertId();
     }
 

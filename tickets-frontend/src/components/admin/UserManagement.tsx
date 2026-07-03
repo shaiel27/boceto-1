@@ -21,6 +21,7 @@ import {
 import ModernSidebar from '../layout/ModernSidebar';
 import './UserManagement.css';
 import ApiService from '../../services/api';
+import { formatEmailPrefix, buildFullEmail, EMAIL_DOMAIN } from '../../utils/emailHelper';
 
 interface User {
   ID_Users: number;
@@ -158,7 +159,7 @@ const UserManagement: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.name === 'email' ? formatEmailPrefix(e.target.value) : e.target.value
     }));
   };
 
@@ -167,9 +168,9 @@ const UserManagement: React.FC = () => {
     
     try {
       const response = await ApiService.createUserWithOffice({
-        email: formData.email,
+        email: buildFullEmail(formData.email),
         password: formData.password,
-        username: formData.email.split('@')[0],
+        username: formData.email,
         full_name: formData.name_boss,
         role: parseInt(formData.fk_role),
         name_boss: formData.name_boss,
@@ -484,14 +485,18 @@ const UserManagement: React.FC = () => {
               <div className="form-grid">
                 <div className="form-group full-width">
                   <label>Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    placeholder="usuario@alcaldia.gob.ve"
-                  />
+                  <div style={{position:'relative',display:'flex',alignItems:'center'}}>
+                    <input
+                      type="text"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="usuario"
+                      style={{paddingRight:'7rem'}}
+                    />
+                    <span style={{position:'absolute',right:'.85rem',color:'#a0aec0',fontSize:'13px',pointerEvents:'none'}}>{EMAIL_DOMAIN}</span>
+                  </div>
                 </div>
                 
                 <div className="form-group full-width">
@@ -598,13 +603,17 @@ const UserManagement: React.FC = () => {
               <div className="form-grid">
                 <div className="form-group full-width">
                   <label>Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                  />
+                  <div style={{position:'relative',display:'flex',alignItems:'center'}}>
+                    <input
+                      type="text"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      style={{paddingRight:'7rem'}}
+                    />
+                    <span style={{position:'absolute',right:'.85rem',color:'#a0aec0',fontSize:'13px',pointerEvents:'none'}}>{EMAIL_DOMAIN}</span>
+                  </div>
                 </div>
                 
                 <div className="form-group full-width">

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, Building, AlertCircle, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { formatEmailPrefix, buildFullEmail, EMAIL_DOMAIN } from '../../utils/emailHelper';
 import './LoginForm.css';
 
 interface LoginFormData {
@@ -29,13 +30,15 @@ const LoginForm: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: name === 'email' ? formatEmailPrefix(value) : value }));
     if (error) clearError();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try { await login(formData.email, formData.password); }
+    const fullEmail = buildFullEmail(formData.email);
+    if (!fullEmail) return;
+    try { await login(fullEmail, formData.password); }
     catch { /* handled by auth context */ }
   };
 
@@ -76,17 +79,18 @@ const LoginForm: React.FC = () => {
             <form onSubmit={handleSubmit} className="lgn-form">
               <div className={`lgn-field ${focused === 'email' ? 'lgn-field--focus' : ''}`}>
                 <label className="lgn-label" htmlFor="email">Correo electrónico</label>
-                <div className="lgn-input-w">
-                  <Mail size={17} className="lgn-input-icon" />
-                  <input
-                    id="email" name="email" type="email" required
-                    value={formData.email} onChange={handleChange}
-                    onFocus={() => setFocused('email')}
-                    onBlur={() => setFocused(null)}
-                    placeholder="correo@alcaldia.gob.ve"
-                    autoComplete="email" className="lgn-input"
-                  />
-                </div>
+                  <div className="lgn-input-w">
+                    <Mail size={17} className="lgn-input-icon" />
+                    <input
+                      id="email" name="email" type="text" required
+                      value={formData.email} onChange={handleChange}
+                      onFocus={() => setFocused('email')}
+                      onBlur={() => setFocused(null)}
+                      placeholder="usuario"
+                      autoComplete="email" className="lgn-input"
+                    />
+                    <span className="lgn-domain">{EMAIL_DOMAIN}</span>
+                  </div>
               </div>
 
               <div className={`lgn-field ${focused === 'password' ? 'lgn-field--focus' : ''}`}>

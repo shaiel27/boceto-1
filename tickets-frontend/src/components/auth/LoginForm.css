@@ -32,9 +32,10 @@
 .lgn-field{display:flex;flex-direction:column}
 .lgn-label{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#4a5568;margin-bottom:.35rem}
 .lgn-input-w{position:relative;display:flex;align-items:center}
-.lgn-input-icon{position:absolute;left:.85rem;color:#a0aec0;pointer-events:none;transition:color .2s}
+.lgn-input-icon{position:absolute;left:.85rem;color:#a0aec0;pointer-events:none;transition:color .2s;z-index:1}
 .lgn-field--focus .lgn-input-icon{color:#1a365d}
-.lgn-input{width:100%;padding:.8rem .9rem .8rem 2.6rem;border:1px solid #d4cfc4;border-radius:1px;font-size:14px;color:#1a2332;background:#fafaf7;outline:none;transition:all .2s;box-sizing:border-box}
+.lgn-input{width:100%;padding:.8rem 7rem .8rem 2.6rem;border:1px solid #d4cfc4;border-radius:1px;font-size:14px;color:#1a2332;background:#fafaf7;outline:none;transition:all .2s;box-sizing:border-box}
+.lgn-domain{position:absolute;right:.85rem;color:#a0aec0;font-size:13px;pointer-events:none;user-select:none}
 .lgn-input::placeholder{color:#b0ad9f}
 .lgn-input:focus{border-color:#1a365d;background:#fff;box-shadow:0 0 0 3px rgba(26,54,93,.06)}
 .lgn-field--focus .lgn-input{border-color:#1a365d;background:#fff;box-shadow:0 0 0 3px rgba(26,54,93,.06)}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ApiService from '../../services/api';
+import { formatEmailPrefix, buildFullEmail, EMAIL_DOMAIN } from '../../utils/emailHelper';
 import { useAuth } from '../../contexts/AuthContext';
 import { sileo } from 'sileo';
 import TechnicianAnalytics from './TechnicianAnalytics';
@@ -289,9 +290,10 @@ const TechnicianManagement: React.FC = () => {
 
   // Manejo de formulario
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [name]: name === 'email' ? formatEmailPrefix(value) : value
     }));
   }, []);
 
@@ -350,7 +352,7 @@ const TechnicianManagement: React.FC = () => {
     try {
       const response = await ApiService.createTechnician({
         username: username,
-        email: formData.email,
+        email: buildFullEmail(formData.email),
         password: formData.password,
         first_name: formData.first_name,
         last_name: formData.last_name,
@@ -492,7 +494,7 @@ const TechnicianManagement: React.FC = () => {
       const updateData: any = {
         first_name: formData.first_name,
         last_name: formData.last_name,
-        email: formData.email,
+        email: buildFullEmail(formData.email),
         lunch_block: formData.fk_lunch_block || null,
         services: Array.from(new Set(formData.ti_services.map(Number))),
         schedules: formData.schedules
@@ -1062,14 +1064,18 @@ const TechnicianManagement: React.FC = () => {
                     </div>
                     <div className="tm-field">
                       <label>Email</label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="correo@ejemplo.com"
-                      />
+                      <div style={{position:'relative',display:'flex',alignItems:'center'}}>
+                        <input
+                          type="text"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          required
+                          placeholder="usuario"
+                          style={{paddingRight:'7rem'}}
+                        />
+                        <span style={{position:'absolute',right:'.85rem',color:'#a0aec0',fontSize:'13px',pointerEvents:'none'}}>{EMAIL_DOMAIN}</span>
+                      </div>
                     </div>
                     <div className="tm-field">
                       <label>Nombre de Usuario</label>
@@ -1263,14 +1269,18 @@ const TechnicianManagement: React.FC = () => {
                     </div>
                     <div className="tm-field">
                       <label>Email</label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                        placeholder="correo@ejemplo.com"
-                      />
+                      <div style={{position:'relative',display:'flex',alignItems:'center'}}>
+                        <input
+                          type="text"
+                          name="email"
+                          value={formData.email}
+                          onChange={handleInputChange}
+                          required
+                          placeholder="usuario"
+                          style={{paddingRight:'7rem'}}
+                        />
+                        <span style={{position:'absolute',right:'.85rem',color:'#a0aec0',fontSize:'13px',pointerEvents:'none'}}>{EMAIL_DOMAIN}</span>
+                      </div>
                     </div>
                     <div className="tm-field">
                       <label>Nombre de Usuario</label>

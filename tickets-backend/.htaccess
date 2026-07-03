@@ -18,7 +18,7 @@ RewriteRule ^(.*)$ public/index.php [QSA,L]
 <IfModule mod_headers.c>
     Header always set Access-Control-Allow-Origin "http://localhost:3000"
     Header always set Access-Control-Allow-Origin "http://127.0.0.1:3000"
-    Header always set Access-Control-Allow-Origin "http://192.168.100.88:3000"
+    Header always set Access-Control-Allow-Origin "http://192.168.0.43:3000"
     Header always set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
     Header always set Access-Control-Allow-Headers "Content-Type, Authorization"
     Header always set Access-Control-Allow-Credentials "true"

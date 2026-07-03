@@ -18,6 +18,7 @@ import {
   KeyRound
 } from 'lucide-react';
 import ApiService from '../../services/api';
+import { formatEmailPrefix, buildFullEmail, EMAIL_DOMAIN } from '../../utils/emailHelper';
 import './RequesterProfile.css';
 
 interface RequesterProfileData {
@@ -64,7 +65,8 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
   };
 
   const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEditForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setEditForm(prev => ({ ...prev, [name]: name === 'email' ? formatEmailPrefix(value) : value }));
   };
 
   const validatePassword = (password: string): boolean =>
@@ -100,7 +102,7 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await ApiService.updateProfile({ Full_Name: editForm.name, Email: editForm.email });
+      const response = await ApiService.updateProfile({ Full_Name: editForm.name, Email: buildFullEmail(editForm.email) });
       if (response.success) {
         const updatedProfile = { ...profile, name: editForm.name, email: editForm.email };
         onUpdate?.(updatedProfile);
@@ -307,7 +309,10 @@ const RequesterProfile: React.FC<RequesterProfileProps> = ({ profile, onUpdate }
               </div>
               <div className="rp-fg">
                 <label>Correo Electrónico</label>
-                <input type="email" name="email" value={editForm.email} onChange={handleEditChange} placeholder="correo@alcaldia.gob" required />
+                <div style={{position:'relative',display:'flex',alignItems:'center'}}>
+                  <input type="text" name="email" value={editForm.email} onChange={handleEditChange} placeholder="usuario" required style={{paddingRight:'7rem'}} />
+                  <span style={{position:'absolute',right:'.85rem',color:'#a0aec0',fontSize:'13px',pointerEvents:'none'}}>{EMAIL_DOMAIN}</span>
+                </div>
               </div>
               <div className="rp-acts">
                 <button type="button" className="rp-btn rp-btn--sec" onClick={() => setShowEditModal(false)}>

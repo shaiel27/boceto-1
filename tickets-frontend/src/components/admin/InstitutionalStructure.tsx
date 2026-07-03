@@ -38,23 +38,27 @@ const PREFIX_MAP = [
   { prefix: 'Coordinación', label: 'Coordinaciones', icon: <MapPin size={18} />, color: 'var(--institutional-accent)' },
 ];
 
+function normalize(str: string): string {
+  return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
+
 function getInitials(name: string): string {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
 function getGroupColor(name: string): { bg: string; text: string; border: string } {
-  const lower = name.toLowerCase();
-  if (lower.startsWith('dirección')) return { bg: '#eef2ff', text: '#1e3a8a', border: '#c7d2fe' };
-  if (lower.startsWith('división')) return { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' };
-  if (lower.startsWith('coordinación')) return { bg: '#fffbeb', text: '#92400e', border: '#fde68a' };
+  const lower = normalize(name);
+  if (lower.startsWith('direccion')) return { bg: '#eef2ff', text: '#1e3a8a', border: '#c7d2fe' };
+  if (lower.startsWith('division')) return { bg: '#f0fdf4', text: '#166534', border: '#bbf7d0' };
+  if (lower.startsWith('coordinacion')) return { bg: '#fffbeb', text: '#92400e', border: '#fde68a' };
   return { bg: '#f8fafc', text: '#475569', border: '#e2e8f0' };
 }
 
 function getRoleBadge(officeName: string): { label: string; color: string } {
-  const lower = officeName.toLowerCase();
-  if (lower.startsWith('dirección')) return { label: 'Director', color: '#1e3a8a' };
-  if (lower.startsWith('división')) return { label: 'Jefe', color: '#166534' };
-  if (lower.startsWith('coordinación')) return { label: 'Coordinador', color: '#92400e' };
+  const lower = normalize(officeName);
+  if (lower.startsWith('direccion')) return { label: 'Director', color: '#1e3a8a' };
+  if (lower.startsWith('division')) return { label: 'Jefe', color: '#166534' };
+  if (lower.startsWith('coordinacion')) return { label: 'Coordinador', color: '#92400e' };
   return { label: 'Responsable', color: '#475569' };
 }
 
@@ -94,7 +98,7 @@ const InstitutionalStructure: React.FC = () => {
     setSyncing(true);
     try {
       const token = sessionStorage.getItem('auth_token');
-      await fetch(`http://localhost:8000/api/office?action=sync`, {
+      await fetch('/api/office?action=sync', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       await fetchStructure();
@@ -112,7 +116,7 @@ const InstitutionalStructure: React.FC = () => {
     for (const office of offices) {
       let matched = false;
       for (const { prefix } of PREFIX_MAP) {
-        if (office.Name_Office.toLowerCase().startsWith(prefix.toLowerCase())) {
+        if (normalize(office.Name_Office).startsWith(normalize(prefix))) {
           if (!groups[prefix]) groups[prefix] = [];
           groups[prefix].push(office);
           matched = true;

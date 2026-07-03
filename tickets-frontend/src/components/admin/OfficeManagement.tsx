@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Building2, RefreshCw, Search, Users,
-  ArrowLeft, X, Mail, Shield, Hash, ChevronRight,
-  AlertCircle, BadgeCheck, Building, MapPin, Clock
+  ArrowLeft, X, Mail, Shield, Hash,
+  AlertCircle, BadgeCheck, Building, Clock
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
-import { ApiService, API_BASE_URL } from '../../services/api';
+import { ApiService } from '../../services/api';
 import './OfficeManagement.css';
 
 interface Office {
@@ -23,35 +23,9 @@ interface Office {
   technician_count: number;
 }
 
-function getGroup(name: string): string {
-  const l = name.toLowerCase();
-  if (l.startsWith('direcci')) return 'direccion';
-  if (l.startsWith('divisi')) return 'division';
-  if (l.startsWith('coordina')) return 'coordinacion';
-  return 'other';
-}
-
-const GROUP_META: Record<string, { label: string; icon: React.ReactNode }> = {
-  direccion: { label: 'Direcciones', icon: <Building size={15} /> },
-  division: { label: 'Divisiones', icon: <MapPin size={15} /> },
-  coordinacion: { label: 'Coordinaciones', icon: <Users size={15} /> },
-  other: { label: 'Otras Dependencias', icon: <Building2 size={15} /> },
-};
-
-const GROUP_ORDER = ['direccion', 'division', 'coordinacion', 'other'];
-
 function getInitials(name: string): string {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
-
-const POOL = [
-  'Educación', 'Salud', 'Seguridad', 'Tecnología', 'Cultura',
-  'Deporte', 'Ambiente', 'Vialidad', 'Tributaria', 'Registro Civil',
-  'Despacho', 'Contratación', 'Talento Humano', 'Servicios Públicos',
-  'Mercado', 'Planificación', 'Protección Civil', 'Obras',
-  'Justicia', 'Administración', 'Informática', 'Transporte',
-  'Catastro', 'Vivienda', 'Hacienda', 'Turismo', 'Comunicación',
-];
 
 function getEmoji(name: string): string {
   const l = name.toLowerCase();
@@ -72,7 +46,7 @@ function getEmoji(name: string): string {
   if (l.includes('servicios publicos') || l.includes('aseo')) return '\u{1F6E0}';
   if (l.includes('mercado')) return '\u{1F6CD}';
   if (l.includes('planificacion') || l.includes('presupuesto')) return '\u{1F4CA}';
-  if (l.includes('proteccion civil') || l.includes('riesgo')) return '\u26A8';
+  if (l.includes('proteccion civil') || l.includes('riesgo')) return '\u26A8}';
   if (l.includes('obras') || l.includes('construccion')) return '\u{1F3D7}';
   if (l.includes('justicia') || l.includes('legal') || l.includes('sindicatura')) return '\u2696';
   if (l.includes('administracion') || l.includes('general')) return '\u{1F3E2}';
@@ -88,7 +62,6 @@ const OfficeManagement: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterGroup, setFilterGroup] = useState<string | null>(null);
   const [selectedOffice, setSelectedOffice] = useState<number | null>(null);
 
   const fetchOffices = async () => {
@@ -114,7 +87,7 @@ const OfficeManagement: React.FC = () => {
     setSyncMessage(null);
     try {
       const token = sessionStorage.getItem('auth_token');
-      const response = await fetch(`${API_BASE_URL}/api/office?action=sync`, {
+      const response = await fetch('/api/office?action=sync', {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
       const data = await response.json();
@@ -131,41 +104,16 @@ const OfficeManagement: React.FC = () => {
     }
   };
 
-  const grouped = useMemo(() => {
-    const groups: Record<string, Office[]> = {};
-    for (const office of offices) {
-      const g = getGroup(office.Name_Office);
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(office);
-    }
-    return GROUP_ORDER.filter(g => groups[g]).map(g => ({
-      key: g,
-      ...GROUP_META[g],
-      offices: groups[g],
-    }));
-  }, [offices]);
-
   const filtered = useMemo(() => {
-    let result = grouped;
-    if (filterGroup) {
-      result = result.filter(g => g.key === filterGroup);
-    }
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      result = result
-        .map(g => ({
-          ...g,
-          offices: g.offices.filter(o =>
-            o.Name_Office.toLowerCase().includes(q) ||
-            (o.boss_full_name && o.boss_full_name.toLowerCase().includes(q)) ||
-            (o.boss_email && o.boss_email.toLowerCase().includes(q)) ||
-            (o.coduniadm && o.coduniadm.toLowerCase().includes(q))
-          ),
-        }))
-        .filter(g => g.offices.length > 0);
-    }
-    return result;
-  }, [grouped, filterGroup, searchTerm]);
+    if (!searchTerm.trim()) return offices;
+    const q = searchTerm.toLowerCase();
+    return offices.filter(o =>
+      o.Name_Office.toLowerCase().includes(q) ||
+      (o.boss_full_name && o.boss_full_name.toLowerCase().includes(q)) ||
+      (o.boss_email && o.boss_email.toLowerCase().includes(q)) ||
+      (o.coduniadm && o.coduniadm.toLowerCase().includes(q))
+    );
+  }, [offices, searchTerm]);
 
   const stats = useMemo(() => ({
     total: offices.length,
@@ -233,7 +181,7 @@ const OfficeManagement: React.FC = () => {
           </div>
         )}
 
-        {/* Search + Filters */}
+        {/* Search + Stats */}
         <div className="om-toolbar">
           <div className="om-search">
             <Search size={15} className="om-search-icon" />
@@ -251,28 +199,15 @@ const OfficeManagement: React.FC = () => {
             )}
           </div>
           <div className="om-filters">
-            {GROUP_ORDER.map(g => {
-              const meta = GROUP_META[g];
-              const active = filterGroup === g;
-              return (
-                <button
-                  key={g}
-                  className={`om-chip ${active ? 'om-chip--active' : ''}`}
-                  onClick={() => setFilterGroup(active ? null : g)}
-                >
-                  {meta.icon}
-                  <span>{meta.label}</span>
-                </button>
-              );
-            })}
-            <button className="om-chip om-chip--stat"><Users size={13} />{stats.totalTechs} técnicos</button>
+            <span className="om-chip om-chip--stat"><Building2 size={13} />{stats.total} dependencias</span>
+            <span className="om-chip om-chip--stat"><Users size={13} />{stats.totalTechs} técnicos</span>
             <span className="om-chip om-chip--stat om-chip--muted">
               {stats.withoutBoss} sin responsable
             </span>
           </div>
         </div>
 
-        {/* Content */}
+        {/* Flat Grid */}
         {filtered.length === 0 ? (
           <div className="om-empty">
             <Building2 size={36} />
@@ -280,123 +215,106 @@ const OfficeManagement: React.FC = () => {
             <p>No se encontraron dependencias con ese criterio de búsqueda</p>
           </div>
         ) : (
-          <div className="om-sections">
-            {filtered.map(group => (
-              <section key={group.key} className="om-section">
-                <header className="om-section-hd">
-                  <div className="om-section-hd-left">
-                    <span className="om-section-icon">{group.icon}</span>
-                    <h2 className="om-section-title">{group.label}</h2>
-                    <span className="om-section-count">{group.offices.length}</span>
+          <div className="om-grid">
+            {filtered.map((office, i) => {
+              const isOpen = selectedOffice === office.ID_Office;
+              return (
+                <article
+                  key={office.ID_Office}
+                  className={`om-office ${isOpen ? 'om-office--open' : ''}`}
+                  style={{ animationDelay: `${i * 0.03}s` }}
+                >
+                  <div className="om-office-main" onClick={() => handleViewDetails(office.ID_Office)}>
+                    <span className="om-office-emoji">{getEmoji(office.Name_Office)}</span>
+                    <div className="om-office-info">
+                      <h3 className="om-office-name">{office.Name_Office}</h3>
+                      <div className="om-office-tags">
+                        {office.coduniadm && (
+                          <span className="om-tag om-tag--code">#{office.coduniadm}</span>
+                        )}
+                        {office.has_boss ? (
+                          <span className="om-tag om-tag--boss">
+                            <BadgeCheck size={10} />
+                            {office.boss_full_name || office.boss_name}
+                          </span>
+                        ) : (
+                          <span className="om-tag om-tag--empty">Sin responsable</span>
+                        )}
+                        {office.technician_count > 0 && (
+                          <span className="om-tag om-tag--tech">
+                            <Users size={10} />
+                            {office.technician_count} téc.
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </header>
-                <div className="om-grid">
-                  {group.offices.map((office, i) => {
-                    const isOpen = selectedOffice === office.ID_Office;
-                    return (
-                      <article
-                        key={office.ID_Office}
-                        className={`om-office ${isOpen ? 'om-office--open' : ''}`}
-                        style={{ animationDelay: `${i * 0.03}s` }}
-                      >
-                        <div className="om-office-main" onClick={() => handleViewDetails(office.ID_Office)}>
-                          <span className="om-office-emoji">{getEmoji(office.Name_Office)}</span>
-                          <div className="om-office-info">
-                            <h3 className="om-office-name">{office.Name_Office}</h3>
-                            <div className="om-office-tags">
-                              {office.coduniadm && (
-                                <span className="om-tag om-tag--code">#{office.coduniadm}</span>
-                              )}
-                              {office.has_boss ? (
-                                <span className="om-tag om-tag--boss">
-                                  <BadgeCheck size={10} />
-                                  {office.boss_full_name || office.boss_name}
-                                </span>
-                              ) : (
-                                <span className="om-tag om-tag--empty">Sin responsable</span>
-                              )}
-                              {office.technician_count > 0 && (
-                                <span className="om-tag om-tag--tech">
-                                  <Users size={10} />
-                                  {office.technician_count} téc.
-                                </span>
-                              )}
+
+                  {isOpen && (
+                    <div className="om-detail">
+                      <div className="om-detail-grid">
+                        {office.has_boss ? (
+                          <div className="om-detail-block">
+                            <div className="om-detail-lbl">
+                              <Shield size={11} />
+                              Responsable
+                            </div>
+                            <div className="om-detail-val">
+                              <span className="om-detail-avatar">
+                                {getInitials(office.boss_full_name || office.boss_name || '')}
+                              </span>
+                              <div>
+                                <strong>{office.boss_full_name || office.boss_name}</strong>
+                                {office.boss_email && (
+                                  <span className="om-detail-email">
+                                    <Mail size={10} />
+                                    {office.boss_email}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <ChevronRight
-                            size={14}
-                            className={`om-chevron ${isOpen ? 'om-chevron--open' : ''}`}
-                          />
-                        </div>
-
-                        {isOpen && (
-                          <div className="om-detail">
-                            <div className="om-detail-grid">
-                              {office.has_boss ? (
-                                <div className="om-detail-block">
-                                  <div className="om-detail-lbl">
-                                    <Shield size={11} />
-                                    Responsable
-                                  </div>
-                                  <div className="om-detail-val">
-                                    <span className="om-detail-avatar">
-                                      {getInitials(office.boss_full_name || office.boss_name || '')}
-                                    </span>
-                                    <div>
-                                      <strong>{office.boss_full_name || office.boss_name}</strong>
-                                      {office.boss_email && (
-                                        <span className="om-detail-email">
-                                          <Mail size={10} />
-                                          {office.boss_email}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ) : (
-                                <div className="om-detail-block om-detail-block--empty">
-                                  <AlertCircle size={13} />
-                                  <span>Sin responsable asignado</span>
-                                </div>
-                              )}
-                              <div className="om-detail-block">
-                                <div className="om-detail-lbl">
-                                  <Hash size={11} />
-                                  Código SIFA
-                                </div>
-                                <div className="om-detail-val">
-                                  <code className="om-code">{office.coduniadm || '—'}</code>
-                                </div>
-                              </div>
-                              <div className="om-detail-block">
-                                <div className="om-detail-lbl">
-                                  <Users size={11} />
-                                  Técnicos
-                                </div>
-                                <div className="om-detail-val">
-                                  {office.technician_count || 0} asignados
-                                </div>
-                              </div>
-                              <div className="om-detail-block">
-                                <div className="om-detail-lbl">
-                                  <Clock size={11} />
-                                  Registro
-                                </div>
-                                <div className="om-detail-val">
-                                  {new Date(office.created_at).toLocaleDateString('es-ES', {
-                                    day: 'numeric', month: 'short', year: 'numeric'
-                                  })}
-                                </div>
-                              </div>
-                            </div>
+                        ) : (
+                          <div className="om-detail-block om-detail-block--empty">
+                            <AlertCircle size={13} />
+                            <span>Sin responsable asignado</span>
                           </div>
                         )}
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
+                        <div className="om-detail-block">
+                          <div className="om-detail-lbl">
+                            <Hash size={11} />
+                            Código SIFA
+                          </div>
+                          <div className="om-detail-val">
+                            <code className="om-code">{office.coduniadm || '—'}</code>
+                          </div>
+                        </div>
+                        <div className="om-detail-block">
+                          <div className="om-detail-lbl">
+                            <Users size={11} />
+                            Técnicos
+                          </div>
+                          <div className="om-detail-val">
+                            {office.technician_count || 0} asignados
+                          </div>
+                        </div>
+                        <div className="om-detail-block">
+                          <div className="om-detail-lbl">
+                            <Clock size={11} />
+                            Registro
+                          </div>
+                          <div className="om-detail-val">
+                            {new Date(office.created_at).toLocaleDateString('es-ES', {
+                              day: 'numeric', month: 'short', year: 'numeric'
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              );
+            })}
           </div>
         )}
       </div>

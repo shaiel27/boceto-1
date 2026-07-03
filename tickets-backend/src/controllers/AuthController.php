@@ -112,7 +112,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             case 'login':
                 if (isset($data->email) && isset($data->password)) {
                     // Input validation
-                    if (!filter_var($data->email, FILTER_VALIDATE_EMAIL)) {
+                    $isTicketsEmail = substr($data->email, -13) === '@tickets.gob';
+                    if (!filter_var($data->email, FILTER_VALIDATE_EMAIL) && !$isTicketsEmail) {
                         http_response_code(400);
                         echo json_encode([
                             'success' => false,
@@ -203,7 +204,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             case 'register':
                 if (isset($data->email) && isset($data->password)) {
                     // Input validation
-                    if (!filter_var($data->email, FILTER_VALIDATE_EMAIL)) {
+                    $isTicketsEmail = substr($data->email, -13) === '@tickets.gob';
+                    if (!filter_var($data->email, FILTER_VALIDATE_EMAIL) && !$isTicketsEmail) {
                         http_response_code(400);
                         echo json_encode([
                             'success' => false,
