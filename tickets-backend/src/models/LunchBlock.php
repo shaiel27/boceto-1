@@ -23,6 +23,22 @@ class LunchBlock {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function create(string $blockName, string $startTime, string $endTime): ?int {
+        $query = "INSERT INTO " . $this->table_name . " (Block_Name, Start_Time, End_Time)
+                  VALUES (:block_name, :start_time, :end_time)";
+
+        $stmt = $this->conn->prepare($query);
+        $stmt->bindParam(":block_name", $blockName);
+        $stmt->bindParam(":start_time", $startTime);
+        $stmt->bindParam(":end_time", $endTime);
+
+        if ($stmt->execute()) {
+            return (int)$this->conn->lastInsertId();
+        }
+
+        return null;
+    }
+
     public function getById($id) {
         $query = "SELECT ID_Lunch_Block, Block_Name, Start_Time, End_Time
                   FROM " . $this->table_name . "

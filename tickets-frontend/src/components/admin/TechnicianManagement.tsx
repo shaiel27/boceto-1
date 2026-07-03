@@ -117,6 +117,8 @@ const TechnicianManagement: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showCustomBlockModal, setShowCustomBlockModal] = useState(false);
+  const [customBlockForm, setCustomBlockForm] = useState({ block_name: '', start_time: '11:00', end_time: '12:00' });
 
   // Estados de formulario
   const [formData, setFormData] = useState({
@@ -317,6 +319,37 @@ const TechnicianManagement: React.FC = () => {
         ? prev.ti_services.filter(id => id !== serviceId)
         : [...prev.ti_services, serviceId]
     }));
+  };
+
+  const handleCustomBlockChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setCustomBlockForm(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleCreateCustomBlock = async () => {
+    if (!customBlockForm.block_name.trim()) {
+      sileo.warning({ title: 'Validación', description: 'Debe ingresar un nombre para el bloque' });
+      return;
+    }
+    if (!customBlockForm.start_time || !customBlockForm.end_time) {
+      sileo.warning({ title: 'Validación', description: 'Debe ingresar hora de inicio y fin' });
+      return;
+    }
+    if (customBlockForm.start_time >= customBlockForm.end_time) {
+      sileo.warning({ title: 'Validación', description: 'La hora de inicio debe ser menor a la hora de fin' });
+      return;
+    }
+
+    const result = await ApiService.createLunchBlock(customBlockForm);
+    if (result.success && result.data) {
+      sileo.success({ title: 'Bloque creado', description: 'Bloque de almuerzo personalizado creado exitosamente' });
+      setLunchBlocks(prev => [...prev, result.data]);
+      setFormData(prev => ({ ...prev, fk_lunch_block: String(result.data.ID_Lunch_Block) }));
+      setShowCustomBlockModal(false);
+      setCustomBlockForm({ block_name: '', start_time: '11:00', end_time: '12:00' });
+    } else {
+      sileo.error({ title: 'Error', description: result.message || 'Error al crear bloque de almuerzo' });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1137,14 +1170,19 @@ const TechnicianManagement: React.FC = () => {
                     </div>
                     <div className="tm-field">
                       <label>Bloque de Almuerzo (Opcional)</label>
-                      <select name="fk_lunch_block" value={formData.fk_lunch_block} onChange={handleInputChange}>
-                        <option value="">Sin bloque de almuerzo</option>
-                        {lunchBlocks.map(block => (
-                          <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
-                            {block.Block_Name} ({block.Start_Time} - {block.End_Time})
-                          </option>
-                        ))}
-                      </select>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <select name="fk_lunch_block" value={formData.fk_lunch_block} onChange={handleInputChange} style={{ flex: 1 }}>
+                          <option value="">Sin bloque de almuerzo</option>
+                          {lunchBlocks.map(block => (
+                            <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
+                              {block.Block_Name} ({(block.Start_Time || '').substring(0,5)} - {(block.End_Time || '').substring(0,5)})
+                            </option>
+                          ))}
+                        </select>
+                        <button type="button" className="tm-btn tm-btn-ghost" onClick={() => setShowCustomBlockModal(true)} style={{ padding: '0.5rem', flexShrink: 0 }} title="Crear nuevo bloque de almuerzo">
+                          <Plus size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1335,14 +1373,19 @@ const TechnicianManagement: React.FC = () => {
                   <div className="tm-form-grid">
                     <div className="tm-field">
                       <label>Bloque de Almuerzo (Opcional)</label>
-                      <select name="fk_lunch_block" value={formData.fk_lunch_block} onChange={handleInputChange}>
-                        <option value="">Sin bloque de almuerzo</option>
-                        {lunchBlocks.map(block => (
-                          <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
-                            {block.Block_Name} ({block.Start_Time} - {block.End_Time})
-                          </option>
-                        ))}
-                      </select>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <select name="fk_lunch_block" value={formData.fk_lunch_block} onChange={handleInputChange} style={{ flex: 1 }}>
+                          <option value="">Sin bloque de almuerzo</option>
+                          {lunchBlocks.map(block => (
+                            <option key={block.ID_Lunch_Block} value={block.ID_Lunch_Block}>
+                              {block.Block_Name} ({(block.Start_Time || '').substring(0,5)} - {(block.End_Time || '').substring(0,5)})
+                            </option>
+                          ))}
+                        </select>
+                        <button type="button" className="tm-btn tm-btn-ghost" onClick={() => setShowCustomBlockModal(true)} style={{ padding: '0.5rem', flexShrink: 0 }} title="Crear nuevo bloque de almuerzo">
+                          <Plus size={16} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1513,6 +1556,64 @@ const TechnicianManagement: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Modal: Crear Bloque de Almuerzo Personalizado ─── */}
+      {showCustomBlockModal && (
+        <div className="tm-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowCustomBlockModal(false); }}>
+          <div className="tm-modal tm-modal-sm">
+            <div className="tm-modal-header">
+              <h2>Nuevo Bloque de Almuerzo</h2>
+              <button className="tm-close-btn" onClick={() => setShowCustomBlockModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div style={{ padding: '1rem 1.5rem' }}>
+              <div className="tm-field" style={{ marginBottom: '1rem' }}>
+                <label>Nombre del Bloque</label>
+                <input
+                  type="text"
+                  name="block_name"
+                  value={customBlockForm.block_name}
+                  onChange={handleCustomBlockChange}
+                  placeholder="Ej: Bloque personalizado"
+                  required
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+                <div className="tm-field" style={{ flex: 1 }}>
+                  <label>Hora de Inicio</label>
+                  <input
+                    type="time"
+                    name="start_time"
+                    value={customBlockForm.start_time}
+                    onChange={handleCustomBlockChange}
+                    required
+                  />
+                </div>
+                <div className="tm-field" style={{ flex: 1 }}>
+                  <label>Hora de Fin</label>
+                  <input
+                    type="time"
+                    name="end_time"
+                    value={customBlockForm.end_time}
+                    onChange={handleCustomBlockChange}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="tm-modal-actions">
+              <button className="tm-modal-btn tm-modal-btn-secondary" onClick={() => setShowCustomBlockModal(false)}>
+                Cancelar
+              </button>
+              <button className="tm-modal-btn tm-modal-btn-primary" onClick={handleCreateCustomBlock}>
+                <Plus size={15} />
+                Crear Bloque
+              </button>
             </div>
           </div>
         </div>

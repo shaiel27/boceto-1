@@ -1543,6 +1543,46 @@ export class ApiService {
 
   }
 
+  static async createLunchBlock(blockData: {
+    block_name: string;
+    start_time: string;
+    end_time: string;
+  }): Promise<ApiResponse> {
+
+    try {
+
+      const response = await fetch(`${API_BASE_URL}/api/lunch-blocks`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionStorage.getItem('auth_token')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(blockData),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        return {
+          success: true,
+          message: data.message,
+          data: data.data
+        };
+      } else {
+        return {
+          success: false,
+          message: data.message || 'Error al crear bloque de almuerzo'
+        };
+      }
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error de conexión con el servidor'
+      };
+    }
+  }
+
 
 
   static async getTechnicianSchedules(technicianId: number): Promise<ApiResponse> {

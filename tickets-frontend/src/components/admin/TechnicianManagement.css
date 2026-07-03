@@ -1296,6 +1296,16 @@
   color: var(--text-main);
 }
 
+.tm-modal-btn-primary {
+  background: var(--primary-color, #3b82f6);
+  color: #fff;
+}
+
+.tm-modal-btn-primary:hover {
+  background: #2563eb;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
 .tm-modal-btn-danger {
   background: var(--danger-color, #ef4444);
   color: #fff;
