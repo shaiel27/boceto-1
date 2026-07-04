@@ -1,4 +1,6 @@
-const BIENES_URL = '/api/bienes';
+import { API_BASE_URL } from './api';
+
+const BIENES_URL = `${API_BASE_URL}/api/bienes`;
 const MEM_TTL = 300_000; // 5 min general queries
 const LOOKUP_TTL = 1_800_000; // 30 min code lookups (descriptions don't change)
 
