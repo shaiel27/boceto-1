@@ -19,6 +19,7 @@ final class Technician
     public ?string $Status;
     public ?string $created_at;
     private int $capacityLimit;
+    private static bool $isAssigning = false;
 
     public function __construct(PDO $db, int $capacityLimit = 5)
     {
@@ -787,6 +788,7 @@ final class Technician
 
             // Convertir tiempo actual a segundos
             $currentSeconds = strtotime($currentTime);
+            $anyStatusChanged = false;
 
             foreach ($technicians as $tech) {
                 $workStart = $tech['Work_Start_Time'];
@@ -855,10 +857,24 @@ final class Technician
                     $updateStmt->bindParam(":newStatus", $newStatus);
                     $updateStmt->bindParam(":techId", $tech['ID_Technicians']);
                     $updateStmt->execute();
+                    $anyStatusChanged = true;
                     error_log("  ACTION: Updated from '{$currentStatus}' to '{$newStatus}'");
                 } else {
                     error_log("  ACTION: No change needed (already '{$currentStatus}')");
                 }
+            }
+
+            // Si algún técnico cambió de estado y no estamos ya en medio de una asignación,
+            // intentar asignar tickets pendientes a los técnicos recién disponibles
+            if ($anyStatusChanged && !self::$isAssigning) {
+                self::$isAssigning = true;
+                try {
+                    error_log("Status changes detected, attempting to assign pending tickets");
+                    $this->assignPendingTickets();
+                } catch (\Exception $e) {
+                    error_log("Error assigning pending tickets after status update: " . $e->getMessage());
+                }
+                self::$isAssigning = false;
             }
         } catch(PDOException $exception) {
             error_log("Error updating technicians status: " . $exception->getMessage());

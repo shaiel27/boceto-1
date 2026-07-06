@@ -2252,6 +2252,35 @@ export class ApiService {
   }
 
 
+  static async createOfficeWithBoss(data: {
+    name_office: string;
+    name_boss: string;
+    pronoun: string;
+    email: string;
+    password: string;
+    username: string;
+    full_name: string;
+  }): Promise<ApiResponse> {
+    try {
+      const token = sessionStorage.getItem('auth_token');
+      const response = await fetch(`${API_BASE_URL}/api/office?action=create-with-boss`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (result.success) {
+        return { success: true, message: result.message || '', data: result.data };
+      }
+      return { success: false, message: result.message || 'Error al crear oficina', errors: result.errors };
+    } catch {
+      return { success: false, message: 'Error de conexión con el servidor' };
+    }
+  }
+
   static async getStructure(): Promise<ApiResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/structure?action=full`, {

@@ -57,6 +57,51 @@ final class Office
         return (int)$this->conn->lastInsertId();
     }
 
+    public function createWithBoss(string $nameOffice, string $bossName, string $pronoun, string $email, string $password, string $username, string $fullName): int
+    {
+        try {
+            $this->conn->beginTransaction();
+
+            $query = "INSERT INTO " . self::TABLE . " (Name_Office, created_at) VALUES (:name, NOW())";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':name', $nameOffice);
+            $stmt->execute();
+            $officeId = (int)$this->conn->lastInsertId();
+
+            $isSystem = 1;
+            $query = "INSERT INTO Users (Fk_Role, Email, Password, Username, Full_Name, is_system_user)
+                      VALUES (3, :email, :password, :username, :full_name, :is_system_user)";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':email', $email);
+            $stmt->bindValue(':password', $password);
+            $stmt->bindValue(':username', $username);
+            $stmt->bindValue(':full_name', $fullName);
+            $stmt->bindValue(':is_system_user', $isSystem, PDO::PARAM_INT);
+            $stmt->execute();
+            $userId = (int)$this->conn->lastInsertId();
+
+            $query = "INSERT INTO Boss (Name_Boss, Pronoun, Fk_User) VALUES (:name_boss, :pronoun, :user_id)";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':name_boss', $bossName);
+            $stmt->bindValue(':pronoun', $pronoun);
+            $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $stmt->execute();
+            $bossId = (int)$this->conn->lastInsertId();
+
+            $query = "UPDATE " . self::TABLE . " SET Fk_Boss_ID = :boss_id WHERE ID_Office = :office_id";
+            $stmt = $this->conn->prepare($query);
+            $stmt->bindValue(':boss_id', $bossId, PDO::PARAM_INT);
+            $stmt->bindValue(':office_id', $officeId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            $this->conn->commit();
+            return $officeId;
+        } catch (Exception $e) {
+            $this->conn->rollBack();
+            throw $e;
+        }
+    }
+
     /**
      * Get tickets distribution by office - PHP-PRO
      * Returns only offices with resolved tickets, excluding offices with 0 tickets

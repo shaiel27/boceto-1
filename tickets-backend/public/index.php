@@ -144,6 +144,8 @@ switch ($path) {
 
     case '/api/office':
     case '/api/office/':
+        $user = $authMiddleware->requireAuth();
+        $authMiddleware->setUserContext($user);
         require_once __DIR__ . '/../src/controllers/OfficeController.php';
         $controller = new OfficeController();
         $controller->handleRequest();

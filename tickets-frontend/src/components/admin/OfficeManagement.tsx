@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Building2, RefreshCw, Search, Users,
   ArrowLeft, X, Mail, Shield, Hash,
-  AlertCircle, BadgeCheck, Building, Clock
+  AlertCircle, BadgeCheck, Building, Clock, Plus
 } from 'lucide-react';
 import ModernSidebar from '../layout/ModernSidebar';
 import { ApiService } from '../../services/api';
@@ -63,6 +63,76 @@ const OfficeManagement: React.FC = () => {
   const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedOffice, setSelectedOffice] = useState<number | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name_office: '',
+    name_boss: '',
+    pronoun: 'Sr.',
+    email: '',
+    password: '',
+    username: '',
+    full_name: '',
+  });
+
+  const pronounOptions = ['Sr.', 'Sra.', 'Lic.', 'Licda.', 'Ing.', 'Dr.', 'Dra.', 'Abg.', 'Abog.', 'Prof.', 'MSc', 'LCDO.', 'LCDA.', 'Arq.'];
+
+  const handleFormChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'name_office') {
+      const normalized = value.toLowerCase().replace(/\s+/g, '_').replace(/[^a-záéíóúñ_]/g, '');
+      setFormData(prev => ({ ...prev, username: normalized }));
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name_office: '',
+      name_boss: '',
+      pronoun: 'Sr.',
+      email: '',
+      password: '',
+      username: '',
+      full_name: '',
+    });
+    setFormError(null);
+  };
+
+  const handleCreateOffice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!formData.name_office.trim() || !formData.name_boss.trim() || !formData.email.trim() || !formData.password.trim()) {
+      setFormError('Complete todos los campos obligatorios');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await ApiService.createOfficeWithBoss({
+        name_office: formData.name_office.trim(),
+        name_boss: formData.name_boss.trim(),
+        pronoun: formData.pronoun,
+        email: formData.email.trim(),
+        password: formData.password,
+        username: formData.username.trim() || formData.name_office.toLowerCase().replace(/\s+/g, '_').replace(/[^a-záéíóúñ_]/g, ''),
+        full_name: formData.full_name.trim() || formData.name_boss.trim(),
+      });
+
+      if (res.success) {
+        setShowModal(false);
+        resetForm();
+        await fetchOffices();
+      } else {
+        setFormError(res.message || 'Error al crear oficina');
+      }
+    } catch {
+      setFormError('Error de conexión con el servidor');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const fetchOffices = async () => {
     setLoading(true);
@@ -157,6 +227,13 @@ const OfficeManagement: React.FC = () => {
             </div>
           </div>
           <div className="om-topbar-right">
+            <button
+              className="om-btn om-btn-secondary"
+              onClick={() => { resetForm(); setShowModal(true); }}
+            >
+              <Plus size={15} />
+              <span>Nueva Oficina</span>
+            </button>
             <button
               className="om-btn om-btn-primary"
               onClick={handleSync}
@@ -315,6 +392,127 @@ const OfficeManagement: React.FC = () => {
                 </article>
               );
             })}
+          </div>
+        )}
+
+        {/* Modal */}
+        {showModal && (
+          <div className="om-modal-overlay" onClick={() => setShowModal(false)}>
+            <div className="om-modal" onClick={e => e.stopPropagation()}>
+              <div className="om-modal-header">
+                <h2>Crear Oficina</h2>
+                <button className="om-modal-close" onClick={() => { setShowModal(false); resetForm(); }}>
+                  <X size={18} />
+                </button>
+              </div>
+              <form onSubmit={handleCreateOffice}>
+                <div className="om-modal-body">
+                  {formError && (
+                    <div className="om-modal-error">
+                      <AlertCircle size={14} />
+                      <span>{formError}</span>
+                    </div>
+                  )}
+
+                  <div className="om-fieldset">
+                    <legend>Datos de la Oficina</legend>
+                    <div className="om-form-row">
+                      <label className="om-form-label">
+                        Nombre de la Oficina <span className="om-required">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="om-form-input"
+                        placeholder="Ej: DIRECCIÓN DE PLANIFICACIÓN"
+                        value={formData.name_office}
+                        onChange={e => handleFormChange('name_office', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="om-fieldset">
+                    <legend>Datos del Jefe / Responsable</legend>
+                    <div className="om-form-row">
+                      <label className="om-form-label">
+                        Nombre Completo <span className="om-required">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="om-form-input"
+                        placeholder="Ej: Juan Pérez"
+                        value={formData.name_boss}
+                        onChange={e => handleFormChange('name_boss', e.target.value)}
+                      />
+                    </div>
+                    <div className="om-form-row">
+                      <label className="om-form-label">Nombre de usuario</label>
+                      <input
+                        type="text"
+                        className="om-form-input"
+                        placeholder="Se genera automáticamente"
+                        value={formData.username}
+                        onChange={e => handleFormChange('username', e.target.value)}
+                      />
+                    </div>
+                    <div className="om-form-row">
+                      <label className="om-form-label">
+                        Correo Electrónico <span className="om-required">*</span>
+                      </label>
+                      <div className="om-email-group">
+                        <input
+                          type="text"
+                          className="om-form-input om-email-prefix"
+                          placeholder="ej: jefe.oficina"
+                          value={formData.email.replace(/@.*$/, '')}
+                          onChange={e => setFormData(prev => ({ ...prev, email: e.target.value.replace(/@.*$/, '') + '@tickets.gob' }))}
+                        />
+                        <span className="om-email-domain">@tickets.gob</span>
+                      </div>
+                    </div>
+                    <div className="om-form-row">
+                      <label className="om-form-label">
+                        Contraseña <span className="om-required">*</span>
+                      </label>
+                      <input
+                        type="password"
+                        className="om-form-input"
+                        placeholder="••••••••"
+                        value={formData.password}
+                        onChange={e => handleFormChange('password', e.target.value)}
+                      />
+                    </div>
+                    <div className="om-form-row">
+                      <label className="om-form-label">Tratamiento</label>
+                      <select
+                        className="om-form-input"
+                        value={formData.pronoun}
+                        onChange={e => handleFormChange('pronoun', e.target.value)}
+                      >
+                        {pronounOptions.map(p => (
+                          <option key={p} value={p}>{p}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+                <div className="om-modal-footer">
+                  <button
+                    type="button"
+                    className="om-btn om-btn-ghost"
+                    onClick={() => { setShowModal(false); resetForm(); }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="om-btn om-btn-primary"
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Creando...' : 'Crear Oficina'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         )}
       </div>

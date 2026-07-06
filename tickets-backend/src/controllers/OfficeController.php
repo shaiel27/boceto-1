@@ -28,6 +28,11 @@ final class OfficeController
         }
 
         try {
+            if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'create-with-boss') {
+                $this->createOfficeWithBoss();
+                return;
+            }
+
             match ($action) {
                 'distribution' => $this->getTicketsByOffice(
                     $_GET['start_date'] ?? null,
@@ -40,6 +45,60 @@ final class OfficeController
         } catch (Exception $e) {
             error_log("Error en OfficeController: " . $e->getMessage());
             $this->respondError(500, 'Error interno del servidor');
+        }
+    }
+
+    private function createOfficeWithBoss(): void
+    {
+        $rawInput = file_get_contents("php://input");
+        $data = json_decode($rawInput);
+
+        if (!$data || empty($data->name_office) || empty($data->name_boss) || empty($data->email) || empty($data->password) || empty($data->username)) {
+            $this->respondError(400, 'Todos los campos obligatorios deben estar llenos');
+            return;
+        }
+
+        $office = new Office($this->conn);
+
+        try {
+            $officeId = $office->createWithBoss(
+                $data->name_office,
+                $data->name_boss,
+                $data->pronoun ?? '',
+                $data->email,
+                password_hash($data->password, PASSWORD_DEFAULT),
+                $data->username,
+                $data->full_name ?? $data->name_boss
+            );
+
+            http_response_code(201);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Oficina creada exitosamente con su responsable',
+                'data' => ['id' => $officeId]
+            ]);
+        } catch (Exception $e) {
+            $message = $e->getMessage();
+            $errors = [];
+
+            if (str_contains($message, '1062') || str_contains($message, 'Duplicate entry')) {
+                if (str_contains($message, 'Email_UNIQUE') || str_contains($message, 'Users.Email')) {
+                    $errors['email'] = ['El correo ya está registrado'];
+                }
+                if (str_contains($message, 'Username_UNIQUE') || str_contains($message, 'Users.Username')) {
+                    $errors['username'] = ['El usuario ya existe'];
+                }
+            }
+
+            http_response_code(500);
+            $response = [
+                'success' => false,
+                'message' => $errors ? reset($errors)[0] : 'Error al crear oficina: ' . $message
+            ];
+            if ($errors) {
+                $response['errors'] = $errors;
+            }
+            echo json_encode($response);
         }
     }
 

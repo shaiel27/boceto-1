@@ -101,6 +101,9 @@ final class PublicBoardController
         while (!connection_aborted()) {
             $now = new DateTimeImmutable('now');
 
+            // 0) Refrescar estados de técnicos cada 15s y asignar tickets pendientes
+            $this->maybeRefreshStatuses();
+
             // 1) Nuevos tickets
             $newTickets = $this->getNewTicketsSince($lastTicketAt);
             if (!empty($newTickets)) {
@@ -561,6 +564,12 @@ SQL;
         ];
         $currentDaySpanish = $dayMap[$currentDay] ?? $currentDay;
         $tech->updateTechniciansStatus($currentDaySpanish, $currentTime);
+
+        try {
+            $tech->assignPendingTickets();
+        } catch (\Exception $e) {
+            error_log("[SSE] Error assigning pending tickets after status refresh: " . $e->getMessage());
+        }
     }
 
     private function isNowBetween(string $startStr, string $endStr, DateTimeImmutable $now): bool
