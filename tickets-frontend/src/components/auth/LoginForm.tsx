@@ -34,6 +34,12 @@ const LoginForm: React.FC = () => {
     if (error) clearError();
   };
 
+  const handleEmailKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === '@') {
+      e.preventDefault();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const fullEmail = buildFullEmail(formData.email);
@@ -84,12 +90,14 @@ const LoginForm: React.FC = () => {
                     <input
                       id="email" name="email" type="text" required
                       value={formData.email} onChange={handleChange}
+                      onKeyDown={handleEmailKeyDown}
                       onFocus={() => setFocused('email')}
                       onBlur={() => setFocused(null)}
-                      placeholder="usuario"
-                      autoComplete="email" className="lgn-input"
+                      placeholder="tu.usuario"
+                      autoComplete="username" className="lgn-input"
+                      inputMode="email" spellCheck={false} autoCapitalize="off"
                     />
-                    <span className="lgn-domain">{EMAIL_DOMAIN}</span>
+                    <span className="lgn-domain" aria-hidden="true">{EMAIL_DOMAIN}</span>
                   </div>
               </div>
 

@@ -34,8 +34,9 @@
 .lgn-input-w{position:relative;display:flex;align-items:center}
 .lgn-input-icon{position:absolute;left:.85rem;color:#a0aec0;pointer-events:none;transition:color .2s;z-index:1}
 .lgn-field--focus .lgn-input-icon{color:#1a365d}
-.lgn-input{width:100%;padding:.8rem 7rem .8rem 2.6rem;border:1px solid #d4cfc4;border-radius:1px;font-size:14px;color:#1a2332;background:#fafaf7;outline:none;transition:all .2s;box-sizing:border-box}
-.lgn-domain{position:absolute;right:.85rem;color:#a0aec0;font-size:13px;pointer-events:none;user-select:none}
+.lgn-input{width:100%;padding:.8rem 7.8rem .8rem 2.6rem;border:1px solid #d4cfc4;border-radius:1px;font-size:14px;color:#1a2332;background:#fafaf7;outline:none;transition:all .2s;box-sizing:border-box}
+.lgn-domain{position:absolute;right:.85rem;color:#5a6577;font-size:13px;font-weight:500;pointer-events:none;user-select:none}
+.lgn-domain::before{content:' ';position:absolute;left:-.5rem;top:50%;transform:translateY(-50%);width:1px;height:18px;background:#d4cfc4}
 .lgn-input::placeholder{color:#b0ad9f}
 .lgn-input:focus{border-color:#1a365d;background:#fff;box-shadow:0 0 0 3px rgba(26,54,93,.06)}
 .lgn-field--focus .lgn-input{border-color:#1a365d;background:#fff;box-shadow:0 0 0 3px rgba(26,54,93,.06)}

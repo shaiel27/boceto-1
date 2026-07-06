@@ -18,6 +18,7 @@ interface FormFieldProps extends RNTextInputProps {
   icon?: keyof typeof Ionicons.glyphMap;
   isPassword?: boolean;
   error?: FieldError;
+  domainSuffix?: string;
 }
 
 export function FormField({
@@ -27,10 +28,13 @@ export function FormField({
   icon,
   isPassword = false,
   error,
+  domainSuffix,
   style,
   ...rest
 }: FormFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
+
+  const formatPrefix = (val: string) => val.split('@')[0];
 
   return (
     <Controller
@@ -55,14 +59,24 @@ export function FormField({
             )}
             <TextInput
               accessibilityLabel={label}
-              style={[styles.input, style]}
+              style={[
+                styles.input,
+                domainSuffix ? styles.inputWithDomain : null,
+                style,
+              ]}
               value={value ?? ''}
-              onChangeText={onChange}
+              onChangeText={(text) => onChange(domainSuffix ? formatPrefix(text) : text)}
               onBlur={onBlur}
               placeholderTextColor={Colors.textLight}
               secureTextEntry={isPassword && !showPassword}
               {...rest}
             />
+            {domainSuffix && (
+              <View style={styles.domainWrap} pointerEvents="none">
+                <View style={styles.domainDivider} />
+                <Text style={styles.domainText}>{domainSuffix}</Text>
+              </View>
+            )}
             {isPassword && (
               <TouchableOpacity
                 accessibilityRole="button"
@@ -120,6 +134,28 @@ const styles = StyleSheet.create({
     color: Colors.text,
     paddingHorizontal: 10,
     paddingVertical: 14,
+  },
+  inputWithDomain: {
+    paddingRight: 120,
+  },
+  domainWrap: {
+    position: 'absolute' as const,
+    right: 14,
+    top: 0,
+    bottom: 0,
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+  },
+  domainDivider: {
+    width: 1,
+    height: 18,
+    backgroundColor: Colors.border,
+    marginRight: 8,
+  },
+  domainText: {
+    fontSize: 14,
+    color: Colors.textSecondary,
+    fontWeight: '500',
   },
   toggleBtn: {
     paddingHorizontal: 14,

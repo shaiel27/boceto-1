@@ -34,9 +34,18 @@ export default function LoginScreen() {
     ]).start();
   }, []);
 
+  const EMAIL_DOMAIN = '@tickets.gob';
+
+  const buildFullEmail = (prefix: string) => {
+    const cleaned = prefix.split('@')[0].trim();
+    return cleaned ? `${cleaned}${EMAIL_DOMAIN}` : '';
+  };
+
   const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(data.email.trim(), data.password);
+      const fullEmail = buildFullEmail(data.email);
+      if (!fullEmail) return;
+      await login(fullEmail, data.password);
     } catch {}
   };
 
@@ -68,10 +77,10 @@ export default function LoginScreen() {
           control={control}
           label="Correo electrónico"
           icon="mail-outline"
-          placeholder="correo@alcaldia.gob"
+          placeholder="tu.usuario"
           autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
+          autoComplete="username"
+          domainSuffix="@tickets.gob"
           error={errors.email}
         />
 
