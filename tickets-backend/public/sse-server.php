@@ -13,7 +13,7 @@ declare(strict_types=1);
 $allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'http://192.168.0.43:3000',
+    'http://192.168.1.4:3000',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 

@@ -12,7 +12,7 @@ final class BienesProxyService
     private int $fetchTimeout;
 
     public function __construct(
-        string $host = 'localhost',
+        string $host = '192.168.0.22',
         int $port = 8012,
         int $fetchTimeout = 120,
     ) {

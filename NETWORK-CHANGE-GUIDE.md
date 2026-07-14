@@ -2,9 +2,9 @@
 
 ## Dirección actual (se detecta automáticamente)
 ```
-http://192.168.2.151:3000   ← Web
-http://192.168.2.151:8000   ← Backend API
-exp://192.168.2.151:8081     ← Expo Metro Bundler
+http://192.168.1.4:3000   ← Web
+http://192.168.1.4:8000   ← Backend API
+exp://192.168.1.4:8081     ← Expo Metro Bundler
 http://192.168.5.206:8012    ← Bienes/SIFA API (XAMPP)
 ```
 
@@ -29,13 +29,13 @@ La app móvil tiene el IP hardcodeado. Debes actualizar **1 archivo**:
 
 **`tickets-App/src/constants/config.ts`:**
 ```ts
-const API_HOST = '192.168.2.151';
+const API_HOST = '192.168.1.4';
 export const API_BASE_URL = `http://${API_HOST}:8000`;
 ```
 
 > Después de cambiar, reinicia con:
 > ```powershell
-> $env:EXPO_PACKAGER_PROXY_URL = "http://192.168.2.151:8081"
+> $env:EXPO_PACKAGER_PROXY_URL = "http://192.168.1.4:8081"
 > npx expo start --clear
 > ```
 > `EXPO_PACKAGER_PROXY_URL` (SDK 50+) fuerza la IP/URL del Metro bundler.
@@ -86,7 +86,7 @@ npm start
 
 ```powershell
 cd "C:\Users\Shaiel\Desktop\shaiel\boceto-1\tickets-App"
-$env:EXPO_PACKAGER_PROXY_URL = "http://192.168.2.151:8081"
+$env:EXPO_PACKAGER_PROXY_URL = "http://192.168.1.4:8081"
 npx expo start --clear
 ```
 > `EXPO_PACKAGER_PROXY_URL` fuerza la IP/URL del Metro bundler (SDK 50+).
@@ -103,7 +103,7 @@ Abre `http://TU_IP:3000` en el navegador:
 
 ### Móvil
 Escanea el QR con Expo Go o conecta por USB:
-- Si el QR apunta a IP incorrecta: `$env:EXPO_PACKAGER_PROXY_URL="http://192.168.2.151:8081"; npx expo start --clear`
+- Si el QR apunta a IP incorrecta: `$env:EXPO_PACKAGER_PROXY_URL="http://192.168.1.4:8081"; npx expo start --clear`
 - Verifica que el login funcione
 - Si falla: revisa `tickets-App/src/constants/config.ts`
 

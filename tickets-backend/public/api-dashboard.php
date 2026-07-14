@@ -12,7 +12,7 @@ ini_set('error_log', __DIR__ . '/../error.log');
 // CORS headers
 $allowedOrigins = [
     'http://localhost:3000',
-    'http://192.168.0.43:3000',
+    'http://192.168.1.4:3000',
 ];
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 if (in_array($origin, $allowedOrigins, true)) {

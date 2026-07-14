@@ -17,6 +17,7 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.alcaldia.tickets",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1a365d"
@@ -46,6 +47,13 @@
       "backgroundColor": "#ffffff",
       "display": "standalone",
       "orientation": "portrait"
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a08b176e-39fb-44fd-b37f-047914aa8963"
+      }
+    },
+    "owner": "shaidev"
   }
 }
