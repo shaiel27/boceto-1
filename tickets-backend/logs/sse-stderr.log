@@ -1,0 +1,300 @@
+[Tue Jul  7 08:46:19 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Tue Jul  7 08:46:34 2026] 127.0.0.1:49824 Accepted
+[Tue Jul  7 08:46:34 2026] 127.0.0.1:49824 Closing
+[Tue Jul  7 08:46:46 2026] 127.0.0.1:49828 Accepted
+[Tue Jul  7 08:46:46 2026] 127.0.0.1:49828 Closing
+[Tue Jul  7 08:47:00 2026] 127.0.0.1:49830 Accepted
+[Tue Jul  7 08:47:04 2026] Connection error: SQLSTATE[HY000] [2002] No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión
+[Tue Jul  7 08:47:04 2026] PHP Fatal error:  Uncaught RuntimeException: Error de conexión a la base de datos: SQLSTATE[HY000] [2002] No se puede establecer una conexión ya que el equipo de destino denegó expresamente dicha conexión in C:\Users\Shaiel\Desktop\shaiel\boceto-1\tickets-backend\src\config\database.php:74
+Stack trace:
+#0 C:\Users\Shaiel\Desktop\shaiel\boceto-1\tickets-backend\public\sse-server.php(59): Database->getConnection()
+#1 {main}
+  thrown in C:\Users\Shaiel\Desktop\shaiel\boceto-1\tickets-backend\src\config\database.php on line 74
+[Tue Jul  7 08:47:04 2026] 127.0.0.1:49830 Closing
+[Tue Jul  7 08:52:54 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Tue Jul  7 09:04:47 2026] 127.0.0.1:49935 Accepted
+[Tue Jul  7 09:04:47 2026] Database connection established successfully (tz=-04:00)
+[Tue Jul  7 09:04:47 2026] === updateTechniciansStatus ===
+[Tue Jul  7 09:04:47 2026] Current Day: Martes, Current Time: 09:04:47
+[Tue Jul  7 09:04:47 2026] Found 24 technicians to update status
+[Tue Jul  7 09:04:47 2026] Technician: Carlos Diaz
+[Tue Jul  7 09:04:47 2026]   Work Schedule:  - 
+[Tue Jul  7 09:04:47 2026]   Lunch Block: 12:10:00 - 12:50:00
+[Tue Jul  7 09:04:47 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:47 2026]   Current Status: Inactivo
+[Tue Jul  7 09:04:47 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:47 2026]   Is in work hours: NO
+[Tue Jul  7 09:04:47 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:47 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:47 2026]   Reason: Outside work hours
+[Tue Jul  7 09:04:47 2026]   ACTION: No change needed (already 'Inactivo')
+[Tue Jul  7 09:04:47 2026] Technician: Amna Verez
+[Tue Jul  7 09:04:47 2026]   Work Schedule: 08:14:00 - 16:20:00
+[Tue Jul  7 09:04:47 2026]   Lunch Block: 12:50:00 - 13:30:00
+[Tue Jul  7 09:04:47 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:47 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:47 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:47 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:47 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:47 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:47 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:47 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:47 2026] Technician: shaiel becerra
+[Tue Jul  7 09:04:47 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:47 2026]   Lunch Block: 12:10:00 - 12:50:00
+[Tue Jul  7 09:04:47 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:47 2026]   Current Status: Ocupado
+[Tue Jul  7 09:04:47 2026]   Active Tickets: 1
+[Tue Jul  7 09:04:47 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:47 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:47 2026]   Has active tickets: YES
+[Tue Jul  7 09:04:47 2026]   Reason: Has active tickets
+[Tue Jul  7 09:04:47 2026]   ACTION: No change needed (already 'Ocupado')
+[Tue Jul  7 09:04:47 2026] Technician: redes  tec
+[Tue Jul  7 09:04:47 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:47 2026]   Lunch Block: 12:10:00 - 12:50:00
+[Tue Jul  7 09:04:47 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:47 2026]   Current Status: Ocupado
+[Tue Jul  7 09:04:47 2026]   Active Tickets: 1
+[Tue Jul  7 09:04:47 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:47 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:47 2026]   Has active tickets: YES
+[Tue Jul  7 09:04:47 2026]   Reason: Has active tickets
+[Tue Jul  7 09:04:47 2026]   ACTION: No change needed (already 'Ocupado')
+[Tue Jul  7 09:04:48 2026] Technician: soporte tec
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:10:00 - 12:50:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: tec soporte
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 11:30:00 - 12:10:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: programador 2
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 11:30:00 - 12:10:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: tec soporte 2
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:10:00 - 12:50:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: tec  prueba
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 11:30:00 - 12:10:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Luis Martínez
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Ocupado
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 1
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: YES
+[Tue Jul  7 09:04:48 2026]   Reason: Has active tickets
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Ocupado')
+[Tue Jul  7 09:04:48 2026] Technician: Ana Rodríguez
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Pedro Sánchez
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Carmen López
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 11:30:00 - 12:10:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: José Ramírez
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Ocupado
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 1
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: YES
+[Tue Jul  7 09:04:48 2026]   Reason: Has active tickets
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Ocupado')
+[Tue Jul  7 09:04:48 2026] Technician: Rosa García
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 13:30:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Manuel Torres
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Elena Flores
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Andrés Vargas
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Patricia Rojas
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Daniel Castillo
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Ocupado
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 1
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: YES
+[Tue Jul  7 09:04:48 2026]   Reason: Has active tickets
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Ocupado')
+[Tue Jul  7 09:04:48 2026] Technician: Gabriela Herrera
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Ocupado
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 1
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: YES
+[Tue Jul  7 09:04:48 2026]   Reason: Has active tickets
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Ocupado')
+[Tue Jul  7 09:04:48 2026] Technician: Fernando Ortiz
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 11:30:00 - 12:10:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Andrea Medina
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Disponible
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 0
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: NO
+[Tue Jul  7 09:04:48 2026]   Reason: Available (in work hours, no lunch, no tickets)
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Disponible')
+[Tue Jul  7 09:04:48 2026] Technician: Ricardo Peña
+[Tue Jul  7 09:04:48 2026]   Work Schedule: 08:00:00 - 14:00:00
+[Tue Jul  7 09:04:48 2026]   Lunch Block: 12:00:00 - 12:30:00
+[Tue Jul  7 09:04:48 2026]   Current Time: 09:04:47
+[Tue Jul  7 09:04:48 2026]   Current Status: Ocupado
+[Tue Jul  7 09:04:48 2026]   Active Tickets: 1
+[Tue Jul  7 09:04:48 2026]   Is in work hours: YES
+[Tue Jul  7 09:04:48 2026]   Is in lunch block: NO
+[Tue Jul  7 09:04:48 2026]   Has active tickets: YES
+[Tue Jul  7 09:04:48 2026]   Reason: Has active tickets
+[Tue Jul  7 09:04:48 2026]   ACTION: No change needed (already 'Ocupado')
+[Tue Jul  7 09:04:48 2026] Found 0 pending tickets to assign
+[Tue Jul  7 09:04:48 2026] 127.0.0.1:49935 Closing
+[Tue Jul  7 09:06:43 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Tue Jul  7 09:11:22 2026] 127.0.0.1:49839 Accepted
+[Tue Jul  7 09:11:22 2026] 127.0.0.1:49840 Accepted
+[Tue Jul  7 09:11:22 2026] 127.0.0.1:49839 Closing
+[Tue Jul  7 09:11:22 2026] 127.0.0.1:49840 Closing
+[Tue Jul  7 09:11:22 2026] 127.0.0.1:49841 Accepted
+[Tue Jul  7 09:12:49 2026] 127.0.0.1:49841 Closed without sending a request; it was probably just an unused speculative preconnection
+[Tue Jul  7 09:12:49 2026] 127.0.0.1:49841 Closing
+[Tue Jul  7 09:14:12 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Tue Jul  7 11:39:40 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Wed Jul  8 11:37:36 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Wed Jul  8 21:31:56 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Sat Jul 11 20:35:09 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Tue Jul 14 10:24:49 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started
+[Tue Jul 14 10:26:57 2026] PHP 8.0.30 Development Server (http://0.0.0.0:8001) started

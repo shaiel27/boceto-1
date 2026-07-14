@@ -1,0 +1,30 @@
+The following packages should be updated for best compatibility with the installed expo version:
+  expo-router@6.0.23 - expected version: ~6.0.24
+  expo-splash-screen@56.0.10 - expected version: ~31.0.13
+Your project may not work correctly until you install the expected versions of the packages.
+The following packages should be updated for best compatibility with the installed expo version:
+  expo-router@6.0.23 - expected version: ~6.0.24
+  expo-splash-screen@56.0.10 - expected version: ~31.0.13
+Your project may not work correctly until you install the expected versions of the packages.
+Unable to reach well-known versions endpoint. Using local dependency map expo/bundledNativeModules.json for version validation
+Dependency validation is unreliable in offline-mode
+The following packages should be updated for best compatibility with the installed expo version:
+  expo-router@6.0.23 - expected version: ~6.0.24
+  expo-splash-screen@56.0.10 - expected version: ~31.0.13
+Your project may not work correctly until you install the expected versions of the packages.
+The following packages should be updated for best compatibility with the installed expo version:
+  expo-router@6.0.23 - expected version: ~6.0.24
+  expo-splash-screen@56.0.10 - expected version: ~31.0.13
+Your project may not work correctly until you install the expected versions of the packages.
+The following packages should be updated for best compatibility with the installed expo version:
+  expo-router@6.0.23 - expected version: ~6.0.24
+  expo-splash-screen@56.0.10 - expected version: ~31.0.13
+Your project may not work correctly until you install the expected versions of the packages.
+The following packages should be updated for best compatibility with the installed expo version:
+  expo-router@6.0.23 - expected version: ~6.0.24
+  expo-splash-screen@56.0.10 - expected version: ~31.0.13
+Your project may not work correctly until you install the expected versions of the packages.
+The following packages should be updated for best compatibility with the installed expo version:
+  expo-router@6.0.23 - expected version: ~6.0.24
+  expo-splash-screen@56.0.10 - expected version: ~31.0.13
+Your project may not work correctly until you install the expected versions of the packages.
