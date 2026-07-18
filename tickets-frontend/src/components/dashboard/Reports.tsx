@@ -50,6 +50,20 @@ function daysAgo(n: number): string {
   return formatDate(d);
 }
 
+const MONTHS_ES: Record<string, string> = {
+  January: 'Enero', February: 'Febrero', March: 'Marzo', April: 'Abril',
+  May: 'Mayo', June: 'Junio', July: 'Julio', August: 'Agosto',
+  September: 'Septiembre', October: 'Octubre', November: 'Noviembre', December: 'Diciembre',
+};
+
+function translateMonth(text: string): string {
+  let r = text;
+  for (const [en, es] of Object.entries(MONTHS_ES)) {
+    r = r.replace(new RegExp(en, 'g'), es);
+  }
+  return r;
+}
+
 let cachedHeaderImg: string | null = null;
 let cachedFooterImg: string | null = null;
 
@@ -537,7 +551,10 @@ const Reports: React.FC = () => {
     } else if (reportId === '10') {
       generateMonthlyProblemReportPDF(d.start, d.end).then(done).catch(fail);
     } else if (reportId === '11') {
-      generateSystemsReportPDF(d.start, d.end).then(done).catch(fail);
+      const base = process.env.REACT_APP_API_BASE || `http://${window.location.hostname}:8000`;
+      const token = sessionStorage.getItem('auth_token');
+      window.open(`${base}/api/problem-report?action=systems&start_date=${d.start}&end_date=${d.end}&format=pdf&token=${token}`, '_blank');
+      done();
     } else if (reportId === '12') {
       generateTechnicianShiftsPDF().then(done).catch(fail);
     } else if (reportId === '8') {
@@ -726,9 +743,17 @@ const Reports: React.FC = () => {
     let servicesData: Record<string, any[]> = response.success && response.data ? response.data : {};
     if (typeof servicesData !== 'object' || Array.isArray(servicesData)) servicesData = {};
 
+    if (Object.keys(servicesData).length === 0) {
+      servicesData = {
+        'Redes': [{ name: 'Sin datos', resolved_tickets: 0, avg_resolution_time: 0 }],
+        'Soporte': [{ name: 'Sin datos', resolved_tickets: 0, avg_resolution_time: 0 }],
+        'Programación': [{ name: 'Sin datos', resolved_tickets: 0, avg_resolution_time: 0 }],
+      };
+    }
+
     const dateStr = `Generado: ${new Date().toLocaleDateString('es-ES')}`;
-    let y = renderPDFHeader(doc, 'Reporte de Desempeno de Tecnicos', dateStr, header, 50);
-    const title = 'Reporte de Desempeno de Tecnicos';
+    let y = renderPDFHeader(doc, 'Reporte de Desempeño de Técnicos', dateStr, header, 50);
+    const title = 'Reporte de Desempeño de Técnicos';
     let si = 1;
     let totalTechs = 0;
     let totalResolved = 0;
@@ -746,7 +771,7 @@ const Reports: React.FC = () => {
       doc.rect(20, y - 2, 170, 10, 'F');
       doc.setFontSize(9); doc.setFont('helvetica', 'bold');
       doc.text('Nombre', 25, y + 4); doc.text('Resueltos', 100, y + 4);
-      doc.text('T. Prom.(h)', 145, y + 4);
+      doc.text('T. Prom.(min)', 145, y + 4);
       y += 12;
       doc.setFontSize(8); doc.setFont('helvetica', 'normal');
 
@@ -756,15 +781,16 @@ const Reports: React.FC = () => {
           doc.rect(20, y - 2, 170, 10, 'F');
           doc.setFontSize(9); doc.setFont('helvetica', 'bold');
           doc.text('Nombre', 25, y + 4); doc.text('Resueltos', 100, y + 4);
-          doc.text('T. Prom.(h)', 145, y + 4);
+          doc.text('T. Prom.(min)', 145, y + 4);
           y += 12; doc.setFontSize(8); doc.setFont('helvetica', 'normal');
         }
         const resolved = Number(tech.resolved_tickets || 0);
         totalResolved += resolved;
+        const avgTime = tech.avg_resolution_time || tech.avg_resolution_hours || 0;
         doc.setTextColor(0, 0, 0);
         doc.text(tech.name || tech.technician_name || 'N/A', 25, y + 5);
         doc.text(String(resolved), 100, y + 5, { align: 'center' });
-        doc.text(String(tech.avg_resolution_time || 0), 145, y + 5, { align: 'center' });
+        doc.text(Number(avgTime) > 0 ? String(Number(avgTime).toFixed(1)) : '—', 145, y + 5, { align: 'center' });
         doc.setDrawColor(200, 200, 200); doc.setLineWidth(0.3);
         doc.rect(20, y, 170, 10); y += 10;
       });
@@ -773,7 +799,7 @@ const Reports: React.FC = () => {
 
     y = renderSummaryBlock(doc, title, [
       { label: 'Total Servicios', value: String(si - 1) },
-      { label: 'Total Tecnicos', value: String(totalTechs) },
+      { label: 'Total Técnicos', value: String(totalTechs) },
       { label: 'Total Resueltos', value: String(totalResolved) },
     ], y, header);
 
@@ -835,9 +861,17 @@ const Reports: React.FC = () => {
     const { header, footer } = await ensureImages();
 
     const response = await ApiService.getProblemReport(startDate, endDate);
-    const problemData = response.success && response.data ? response.data : [];
+    let problemData = response.success && response.data ? response.data : [];
 
-    let y = renderPDFHeader(doc, 'Reporte de Problemas por Servicio', `Generado: ${new Date().toLocaleDateString('es-ES')}`, header, 50);
+    if (!Array.isArray(problemData) || problemData.length === 0) {
+      problemData = [
+        { tipo_servicio: 'Redes', total_tickets_mes: 0, cerrados_mes: 0, oficinas_atendidas_mes: 0, tecnicos_involucrados_mes: 0, problematica_mas_frecuente_mes: 'Sin datos', porcentaje_mes_actual: 0, tiempo_promedio_horas_mes: 0 },
+        { tipo_servicio: 'Soporte', total_tickets_mes: 0, cerrados_mes: 0, oficinas_atendidas_mes: 0, tecnicos_involucrados_mes: 0, problematica_mas_frecuente_mes: 'Sin datos', porcentaje_mes_actual: 0, tiempo_promedio_horas_mes: 0 },
+        { tipo_servicio: 'Programación', total_tickets_mes: 0, cerrados_mes: 0, oficinas_atendidas_mes: 0, tecnicos_involucrados_mes: 0, problematica_mas_frecuente_mes: 'Sin datos', porcentaje_mes_actual: 0, tiempo_promedio_horas_mes: 0 },
+      ];
+    }
+
+    let y = renderPDFHeader(doc, 'Reporte de Problemas por Servicio', `Periodo: ${startDate} — ${endDate}`, header, 50);
 
     const cols = [
       { label: 'Servicio', x: 20, key: 'service' },
@@ -854,7 +888,7 @@ const Reports: React.FC = () => {
       closed: String(s.cerrados_mes || 0),
       offices: String(s.oficinas_atendidas_mes || 0),
       technicians: String(s.tecnicos_involucrados_mes || 0),
-      problem: (s.problematica_mas_frecuente_mes || s.problem || 'N/A').substring(0, 12),
+      problem: (s.problematica_mas_frecuente_mes || s.problem || 'N/A').substring(0, 14),
       pct: `${s.porcentaje_mes_actual || 0}%`,
     }));
     y = renderTableBlock(doc, cols, rows, y, [59, 130, 246], 'Reporte de Problemas por Servicio', header, 235);
@@ -877,28 +911,70 @@ const Reports: React.FC = () => {
     const { header, footer } = await ensureImages();
 
     const response = await ApiService.getMonthlyProblemReport(startDate, endDate);
-    const problemData = response.success && response.data ? response.data : [];
+    let problemData = response.success && response.data ? response.data : [];
 
-    let y = renderPDFHeader(doc, 'Reporte Mensual por Tipo de Servicio', `Generado: ${new Date().toLocaleDateString('es-ES')}`, header, 50);
-
-    const cols = [
-      { label: 'Mes', x: 20, key: 'month' },
-      { label: 'Problema', x: 70, key: 'problem' },
-      { label: 'Severidad', x: 130, key: 'severity' },
-      { label: 'Tickets', x: 170, key: 'count', align: 'center' },
-    ];
-    const rows = (Array.isArray(problemData) ? problemData : []).map((s: any) => ({
-      month: (s.month_name || s.month_key || 'N/A').substring(0, 14),
-      problem: (s.problem_name || 'N/A').substring(0, 16),
-      severity: s.severity || 'N/A',
-      count: String(s.ticket_count || 0),
+    if (!Array.isArray(problemData)) problemData = [];
+    problemData = problemData.map((r: any) => ({
+      ...r,
+      month_name: translateMonth(r.month_name || r.month_key || ''),
+      month_key: r.month_key,
     }));
-    y = renderTableBlock(doc, cols, rows, y, [26, 54, 93], 'Reporte Mensual por Tipo de Servicio', header, 235);
 
-    const pd = Array.isArray(problemData) ? problemData : [];
+    if (problemData.length === 0) {
+      problemData = [
+        { month_name: 'Sin datos', problem_name: '—', severity: '—', ticket_count: 0 },
+      ];
+    }
+
+    let y = renderPDFHeader(doc, 'Reporte Mensual por Tipo de Servicio', `Periodo: ${startDate} — ${endDate}`, header, 50);
+
+    const groupedByMonth: Record<string, any[]> = {};
+    problemData.forEach((r: any) => {
+      const mk = r.month_name || r.month_key || 'General';
+      if (!groupedByMonth[mk]) groupedByMonth[mk] = [];
+      groupedByMonth[mk].push(r);
+    });
+
+    const monthKeys = Object.keys(groupedByMonth);
+    let totalTickets = 0;
+
+    monthKeys.forEach((month) => {
+      const items = groupedByMonth[month];
+      const monthTotal = items.reduce((s, i) => s + Number(i.ticket_count || 0), 0);
+      totalTickets += monthTotal;
+
+      if (y > 230) { doc.addPage(); y = renderPDFContinuationHeader(doc, 'Reporte Mensual por Tipo de Servicio', header); }
+
+      doc.setFillColor(26, 54, 93); doc.setTextColor(255, 255, 255);
+      doc.rect(15, y - 2, 180, 10, 'F');
+      doc.setFontSize(9); doc.setFont('helvetica', 'bold');
+      doc.text(`${month} — Total: ${monthTotal} tickets`, 20, y + 5);
+      y += 13;
+
+      doc.setFillColor(241, 245, 249); doc.setTextColor(30, 41, 59);
+      doc.rect(15, y - 2, 180, 8, 'F');
+      doc.setFontSize(7.5); doc.setFont('helvetica', 'bold');
+      doc.text('Problema', 20, y + 4);
+      doc.text('Severidad', 120, y + 4);
+      doc.text('Tickets', 175, y + 4, { align: 'center' });
+      y += 10;
+
+      doc.setFontSize(8); doc.setFont('helvetica', 'normal');
+      items.forEach((row: any) => {
+        if (y > 250) { doc.addPage(); y = renderPDFContinuationHeader(doc, 'Reporte Mensual por Tipo de Servicio', header); }
+        doc.text((row.problem_name || 'N/A').substring(0, 30), 20, y + 4);
+        doc.text(row.severity || 'N/A', 120, y + 4);
+        doc.text(String(row.ticket_count || 0), 175, y + 4, { align: 'center' });
+        doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.2);
+        doc.line(15, y + 6, 195, y + 6);
+        y += 9;
+      });
+      y += 6;
+    });
+
     y = renderSummaryBlock(doc, 'Reporte Mensual por Tipo de Servicio', [
-      { label: 'Total Registros', value: String(pd.length) },
-      { label: 'Total Tickets', value: String(pd.reduce((s, i) => s + Number(i.ticket_count || 0), 0)) },
+      { label: 'Meses Reportados', value: String(monthKeys.length) },
+      { label: 'Total Tickets', value: String(totalTickets) },
     ], y, header);
 
     addPDFFooterToAllPages(doc, footer);
@@ -911,25 +987,31 @@ const Reports: React.FC = () => {
     const { header, footer } = await ensureImages();
 
     const response = await ApiService.getSystemsAndProblems(startDate, endDate);
-    const systemsData = response.success && response.data ? response.data : [];
+    let systemsData = response.success && response.data ? response.data : [];
 
-    let y = renderPDFHeader(doc, 'Reporte de Sistemas y Problemáticas', `Generado: ${new Date().toLocaleDateString('es-ES')}`, header, 50);
-    if (systemsData.length > 0) {
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Area: Programacion', 105, y, { align: 'center' });
+    if (!Array.isArray(systemsData) || systemsData.length === 0) {
+      systemsData = [
+        { sistema: 'Sin datos', total_tickets: 0, problematica_mas_comun: '—', frecuencia_problematica: 0 },
+      ];
     }
+
+    let y = renderPDFHeader(doc, 'Reporte de Sistemas y Problemáticas', `Periodo: ${startDate} — ${endDate}`, header, 50);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Sistemas de Programación con más tickets y su problemática más común', 105, y, { align: 'center' });
+    y += 8;
 
     const cols = [
       { label: 'Sistema', x: 25, key: 'system' },
       { label: 'Total Tickets', x: 85, key: 'total', align: 'center' },
-      { label: 'Problematica Comun', x: 120, key: 'problem' },
+      { label: 'Problemática Común', x: 120, key: 'problem' },
       { label: 'Frecuencia', x: 170, key: 'freq', align: 'center' },
     ];
     const rows = (Array.isArray(systemsData) ? systemsData : []).map((s: any) => ({
-      system: (s.system_name || s.System_Name || s.sistema || 'N/A').substring(0, 12),
+      system: (s.system_name || s.System_Name || s.sistema || 'N/A').substring(0, 16),
       total: String(s.total_tickets || 0),
-      problem: (s.common_problem || s.problematica_mas_comun || 'N/A').substring(0, 14),
+      problem: (s.common_problem || s.problematica_mas_comun || 'N/A').substring(0, 18),
       freq: String(s.frequency || s.frecuencia_problematica || 0),
     }));
     y = renderTableBlock(doc, cols, rows, y, [59, 130, 246], 'Reporte de Sistemas y Problemáticas', header, 235);

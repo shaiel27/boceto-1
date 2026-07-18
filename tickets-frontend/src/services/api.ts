@@ -2759,17 +2759,17 @@ export class ApiService {
       message: 'Datos mock de rendimiento de técnicos',
       data: {
         'Redes': [
-          { name: 'Juan Pérez', resolved_tickets: 45, avg_resolution_time: 3.5 },
-          { name: 'María González', resolved_tickets: 38, avg_resolution_time: 4.2 },
-          { name: 'Carlos Rodríguez', resolved_tickets: 52, avg_resolution_time: 2.8 }
+          { name: 'Juan Pérez', resolved_tickets: 45, avg_resolution_time: 210 },
+          { name: 'María González', resolved_tickets: 38, avg_resolution_time: 252 },
+          { name: 'Carlos Rodríguez', resolved_tickets: 52, avg_resolution_time: 168 }
         ],
         'Soporte': [
-          { name: 'Ana Martínez', resolved_tickets: 41, avg_resolution_time: 3.9 },
-          { name: 'Pedro Sánchez', resolved_tickets: 35, avg_resolution_time: 4.5 }
+          { name: 'Ana Martínez', resolved_tickets: 41, avg_resolution_time: 234 },
+          { name: 'Pedro Sánchez', resolved_tickets: 35, avg_resolution_time: 270 }
         ],
         'Programación': [
-          { name: 'Luis Torres', resolved_tickets: 48, avg_resolution_time: 3.2 },
-          { name: 'Carmen Vega', resolved_tickets: 43, avg_resolution_time: 3.7 }
+          { name: 'Luis Torres', resolved_tickets: 48, avg_resolution_time: 192 },
+          { name: 'Carmen Vega', resolved_tickets: 43, avg_resolution_time: 222 }
         ]
       }
     };

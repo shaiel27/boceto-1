@@ -80,6 +80,11 @@ class ProblemReportController
                     return;
             }
 
+            if ($format === 'pdf') {
+                $this->renderPdf($data, $title, $startDate, $endDate);
+                return;
+            }
+
             if ($format === 'html') {
                 $this->renderHtml($data, $title, $startDate, $endDate);
                 return;
@@ -155,6 +160,70 @@ class ProblemReportController
             $this->renderMonthlyTable($data);
         } else {
             $this->renderProblemTable($data);
+        }
+        echo '</div></body></html>';
+    }
+
+    private function renderPdf(array $data, string $title, ?string $startDate, ?string $endDate): void
+    {
+        $range = ($startDate ?? '—') . ' — ' . ($endDate ?? date('Y-m-d'));
+        $generatedAt = date('d/m/Y H:i');
+
+        $headerImgPath = __DIR__ . '/../../../tickets-frontend/public/pdf-reports/header/cabecera.jpg';
+        $footerImgPath = __DIR__ . '/../../../tickets-frontend/public/pdf-reports/footer/pie.jpg';
+
+        $headerBase64 = file_exists($headerImgPath) ? base64_encode(file_get_contents($headerImgPath)) : '';
+        $footerBase64 = file_exists($footerImgPath) ? base64_encode(file_get_contents($footerImgPath)) : '';
+
+        $headerDataUri = $headerBase64 ? 'data:image/jpeg;base64,' . $headerBase64 : '';
+        $footerDataUri = $footerBase64 ? 'data:image/jpeg;base64,' . $footerBase64 : '';
+
+        header('Content-Type: text/html; charset=UTF-8');
+        echo '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">';
+        echo '<title>' . htmlspecialchars($title) . '</title>';
+        echo '<style>' . $this->pdfStyles($headerDataUri, $footerDataUri) . '</style>';
+        echo '<script>window.onload=function(){window.print();};</script>';
+        echo '</head><body>';
+
+        echo '<div class="pdf-header">';
+        if ($headerDataUri) {
+            echo '<img src="' . $headerDataUri . '" class="pdf-header-img" alt="Cabecera">';
+        }
+        echo '</div>';
+
+        echo '<div class="pdf-footer">';
+        if ($footerDataUri) {
+            echo '<img src="' . $footerDataUri . '" class="pdf-footer-img" alt="Pie">';
+        }
+        echo '</div>';
+
+        echo '<div class="content">';
+        if (empty($data)) {
+            echo '<p class="no-data">Sin datos para el periodo seleccionado.</p>';
+        } else {
+            echo '<h2>Sistemas y Problematicas</h2>';
+            echo '<table class="data-table"><thead><tr>';
+            echo '<th>Sistema</th><th>Total Tickets</th><th>Problematica Comun</th><th>Frecuencia</th>';
+            echo '</tr></thead><tbody>';
+            $totalTickets = 0;
+            foreach ($data as $r) {
+                $sistema = htmlspecialchars((string)($r['sistema'] ?? $r['system_name'] ?? 'N/A'));
+                $total = (int)($r['total_tickets'] ?? 0);
+                $problema = htmlspecialchars((string)($r['problematica_mas_comun'] ?? $r['common_problem'] ?? 'N/A'));
+                $frecuencia = (int)($r['frecuencia_problematica'] ?? $r['frequency'] ?? 0);
+                $totalTickets += $total;
+                echo '<tr>';
+                echo '<td>' . $sistema . '</td>';
+                echo '<td>' . $total . '</td>';
+                echo '<td>' . $problema . '</td>';
+                echo '<td>' . $frecuencia . '</td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table>';
+            echo '<div class="pdf-summary">';
+            echo '<strong>Total Sistemas:</strong> ' . count($data) . ' &nbsp;|&nbsp; ';
+            echo '<strong>Total Tickets:</strong> ' . $totalTickets;
+            echo '</div>';
         }
         echo '</div></body></html>';
     }
@@ -255,6 +324,75 @@ h2 {
 .data-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
 .data-table tbody tr:nth-child(even) td { background: #f8fafc; }
 .data-table td:not(:first-child) { text-align: center; }
+CSS;
+    }
+
+    private function pdfStyles(string $headerUri, string $footerUri): string
+    {
+        $headerStyle = '';
+        $footerStyle = '';
+        $contentMargin = 'margin-top: 30mm;';
+        $pageMargin = 'margin: 32mm 20mm 28mm 20mm;';
+
+        if ($headerUri) {
+            $headerStyle = '.pdf-header {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 30mm; background: #fff; z-index: 1000;
+    text-align: center; overflow: hidden;
+}
+.pdf-header-img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block;
+}';
+            $pageMargin = 'margin: 32mm 20mm 28mm 20mm;';
+            $contentMargin = 'margin-top: 32mm;';
+        }
+        if ($footerUri) {
+            $footerStyle = '.pdf-footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 26mm; background: #fff; z-index: 1000;
+    text-align: center; overflow: hidden;
+}
+.pdf-footer-img {
+    width: 100%; height: 100%; object-fit: cover;
+    display: block;
+}';
+            $pageMargin = 'margin: 32mm 20mm 28mm 20mm;';
+        }
+
+        return <<<CSS
+@page { size: A4 portrait; {$pageMargin} }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 9.5pt; color: #1e293b; line-height: 1.55;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
+{$headerStyle}
+{$footerStyle}
+.content { {$contentMargin} padding: 0 5mm; }
+h2 {
+    font-size: 12pt; font-weight: 700; color: #1a365d;
+    margin: 18px 0 10px; padding-bottom: 5px;
+    border-bottom: 2px solid #e2e8f0; page-break-after: avoid;
+}
+.no-data { color: #94a3b8; font-style: italic; padding: 20px 0; text-align: center; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 8.5pt; page-break-inside: auto; margin-bottom: 10px; }
+.data-table thead { display: table-header-group; }
+.data-table tr { page-break-inside: avoid; }
+.data-table th {
+    background: #1a365d; color: #fff; font-weight: 600;
+    text-align: left; padding: 7px 8px; font-size: 7.5pt;
+    text-transform: uppercase; letter-spacing: 0.4px; white-space: nowrap;
+}
+.data-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+.data-table tbody tr:nth-child(even) td { background: #f8fafc; }
+.data-table td:not(:first-child) { text-align: center; }
+.pdf-summary {
+    margin-top: 12px; padding: 8px 12px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 4px; font-size: 9pt; color: #1e293b;
+}
 CSS;
     }
 }

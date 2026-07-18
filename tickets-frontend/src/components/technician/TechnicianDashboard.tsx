@@ -167,7 +167,7 @@ const TechnicianDashboard: React.FC = () => {
         loadedTickets = ticketsResponse.data.map((ticket: any) => {
           const createdDate = new Date(ticket.Created_at || new Date().toISOString());
           const resolvedDate = ticket.Resolved_at ? new Date(ticket.Resolved_at) : null;
-          const resolutionTime = resolvedDate ? Math.floor((resolvedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60)) : null;
+          const resolutionTime = resolvedDate ? Math.floor((resolvedDate.getTime() - createdDate.getTime()) / (1000 * 60)) : null;
           return {
             id: ticket.ID_Service_Request.toString(),
             Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
@@ -402,7 +402,7 @@ const TechnicianDashboard: React.FC = () => {
         const formattedTickets = ticketsResponse.data.map((ticket: any) => {
           const createdDate = new Date(ticket.Created_at || new Date().toISOString());
           const resolvedDate = ticket.Resolved_at ? new Date(ticket.Resolved_at) : null;
-          const resolutionTime = resolvedDate ? Math.floor((resolvedDate.getTime() - createdDate.getTime()) / (1000 * 60 * 60)) : null;
+          const resolutionTime = resolvedDate ? Math.floor((resolvedDate.getTime() - createdDate.getTime()) / (1000 * 60)) : null;
           return {
             id: ticket.ID_Service_Request.toString(),
             Code: ticket.Ticket_Code || `TICK-${ticket.ID_Service_Request}`,
@@ -824,7 +824,7 @@ const TechnicianDashboard: React.FC = () => {
                     {selectedTicket.Resolution_Time && (
                       <div className="dd-row">
                         <span className="dd-label">Tiempo</span>
-                        <span className="dd-val">{selectedTicket.Resolution_Time} horas</span>
+                        <span className="dd-val">{selectedTicket.Resolution_Time} min</span>
                       </div>
                     )}
                   </div>
@@ -995,8 +995,8 @@ const TechnicianDashboard: React.FC = () => {
                   <div className="wc-icon" style={{ background: 'var(--gold-s)', color: 'var(--med)' }}>
                     <Clock size={20} />
                   </div>
-                  <div className="wc-num">{ticketHistory ? ticketHistory.avg_resolution_time : '-'}h</div>
-                  <div className="wc-label">Prom. horas</div>
+                  <div className="wc-num">{ticketHistory ? ticketHistory.avg_resolution_time : '-'}min</div>
+                  <div className="wc-label">Prom. minutos</div>
                 </div>
                 <div className="tech-welcome-card">
                   <div className="wc-icon" style={{ background: 'var(--crt-s)', color: 'var(--crt)' }}>
@@ -1090,9 +1090,9 @@ const TechnicianDashboard: React.FC = () => {
                     <div className="stat-icon"><Clock size={22} /></div>
                     <div className="stat-content">
                       <p className="stat-label">Tiempo Promedio</p>
-                      <p className="stat-value">{ticketHistory.avg_resolution_time}h</p>
+                      <p className="stat-value">{ticketHistory.avg_resolution_time}min</p>
                       <p className="stat-trend">
-                        Rango: {ticketHistory.performance_metrics.fastest_resolution}h - {ticketHistory.performance_metrics.slowest_resolution}h
+                        Rango: {ticketHistory.performance_metrics.fastest_resolution}min - {ticketHistory.performance_metrics.slowest_resolution}min
                       </p>
                     </div>
                   </div>

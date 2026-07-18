@@ -1663,24 +1663,31 @@ final class Technician
                 $params[':endDate'] = $endDate . ' 23:59:59';
             }
 
-            $query = "SELECT DISTINCT 
+            $query = "SELECT 
                      t.ID_Technicians,
                      CONCAT(t.First_Name, ' ', t.Last_Name) as technician_name,
                      s.Type_Service as service_type,
-                     COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 END) as resolved_tickets,
-                     AVG(CASE 
-                         WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at IS NOT NULL 
-                         THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at)
-                         ELSE NULL 
-                     END) as avg_resolution_hours
+                     COALESCE((
+                         SELECT COUNT(DISTINCT sr2.ID_Service_Request)
+                         FROM Ticket_Technicians tt2
+                         JOIN Service_Request sr2 ON tt2.Fk_Service_Request = sr2.ID_Service_Request
+                         WHERE tt2.Fk_Technician = t.ID_Technicians
+                         AND sr2.Status IN ('Cerrado', 'Resuelto')
+                         " . str_replace('sr.', 'sr2.', $dateCondition) . "
+                     ), 0) as resolved_tickets,
+                     COALESCE((
+                          SELECT AVG(TIMESTAMPDIFF(MINUTE, sr3.Created_at, COALESCE(sr3.Resolved_at, NOW())))
+                          FROM Ticket_Technicians tt3
+                          JOIN Service_Request sr3 ON tt3.Fk_Service_Request = sr3.ID_Service_Request
+                          WHERE tt3.Fk_Technician = t.ID_Technicians
+                          AND sr3.Status IN ('Cerrado', 'Resuelto')
+                          " . str_replace('sr.', 'sr3.', $dateCondition) . "
+                      ), 0) as avg_resolution_minutes
                      FROM " . $this->table_name . " t
                      INNER JOIN Users u ON t.Fk_Users = u.ID_Users
                      INNER JOIN Technicians_Service ts ON t.ID_Technicians = ts.Fk_Technicians
                      INNER JOIN TI_Service s ON ts.Fk_TI_Service = s.ID_TI_Service
-                     LEFT JOIN Ticket_Technicians tt ON t.ID_Technicians = tt.Fk_Technician
-                     LEFT JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                      WHERE ts.Status = 'Activo'
-                     " . $dateCondition . "
                      GROUP BY t.ID_Technicians, t.First_Name, t.Last_Name, s.Type_Service
                      ORDER BY technician_name ASC, service_type ASC";
 
@@ -1706,7 +1713,7 @@ final class Technician
                     'name' => $row['technician_name'],
                     'service' => $row['service_type'],
                     'resolved_tickets' => (int)$row['resolved_tickets'],
-                    'avg_resolution_time' => round((float)$row['avg_resolution_hours'], 2)
+                    'avg_resolution_time' => round((float)$row['avg_resolution_minutes'], 2)
                 ];
             }
 
@@ -1747,7 +1754,7 @@ final class Technician
                         COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as resolved_week,
                         COUNT(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 END) as resolved_month,
                         ROUND(AVG(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') AND sr.Resolved_at IS NOT NULL 
-                            THEN TIMESTAMPDIFF(HOUR, sr.Created_at, sr.Resolved_at) END), 1) as avg_resolution_hours
+                            THEN TIMESTAMPDIFF(MINUTE, sr.Created_at, sr.Resolved_at) END), 1) as avg_resolution_minutes
                       FROM Ticket_Technicians tt
                       INNER JOIN Service_Request sr ON tt.Fk_Service_Request = sr.ID_Service_Request
                       WHERE tt.Fk_Technician = :techId";
@@ -1766,8 +1773,8 @@ final class Technician
                 ];
             }
 
-            $avg = $row['avg_resolution_hours'];
-            $avgDisplay = ($avg !== null) ? round((float)$avg, 1) . 'h' : '--';
+            $avg = $row['avg_resolution_minutes'];
+            $avgDisplay = ($avg !== null) ? round((float)$avg, 1) . 'min' : '--';
 
             return [
                 'resolved_today' => (int)($row['resolved_today'] ?? 0),

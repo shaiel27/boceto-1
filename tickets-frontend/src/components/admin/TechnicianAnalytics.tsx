@@ -212,7 +212,7 @@ const TechnicianAnalytics: React.FC = () => {
                 <Clock size={32} />
               </div>
               <div className="stat-content">
-                <h3>{overview.avg_resolution_time}h</h3>
+                <h3>{overview.avg_resolution_time}min</h3>
                 <p>Tiempo Promedio</p>
               </div>
             </div>
@@ -289,7 +289,7 @@ const TechnicianAnalytics: React.FC = () => {
                       </div>
                     </td>
                     <td>{tech.tickets_resolved}</td>
-                    <td>{tech.avg_resolution_time.toFixed(1)}h</td>
+                    <td>{tech.avg_resolution_time.toFixed(1)}min</td>
                     <td>
                       <div className="efficiency-badge">
                         <Zap size={14} />

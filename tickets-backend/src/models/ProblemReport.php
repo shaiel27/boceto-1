@@ -45,16 +45,23 @@ class ProblemReport
             $dateForSr3 = str_replace('sr.', 'sr3.', $dateCondition);
             $dateForSr4 = str_replace('sr.', 'sr4.', $dateCondition);
             $dateForPlain = str_replace('sr.', '', $dateCondition);
+            $dateForSrSub = str_replace('sr.', 'sr_sub.', $dateCondition);
 
             $query = "SELECT 
                      ts.Type_Service as tipo_servicio,
-                     COUNT(sr.ID_Service_Request) as total_tickets_mes,
-                     SUM(CASE WHEN sr.Status = 'Pendiente' THEN 1 ELSE 0 END) as pendientes_mes,
-                     SUM(CASE WHEN sr.Status = 'En Proceso' THEN 1 ELSE 0 END) as en_proceso_mes,
-                     SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) as resueltos_mes,
-                     SUM(CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN 1 ELSE 0 END) as cerrados_mes,
+                     COUNT(DISTINCT sr.ID_Service_Request) as total_tickets_mes,
+                     COUNT(DISTINCT CASE WHEN sr.Status = 'Pendiente' THEN sr.ID_Service_Request END) as pendientes_mes,
+                     COUNT(DISTINCT CASE WHEN sr.Status = 'En Proceso' THEN sr.ID_Service_Request END) as en_proceso_mes,
+                     COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as resueltos_mes,
+                     COUNT(DISTINCT CASE WHEN sr.Status IN ('Cerrado', 'Resuelto') THEN sr.ID_Service_Request END) as cerrados_mes,
                      COUNT(DISTINCT sr.Fk_Office) as oficinas_atendidas_mes,
-                     COUNT(DISTINCT tt.Fk_Technician) as tecnicos_involucrados_mes,
+                     (
+                         SELECT COUNT(DISTINCT tt_sub.Fk_Technician)
+                         FROM Ticket_Technicians tt_sub
+                         JOIN Service_Request sr_sub ON tt_sub.Fk_Service_Request = sr_sub.ID_Service_Request
+                         WHERE sr_sub.Fk_TI_Service = ts.ID_TI_Service
+                         " . $dateForSrSub . "
+                     ) as tecnicos_involucrados_mes,
                      (
                          SELECT spc.Problem_Name 
                          FROM Service_Request sr2
@@ -85,20 +92,24 @@ class ProblemReport
                          ORDER BY COUNT(*) DESC
                          LIMIT 1
                      ) as oficina_mas_solicitante_mes,
-                     ROUND(AVG(TIMESTAMPDIFF(HOUR, sr.Created_at, COALESCE(sr.Resolved_at, NOW()))), 2) as tiempo_promedio_horas_mes,
-                     ROUND(COUNT(sr.ID_Service_Request) * 100.0 / (
-                         SELECT COUNT(*) 
-                         FROM Service_Request 
-                         WHERE 1=1 " . $dateForPlain . "
-                     ), 2) as porcentaje_mes_actual
-                     FROM ti_service ts
-                     LEFT JOIN service_request sr ON ts.ID_TI_Service = sr.Fk_TI_Service
-                     LEFT JOIN Ticket_Technicians tt ON sr.ID_Service_Request = tt.Fk_Service_Request
-                     WHERE sr.ID_Service_Request IS NOT NULL
-                     " . $dateCondition . "
-                     GROUP BY ts.Type_Service, ts.ID_TI_Service
-                     HAVING total_tickets_mes > 0
-                     ORDER BY total_tickets_mes DESC";
+                      ROUND(
+                          (SELECT AVG(TIMESTAMPDIFF(HOUR, sr_avg.Created_at, COALESCE(sr_avg.Resolved_at, NOW())))
+                           FROM Service_Request sr_avg
+                           WHERE sr_avg.Fk_TI_Service = ts.ID_TI_Service
+                           " . str_replace('sr.', 'sr_avg.', $dateCondition) . "
+                          ), 2) as tiempo_promedio_horas_mes,
+                      ROUND(COUNT(DISTINCT sr.ID_Service_Request) * 100.0 / NULLIF((
+                          SELECT COUNT(DISTINCT ID_Service_Request) 
+                          FROM Service_Request 
+                          WHERE 1=1 " . $dateForPlain . "
+                      ), 0), 2) as porcentaje_mes_actual
+                      FROM ti_service ts
+                      LEFT JOIN service_request sr ON ts.ID_TI_Service = sr.Fk_TI_Service
+                      WHERE sr.ID_Service_Request IS NOT NULL
+                      " . $dateCondition . "
+                      GROUP BY ts.Type_Service, ts.ID_TI_Service
+                      HAVING total_tickets_mes > 0
+                      ORDER BY total_tickets_mes DESC";
 
             $stmt = $this->conn->prepare($query);
             
@@ -301,76 +312,82 @@ class ProblemReport
     public function getSystemsAndProblems(?string $startDate = null, ?string $endDate = null): array
     {
         try {
-            $dateCondition = "";
+            $mainWhere = "";
             $params = [];
-            
+
+            $startDateVal = null;
+            $endDateVal = null;
+
             if ($startDate) {
-                $dateCondition .= " AND sr.Created_at >= :startDate";
-                $params[':startDate'] = $startDate . ' 00:00:00';
+                $startDateVal = $startDate . ' 00:00:00';
+                $mainWhere .= " AND sr.Created_at >= :startDate";
+                $params[':startDate'] = $startDateVal;
             }
-            
             if ($endDate) {
-                $dateCondition .= " AND sr.Created_at <= :endDate";
-                $params[':endDate'] = $endDate . ' 23:59:59';
+                $endDateVal = $endDate . ' 23:59:59';
+                $mainWhere .= " AND sr.Created_at <= :endDate";
+                $params[':endDate'] = $endDateVal;
             }
 
-            $dateForSr2 = str_replace('sr.', 'sr2.', $dateCondition);
-            $dateForSr3 = str_replace('sr.', 'sr3.', $dateCondition);
+            $subWhere = "";
+            if ($startDateVal && $endDateVal) {
+                $subWhere = " AND sr2.Created_at BETWEEN " . $this->conn->quote($startDateVal) . " AND " . $this->conn->quote($endDateVal);
+            } elseif ($startDateVal) {
+                $subWhere = " AND sr2.Created_at >= " . $this->conn->quote($startDateVal);
+            } elseif ($endDateVal) {
+                $subWhere = " AND sr2.Created_at <= " . $this->conn->quote($endDateVal);
+            }
 
             $query = "SELECT 
                      ss.System_Name AS sistema,
-                     COUNT(sr.ID_Service_Request) AS total_tickets,
-                     (
+                     COUNT(DISTINCT sr.ID_Service_Request) AS total_tickets,
+                     COALESCE((
                          SELECT spc.Problem_Name 
                          FROM Service_Request sr2
                          JOIN Service_Problems_Catalog spc ON sr2.Fk_Problem_Catalog = spc.ID_Problem_Catalog
-                         WHERE sr2.Fk_Software_System = sr.Fk_Software_System
-                         AND sr2.Fk_TI_Service = 3
-                         " . $dateForSr2 . "
+                         WHERE sr2.Fk_Software_System = ss.ID_System
+                         " . $subWhere . "
                          GROUP BY spc.Problem_Name
                          ORDER BY COUNT(*) DESC
                          LIMIT 1
-                     ) AS problematica_mas_comun,
-                     (
+                     ), 'N/A') AS problematica_mas_comun,
+                     COALESCE((
                          SELECT COUNT(*)
-                         FROM Service_Request sr3
-                         JOIN Service_Problems_Catalog spc2 ON sr3.Fk_Problem_Catalog = spc2.ID_Problem_Catalog
-                         WHERE sr3.Fk_Software_System = sr.Fk_Software_System
-                         AND sr3.Fk_TI_Service = 3
-                         " . $dateForSr3 . "
+                         FROM Service_Request sr2
+                         JOIN Service_Problems_Catalog spc2 ON sr2.Fk_Problem_Catalog = spc2.ID_Problem_Catalog
+                         WHERE sr2.Fk_Software_System = ss.ID_System
+                         " . $subWhere . "
                          GROUP BY spc2.Problem_Name
                          ORDER BY COUNT(*) DESC
                          LIMIT 1
-                     ) AS frecuencia_problematica
-                     FROM Service_Request sr
-                     JOIN Software_Systems ss ON sr.Fk_Software_System = ss.ID_System
-                     WHERE sr.Fk_TI_Service = 3
-                     AND sr.Fk_Software_System IS NOT NULL
-                     " . $dateCondition . "
-                     GROUP BY ss.System_Name, sr.Fk_Software_System
-                     HAVING COUNT(sr.ID_Service_Request) > 0
+                     ), 0) AS frecuencia_problematica
+                     FROM Software_Systems ss
+                     INNER JOIN Service_Request sr ON ss.ID_System = sr.Fk_Software_System
+                     WHERE 1=1
+                     " . $mainWhere . "
+                     GROUP BY ss.System_Name, ss.ID_System
+                     HAVING COUNT(DISTINCT sr.ID_Service_Request) > 0
                      ORDER BY total_tickets DESC";
 
             $stmt = $this->conn->prepare($query);
-            
+
             foreach ($params as $key => $value) {
                 $stmt->bindValue($key, $value);
             }
-            
+
             $stmt->execute();
             $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            
+
             $formattedResults = [];
             foreach ($results as $row) {
                 $formattedResults[] = [
-                    'sistema' => $row['sistema'],
-                    'total_tickets' => (int)$row['total_tickets'],
+                    'sistema' => $row['sistema'] ?? 'N/A',
+                    'total_tickets' => (int)($row['total_tickets'] ?? 0),
                     'problematica_mas_comun' => $row['problematica_mas_comun'] ?? 'N/A',
-                    'frecuencia_problematica' => (int)$row['frecuencia_problematica']
+                    'frecuencia_problematica' => (int)($row['frecuencia_problematica'] ?? 0),
                 ];
             }
 
-            error_log("getSystemsAndProblems: Retrieved " . count($formattedResults) . " records");
             return $formattedResults;
 
         } catch (PDOException $e) {

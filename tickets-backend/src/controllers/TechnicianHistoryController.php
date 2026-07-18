@@ -76,7 +76,7 @@ try {
                     $totalResolutionTime += $resolved->getTimestamp() - $created->getTimestamp();
                 }
             }
-            $avgResolutionTime = $totalResolutionTime / count($resolvedTickets) / 3600; // Convert to hours
+            $avgResolutionTime = $totalResolutionTime / count($resolvedTickets) / 60; // Convert to minutes
         }
         
         $priorityBreakdown = [
