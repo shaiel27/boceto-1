@@ -1657,3 +1657,75 @@
 [06-Jul-2026 11:45:00 America/Caracas] Database connection established successfully (tz=-04:00)
 [06-Jul-2026 17:45:00 Europe/Berlin] Authenticated user: {"iat":1783352699,"exp":1814888699,"sub":1,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
 [06-Jul-2026 11:45:00 America/Caracas] Database connection established successfully (tz=-04:00)
+[16-Jul-2026 20:46:28 Europe/Berlin] Authenticated user: {"iat":1784227587,"exp":1815763587,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[16-Jul-2026 14:46:28 America/Caracas] Database connection established successfully (tz=-04:00)
+[16-Jul-2026 20:46:29 Europe/Berlin] Authenticated user: {"iat":1784227587,"exp":1815763587,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[16-Jul-2026 14:46:29 America/Caracas] Database connection established successfully (tz=-04:00)
+[16-Jul-2026 20:46:29 Europe/Berlin] Authenticated user: {"iat":1784227587,"exp":1815763587,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[16-Jul-2026 14:46:29 America/Caracas] Database connection established successfully (tz=-04:00)
+[16-Jul-2026 20:46:29 Europe/Berlin] Authenticated user: {"iat":1784227587,"exp":1815763587,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[16-Jul-2026 14:46:29 America/Caracas] Database connection established successfully (tz=-04:00)
+[16-Jul-2026 20:46:41 Europe/Berlin] Authenticated user: {"iat":1784227600,"exp":1815763600,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[16-Jul-2026 14:46:41 America/Caracas] Database connection established successfully (tz=-04:00)
+[16-Jul-2026 20:46:41 Europe/Berlin] Authenticated user: {"iat":1784227600,"exp":1815763600,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[16-Jul-2026 14:46:41 America/Caracas] Database connection established successfully (tz=-04:00)
+[16-Jul-2026 20:46:41 Europe/Berlin] Authenticated user: {"iat":1784227600,"exp":1815763600,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[16-Jul-2026 14:46:41 America/Caracas] Database connection established successfully (tz=-04:00)
+[16-Jul-2026 20:46:41 Europe/Berlin] Authenticated user: {"iat":1784227600,"exp":1815763600,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[16-Jul-2026 14:46:41 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:18:53 Europe/Berlin] Authenticated user: {"iat":1784413133,"exp":1815949133,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:18:53 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:18:53 Europe/Berlin] Authenticated user: {"iat":1784413133,"exp":1815949133,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:18:53 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:18:53 Europe/Berlin] Authenticated user: {"iat":1784413133,"exp":1815949133,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:18:53 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:18:53 Europe/Berlin] Authenticated user: {"iat":1784413133,"exp":1815949133,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:18:54 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:19:26 Europe/Berlin] Authenticated user: {"iat":1784413133,"exp":1815949133,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:19:26 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:19:26 Europe/Berlin] Authenticated user: {"iat":1784413133,"exp":1815949133,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:19:26 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:19:26 Europe/Berlin] Authenticated user: {"iat":1784413133,"exp":1815949133,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:19:26 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:19:26 Europe/Berlin] Authenticated user: {"iat":1784413133,"exp":1815949133,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:19:26 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:19:58 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:19:58 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:19:58 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:19:58 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:19:58 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:19:58 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:19:58 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:19:58 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:21:14 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:21:14 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:21:14 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:21:14 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:21:23 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:21:23 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:21:23 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:21:23 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:12 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:12 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:12 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:12 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:29 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:29 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:29 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:29 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:35 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:35 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:35 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:35 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:40 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:40 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:40 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:40 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:45 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:45 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:45 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:45 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:56 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:56 America/Caracas] Database connection established successfully (tz=-04:00)
+[19-Jul-2026 00:22:56 Europe/Berlin] Authenticated user: {"iat":1784413197,"exp":1815949197,"sub":3,"email":"admin@tickets.gob","role_id":1,"role":"Admin"}
+[18-Jul-2026 18:22:56 America/Caracas] Database connection established successfully (tz=-04:00)

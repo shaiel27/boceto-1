@@ -1,0 +1,617 @@
+!DOCTYPE html
+html lang=es
+head
+    meta charset=UTF-8
+    titleManual de Programador y Diccionario de Datos - Alcaldía de San Cristóbaltitle
+    style
+        @page {
+            size letter;
+            margin 2.54cm;
+        }
+        body {
+            font-family 'Calibri', 'Arial', sans-serif;
+            font-size 11pt;
+            line-height 1.5;
+            color #333333;
+            margin 0;
+            padding 0;
+        }
+        .portada {
+            text-align center;
+            page-break-after always;
+            padding-top 5cm;
+        }
+        .portada h1 {
+            font-size 26pt;
+            color #1565c0;
+            margin-bottom 5px;
+            font-weight bold;
+        }
+        .portada h2 {
+            font-size 16pt;
+            color #757575;
+            margin-top 0;
+            margin-bottom 50px;
+            font-weight normal;
+        }
+        .portada .autor {
+            font-size 12pt;
+            margin-top 10cm;
+            font-weight bold;
+            color #333333;
+        }
+        .portada .fecha {
+            font-size 11pt;
+            color #757575;
+        }
+        h1 {
+            font-size 18pt;
+            color #1565c0;
+            border-bottom 2px solid #1565c0;
+            padding-bottom 5px;
+            margin-top 24pt;
+            margin-bottom 12pt;
+            page-break-inside avoid;
+        }
+        h2 {
+            font-size 14pt;
+            color #0d47a1;
+            margin-top 18pt;
+            margin-bottom 8pt;
+            page-break-inside avoid;
+        }
+        h3 {
+            font-size 12pt;
+            color #1b5e20;
+            margin-top 14pt;
+            margin-bottom 6pt;
+            page-break-inside avoid;
+        }
+        p {
+            margin-top 0;
+            margin-bottom 10pt;
+            text-align justify;
+        }
+        ul {
+            margin-top 0;
+            margin-bottom 10pt;
+            padding-left 20pt;
+        }
+        li {
+            margin-bottom 4pt;
+        }
+        table {
+            width 100%;
+            border-collapse collapse;
+            margin-top 12pt;
+            margin-bottom 16pt;
+            font-size 10pt;
+            page-break-inside avoid;
+        }
+        th {
+            background-color #1565c0;
+            color #ffffff;
+            font-weight bold;
+            text-align left;
+            padding 8px;
+            border 1px solid #1565c0;
+        }
+        td {
+            padding 8px;
+            border 1px solid #dddddd;
+            vertical-align top;
+        }
+        trnth-child(even) {
+            background-color #f9f9f9;
+        }
+        .code-block {
+            font-family 'Consolas', 'Courier New', monospace;
+            background-color #f5f5f5;
+            border 1px solid #e0e0e0;
+            padding 10px;
+            margin-top 10pt;
+            margin-bottom 10pt;
+            font-size 9.5pt;
+            white-space pre-wrap;
+        }
+        .info-box {
+            background-color #e3f2fd;
+            border-left 5px solid #1565c0;
+            padding 12px;
+            margin-top 12pt;
+            margin-bottom 12pt;
+        }
+        .page-break {
+            page-break-before always;
+        }
+    style
+head
+body
+
+    !-- PORTADA --
+    div class=portada
+        h1MANUAL DE PROGRAMADOR Y DICCIONARIO DE DATOSh1
+        h2Sistema de Gestión de Tickets para la Alcaldía de San Cristóbalh2
+        div class=autor
+            Dirección de Informática y Tecnologíabr
+            Alcaldía del Municipio San Cristóbal
+        div
+        div class=fechaAño 2026 &bull; Versión 2.4.1 (Producción)div
+    div
+
+    !-- RESUMEN --
+    h1RESUMENh1
+    pEl presente manual describe de manera exhaustiva la arquitectura técnica, los componentes lógicos de software y la estructura de persistencia del strongSistema de Gestión de Ticketsstrong desarrollado para la Alcaldía del Municipio San Cristóbal. El sistema fue concebido como una solución integral y multiplataforma destinada a automatizar, trazar y auditar las operaciones de soporte tecnológico de la municipalidad.p
+    pLa arquitectura desacoplada de la solución comprende tres entornos principales de acceso una aplicación de administración web robusta, una aplicación móvil optimizada para técnicos en campo y un backend transaccional estructurado como una API RESTful nativa en PHP, interactuando con un motor de base de datos relacional MySQL. Este documento sirve como guía metodológica y técnica para desarrolladores, auditores de sistemas e ingenieros encargados del mantenimiento, escalabilidad y despliegue del ecosistema tecnológico.p
+    pstrongPalabras clavestrong emsistema de tickets, help desk, PHP vanilla, React, React Native, MySQL, Expo, API REST, arquitectura desacoplada.emp
+
+    div class=page-breakdiv
+
+    !-- CAPITULO 1 --
+    h1CAPÍTULO 1. INTRODUCCIÓNh1
+    h21.1 Contexto del Proyectoh2
+    pLa Alcaldía de San Cristóbal cuenta con múltiples dependencias político-administrativas que demandan de manera continua asistencia técnica en infraestructura de red, estaciones de trabajo y sistemas lógicos de información. Históricamente, la recepción de estas incidencias se gestionaba mediante canales informales y analógicos, lo que imposibilitaba la trazabilidad operativa, generaba cuellos de botella y ocultaba los indicadores reales de rendimiento del departamento.p
+    pEl desarrollo de este sistema surge para centralizar el flujo de solicitudes mediante un modelo digitalizado de strongMesa de Ayuda (Help Desk)strong. Cada reporte de falla se formaliza mediante la creación de un ticket con identificador único que registra automáticamente el ciclo de vida del incidente, la prioridad del requerimiento, el activo físico o lógico afectado, los comentarios de resolución de los técnicos y la verificación final de conformidad por parte del solicitante.p
+
+    h21.2 Objetivosh2
+    ul
+        listrongAutomatización de Asignacionesstrong Implementar algoritmos de distribución de carga en tiempo real para asignar de forma automática técnicos disponibles según su área de especialidad (Soporte, Redes o Programación).li
+        listrongTrazabilidad Absolutastrong Garantizar un registro histórico inalterable de cada evento transaccional, cambios de estado, notas de soporte y tiempos de resolución (SLA).li
+        listrongDecisión Basada en Datosstrong Proveer tableros de control y reportes estadísticos exportables para evaluar el rendimiento técnico interdepartamental y la salud de la infraestructura de hardware municipal.li
+    ul
+
+    h21.3 Alcanceh2
+    pEl sistema cubre de forma unificada tres áreas operativas fundamentalesp
+    ul
+        listrongRedesstrong Conectividad, telefonía IP, cableado estructurado, ruteo y perfiles de seguridad.li
+        listrongSoporte Técnicostrong Mantenimiento preventivocorrectivo de hardware y periféricos.li
+        listrongProgramaciónstrong Soporte, mantenimiento y resolución de incidencias en sistemas de software internos de la Alcaldía.li
+    ul
+
+    div class=page-breakdiv
+
+    !-- CAPITULO 2 --
+    h1CAPÍTULO 2. STACK TECNOLÓGICO Y CAPAS DE DISEÑOh1
+    pEl ecosistema de software se diseñó bajo una strongarquitectura desacopladastrong, aislando de forma estricta las capas de presentación de la lógica de negocio y la persistencia de datos.p
+    
+    div class=info-box
+        strongNota de Arquitecturastrong La separación de responsabilidades asegura que las interfaces de usuario (web y móvil) puedan actualizarse y evolucionar de forma independiente a la lógica de base de datos del servidor central.
+    div
+
+    h22.1 Backend transaccional (PHP 8 Vanilla)h2
+    pPara garantizar el máximo rendimiento del servidor y evitar la sobrecarga de frameworks pesados, el backend se programó en strongPHP 8 nativostrong.p
+    ul
+        listrongIntegridad de Tipadostrong Se implementó la declaración estricta codedeclare(strict_types=1)code en la totalidad de las clases y controladores para asegurar la robustez de los datos.li
+        listrongPersistencia Segurastrong El acceso a datos se gestiona mediante strongPHP Data Objects (PDO)strong, deshabilitando explícitamente la emulación de sentencias preparadas para neutralizar de raíz vulnerabilidades de inyección SQL.li
+        listrongSeguridad de Accesostrong La autenticación se realiza mediante tokens de seguridad firmados con el estándar strongJWT (JSON Web Tokens)strong mediante codificación interna HMAC-SHA256, eliminando dependencias externas.li
+    ul
+
+    h22.2 Capa Web Administrativa (React & TypeScript)h2
+    pEl diseño y arquitectura de la interfaz web estuvo guiado bajo el rol especializado de strongWeb Interface Architectstrong y los principios de strongInterface Designstrong, logrando un panel robusto para la coordinación técnicap
+    ul
+        listrongDesarrollostrong React 19 junto a TypeScript para el tipado estático seguro.li
+        listrongNavegaciónstrong Enrutamiento dinámico mediante codereact-router-domcode con guardias de seguridad basadas en el rol del usuario autenticado.li
+        listrongEstilosstrong Modularización CSS mediante codeCSS Modulescode y un sistema de variables personalizadas para el cambio dinámico de tema claro y oscuro con los colores institucionales.li
+    ul
+
+    h22.3 Capa Móvil de Campo (React Native & Expo)h2
+    pLa experiencia de usuario para los técnicos que atienden incidencias en las distintas oficinas físicas de la Alcaldía se materializó bajo el perfil de strongMobile App Interfacestrongp
+    ul
+        listrongFrameworkstrong React Native con Expo SDK 54, utilizando enrutamiento basado en archivos con Expo Router.li
+        listrongEstado y Cachéstrong Gestión del estado global asíncrono con Zustand y sincronización de datos con el servidor mediante TanStack React Query.li
+        listrongPersistencia Local (Offline)strong Almacenamiento seguro en el dispositivo que permite al técnico consultar su lista de tareas asignadas y guardar notas de resolución temporales aun cuando pierde la conectividad Wi-Fi.li
+    ul
+
+    div class=page-breakdiv
+
+    !-- CAPITULO 3 --
+    h1CAPÍTULO 3. ARQUITECTURA DETALLADA DEL SISTEMAh1
+    h23.1 Ciclo de Vida del Ticketh2
+    pEl flujo de estado de un ticket es estrictamente transaccional y se rige por las siguientes reglas lógicas del negociop
+    ul
+        listrongAperturastrong Un solicitante registra una falla. El sistema genera de manera atómica el identificador correlativo con formato codeTTT-NNNNNNcode (ej. codeSOP-000104code).li
+        listrongAsignación Inteligentestrong El algoritmo evalúa la carga activa de los técnicos disponibles (carga  5 tickets en estado En Proceso) y auto-asigna el caso al perfil con menor carga de trabajo. Si no hay técnicos en línea, el ticket queda strongPendientestrong.li
+        listrongControl de Cierrestrong Al finalizar la intervención, el técnico marca el ticket como Resuelto. El sistema strongimpide que el técnico cierre el ticket directamentestrong, forzando al registro a entrar en estado strongPendiente de Verificaciónstrong.li
+        listrongVerificación e Inconformidadstrong El solicitante original valida el funcionamiento. Si el reporte es calificado como strongInconformestrong, el ticket regresa al estado strongEn Procesostrong, se activa la bandera codeis_returned = 1code (se resalta en color morado), y se reasigna a un técnico distinto excluyendo al anterior.li
+    ul
+
+    h23.2 Políticas de Servicio Cruzado e Integración Legacyh2
+    pA partir de las 200 PM, los técnicos adscritos a la coordinación de Redes actúan como soporte de contingencia ante un volumen crítico de incidencias de Soporte Técnico.p
+    pLas consultas de bienes nacionales asociados a los tickets se canalizan mediante un proxy transaccional (codeBienesProxyServicecode) que interactúa con la API del sistema heredado SIFA alojado en un servidor XAMPP secundario (puerto 8012), guardando las respuestas en caché (codebienes_cachecode) con TTL controlado para optimizar la velocidad de la intranet.p
+
+    div class=page-breakdiv
+
+    !-- CAPITULO 4 --
+    h1CAPÍTULO 4. DICCIONARIO DE DATOS (BASE DE DATOS)h1
+    pEl esquema relacional se compone de un conjunto normalizado de tablas lógicas estructuradas bajo el motor strongInnoDBstrong de MySQL 8.p
+
+    h24.1 Módulo de Usuarios y Accesoh2
+    
+    h3Tabla Roleh3
+    pAlmacena la tipificación de privilegios de acceso dentro de la plataforma.p
+    table
+        thead
+            tr
+                th style=width 25%;Campoth
+                th style=width 25%;Tipo de Datosth
+                th style=width 20%;Restriccionesth
+                th style=width 30%;Descripciónth
+            tr
+        thead
+        tbody
+            tr
+                tdstrongID_Rolestrong (PK)td
+                tdINTtd
+                tdAUTO_INCREMENTtd
+                tdIdentificador único del rol.td
+            tr
+            tr
+                tdstrongRolestrongtd
+                tdVARCHAR(20)td
+                tdNOT NULL, UNIQUEtd
+                tdNombre de nivel (Admin, Tecnico, Jefe, Auditor).td
+            tr
+            tr
+                tdstrongDescriptionstrongtd
+                tdTEXTtd
+                tdNULLtd
+                tdDescripción detallada de los permisos asignados.td
+            tr
+        tbody
+    table
+
+    h3Tabla Usersh3
+    pRepositorio central de cuentas de usuario con hashes de seguridad.p
+    table
+        thead
+            tr
+                th style=width 25%;Campoth
+                th style=width 25%;Tipo de Datosth
+                th style=width 20%;Restriccionesth
+                th style=width 30%;Descripciónth
+            tr
+        thead
+        tbody
+            tr
+                tdstrongID_Usersstrong (PK)td
+                tdINTtd
+                tdAUTO_INCREMENTtd
+                tdIdentificador único del usuario.td
+            tr
+            tr
+                tdstrongFk_Rolestrong (FK)td
+                tdINTtd
+                tdNOT NULLtd
+                tdRelaciona con codeRole.ID_Rolecode.td
+            tr
+            tr
+                tdstrongEmailstrongtd
+                tdVARCHAR(100)td
+                tdNOT NULL, UNIQUEtd
+                tdCorreo electrónico institucional (Login).td
+            tr
+            tr
+                tdstrongPasswordstrongtd
+                tdVARCHAR(255)td
+                tdNOT NULLtd
+                tdHash de contraseña cifrado mediante bcrypt.td
+            tr
+            tr
+                tdstrongUsernamestrongtd
+                tdVARCHAR(100)td
+                tdNOT NULL, UNIQUEtd
+                tdNombre de usuario único de acceso.td
+            tr
+            tr
+                tdstrongFull_Namestrongtd
+                tdVARCHAR(200)td
+                tdNOT NULLtd
+                tdNombre y apellido completo del usuario.td
+            tr
+            tr
+                tdstrongis_system_userstrongtd
+                tdBOOLEANtd
+                tdDEFAULT FALSEtd
+                tdBandera para identificar usuarios preexistentes.td
+            tr
+            tr
+                tdstronglast_login_atstrongtd
+                tdTIMESTAMPtd
+                tdNULLtd
+                tdRegistra la última sesión activa en el servidor.td
+            tr
+            tr
+                tdstrongcreated_atstrongtd
+                tdTIMESTAMPtd
+                tdDEFAULT CURRENT_TIMESTAMPtd
+                tdFecha de creación del registro.td
+            tr
+        tbody
+    table
+
+    h3Tabla Bossh3
+    pRegistra la jerarquía de los Jefes de Oficina autorizados para validar tickets.p
+    table
+        thead
+            tr
+                th style=width 25%;Campoth
+                th style=width 25%;Tipo de Datosth
+                th style=width 20%;Restriccionesth
+                th style=width 30%;Descripciónth
+            tr
+        thead
+        tbody
+            tr
+                tdstrongID_Bossstrong (PK)td
+                tdINTtd
+                tdAUTO_INCREMENTtd
+                tdIdentificador único del jefe de área.td
+            tr
+            tr
+                tdstrongFk_Userstrong (FK)td
+                tdINTtd
+                tdNOT NULL, UNIQUEtd
+                tdRelaciona de forma única con codeUsers.ID_Userscode.td
+            tr
+            tr
+                tdstrongName_Bossstrongtd
+                tdVARCHAR(200)td
+                tdNOT NULLtd
+                tdNombre descriptivo del funcionario a cargo.td
+            tr
+            tr
+                tdstrongPronounstrongtd
+                tdVARCHAR(20)td
+                tdNULLtd
+                tdTrato formal (Ing., Abg., Lcdo., etc.).td
+            tr
+        tbody
+    table
+
+    div class=page-breakdiv
+
+    h24.2 Módulo de Estructura e Infraestructura Municipalh2
+    
+    h3Tabla Officeh3
+    pEstructura organizacional de direcciones y divisiones de la Alcaldía.p
+    table
+        thead
+            tr
+                th style=width 25%;Campoth
+                th style=width 25%;Tipo de Datosth
+                th style=width 20%;Restriccionesth
+                th style=width 30%;Descripciónth
+            tr
+        thead
+        tbody
+            tr
+                tdstrongID_Officestrong (PK)td
+                tdINTtd
+                tdAUTO_INCREMENTtd
+                tdIdentificador único de la oficina.td
+            tr
+            tr
+                tdstrongName_Officestrongtd
+                tdVARCHAR(100)td
+                tdNOT NULLtd
+                tdNombre de la dependencia municipal.td
+            tr
+            tr
+                tdstrongcoduniadmstrongtd
+                tdVARCHAR(20)td
+                tdNULL, UNIQUEtd
+                tdCódigo de unidad administrativa sincronizado del SIFA.td
+            tr
+            tr
+                tdstrongFk_Boss_IDstrong (FK)td
+                tdINTtd
+                tdNULLtd
+                tdIdentifica al responsable en codeBoss.ID_Bosscode.td
+            tr
+            tr
+                tdstrongcreated_atstrongtd
+                tdTIMESTAMPtd
+                tdDEFAULT CURRENT_TIMESTAMPtd
+                tdFecha de registro de la dependencia.td
+            tr
+        tbody
+    table
+
+    div class=page-breakdiv
+
+    h24.3 Módulo de Técnicos y Servicios de Soporteh2
+    
+    h3Tabla TI_Serviceh3
+    pCatálogo maestro de las tres áreas principales de la Dirección de Informática.p
+    table
+        thead
+            tr
+                th style=width 25%;Campoth
+                th style=width 25%;Tipo de Datosth
+                th style=width 20%;Restriccionesth
+                th style=width 30%;Descripciónth
+            tr
+        thead
+        tbody
+            tr
+                tdstrongID_TI_Servicestrong (PK)td
+                tdINTtd
+                tdAUTO_INCREMENTtd
+                tdIdentificador del servicio de TI.td
+            tr
+            tr
+                tdstrongType_Servicestrongtd
+                tdVARCHAR(50)td
+                tdNOT NULLtd
+                tdNombre del área (Redes, Soporte, Programación).td
+            tr
+            tr
+                tdstrongDetailsstrongtd
+                tdTEXTtd
+                tdNULLtd
+                tdDetalle del espectro técnico cubierto.td
+            tr
+        tbody
+    table
+
+    h3Tabla Techniciansh3
+    pRegistro del personal técnico activo y sus estados de disponibilidad transaccional.p
+    table
+        thead
+            tr
+                th style=width 25%;Campoth
+                th style=width 25%;Tipo de Datosth
+                th style=width 20%;Restriccionesth
+                th style=width 30%;Descripciónth
+            tr
+        thead
+        tbody
+            tr
+                tdstrongID_Techniciansstrong (PK)td
+                tdINTtd
+                tdAUTO_INCREMENTtd
+                tdIdentificador único del técnico.td
+            tr
+            tr
+                tdstrongFk_Usersstrong (FK)td
+                tdINTtd
+                tdNOT NULL, UNIQUEtd
+                tdVinculación directa con su cuenta en codeUsers.ID_Userscode.td
+            tr
+            tr
+                tdstrongFirst_Namestrongtd
+                tdVARCHAR(50)td
+                tdNOT NULLtd
+                tdPrimer nombre.td
+            tr
+            tr
+                tdstrongLast_Namestrongtd
+                tdVARCHAR(50)td
+                tdNOT NULLtd
+                tdPrimer apellido.td
+            tr
+            tr
+                tdstrongFk_Lunch_Blockstrong (FK)td
+                tdINTtd
+                tdNULLtd
+                tdAsignación de su bloque en codeLunch_Blocks.ID_Lunch_Blockcode.td
+            tr
+            tr
+                tdstrongStatusstrongtd
+                tdVARCHAR(20)td
+                tdDEFAULT Disponibletd
+                tdEstado (Disponible, Ocupado, Inactivo, Fuera de Servicio).td
+            tr
+            tr
+                tdstrongcreated_atstrongtd
+                tdTIMESTAMPtd
+                tdDEFAULT CURRENT_TIMESTAMPtd
+                tdRegistro histórico de ingreso.td
+            tr
+        tbody
+    table
+
+    div class=page-breakdiv
+
+    h24.4 Módulo Central de Gestión de Ticketsh2
+    
+    h3Tabla Service_Requesth3
+    pLa tabla nuclear de transacciones de incidentes y requerimientos.p
+    table
+        thead
+            tr
+                th style=width 25%;Campoth
+                th style=width 25%;Tipo de Datosth
+                th style=width 20%;Restriccionesth
+                th style=width 30%;Descripciónth
+            tr
+        thead
+        tbody
+            tr
+                tdstrongID_Service_Requeststrong (PK)td
+                tdINTtd
+                tdAUTO_INCREMENTtd
+                tdIdentificador único de la solicitud.td
+            tr
+            tr
+                tdstrongTicket_Codestrongtd
+                tdVARCHAR(50)td
+                tdNOT NULL, UNIQUEtd
+                tdCódigo visible (SOP-000104, RED-000033).td
+            tr
+            tr
+                tdstrongFk_Officestrong (FK)td
+                tdINTtd
+                tdNOT NULLtd
+                tdClave foránea hacia codeOffice.ID_Officecode.td
+            tr
+            tr
+                tdstrongFk_User_Requesterstrong (FK)td
+                tdINTtd
+                tdNOT NULLtd
+                tdUsuario creador en codeUsers.ID_Userscode.td
+            tr
+            tr
+                tdstrongFk_TI_Servicestrong (FK)td
+                tdINTtd
+                tdNOT NULLtd
+                tdTipo de servicio asignado en codeTI_Service.ID_TI_Servicecode.td
+            tr
+            tr
+                tdstrongSubjectstrongtd
+                tdVARCHAR(500)td
+                tdNOT NULLtd
+                tdResumen breve o asunto de la falla reportada.td
+            tr
+            tr
+                tdstrongProperty_Numberstrongtd
+                tdVARCHAR(50)td
+                tdNULLtd
+                tdNúmero de Bien Nacional (BM) del activo tecnológico.td
+            tr
+            tr
+                tdstrongDescriptionstrongtd
+                tdTEXTtd
+                tdNULLtd
+                tdExplicación detallada del problema de soporte.td
+            tr
+            tr
+                tdstrongSystem_Prioritystrongtd
+                tdVARCHAR(50)td
+                tdDEFAULT Mediatd
+                tdNivel crítico (Critica, Alta, Media, Baja).td
+            tr
+            tr
+                tdstrongStatusstrongtd
+                tdVARCHAR(50)td
+                tdDEFAULT Pendientetd
+                tdEstatus Pendiente, En Proceso, Pendiente de Verificacion, Cerrado.td
+            tr
+            tr
+                tdstrongis_returnedstrongtd
+                tdTINYINTtd
+                tdDEFAULT 0td
+                tdBandera de ticket devuelto por inconformidad.td
+            tr
+            tr
+                tdstrongCreated_atstrongtd
+                tdTIMESTAMPtd
+                tdDEFAULT CURRENT_TIMESTAMPtd
+                tdMarca de tiempo exacta de apertura del ticket.td
+            tr
+        tbody
+    table
+
+    div class=page-breakdiv
+
+    !-- CAPITULO 5 --
+    h1CAPÍTULO 5. RECOMENDACIONES DE SEGURIDAD Y DESPLIEGUEh1
+    pCon el objetivo de garantizar la sostenibilidad, seguridad y evolución tecnológica dentro de la Alcaldía del Municipio San Cristóbal, se formulan las siguientes recomendacionesp
+    ul
+        listrongRotación de Claves JWTstrong En el entorno de producción, es crítico que el parámetro codeJWT_SECRETcode definido en el archivo code.envcode sea una cadena robusta generada mediante algoritmos criptográficos seguros, de al menos 64 caracteres.li
+        listrongPreparación del Proxy SIFAstrong Para evitar problemas de CORS e interrupciones del servidor heredado, asegúrese de que el puerto code8012code del servidor de activos patrimoniales se mantenga bajo un firewall interno que solo permita peticiones entrantes desde la IP local de la API de tickets.li
+        listrongMonitoreo del SLAstrong El servicio de escalado automático (codeEscalationServicecode) está programado para ejecutarse de forma asíncrona. Se recomienda configurar un trabajo cron (emCronjobem) en el servidor de producción para consumir el endpoint codeapiescalationcode cada quince (15) minutos.li
+    ul
+
+body
+html
