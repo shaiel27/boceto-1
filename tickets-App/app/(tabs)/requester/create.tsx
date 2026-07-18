@@ -341,7 +341,7 @@ export default function RequesterCreateTicket() {
           </Field>
         )}
 
-        <Field label="N\u00b0 de Bien" icon="hardware-chip-outline" optional>
+        <Field label="Número de Bien" icon="hardware-chip-outline" optional>
           <TextInput
             style={styles.input}
             placeholder="PC-001, EQ-002..."
